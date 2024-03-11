@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.domain
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 )
 sealed class ReportCalculationOutcome {
     data class Success(
+        @JsonProperty("result_hash")
         val resultHash: String,
     ) : ReportCalculationOutcome()
 

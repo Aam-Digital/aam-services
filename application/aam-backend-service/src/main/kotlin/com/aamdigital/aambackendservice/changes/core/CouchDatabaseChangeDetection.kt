@@ -48,7 +48,7 @@ class CouchDatabaseChangeDetection(
 
                 val queryParams = getEmptyQueryParams()
 
-                if (LATEST_REFS.containsKey(database)) {
+                if (LATEST_REFS.containsKey(database) && LATEST_REFS.getValue(database).isNotEmpty()) {
                     queryParams.set("last-event-id", LATEST_REFS.getValue(database))
                 }
 
