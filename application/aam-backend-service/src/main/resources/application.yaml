@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: aam-backend-service
+  main:
+    banner-mode: off
+  jackson:
+    deserialization:
+      accept-empty-string-as-null-object: true
+  webflux:
+    base-path: /api
+  r2dbc:
+    url: r2dbc:h2:file://././data/dbh2;DB_CLOSE_DELAY=-1
+    username: local
+    password: local
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+          - info
+          - health
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: local-development
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/dummy-realm
+  rabbitmq:
+    virtual-host: /
+    listener:
+      direct:
+        retry:
+          enabled: true
+          max-attempts: 5
+
+server:
+  error:
+    include-message: always
+    include-binding-errors: always
+  port: 9000
+logging:
+  level:
+    #    org.springframework.amqp.rabbit: warn
+    #    org.springframework.http.client: debug
+    #    reactor.netty.http.client: debug
+    com.aamdigital.aambackendservice: trace
+
+
+couch-db-client-configuration:
+  base-path: http://localhost:5984
+  basic-auth-username: admin
+  basic-auth-password: docker
+
+sqs-client-configuration:
+  base-path: http://localhost:4984
+  basic-auth-username: admin
+  basic-auth-password: docker
+
+database-change-detection:
+  enabled: true
+
+report-calculation-processor:
+  enabled: true
