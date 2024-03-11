@@ -23,12 +23,12 @@ class DefaultNotificationEventConsumer(
         ackMode = "MANUAL"
     )
     override fun consume(rawMessage: String, message: Message, channel: Channel): Mono<Unit> {
-
         val type = try {
             messageParser.getTypeKClass(rawMessage.toByteArray())
         } catch (ex: AamException) {
             return Mono.error { throw AmqpRejectAndDontRequeueException("[${ex.code}] ${ex.localizedMessage}", ex) }
         }
+
         when (type.qualifiedName) {
             NotificationEvent::class.qualifiedName -> {
                 val payload = messageParser.getPayload(

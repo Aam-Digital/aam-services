@@ -11,20 +11,20 @@ import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.core.Message
 import org.springframework.amqp.rabbit.annotation.RabbitListener
-import org.springframework.messaging.handler.annotation.Payload
 import reactor.core.publisher.Mono
 
 class DefaultDatabaseChangeEventConsumer(
     private val messageParser: QueueMessageParser,
     private val useCase: CreateDocumentChangeUseCase,
 ) : DatabaseChangeEventConsumer {
+
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @RabbitListener(
         queues = [DB_CHANGES_QUEUE],
         ackMode = "MANUAL"
     )
-    override fun consume(@Payload rawMessage: String, message: Message, channel: Channel): Mono<Unit> {
+    override fun consume(rawMessage: String, message: Message, channel: Channel): Mono<Unit> {
         val type = try {
             messageParser.getTypeKClass(rawMessage.toByteArray())
         } catch (ex: AamException) {

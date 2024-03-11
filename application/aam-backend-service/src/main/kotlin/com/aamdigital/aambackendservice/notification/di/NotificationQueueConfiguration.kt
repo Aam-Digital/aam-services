@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.notification.core.NotificationEventConsu
 import com.aamdigital.aambackendservice.notification.core.NotificationEventPublisher
 import com.aamdigital.aambackendservice.notification.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder
 import org.springframework.amqp.core.FanoutExchange
@@ -50,7 +51,10 @@ class NotificationQueueConfiguration {
     @Bean
     fun defaultNotificationEventPublisher(
         rabbitTemplate: RabbitTemplate,
-    ): NotificationEventPublisher = DefaultNotificationEventPublisher(rabbitTemplate)
+        objectMapper: ObjectMapper,
+    ): NotificationEventPublisher = DefaultNotificationEventPublisher(
+        objectMapper = objectMapper, rabbitTemplate = rabbitTemplate
+    )
 
     @Bean
     fun defaultNotificationEventConsumer(

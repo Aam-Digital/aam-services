@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.changes.core.DatabaseChangeEventConsumer
 import com.aamdigital.aambackendservice.changes.queue.DefaultChangeEventPublisher
 import com.aamdigital.aambackendservice.changes.queue.DefaultDatabaseChangeEventConsumer
 import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder
 import org.springframework.amqp.core.FanoutExchange
@@ -51,8 +52,10 @@ class ChangesQueueConfiguration {
 
     @Bean
     fun defaultChangeEventPublisher(
+        objectMapper: ObjectMapper,
         rabbitTemplate: RabbitTemplate,
     ): ChangeEventPublisher = DefaultChangeEventPublisher(
+        objectMapper = objectMapper,
         rabbitTemplate = rabbitTemplate,
     )
 

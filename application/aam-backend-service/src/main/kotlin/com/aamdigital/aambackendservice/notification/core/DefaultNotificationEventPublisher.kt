@@ -4,6 +4,7 @@ import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.notification.core.event.NotificationEvent
 import com.aamdigital.aambackendservice.queue.core.QueueMessage
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpException
@@ -14,6 +15,7 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 
 class DefaultNotificationEventPublisher(
+    private val objectMapper: ObjectMapper,
     private val rabbitTemplate: RabbitTemplate,
 ) : NotificationEventPublisher {
 
@@ -33,7 +35,7 @@ class DefaultNotificationEventPublisher(
         try {
             rabbitTemplate.convertAndSend(
                 channel,
-                message
+                objectMapper.writeValueAsString(message)
             )
         } catch (ex: AmqpException) {
             throw InternalServerException(
@@ -48,7 +50,7 @@ class DefaultNotificationEventPublisher(
             channel,
             jacksonObjectMapper().writeValueAsString(message)
         )
-        
+
         return message
     }
 }

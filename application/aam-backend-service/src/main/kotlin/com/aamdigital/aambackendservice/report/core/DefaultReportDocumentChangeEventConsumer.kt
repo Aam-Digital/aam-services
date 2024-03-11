@@ -21,13 +21,14 @@ class DefaultReportDocumentChangeEventConsumer(
     private val reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
     private val identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
 ) : ReportDocumentChangeEventConsumer {
+
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @RabbitListener(
         queues = [ReportQueueConfiguration.DOCUMENT_CHANGES_REPORT_QUEUE],
         ackMode = "MANUAL"
     )
-    override fun consume(rawMessage: String, messsage: Message, channel: Channel): Mono<Unit> {
+    override fun consume(rawMessage: String, message: Message, channel: Channel): Mono<Unit> {
         val type = try {
             messageParser.getTypeKClass(rawMessage.toByteArray())
         } catch (ex: AamException) {

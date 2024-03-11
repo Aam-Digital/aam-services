@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.domain.event.DocumentChangeEvent
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.queue.core.QueueMessage
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpException
@@ -16,6 +17,7 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 
 class DefaultChangeEventPublisher(
+    private val objectMapper: ObjectMapper,
     private val rabbitTemplate: RabbitTemplate,
 ) : ChangeEventPublisher {
 
@@ -31,10 +33,11 @@ class DefaultChangeEventPublisher(
                 .atOffset(ZoneOffset.UTC)
                 .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         )
+
         try {
             rabbitTemplate.convertAndSend(
                 channel,
-                message
+                objectMapper.writeValueAsString(message)
             )
         } catch (ex: AmqpException) {
             throw InternalServerException(
@@ -66,7 +69,7 @@ class DefaultChangeEventPublisher(
             rabbitTemplate.convertAndSend(
                 exchange,
                 "",
-                message
+                objectMapper.writeValueAsString(message)
             )
         } catch (ex: AmqpException) {
             throw InternalServerException(
