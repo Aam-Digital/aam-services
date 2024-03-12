@@ -71,7 +71,7 @@ class SqsSchemaService(
         return Mono.zip(
             couchDbStorage.getDatabaseDocument(
                 database = TARGET_DATABASE,
-                documentId = SCHEMA_PATH,
+                documentId = FILENAME_CONFIG_ENTITY,
                 queryParams = LinkedMultiValueMap(),
                 kClass = AppConfigFile::class
             )
@@ -105,7 +105,7 @@ class SqsSchemaService(
 
                 couchDbStorage.putDatabaseDocument(
                     database = TARGET_DATABASE,
-                    documentId = FILENAME_CONFIG_ENTITY,
+                    documentId = SCHEMA_PATH,
                     body = newSqsSchema,
                 )
                     .flatMap {
