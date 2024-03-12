@@ -74,9 +74,6 @@ class ReportCalculationRepository(
                     body = calculation
                 )
             }.map { data }
-            .doOnError {
-                println("err")
-            }
     }
 
     fun fetchData(calculationReference: DomainReference): Mono<Optional<ReportData>> {

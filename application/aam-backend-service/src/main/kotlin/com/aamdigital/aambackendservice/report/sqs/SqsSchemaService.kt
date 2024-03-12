@@ -1,13 +1,16 @@
 package com.aamdigital.aambackendservice.report.sqs
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
+import com.aamdigital.aambackendservice.crypto.core.CryptoService
 import com.aamdigital.aambackendservice.domain.EntityAttribute
 import com.aamdigital.aambackendservice.domain.EntityConfig
 import com.aamdigital.aambackendservice.domain.EntityType
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
 import reactor.core.publisher.Mono
+import java.security.MessageDigest
 
 data class AppConfigAttribute(
     val dataType: String,
@@ -49,13 +52,27 @@ data class SqlOptions(
 
 data class SqsSchema(
     val language: String = "sqlite",
-    val configVersion: String,
     val sql: SqlObject,
-)
+) {
+    var configVersion: String
+
+    init {
+        configVersion = generateConfigVersion()
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    fun generateConfigVersion(): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        val input = jacksonObjectMapper().writeValueAsString(sql).toByteArray()
+        val bytes = md.digest(input)
+        return bytes.toHexString()
+    }
+}
 
 @Service
 class SqsSchemaService(
     private val couchDbStorage: CouchDbStorage,
+    private val cryptoService: CryptoService,
 ) {
 
     companion object {
@@ -112,16 +129,13 @@ class SqsSchemaService(
                         Mono.just(Unit)
                     }
             }
-            .doOnError {
-                println(it)
-            }
     }
 
     private fun mapToSqsSchema(entityConfig: EntityConfig): SqsSchema {
         val tables = entityConfig.entities.map { entityType ->
             val attributes = entityType.attributes
                 .filter {
-                    it.type == "file"
+                    it.type != "file"
                 }
                 .map {
                     EntityAttribute(
@@ -139,7 +153,6 @@ class SqsSchemaService(
         }
 
         return SqsSchema(
-            configVersion = "",
             sql = SqlObject(
                 tables = tables,
                 options = SqlOptions(
@@ -175,7 +188,7 @@ class SqsSchemaService(
 
     private fun parseEntityConfig(entityKey: String, config: AppConfigEntry): EntityType {
         return EntityType(
-            label = config.label ?: entityKey.split(":").first(),
+            label = config.label ?: entityKey.split(":")[1],
             attributes = config.attributes.orEmpty().map {
                 EntityAttribute(
                     name = it.key,
