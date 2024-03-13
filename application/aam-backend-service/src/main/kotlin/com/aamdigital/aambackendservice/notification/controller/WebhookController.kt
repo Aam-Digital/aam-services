@@ -2,8 +2,8 @@ package com.aamdigital.aambackendservice.notification.controller
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.error.ForbiddenAccessException
+import com.aamdigital.aambackendservice.notification.core.AddWebhookSubscriptionUseCase
 import com.aamdigital.aambackendservice.notification.core.CreateWebhookRequest
-import com.aamdigital.aambackendservice.notification.core.NotificationService
 import com.aamdigital.aambackendservice.notification.core.NotificationStorage
 import com.aamdigital.aambackendservice.notification.dto.Webhook
 import com.aamdigital.aambackendservice.notification.dto.WebhookAuthenticationType
@@ -49,7 +49,7 @@ data class CreateWebhookRequestDto(
 @Validated
 class WebhookController(
     private val notificationStorage: NotificationStorage,
-    private val notificationService: NotificationService,
+    private val addWebhookSubscriptionUseCase: AddWebhookSubscriptionUseCase,
 ) {
 
     @GetMapping
@@ -104,16 +104,10 @@ class WebhookController(
         @PathVariable webhookId: String,
         @PathVariable reportId: String,
     ): Mono<Unit> {
-        return notificationStorage.addSubscription(
-            DomainReference(webhookId),
-            DomainReference(reportId)
-        ).map {
-            notificationService.triggerWebhook(
-                report = DomainReference(reportId),
-                webhook = DomainReference(webhookId),
-                reportCalculation = DomainReference("all")
-            )
-        }
+        return addWebhookSubscriptionUseCase.subscribe(
+            report = DomainReference(reportId),
+            webhook = DomainReference(webhookId)
+        )
     }
 
     @DeleteMapping("/{webhookId}/subscribe/report/{reportId}")

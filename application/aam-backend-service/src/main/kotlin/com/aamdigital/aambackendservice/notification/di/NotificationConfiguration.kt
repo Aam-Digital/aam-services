@@ -1,13 +1,18 @@
 package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.crypto.core.CryptoService
+import com.aamdigital.aambackendservice.notification.core.AddWebhookSubscriptionUseCase
+import com.aamdigital.aambackendservice.notification.core.DefaultAddWebhookSubscriptionUseCase
 import com.aamdigital.aambackendservice.notification.core.DefaultTriggerWebhookUseCase
 import com.aamdigital.aambackendservice.notification.core.DefaultUriParser
+import com.aamdigital.aambackendservice.notification.core.NotificationService
 import com.aamdigital.aambackendservice.notification.core.NotificationStorage
 import com.aamdigital.aambackendservice.notification.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.notification.core.UriParser
 import com.aamdigital.aambackendservice.notification.storage.DefaultNotificationStorage
 import com.aamdigital.aambackendservice.notification.storage.WebhookRepository
+import com.aamdigital.aambackendservice.report.calculation.core.CreateReportCalculationUseCase
+import com.aamdigital.aambackendservice.report.core.ReportingStorage
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -17,6 +22,20 @@ import reactor.netty.http.client.HttpClient
 
 @Configuration
 class NotificationConfiguration {
+
+    @Bean
+    fun defaultAddWebhookSubscription(
+        notificationStorage: NotificationStorage,
+        reportingStorage: ReportingStorage,
+        notificationService: NotificationService,
+        createReportCalculationUseCase: CreateReportCalculationUseCase
+    ): AddWebhookSubscriptionUseCase =
+        DefaultAddWebhookSubscriptionUseCase(
+            notificationStorage = notificationStorage,
+            reportingStorage = reportingStorage,
+            notificationService = notificationService,
+            createReportCalculationUseCase = createReportCalculationUseCase
+        )
 
     @Bean
     fun defaultUriParser(): UriParser = DefaultUriParser()
