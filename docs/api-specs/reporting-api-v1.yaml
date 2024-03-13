@@ -1,0 +1,566 @@
+openapi: 3.0.3
+info:
+  title: Aam Digital - Reporting API
+  description: |-
+    API to manage reports that provide data calculated based on any entities of the Aam Digital system
+    and offer notifications when data of such reports changes.
+  version: 1.0.0-alpha.2
+servers:
+  - url: https://{customerId}.aam-digital.net/api/v1/reporting
+    description: Developer Instance for testing
+    variables:
+      customerId:
+        default: dev
+        description: Customer ID assigned by the service provider
+tags:
+  - name: reporting
+    description: Access reports and their results and trigger one-time report calculations.
+  - name: notifications
+    description: Subscribe to continuous notification events whenever a report's result data changes due to users changing records in the Aam Digital application.
+
+paths:
+  /report:
+    get:
+      security:
+        - development:
+            - reporting_read
+      tags:
+        - reporting
+      summary: Return list of available Reports
+      responses:
+        200:
+          description: List of all available Reports the requester has access permissions to, empty array if no reports are available
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Report'
+        401:
+          description: If no valid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /report/{reportId}:
+    get:
+      security:
+        - development:
+            - reporting_read
+      tags:
+        - reporting
+      summary: Return report metadata by ID
+      parameters:
+        - in: path
+          name: reportId
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: Get details of a report, including details of the data structure (schema) this specific report's data has
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        404:
+          description: If the Report does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: If the access token does not grant permission to this Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /report-calculation/report/{reportId}:
+    get:
+      security:
+        - development:
+            - reporting_read
+      tags:
+        - reporting
+      summary: Return all report calculations for a report
+      parameters:
+        - in: path
+          name: reportId
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: List of metadata of all calculations triggered by any user (pending and completed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportCalculation'
+        401:
+          description: If the access token does not grant permission to this Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: If report does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      security:
+        - development:
+            - reporting_write
+      tags:
+        - reporting
+      summary: Trigger a new report calculation run.
+      description: Trigger a new report calculation run. Check status of the asynchronous calculation via the /report-calculation endpoint
+        As an alternative to triggering a single report calculation, you can subscribe to receive
+        a notification event (which includes an automatically created calculationId) whenever the report's
+        results change (see /webhook/{webhookId}/subscribe/report).
+      parameters:
+        - in: path
+          name: reportId
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: from
+          description: start date for report period
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: to
+          description: end date for report period
+          schema:
+            type: string
+            format: date
+      responses:
+        200:
+          description: Return calculation identifier, to be used to check status and result data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+        401:
+          description: If the access token does not grant permission to this Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /report-calculation/{calculationId}:
+    get:
+      security:
+        - development:
+            - reporting_read
+      tags:
+        - reporting
+      summary: Return metadata for a report calculation
+      parameters:
+        - in: path
+          name: calculationId
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: Status and details of the given report calculation run
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReportCalculation'
+        401:
+          description: If the access token does not grant permission to this Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: If the calculation identifier does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /report-calculation/{calculationId}/data:
+    get:
+      security:
+        - development:
+            - reporting_read
+      tags:
+        - reporting
+      summary: Fetch actual report data for a specific calculation
+      parameters:
+        - in: path
+          name: calculationId
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: The actual data that has been calculated by the calculation run. This matches the schema defined in the /report/id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportData'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ReportData'
+        404:
+          description: report data is not available yet (when either the calculation id is not valid or the calculation is still running)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: If the access token does not grant permission to this Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # notification
+
+  /webhook:
+    get:
+      security:
+        - development:
+            - reporting_read
+      tags:
+        - notifications
+      summary: Return list of existing Webhooks for your authorized client
+      responses:
+        200:
+          description: List of all available Webhooks the requester has created, empty array if no Webhooks are available for the client authorized in the given access token
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Webhook'
+        401:
+          description: If no valid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: No permissions to access the resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      security:
+        - development:
+            - reporting_write
+      tags:
+        - notifications
+      summary: Subscribe to events for a specific Report
+      description: Register a webhook to be called for one or more notification subscriptions. To receive events, make calls to your webhookId's /subscribe endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookConfiguration'
+      responses:
+        200:
+          description: Webhook registered successfully, you can now register subscriptions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+        401:
+          description: If no valid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /webhook/{webhookId}:
+    get:
+      security:
+        - development:
+            - reporting_read
+      tags:
+        - notifications
+      summary: Return a specific Webhook
+      parameters:
+        - in: path
+          name: webhookId
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: Get details of a webhook, including details of subscribed events and configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Webhook'
+        401:
+          description: If no valid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: No permissions to access the resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /webhook/{webhookId}/subscribe/report/{reportId}:
+    post:
+      security:
+        - development:
+            - reporting_write
+      tags:
+        - notifications
+      summary: Subscribe to events for a specific Report
+      description: If you subscribe to a reportId, Aam Digital will continuously monitor the changes users
+        make in the application and check if they affect the results calculated by that report.
+        Whenever this is the case, a new report-calculation is automatically triggered for you and once
+        the calculation is completed you receive an event containing that calculationId. You can use
+        this to immediately fetch to available report data from the /report-calculation/{calculationId}/data
+        endpoint. Upon subscribing to a report, you will always receive an initial event with a
+        calculationId through which you can access the current state of the report's data.
+      externalDocs:
+        url: https://github.com/Aam-Digital/query-backend/blob/main/README.md#subscribe-to-continuous-changes-of-a-report
+      parameters:
+        - in: path
+          name: webhookId
+          schema:
+            type: string
+          required: true
+        - in: path
+          name: reportId
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: Report added to webhook subscription
+        401:
+          description: If no valid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: No permissions to access the resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      security:
+        - development:
+            - reporting_write
+      tags:
+        - notifications
+      summary: Remove event subscription for a specific Report
+      parameters:
+        - in: path
+          name: webhookId
+          schema:
+            type: string
+          required: true
+        - in: path
+          name: eventName
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: Report deleted from webhook subscription
+        401:
+          description: If no valid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: No permissions to access the resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    # report
+    Report:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: report_all_course_members
+        calculationPending:
+          type: boolean
+        schema:
+          $ref: '#/components/schemas/ReportSchema'
+
+    ReportSchema:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            type: object
+
+    ReportCalculation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        start_date:
+          type: string
+          example: date
+        end_date:
+          type: string
+          example: date
+          nullable: true
+        status:
+          type: string
+          description: Current status of the run
+          enum:
+            - PENDING
+            - RUNNING
+            - FINISHED_SUCCESS
+            - FINISHED_ERROR
+
+    ReportData:
+      type: object
+      properties:
+        reportId:
+          type: string
+          format: uuid
+        data:
+          type: object
+
+    # notification
+
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: wh_aam_digital_reporting
+        reportSubscriptions:
+          description: The reports for which the webhook will receive a notification event whenever their results change due to users managing data in the Aam Digital system.
+          type: array
+          items:
+            type: string
+          example: [ "report_id_1", "report_id_2", "report_id_3" ]
+
+    WebhookConfiguration:
+      type: object
+      properties:
+        method:
+          type: string
+          enum:
+            - GET
+            - POST
+        targetUrl:
+          type: string
+        authenticationType:
+          type: string
+          enum:
+            - API_KEY
+        authentication:
+          type: object
+          oneOf:
+            - $ref: '#/components/schemas/ApiKeyAuthConfig'
+
+    ApiKeyAuthConfig:
+      type: object
+      properties:
+        key:
+          type: string
+        headerName:
+          type: string
+
+    Event:
+      type: object
+      description: Representation of the payload we will send to the webhook
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventName:
+          type: string
+          enum:
+            - NEW_REPORT_DATA_AVAILABLE
+        reportId:
+          type: string
+        calculationId:
+          type: string
+        created_at:
+          type: string
+          format: date
+
+    # global
+
+    Error:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          items:
+            enum:
+              - NOT_FOUND
+              - UNAUTHORIZED
+              - FORBIDDEN
+              - INTERNAL_SERVER_ERROR
+        errorMessage:
+          type: string
+
+  securitySchemes:
+    development:
+      type: oauth2
+      description: This API uses OAuth2 with the Client Credentials Flow
+      flows:
+        clientCredentials:
+          tokenUrl: https://keycloak.aam-digital.net/realms/TolaData/protocol/openid-connect/token
+          scopes:
+            reporting_read: Read Report and ReportCalculation
+            reporting_write: Trigger new ReportCalculation and configure webhook notifications
