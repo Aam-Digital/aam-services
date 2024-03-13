@@ -6,6 +6,7 @@ plugins {
     jacoco
     id("org.springframework.boot") version "3.2.3"
     id("io.spring.dependency-management") version "1.1.4"
+    id("io.sentry.jvm.gradle") version "4.3.1"
     kotlin("kapt") version "1.9.22"
     kotlin("jvm") version "1.9.22"
     kotlin("plugin.spring") version "1.9.22"
@@ -60,6 +61,18 @@ dependencies {
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
+}
+
+sentry {
+    // Generates a JVM (Java, Kotlin, etc.) source bundle and uploads your source code to Sentry.
+    // This enables source context, allowing you to see your source
+    // code as part of your stack traces in Sentry.
+    includeSourceContext = true
+
+    org = "aam-digital"
+    projectName = "aam-backend-service"
+    authToken = System.getenv("SENTRY_AUTH_TOKEN")
+    version = System.getenv("APPLICATION_VERSION")
 }
 
 tasks.withType<KotlinCompile> {

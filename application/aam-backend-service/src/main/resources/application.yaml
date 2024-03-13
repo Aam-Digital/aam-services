@@ -56,7 +56,6 @@ logging:
     #    reactor.netty.http.client: debug
     com.aamdigital.aambackendservice: trace
 
-
 couch-db-client-configuration:
   base-path: http://localhost:5984
   basic-auth-username: admin
@@ -72,3 +71,7 @@ database-change-detection:
 
 report-calculation-processor:
   enabled: true
+
+sentry:
+  logging:
+    enabled: false
