@@ -1,0 +1,55 @@
+package com.aamdigital.aambackendservice.reporting.notification.core
+
+import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.reporting.notification.core.event.NotificationEvent
+import com.aamdigital.aambackendservice.reporting.notification.di.NotificationQueueConfiguration
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
+import reactor.core.publisher.Mono
+
+@Service
+class NotificationService(
+    private val notificationStorage: NotificationStorage,
+    private val notificationEventPublisher: NotificationEventPublisher
+) {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
+    fun getAffectedWebhooks(report: DomainReference): Mono<List<DomainReference>> {
+        return notificationStorage.fetchAllWebhooks()
+            .map { webhooks ->
+                val affectedWebhooks: MutableList<DomainReference> = mutableListOf()
+                webhooks.forEach { webhook ->
+                    if (webhook.reportSubscriptions.contains(report)) {
+                        affectedWebhooks.add(DomainReference(webhook.id))
+                    }
+                }
+                affectedWebhooks
+            }
+    }
+
+    fun sendNotifications(report: DomainReference, reportCalculation: DomainReference): Mono<Unit> {
+        logger.trace("[NotificationService]: Trigger all affected webhooks for ${report.id}")
+        return getAffectedWebhooks(report)
+            .map { webhooks ->
+                webhooks.map { webhook ->
+                    triggerWebhook(
+                        report = report,
+                        reportCalculation = reportCalculation,
+                        webhook = webhook
+                    )
+                }
+            }
+    }
+
+    fun triggerWebhook(report: DomainReference, reportCalculation: DomainReference, webhook: DomainReference) {
+        logger.trace("[NotificationService]: Trigger NotificationEvent for ${webhook.id} and ${report.id}")
+        notificationEventPublisher.publish(
+            NotificationQueueConfiguration.NOTIFICATION_QUEUE,
+            NotificationEvent(
+                webhookId = webhook.id,
+                reportId = report.id,
+                calculationId = reportCalculation.id
+            )
+        )
+    }
+}
