@@ -1,9 +1,9 @@
 package com.aamdigital.aambackendservice.reporting.report.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.Report
-import com.aamdigital.aambackendservice.domain.ReportCalculation
-import com.aamdigital.aambackendservice.domain.ReportData
+import com.aamdigital.aambackendservice.reporting.domain.Report
+import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
+import com.aamdigital.aambackendservice.reporting.domain.ReportData
 import reactor.core.publisher.Mono
 import java.util.*
 

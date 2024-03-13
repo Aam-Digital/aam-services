@@ -1,6 +1,5 @@
 package com.aamdigital.aambackendservice.reporting.report.di
 
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.ReportCalculator
 import com.aamdigital.aambackendservice.reporting.report.core.DefaultIdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.core.DefaultReportCalculationProcessor
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
@@ -8,6 +7,7 @@ import com.aamdigital.aambackendservice.reporting.report.core.NoopReportCalculat
 import com.aamdigital.aambackendservice.reporting.report.core.ReportCalculationProcessor
 import com.aamdigital.aambackendservice.reporting.report.core.ReportSchemaGenerator
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculator
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

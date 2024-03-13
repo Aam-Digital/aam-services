@@ -2,12 +2,12 @@ package com.aamdigital.aambackendservice.reporting.report.storage
 
 import com.aamdigital.aambackendservice.couchdb.dto.CouchDbChange
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.Report
-import com.aamdigital.aambackendservice.domain.ReportCalculation
-import com.aamdigital.aambackendservice.domain.ReportCalculationStatus
-import com.aamdigital.aambackendservice.domain.ReportData
-import com.aamdigital.aambackendservice.domain.ReportSchema
 import com.aamdigital.aambackendservice.error.NotFoundException
+import com.aamdigital.aambackendservice.reporting.domain.Report
+import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
+import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
+import com.aamdigital.aambackendservice.reporting.domain.ReportData
+import com.aamdigital.aambackendservice.reporting.domain.ReportSchema
 import com.aamdigital.aambackendservice.reporting.report.core.ReportSchemaGenerator
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import com.fasterxml.jackson.annotation.JsonProperty

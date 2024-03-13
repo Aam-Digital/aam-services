@@ -4,8 +4,8 @@ import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.changes.core.CreateDocumentChangeUseCase
 import com.aamdigital.aambackendservice.reporting.changes.core.DatabaseChangeEventConsumer
-import com.aamdigital.aambackendservice.reporting.changes.core.event.DatabaseChangeEvent
 import com.aamdigital.aambackendservice.reporting.changes.di.ChangesQueueConfiguration.Companion.DB_CHANGES_QUEUE
+import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException

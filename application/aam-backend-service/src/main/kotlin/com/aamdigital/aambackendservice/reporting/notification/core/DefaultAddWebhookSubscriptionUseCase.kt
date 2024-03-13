@@ -1,9 +1,9 @@
 package com.aamdigital.aambackendservice.reporting.notification.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.CreateReportCalculationRequest
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import reactor.core.publisher.Mono
 
 class DefaultAddWebhookSubscriptionUseCase(

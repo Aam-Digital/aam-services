@@ -1,9 +1,9 @@
 package com.aamdigital.aambackendservice.reporting.report.core
 
-import com.aamdigital.aambackendservice.domain.ReportCalculation
-import com.aamdigital.aambackendservice.domain.ReportCalculationOutcome
-import com.aamdigital.aambackendservice.domain.ReportCalculationStatus
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.ReportCalculator
+import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
+import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationOutcome
+import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculator
 import reactor.core.publisher.Mono
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter

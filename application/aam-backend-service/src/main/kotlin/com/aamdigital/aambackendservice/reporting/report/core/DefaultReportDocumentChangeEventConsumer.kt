@@ -1,13 +1,13 @@
 package com.aamdigital.aambackendservice.reporting.report.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.event.DocumentChangeEvent
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.CreateReportCalculationRequest
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.CreateReportCalculationUseCase
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.ReportCalculationChangeUseCase
+import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
 import com.aamdigital.aambackendservice.reporting.report.di.ReportQueueConfiguration
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException

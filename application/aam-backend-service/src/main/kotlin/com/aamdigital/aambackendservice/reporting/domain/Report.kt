@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.domain
+package com.aamdigital.aambackendservice.reporting.domain
 
 data class Report(
     val id: String,

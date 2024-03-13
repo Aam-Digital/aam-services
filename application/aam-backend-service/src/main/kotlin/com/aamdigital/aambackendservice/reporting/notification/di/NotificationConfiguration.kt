@@ -11,8 +11,8 @@ import com.aamdigital.aambackendservice.reporting.notification.core.TriggerWebho
 import com.aamdigital.aambackendservice.reporting.notification.core.UriParser
 import com.aamdigital.aambackendservice.reporting.notification.storage.DefaultNotificationStorage
 import com.aamdigital.aambackendservice.reporting.notification.storage.WebhookRepository
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

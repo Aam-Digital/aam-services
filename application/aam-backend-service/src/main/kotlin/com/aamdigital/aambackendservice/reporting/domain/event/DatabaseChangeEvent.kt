@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.reporting.changes.core.event
+package com.aamdigital.aambackendservice.reporting.domain.event
 
 data class DatabaseChangeEvent(
     val database: String,

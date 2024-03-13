@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.report.core
 
-import com.aamdigital.aambackendservice.domain.Report
+import com.aamdigital.aambackendservice.reporting.domain.Report
 import org.springframework.stereotype.Service
 import java.util.regex.Pattern
 

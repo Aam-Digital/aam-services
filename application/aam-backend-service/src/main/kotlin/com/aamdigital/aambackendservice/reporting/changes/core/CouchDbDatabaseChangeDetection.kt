@@ -2,10 +2,10 @@ package com.aamdigital.aambackendservice.reporting.changes.core
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
 import com.aamdigital.aambackendservice.couchdb.core.getEmptyQueryParams
-import com.aamdigital.aambackendservice.reporting.changes.core.event.DatabaseChangeEvent
 import com.aamdigital.aambackendservice.reporting.changes.di.ChangesQueueConfiguration.Companion.DB_CHANGES_QUEUE
 import com.aamdigital.aambackendservice.reporting.changes.repository.SyncEntry
 import com.aamdigital.aambackendservice.reporting.changes.repository.SyncRepository
+import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Mono
 import java.util.*

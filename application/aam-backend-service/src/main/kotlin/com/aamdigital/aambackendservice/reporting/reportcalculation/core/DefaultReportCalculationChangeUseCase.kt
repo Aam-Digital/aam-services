@@ -1,9 +1,9 @@
-package com.aamdigital.aambackendservice.reporting.report.calculation.core
+package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.ReportCalculation
-import com.aamdigital.aambackendservice.domain.ReportCalculationStatus
-import com.aamdigital.aambackendservice.domain.event.DocumentChangeEvent
+import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
+import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
+import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
 import com.aamdigital.aambackendservice.reporting.notification.core.NotificationService
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import com.fasterxml.jackson.databind.ObjectMapper

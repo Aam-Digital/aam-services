@@ -3,7 +3,7 @@ package com.aamdigital.aambackendservice.reporting.notification.core
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.queue.core.QueueMessage
-import com.aamdigital.aambackendservice.reporting.notification.core.event.NotificationEvent
+import com.aamdigital.aambackendservice.reporting.domain.event.NotificationEvent
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.slf4j.LoggerFactory

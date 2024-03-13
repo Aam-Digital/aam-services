@@ -1,11 +1,11 @@
 package com.aamdigital.aambackendservice.reporting.report.di
 
 import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.CreateReportCalculationUseCase
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.ReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.report.core.DefaultReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.core.ReportDocumentChangeEventConsumer
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder
 import org.springframework.amqp.core.FanoutExchange

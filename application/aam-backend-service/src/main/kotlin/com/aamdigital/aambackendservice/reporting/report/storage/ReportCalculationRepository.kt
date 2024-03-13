@@ -4,10 +4,10 @@ import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
 import com.aamdigital.aambackendservice.couchdb.core.getQueryParamsAllDocs
 import com.aamdigital.aambackendservice.couchdb.dto.DocSuccess
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.ReportCalculation
-import com.aamdigital.aambackendservice.domain.ReportCalculationOutcome
-import com.aamdigital.aambackendservice.domain.ReportData
 import com.aamdigital.aambackendservice.error.NotFoundException
+import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
+import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationOutcome
+import com.aamdigital.aambackendservice.reporting.domain.ReportData
 import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
 import reactor.core.publisher.Mono

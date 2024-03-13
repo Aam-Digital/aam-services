@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.notification.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.reporting.notification.core.event.NotificationEvent
+import com.aamdigital.aambackendservice.reporting.domain.event.NotificationEvent
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod

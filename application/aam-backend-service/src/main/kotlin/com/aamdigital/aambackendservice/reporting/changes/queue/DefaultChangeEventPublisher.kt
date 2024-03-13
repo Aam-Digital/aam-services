@@ -1,11 +1,11 @@
 package com.aamdigital.aambackendservice.reporting.changes.queue
 
-import com.aamdigital.aambackendservice.domain.event.DocumentChangeEvent
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.queue.core.QueueMessage
 import com.aamdigital.aambackendservice.reporting.changes.core.ChangeEventPublisher
-import com.aamdigital.aambackendservice.reporting.changes.core.event.DatabaseChangeEvent
+import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
+import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.slf4j.LoggerFactory

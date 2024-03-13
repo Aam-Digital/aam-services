@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.reporting.report.calculation.core
+package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.fasterxml.jackson.annotation.JsonSubTypes

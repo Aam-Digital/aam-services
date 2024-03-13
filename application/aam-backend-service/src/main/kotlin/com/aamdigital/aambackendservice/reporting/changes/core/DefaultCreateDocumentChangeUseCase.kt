@@ -2,9 +2,9 @@ package com.aamdigital.aambackendservice.reporting.changes.core
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
 import com.aamdigital.aambackendservice.couchdb.core.getEmptyQueryParams
-import com.aamdigital.aambackendservice.domain.event.DocumentChangeEvent
-import com.aamdigital.aambackendservice.reporting.changes.core.event.DatabaseChangeEvent
 import com.aamdigital.aambackendservice.reporting.changes.di.ChangesQueueConfiguration.Companion.DOCUMENT_CHANGES_EXCHANGE
+import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
+import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory

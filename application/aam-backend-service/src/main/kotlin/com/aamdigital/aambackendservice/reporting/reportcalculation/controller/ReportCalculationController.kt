@@ -1,14 +1,14 @@
-package com.aamdigital.aambackendservice.reporting.report.calculation.controller
+package com.aamdigital.aambackendservice.reporting.reportcalculation.controller
 
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.ReportCalculation
-import com.aamdigital.aambackendservice.domain.ReportData
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.error.NotFoundException
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.CreateReportCalculationRequest
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.CreateReportCalculationResult
-import com.aamdigital.aambackendservice.reporting.report.calculation.core.CreateReportCalculationUseCase
+import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
+import com.aamdigital.aambackendservice.reporting.domain.ReportData
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationResult
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable

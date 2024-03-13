@@ -1,5 +1,6 @@
-package com.aamdigital.aambackendservice.domain
+package com.aamdigital.aambackendservice.reporting.domain
 
+import com.aamdigital.aambackendservice.domain.DomainReference
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo

@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.reporting.notification.core.event
+package com.aamdigital.aambackendservice.reporting.domain.event
 
 data class NotificationEvent(
     val webhookId: String,

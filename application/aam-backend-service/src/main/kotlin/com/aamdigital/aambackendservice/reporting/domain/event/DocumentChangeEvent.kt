@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.domain.event
+package com.aamdigital.aambackendservice.reporting.domain.event
 
 data class DocumentChangeEvent(
     val database: String,

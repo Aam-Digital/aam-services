@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.report.dto
 
 import com.aamdigital.aambackendservice.couchdb.dto.CouchDbRow
-import com.aamdigital.aambackendservice.domain.ReportSchema
+import com.aamdigital.aambackendservice.reporting.domain.ReportSchema
 import com.fasterxml.jackson.annotation.JsonProperty
 
 /**
