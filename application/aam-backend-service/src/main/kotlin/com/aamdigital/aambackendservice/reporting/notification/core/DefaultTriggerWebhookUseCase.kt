@@ -55,7 +55,13 @@ class DefaultTriggerWebhookUseCase(
                         response.bodyToMono(String::class.java)
                     }
                     .map {
-                        logger.trace("[DefaultTriggerWebhookUseCase] Webhook trigger completed. Response: {}", it)
+                        logger.trace(
+                            "[DefaultTriggerWebhookUseCase] Webhook trigger completed for Webhook: {} Report: {} Calculation: {} - Response: {}",
+                            notificationEvent.webhookId,
+                            notificationEvent.reportId,
+                            notificationEvent.calculationId,
+                            it
+                        )
                     }
             }
     }
