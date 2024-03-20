@@ -14,6 +14,12 @@ services:
       - "443:443"
       - "2019:2019"
 
+  maildev:
+    image: maildev/maildev
+    ports:
+      - "1025:1025"
+      - "1080:1080"
+
   db-couch:
     image: couchdb:3.3
     volumes:
