@@ -1,0 +1,85 @@
+# ***************************************************************
+# start local development environment (without application)
+# ***************************************************************
+
+version: '3'
+name: aam-services
+services:
+  reverse-proxy:
+    image: caddy:alpine
+    volumes:
+      - ./reverse-proxy/Caddyfile:/etc/caddy/Caddyfile
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"
+
+  maildev:
+    image: maildev/maildev
+    ports:
+      - "1025:1025"
+      - "1080:1080"
+
+  db-couch:
+    image: couchdb:3.3
+    volumes:
+      - ~/docker-volumes/aam-digital/aam-services/db-couch/document-data:/opt/couchdb/data
+      - ~/docker-volumes/aam-digital/aam-services/db-couch/document-etc-locald:/opt/couchdb/etc/local.d
+      - ~/docker-volumes/aam-digital/aam-services/db-couch/document-log:/opt/couchdb/log
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: docker
+      COUCHDB_SECRET: docker
+    ports:
+      - "5984:5984"
+
+  db-keycloak:
+    image: postgres:16
+    volumes:
+      - ~/docker-volumes/aam-digital/aam-services/db-keycloak/postgresql-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: keycloak
+    ports:
+      - "5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    volumes:
+      - ~/docker-volumes/aam-digital/aam-services/rabbitmq/data:/var/lib/rabbitmq/
+      - ~/docker-volumes/aam-digital/aam-services/rabbitmq/log:/var/log/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  sqs:
+    image: ghcr.io/aam-digital/aam-sqs-mac:latest
+    platform: linux/amd64
+    depends_on:
+      - db-couch
+    ports:
+      - "4984:4984"
+    volumes:
+      - ~/docker-volumes/aam-digital/aam-services/sqs/data:/data
+    environment:
+      SQS_COUCHDB_URL: http://db-couch:5984
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    volumes:
+      - ~/docker-volumes/aam-digital/aam-services/keycloak/data:/opt/keycloak/data
+    ports:
+      - "8080:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db-keycloak:5432/postgres
+      KC_DB_SCHEMA: public
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: keycloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: docker
+    depends_on:
+      - db-keycloak
+    command:
+      - start-dev
