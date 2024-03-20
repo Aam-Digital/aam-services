@@ -1,0 +1,28 @@
+{
+	auto_https disable_redirects
+	admin 0.0.0.0:2019
+}
+
+auth.localhost:80, auth.localhost:443 {
+	handle /* {
+		reverse_proxy keycloak:8080
+	}
+}
+
+couchdb.localhost:80, couchdb.localhost:443 {
+	handle /* {
+		reverse_proxy db-couch:5984
+	}
+}
+
+sqs.localhost:80, sqs.localhost:443 {
+	handle /* {
+		reverse_proxy sqs:4984
+	}
+}
+
+localhost:80, localhost:443 {
+	handle /api/v1/reporting/* {
+		reverse_proxy host.docker.internal:3000
+	}
+}
