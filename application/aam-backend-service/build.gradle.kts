@@ -58,8 +58,32 @@ dependencies {
 
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 
+    testImplementation("io.cucumber:cucumber-java:7.14.0")
+    testImplementation("io.cucumber:cucumber-junit:7.14.0")
+    testImplementation("io.cucumber:cucumber-spring:7.14.0")
+    testImplementation("org.junit.vintage:junit-vintage-engine:5.10.2")
+
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
     testImplementation("io.projectreactor:reactor-test")
+
+    testImplementation("org.testcontainers:junit-jupiter:1.19.7") {
+        constraints {
+            testImplementation("org.apache.commons:commons-compress:1.26.1") {
+                because("previous versions have security issues")
+            }
+        }
+    }
+    testImplementation("org.testcontainers:rabbitmq:1.19.7")
+    testImplementation("com.github.dasniko:testcontainers-keycloak:3.3.0") {
+        constraints {
+            testImplementation("org.apache.james:apache-mime4j-core:0.8.11") {
+                because("previous versions have security issues")
+            }
+        }
+    }
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.springframework.security:spring-security-test")
 }
 
@@ -84,4 +108,5 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    systemProperty("cucumber.junit-platform.naming-strategy", "long")
 }
