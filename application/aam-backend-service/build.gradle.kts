@@ -87,6 +87,19 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
 }
 
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        html.required.set(false)
+        csv.required.set(true)
+        xml.required.set(true)
+    }
+}
+
 sentry {
     // Generates a JVM (Java, Kotlin, etc.) source bundle and uploads your source code to Sentry.
     // This enables source context, allowing you to see your source

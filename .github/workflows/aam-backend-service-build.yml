@@ -1,12 +1,11 @@
-name: aam-backend-service
+name: aam-backend-service-build
 
 on:
   push:
     branches:
       - main
-      - 'tw/feat/query-backend-port'
     paths:
-      - '.github/workflows/aam-backend-service.yml'
+      - '.github/workflows/aam-backend-service-build.yml'
       - 'application/aam-backend-service/**'
   workflow_dispatch:
 

@@ -1,0 +1,40 @@
+name: aam-backend-service-analyse
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/aam-backend-service-analyse.yml'
+      - 'application/aam-backend-service/**'
+  pull_request:
+    types: [ opened, synchronize, reopened, ready_for_review ]
+
+jobs:
+  test_coverage:
+    name: Run unit tests and coverage calculation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: application/aam-backend-service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: 17
+          cache: 'gradle'
+
+      - name: Test and analyse test coverage
+        run: ./gradlew jacocoTestReport --no-daemon
+
+      - name: Add coverage to PR
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          paths: application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 80
+          min-coverage-changed-files: 80
