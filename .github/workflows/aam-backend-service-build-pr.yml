@@ -1,0 +1,45 @@
+name: aam-backend-service-build-pr
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/aam-backend-service-build-pr.yml'
+      - 'application/aam-backend-service/**'
+  workflow_dispatch:
+
+jobs:
+  push_pr_build_to_registry:
+    name: Build aam-backend-service and publish to container registry
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: 17
+          cache: 'gradle'
+
+      - name: Build application
+        working-directory: application/aam-backend-service
+        run: ./gradlew installDist
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          platforms: linux/amd64
+          context: ./application/aam-backend-service
+          push: true
+          tags: ghcr.io/aam-digital/aam-backend-service:${GITHUB_HEAD_REF}
