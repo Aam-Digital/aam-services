@@ -1,14 +1,11 @@
 package com.aamdigital.aambackendservice.e2e
 
-import com.fasterxml.jackson.databind.node.ArrayNode
-import com.fasterxml.jackson.databind.node.ObjectNode
 import io.cucumber.java.After
 import io.cucumber.java.en.Given
 import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
 import io.cucumber.spring.CucumberContextConfiguration
 import org.junit.Assert
-import org.springframework.http.ResponseEntity
 
 @CucumberContextConfiguration
 class CucumberIntegrationTest : SpringIntegrationTest() {
@@ -33,43 +30,40 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
         couchDbTestingService.createDatabase(name)
     }
 
-    @When("the client calls GET {} and assumes an object response")
+    @When("the client calls GET {}")
     @Throws(Throwable::class)
-    fun `the client issues GET endpoint and assumes an object response`(endpoint: String) {
-        getObjectNode(endpoint)
+    fun `the client issues GET endpoint`(endpoint: String) {
+        fetch(endpoint)
     }
 
-    @When("the client calls GET {} and assumes an array response")
+    @Then("the client receives an json array")
     @Throws(Throwable::class)
-    fun `the client issues GET endpoint and assumes an array response`(endpoint: String) {
-        getArrayNode(endpoint)
+    fun `the client receives list of values`() {
+        Assert.assertTrue(parseBodyToArrayNode()?.isArray ?: false)
+    }
+
+    @When("the client receives an json object")
+    @Throws(Throwable::class)
+    fun `the client receives an json object`() {
+        Assert.assertTrue(parseBodyToObjectNode()?.isObject ?: false)
     }
 
     @Then("the client receives status code of {int}")
     @Throws(Throwable::class)
     fun `the client receives status code of`(statusCode: Int) {
-        Assert.assertTrue((latestResponse as ResponseEntity<*>?)?.statusCode?.value() == statusCode)
+        Assert.assertTrue(latestResponseStatus?.value() == statusCode)
     }
 
     @Then("the client receives value {} for property {}")
     @Throws(Throwable::class)
     fun `the client receives value for property`(value: String, property: String) {
-        Assert.assertTrue(((latestResponseBody as ObjectNode).has(property)))
-        Assert.assertEquals(
-            ((latestResponseBody as ObjectNode).get(property)?.textValue()),
-            value
-        )
-    }
-
-    @Then("the client receives list of values")
-    @Throws(Throwable::class)
-    fun `the client receives list of values`() {
-        Assert.assertTrue((latestResponseBody as ArrayNode).isArray)
+        Assert.assertTrue(parseBodyToObjectNode()?.has(property) ?: false)
+        Assert.assertEquals(parseBodyToObjectNode()?.get(property)?.textValue(), value)
     }
 
     @Then("the client receives array with {int} elements")
     @Throws(Throwable::class)
     fun `the client receives array with n elements`(numberOfElements: Int) {
-        Assert.assertEquals((latestResponseBody as ArrayNode?)?.size(), numberOfElements)
+        Assert.assertEquals(parseBodyToArrayNode()?.size(), numberOfElements)
     }
 }

@@ -7,13 +7,17 @@ import com.aamdigital.aambackendservice.container.TestContainers.CONTAINER_COUCH
 import com.aamdigital.aambackendservice.container.TestContainers.CONTAINER_KEYCLOAK
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.context.ImportTestcontainers
 import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatusCode
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
 
 @SpringBootTest(
@@ -25,6 +29,8 @@ abstract class SpringIntegrationTest {
 
     companion object {
         private const val APPLICATION_PORT = 9000
+
+        private val OBJECT_MAPPER = jacksonObjectMapper()
 
         protected val REST_TEMPLATE: RestTemplate = RestTemplateBuilder()
             .rootUri("http://localhost:$APPLICATION_PORT")
@@ -45,11 +51,11 @@ abstract class SpringIntegrationTest {
             .build()
     )
 
-    var latestResponseBody: Any? = null
-    var latestResponse: Any? = null
+    var latestResponseBody: String? = null
+    var latestResponseStatus: HttpStatusCode? = null
     var authToken: String? = null
 
-    fun getObjectNode(url: String) {
+    fun fetch(url: String) {
         val headers = HttpHeaders()
 
         if (authToken != null) {
@@ -58,34 +64,31 @@ abstract class SpringIntegrationTest {
 
         val requestEntity = HttpEntity(null, headers)
 
-        REST_TEMPLATE.exchange(
-            url,
-            HttpMethod.GET,
-            requestEntity,
-            ObjectNode::class.java,
-        ).let {
-            latestResponse = it
-            latestResponseBody = it.body
+        try {
+            REST_TEMPLATE.exchange(
+                url,
+                HttpMethod.GET,
+                requestEntity,
+                String::class.java,
+            ).let {
+                latestResponseStatus = it.statusCode
+                latestResponseBody = it.body
+            }
+        } catch (ex: HttpClientErrorException) {
+            latestResponseStatus = ex.statusCode
+            latestResponseBody = ex.responseBodyAsString
         }
     }
 
-    fun getArrayNode(url: String) {
-        val headers = HttpHeaders()
-
-        if (authToken != null) {
-            headers.set(HttpHeaders.AUTHORIZATION, "Bearer $authToken")
+    fun parseBodyToObjectNode(): ObjectNode? {
+        return latestResponseBody?.let {
+            OBJECT_MAPPER.readValue<ObjectNode>(it)
         }
+    }
 
-        val requestEntity = HttpEntity(null, headers)
-
-        REST_TEMPLATE.exchange(
-            url,
-            HttpMethod.GET,
-            requestEntity,
-            ArrayNode::class.java,
-        ).let {
-            latestResponse = it
-            latestResponseBody = it.body
+    fun parseBodyToArrayNode(): ArrayNode? {
+        return latestResponseBody?.let {
+            OBJECT_MAPPER.readValue<ArrayNode>(it)
         }
     }
 
