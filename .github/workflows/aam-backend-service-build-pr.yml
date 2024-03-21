@@ -42,4 +42,4 @@ jobs:
           platforms: linux/amd64
           context: ./application/aam-backend-service
           push: true
-          tags: ghcr.io/aam-digital/aam-backend-service:${{ github.head_ref }}
+          tags: ghcr.io/aam-digital/aam-backend-service:pr-${{ github.event.number }}
