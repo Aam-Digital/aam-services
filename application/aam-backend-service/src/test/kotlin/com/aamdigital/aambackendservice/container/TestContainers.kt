@@ -74,7 +74,7 @@ object TestContainers {
     val CONTAINER_SQS: GenericContainer<*> =
         GenericContainer(
             DockerImageName
-                .parse("ghcr.io/aam-digital/aam-sqs-mac")
+                .parse("ghcr.io/aam-digital/aam-sqs-linux")
                 .withTag("latest")
         )
             .withEnv(
