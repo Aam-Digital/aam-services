@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatusCode
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.ContextConfiguration
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
 
@@ -25,17 +26,18 @@ import org.springframework.web.client.RestTemplate
 )
 @ActiveProfiles("e2e")
 @ImportTestcontainers(TestContainers::class)
+@ContextConfiguration
 abstract class SpringIntegrationTest {
 
     companion object {
         private const val APPLICATION_PORT = 9000
-
-        private val OBJECT_MAPPER = jacksonObjectMapper()
-
-        protected val REST_TEMPLATE: RestTemplate = RestTemplateBuilder()
-            .rootUri("http://localhost:$APPLICATION_PORT")
-            .build()
     }
+
+    val objectMapper = jacksonObjectMapper()
+
+    val restTemplate: RestTemplate = RestTemplateBuilder()
+        .rootUri("http://localhost:$APPLICATION_PORT")
+        .build()
 
     internal val couchDbTestingService: CouchDbTestingService = CouchDbTestingService(
         RestTemplateBuilder()
@@ -65,7 +67,7 @@ abstract class SpringIntegrationTest {
         val requestEntity = HttpEntity(null, headers)
 
         try {
-            REST_TEMPLATE.exchange(
+            restTemplate.exchange(
                 url,
                 HttpMethod.GET,
                 requestEntity,
@@ -82,13 +84,13 @@ abstract class SpringIntegrationTest {
 
     fun parseBodyToObjectNode(): ObjectNode? {
         return latestResponseBody?.let {
-            OBJECT_MAPPER.readValue<ObjectNode>(it)
+            objectMapper.readValue<ObjectNode>(it)
         }
     }
 
     fun parseBodyToArrayNode(): ArrayNode? {
         return latestResponseBody?.let {
-            OBJECT_MAPPER.readValue<ArrayNode>(it)
+            objectMapper.readValue<ArrayNode>(it)
         }
     }
 

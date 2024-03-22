@@ -6,6 +6,7 @@ import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
 import io.cucumber.spring.CucumberContextConfiguration
 import org.junit.Assert
+import java.io.File
 
 @CucumberContextConfiguration
 class CucumberIntegrationTest : SpringIntegrationTest() {
@@ -28,6 +29,15 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
     @Given("database {word} is created")
     fun `create database for `(name: String) {
         couchDbTestingService.createDatabase(name)
+    }
+
+    @Given("document {} is stored in database {}")
+    fun `store a report`(document: String, database: String) {
+        couchDbTestingService.createDocument(
+            database = database,
+            documentName = document,
+            documentContent = File("src/test/resources/database/documents/$document.json").readText()
+        )
     }
 
     @When("the client calls GET {}")
@@ -58,12 +68,12 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
     @Throws(Throwable::class)
     fun `the client receives value for property`(value: String, property: String) {
         Assert.assertTrue(parseBodyToObjectNode()?.has(property) ?: false)
-        Assert.assertEquals(parseBodyToObjectNode()?.get(property)?.textValue(), value)
+        Assert.assertEquals(value, parseBodyToObjectNode()?.get(property)?.textValue())
     }
 
     @Then("the client receives array with {int} elements")
     @Throws(Throwable::class)
     fun `the client receives array with n elements`(numberOfElements: Int) {
-        Assert.assertEquals(parseBodyToArrayNode()?.size(), numberOfElements)
+        Assert.assertEquals(numberOfElements, parseBodyToArrayNode()?.size())
     }
 }

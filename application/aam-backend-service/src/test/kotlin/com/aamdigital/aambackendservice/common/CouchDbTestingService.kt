@@ -46,12 +46,12 @@ class CouchDbTestingService(
         logger.info("[CouchDbSetup] create Database: $database, ${response.statusCode}")
     }
 
-    private fun createDocument(database: String, documentName: String, document: Any) {
+    fun createDocument(database: String, documentName: String, documentContent: String) {
         val response = restTemplate
             .exchange(
                 "/$database/$documentName",
                 HttpMethod.PUT,
-                HttpEntity(document),
+                HttpEntity(documentContent),
                 ObjectNode::class.java,
             )
         logger.info("[CouchDbSetup] create Document: $database, $documentName, ${response.statusCode}")
