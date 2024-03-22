@@ -1,0 +1,16 @@
+{
+  "_id": "ReportData:1",
+  "report": {
+    "id": "ReportConfig:1"
+  },
+  "calculation": {
+    "id": "ReportCalculation:1"
+  },
+  "data": [
+    {
+      "foo": "bar",
+      "bar": "foo"
+    }
+  ],
+  "dataHash": "000"
+}

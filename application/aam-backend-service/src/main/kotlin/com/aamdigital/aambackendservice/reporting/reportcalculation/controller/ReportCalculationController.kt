@@ -18,13 +18,13 @@ import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
 
 @RestController
-@RequestMapping("/v1/reporting")
+@RequestMapping("/v1/reporting/report-calculation")
 @Validated
 class ReportCalculationController(
     private val reportingStorage: ReportingStorage,
     private val createReportCalculationUseCase: CreateReportCalculationUseCase
 ) {
-    @PostMapping("/report-calculation/report/{reportId}")
+    @PostMapping("/report/{reportId}")
     fun startCalculation(
         @PathVariable reportId: String
     ): Mono<DomainReference> {
@@ -50,14 +50,14 @@ class ReportCalculationController(
             }
     }
 
-    @GetMapping("/report-calculation/report/{reportId}")
+    @GetMapping("/report/{reportId}")
     fun fetchReportCalculations(
         @PathVariable reportId: String
     ): Mono<List<ReportCalculation>> {
         return reportingStorage.fetchCalculations(DomainReference(id = reportId))
     }
 
-    @GetMapping("/report-calculation/{calculationId}")
+    @GetMapping("/{calculationId}")
     fun fetchReportCalculation(
         @PathVariable calculationId: String
     ): Mono<ReportCalculation> {
@@ -73,7 +73,7 @@ class ReportCalculationController(
             }
     }
 
-    @GetMapping("/report-calculation/{calculationId}/data")
+    @GetMapping("/{calculationId}/data")
     fun fetchReportCalculationData(
         @PathVariable calculationId: String
     ): Mono<ReportData> {

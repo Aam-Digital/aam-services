@@ -1,0 +1,12 @@
+{
+  "_id": "ReportCalculation:1",
+  "report": {
+    "id": "ReportConfig:1"
+  },
+  "status": "FINISHED_SUCCESS",
+  "startDate": "2024-03-20T11:42:08.571",
+  "endDate": "2024-03-20T11:42:08.7",
+  "outcome": {
+    "result_hash": "000"
+  }
+}

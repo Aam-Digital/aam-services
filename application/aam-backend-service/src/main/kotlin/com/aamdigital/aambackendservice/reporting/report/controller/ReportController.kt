@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.reporting.reportcalculation.controller
+package com.aamdigital.aambackendservice.reporting.report.controller
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.error.NotFoundException
@@ -12,12 +12,12 @@ import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
 
 @RestController
-@RequestMapping("/v1/reporting")
+@RequestMapping("/v1/reporting/report")
 @Validated
 class ReportController(
     private val reportingStorage: ReportingStorage,
 ) {
-    @GetMapping("/report")
+    @GetMapping
     fun fetchReports(): Mono<List<ReportDto>> {
         return reportingStorage.fetchAllReports("sql")
             .zipWith(
@@ -38,7 +38,7 @@ class ReportController(
             }
     }
 
-    @GetMapping("/report/{reportId}")
+    @GetMapping("/{reportId}")
     fun fetchReport(
         @PathVariable reportId: String
     ): Mono<ReportDto> {

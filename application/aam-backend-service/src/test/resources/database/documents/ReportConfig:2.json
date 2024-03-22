@@ -1,0 +1,6 @@
+{
+  "_id": "ReportConfig:2",
+  "title": "Test Report 2",
+  "mode": "sql",
+  "aggregationDefinition": "SELECT e._id as _id, e.bar as bar FROM Entity as e"
+}
