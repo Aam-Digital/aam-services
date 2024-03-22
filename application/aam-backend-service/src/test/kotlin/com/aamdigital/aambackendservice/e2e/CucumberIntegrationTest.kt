@@ -49,25 +49,25 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
     @Then("the client receives an json array")
     @Throws(Throwable::class)
     fun `the client receives list of values`() {
-        Assert.assertTrue(parseBodyToArrayNode()?.isArray ?: false)
+        Assert.assertEquals(true, parseBodyToArrayNode()?.isArray)
     }
 
     @When("the client receives an json object")
     @Throws(Throwable::class)
     fun `the client receives an json object`() {
-        Assert.assertTrue(parseBodyToObjectNode()?.isObject ?: false)
+        Assert.assertEquals(true, parseBodyToObjectNode()?.isObject)
     }
 
     @Then("the client receives status code of {int}")
     @Throws(Throwable::class)
     fun `the client receives status code of`(statusCode: Int) {
-        Assert.assertTrue(latestResponseStatus?.value() == statusCode)
+        Assert.assertEquals(statusCode, latestResponseStatus?.value())
     }
 
     @Then("the client receives value {} for property {}")
     @Throws(Throwable::class)
     fun `the client receives value for property`(value: String, property: String) {
-        Assert.assertTrue(parseBodyToObjectNode()?.has(property) ?: false)
+        Assert.assertEquals(true, parseBodyToObjectNode()?.has(property))
         Assert.assertEquals(value, parseBodyToObjectNode()?.get(property)?.textValue())
     }
 

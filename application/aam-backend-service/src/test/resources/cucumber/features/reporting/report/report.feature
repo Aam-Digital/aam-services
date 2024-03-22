@@ -1,4 +1,4 @@
-Feature: the report endpoint persist to database
+Feature: the report endpoints persist to database
 
     Scenario: client makes call to GET /reporting/report and receives empty list
         Given database app is created
@@ -8,6 +8,13 @@ Feature: the report endpoint persist to database
         Then the client receives an json array
         Then the client receives status code of 200
         Then the client receives array with 0 elements
+
+    Scenario: client makes call to GET /reporting/report without token and receives Unauthorized
+        Given database app is created
+        Given database report-calculation is created
+        When the client calls GET /v1/reporting/report
+        Then the client receives an json object
+        Then the client receives status code of 401
 
     Scenario: client makes call to GET /reporting/report/foo and receives not found
         Given database app is created
