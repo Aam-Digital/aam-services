@@ -46,7 +46,7 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
         fetch(endpoint)
     }
 
-    @Then("the client receives an json array")
+    @Then("the client receives a json array")
     @Throws(Throwable::class)
     fun `the client receives list of values`() {
         Assert.assertEquals(true, parseBodyToArrayNode()?.isArray)
