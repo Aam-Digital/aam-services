@@ -14,7 +14,7 @@ Feature: the report calculation endpoint persist to database
         Given document ReportConfig:1 is stored in database app
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls GET /v1/reporting/report-calculation/report/ReportConfig:1
-        Then the client receives an json array
+        Then the client receives a json array
         Then the client receives status code of 200
         Then the client receives array with 0 elements
 
@@ -25,7 +25,7 @@ Feature: the report calculation endpoint persist to database
         Given document ReportCalculation:1 is stored in database report-calculation
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls GET /v1/reporting/report-calculation/report/ReportConfig:1
-        Then the client receives an json array
+        Then the client receives a json array
         Then the client receives status code of 200
         Then the client receives array with 1 elements
 

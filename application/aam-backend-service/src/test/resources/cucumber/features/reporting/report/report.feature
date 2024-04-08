@@ -5,7 +5,7 @@ Feature: the report endpoints persist to database
         Given database report-calculation is created
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls GET /v1/reporting/report
-        Then the client receives an json array
+        Then the client receives a json array
         Then the client receives status code of 200
         Then the client receives array with 0 elements
 
@@ -42,5 +42,5 @@ Feature: the report endpoints persist to database
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls GET /v1/reporting/report
         Then the client receives status code of 200
-        Then the client receives an json array
+        Then the client receives a json array
         Then the client receives array with 2 elements
