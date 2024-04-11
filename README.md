@@ -4,4 +4,4 @@ A modularize Spring Boot application that contains API modules for [Aam Digital'
 
 ## API Modules
 
-- **Reporting**: Calculate aggregated reports and run queries on all data, accessible for external services for API integrations of systems
+- **[Reporting](./docs/modules/reporting.md)**: Calculate aggregated reports and run queries on all data, accessible for external services for API integrations of systems
