@@ -42,6 +42,7 @@ jobs:
         uses: paambaati/codeclimate-action@v5.0.0
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+          JACOCO_SOURCE_PATH: ${{github.workspace}}/application/aam-backend-service/src/main/kotlin
         with:
           workingDirectory: ${{github.workspace}}/application/aam-backend-service
           coverageCommand: ./gradlew jacocoTestReport --no-daemon
