@@ -6,6 +6,7 @@ import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
 import io.cucumber.spring.CucumberContextConfiguration
 import org.junit.Assert
+import org.springframework.http.HttpMethod
 import java.io.File
 
 @CucumberContextConfiguration
@@ -40,10 +41,29 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
         )
     }
 
-    @When("the client calls GET {}")
+    @When("the client calls GET {word}")
     @Throws(Throwable::class)
     fun `the client issues GET endpoint`(endpoint: String) {
-        fetch(endpoint)
+        exchange(endpoint, HttpMethod.GET)
+    }
+
+    @When("the client calls GET {word} with id from latest response")
+    @Throws(Throwable::class)
+    fun `the client issues GET endpoint with id from latest response`(endpoint: String) {
+        exchange(endpoint + parseBodyToObjectNode()?.get("id")?.textValue(), HttpMethod.GET)
+    }
+
+    @When("the client calls POST {} without body")
+    @Throws(Throwable::class)
+    fun `the client issues POST endpoint without body`(endpoint: String) {
+        exchange(endpoint, HttpMethod.POST)
+    }
+
+
+    @When("the client calls POST {} with body {}")
+    @Throws(Throwable::class)
+    fun `the client issues POST endpoint with body`(endpoint: String, body: String) {
+        exchange(endpoint, HttpMethod.POST, File("src/test/resources/database/documents/$body.json").readText())
     }
 
     @Then("the client receives a json array")

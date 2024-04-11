@@ -31,6 +31,9 @@ class SecurityConfiguration {
                 it.pathMatchers(HttpMethod.GET, "/actuator/**").permitAll()
                 it.anyExchange().authenticated()
             }
+            .csrf {
+                it.disable()
+            }
             .exceptionHandling {
                 it.accessDeniedHandler(customServerAccessDeniedHandler())
                 it.authenticationEntryPoint(CustomAuthenticationEntryPoint())
@@ -52,9 +55,7 @@ class SecurityConfiguration {
 
     private class CustomAuthenticationEntryPoint : ServerAuthenticationEntryPoint {
         override fun commence(exchange: ServerWebExchange, ex: AuthenticationException): Mono<Void> {
-            return Mono.fromRunnable {
-                throw UnauthorizedAccessException("Access Token invalid or missing")
-            }
+            throw UnauthorizedAccessException("Access Token invalid or missing")
         }
     }
 

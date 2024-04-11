@@ -57,19 +57,19 @@ abstract class SpringIntegrationTest {
     var latestResponseStatus: HttpStatusCode? = null
     var authToken: String? = null
 
-    fun fetch(url: String) {
+    fun exchange(url: String, method: HttpMethod, body: String? = null) {
         val headers = HttpHeaders()
 
         if (authToken != null) {
             headers.set(HttpHeaders.AUTHORIZATION, "Bearer $authToken")
         }
 
-        val requestEntity = HttpEntity(null, headers)
+        val requestEntity = HttpEntity(body, headers)
 
         try {
             restTemplate.exchange(
                 url,
-                HttpMethod.GET,
+                method,
                 requestEntity,
                 String::class.java,
             ).let {

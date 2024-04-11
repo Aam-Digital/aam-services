@@ -1,7 +1,6 @@
 package com.aamdigital.aambackendservice.common
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import org.slf4j.LoggerFactory
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
@@ -13,8 +12,6 @@ import org.springframework.web.client.RestTemplate
 class AuthTestingService(
     private val restTemplate: RestTemplate,
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     fun fetchToken(client: String, secret: String, realm: String): String? {
         val headers = HttpHeaders()
         headers.contentType = MediaType.APPLICATION_FORM_URLENCODED
