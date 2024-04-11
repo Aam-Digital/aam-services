@@ -46,7 +46,7 @@ jobs:
           CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
           JACOCO_SOURCE_PATH: ${{github.workspace}}/application/aam-backend-service/src/main/kotlin
         with:
-          #          workingDirectory: ${{github.workspace}}/application/aam-backend-service
+          workingDirectory: ${{github.workspace}}/application/aam-backend-service
           #          coverageCommand: ./gradlew jacocoTestReport --no-daemon
           coverageLocations: ${{github.workspace}}/application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml:jacoco
 
