@@ -53,6 +53,6 @@ jobs:
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
         with:
-          coverageLocations: application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml:jacoco
-          prefix: application/aam-backend-service/src
+          coverageLocations: ${{github.workspace}}/application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml:jacoco
+          prefix: ${{github.workspace}}/application/aam-backend-service
           debug: true
