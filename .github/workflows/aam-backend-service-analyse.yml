@@ -35,10 +35,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Test and analyse test coverage
+      - name: Generate Jacoco Test Report
         run: ./gradlew jacocoTestReport --no-daemon
 
-      - name: Add coverage to PR
+      - name: Add code coverage to PR
         uses: madrapps/jacoco-report@v1.6.1
         with:
           paths: application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml
@@ -48,9 +48,9 @@ jobs:
           title: Code Coverage Analyse
           update-comment: true
 
-      - name: Test & publish code coverage
+      - name: Publish code coverage to code climate
         uses: paambaati/codeclimate-action@v5.0.0
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
         with:
-          coverageLocations: application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml:jacoco
+          coverageLocations: build/reports/jacoco/test/jacocoTestReport.xml:jacoco
