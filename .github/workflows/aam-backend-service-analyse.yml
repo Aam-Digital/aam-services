@@ -35,8 +35,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate Jacoco Test Report
-        run: ./gradlew jacocoTestReport --no-daemon
+      #      - name: Generate Jacoco Test Report
+      #        run: ./gradlew jacocoTestReport --no-daemon
+
+      - name: Publish code coverage to code climate
+        uses: paambaati/codeclimate-action@v5.0.0
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+        with:
+          workingDirectory: ${{github.workspace}}/application/aam-backend-service
+          coverageCommand: ./gradlew jacocoTestReport --no-daemon
+          coverageLocations: ${{github.workspace}}/application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml:jacoco
+          prefix: ${{github.workspace}}/application/aam-backend-service
+          debug: true
 
       - name: Add code coverage to PR
         uses: madrapps/jacoco-report@v1.6.1
@@ -47,12 +58,3 @@ jobs:
           min-coverage-changed-files: 80
           title: Code Coverage Analyse
           update-comment: true
-
-      - name: Publish code coverage to code climate
-        uses: paambaati/codeclimate-action@v5.0.0
-        env:
-          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
-        with:
-          coverageLocations: ${{github.workspace}}/application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml:jacoco
-          prefix: ${{github.workspace}}/application/aam-backend-service
-          debug: true
