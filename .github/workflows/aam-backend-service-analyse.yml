@@ -35,6 +35,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Run Tests
+        env:
+          JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
+        run: |
+          export DOCKER_AUTH_CONFIG=$(cat $HOME/.docker/config.json)
+          ./gradlew test --no-daemon
+
       - name: Run Tests and generate Jacoco Test Report
         env:
           JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
