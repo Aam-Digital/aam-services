@@ -5,6 +5,8 @@ import io.cucumber.java.en.Given
 import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
 import io.cucumber.spring.CucumberContextConfiguration
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.springframework.http.HttpMethod
 import java.io.File
@@ -33,11 +35,20 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
     }
 
     @Given("document {} is stored in database {}")
-    fun `store a report`(document: String, database: String) {
+    fun `store document in database`(document: String, database: String) {
         couchDbTestingService.createDocument(
             database = database,
             documentName = document,
             documentContent = File("src/test/resources/database/documents/$document.json").readText()
+        )
+    }
+
+    @Given("_design document {} is stored in database {}")
+    fun `store _design document in database`(document: String, database: String) {
+        couchDbTestingService.createDocument(
+            database = database,
+            documentName = "_design/$document",
+            documentContent = File("src/test/resources/database/documents/_design/$document.json").readText()
         )
     }
 
@@ -95,5 +106,11 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
     @Throws(Throwable::class)
     fun `the client receives array with n elements`(numberOfElements: Int) {
         Assert.assertEquals(numberOfElements, parseBodyToArrayNode()?.size())
+    }
+
+    @Then("the client waits for {long} milliseconds")
+    @Throws(Throwable::class)
+    fun `the client for n milliseconds`(milliseconds: Long) = runBlocking {
+        delay(milliseconds)
     }
 }

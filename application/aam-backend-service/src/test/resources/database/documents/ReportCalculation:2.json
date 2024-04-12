@@ -1,0 +1,10 @@
+{
+  "_id": "ReportCalculation:2",
+  "report": {
+    "id": "ReportConfig:1"
+  },
+  "status": "PENDING",
+  "startDate": null,
+  "endDate": null,
+  "outcome": null
+}

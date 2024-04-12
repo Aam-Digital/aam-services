@@ -2,5 +2,5 @@
   "_id": "ReportConfig:2",
   "title": "Test Report 2",
   "mode": "sql",
-  "aggregationDefinition": "SELECT e._id as _id, e.bar as bar FROM Entity as e"
+  "aggregationDefinition": "SELECT s.name as name, s.privateSchool as privateSchool FROM School as s"
 }

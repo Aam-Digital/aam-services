@@ -1,7 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.report.sqs
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
-import com.aamdigital.aambackendservice.crypto.core.CryptoService
 import com.aamdigital.aambackendservice.domain.EntityAttribute
 import com.aamdigital.aambackendservice.domain.EntityConfig
 import com.aamdigital.aambackendservice.domain.EntityType
@@ -41,7 +40,7 @@ data class TableName(
 
 data class SqlObject(
     val tables: Map<String, TableFields>,
-    val indexes: List<String>,
+    val indexes: List<String>?,
     val options: SqlOptions,
 )
 
@@ -72,7 +71,6 @@ data class SqsSchema(
 @Service
 class SqsSchemaService(
     private val couchDbStorage: CouchDbStorage,
-    private val cryptoService: CryptoService,
 ) {
 
     companion object {

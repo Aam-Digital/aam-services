@@ -5,6 +5,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.Network
 import org.testcontainers.containers.RabbitMQContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -13,11 +14,14 @@ import org.testcontainers.utility.DockerImageName
 @Testcontainers
 object TestContainers {
 
+    var network: Network = Network.newNetwork()
+
     @DynamicPropertySource
     @JvmStatic
     fun init(registry: DynamicPropertyRegistry) {
         CONTAINER_KEYCLOAK.start()
         CONTAINER_COUCHDB.start()
+        CONTAINER_SQS.start()
         registry.add(
             "spring.security.oauth2.resourceserver.jwt.issuer-uri"
         ) {
@@ -27,6 +31,11 @@ object TestContainers {
             "couch-db-client-configuration.base-path",
         ) {
             "http://localhost:${CONTAINER_COUCHDB.getMappedPort(5984)}"
+        }
+        registry.add(
+            "sqs-client-configuration.base-path",
+        ) {
+            "http://localhost:${CONTAINER_SQS.getMappedPort(4984)}"
         }
     }
 
@@ -54,6 +63,8 @@ object TestContainers {
                 .parse("couchdb")
                 .withTag("3.3")
         )
+            .withNetwork(network)
+            .withNetworkAliases("couchdb")
             .withEnv(
                 mapOf(
                     Pair("COUCHDB_USER", "admin"),
@@ -62,4 +73,23 @@ object TestContainers {
                 )
             )
             .withExposedPorts(5984)
+
+    @Container
+    @JvmStatic
+    val CONTAINER_SQS: GenericContainer<*> =
+        GenericContainer(
+            DockerImageName
+//                .parse("ghcr.io/aam-digital/aam-sqs-mac") # enable for faster local testing on mac
+                .parse("ghcr.io/aam-digital/aam-sqs-linux")
+                .withTag("latest")
+        )
+            .withNetwork(network)
+            .withNetworkAliases("sqs")
+            .withEnv(
+                mapOf(
+                    Pair("SQS_COUCHDB_URL", "http://couchdb:5984"),
+                )
+            )
+            .withExposedPorts(4984)
+
 }

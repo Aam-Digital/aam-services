@@ -47,7 +47,7 @@ database-change-detection:
   enabled: false
 
 report-calculation-processor:
-  enabled: false
+  enabled: true
 
 crypto-configuration:
   secret: super-duper-secret
