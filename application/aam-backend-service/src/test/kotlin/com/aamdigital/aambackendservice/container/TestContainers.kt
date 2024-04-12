@@ -81,6 +81,7 @@ object TestContainers {
         GenericContainer(
             DockerImageName
                 .parse("ghcr.io/aam-digital/aam-sqs-linux")
+                .asCompatibleSubstituteFor("aam-sqs-linux")
                 .withTag("latest")
         )
             .withImagePullPolicy(PullPolicy.alwaysPull())
