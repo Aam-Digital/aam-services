@@ -39,7 +39,7 @@ jobs:
         env:
           JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
         run: |
-          export DOCKER_CONFIG_FILE=$(cat $HOME/.docker/config.json)
+          export DOCKER_AUTH_CONFIG=$(cat $HOME/.docker/config.json)
           ./gradlew jacocoTestReport --no-daemon
 
       - name: Publish code coverage to code climate
