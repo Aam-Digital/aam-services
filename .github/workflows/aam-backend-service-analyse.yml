@@ -38,7 +38,10 @@ jobs:
       - name: Run Tests and generate Jacoco Test Report
         env:
           JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
-        run: ./gradlew jacocoTestReport --no-daemon
+          DOCKER_CONFIG_FILE: /.docker/config.json
+        run: |
+          export DOCKER_CONFIG_FILE=$(cat ./.docker/config.json)
+          ./gradlew jacocoTestReport --no-daemon
 
       - name: Publish code coverage to code climate
         uses: paambaati/codeclimate-action@v5.0.0
