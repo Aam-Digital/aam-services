@@ -7,6 +7,7 @@ import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.RabbitMQContainer
+import org.testcontainers.images.PullPolicy
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
@@ -14,7 +15,7 @@ import org.testcontainers.utility.DockerImageName
 @Testcontainers
 object TestContainers {
 
-    var network: Network = Network.newNetwork()
+    private var network: Network = Network.newNetwork()
 
     @DynamicPropertySource
     @JvmStatic
@@ -79,10 +80,10 @@ object TestContainers {
     val CONTAINER_SQS: GenericContainer<*> =
         GenericContainer(
             DockerImageName
-//                .parse("ghcr.io/aam-digital/aam-sqs-mac") # enable for faster local testing on mac
                 .parse("ghcr.io/aam-digital/aam-sqs-linux")
                 .withTag("latest")
         )
+            .withImagePullPolicy(PullPolicy.alwaysPull())
             .withNetwork(network)
             .withNetworkAliases("sqs")
             .withEnv(

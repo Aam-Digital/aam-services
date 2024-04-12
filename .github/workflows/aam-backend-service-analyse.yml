@@ -35,7 +35,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate Jacoco Test Report
+      - name: Run Tests and generate Jacoco Test Report
         env:
           JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
         run: ./gradlew jacocoTestReport --no-daemon
