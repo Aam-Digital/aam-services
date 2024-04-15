@@ -35,18 +35,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Tests
-        env:
-          JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
-        run: |
-          export DOCKER_AUTH_CONFIG=$(cat $HOME/.docker/config.json)
-          ./gradlew test --no-daemon
-
       - name: Run Tests and generate Jacoco Test Report
         env:
           JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
         run: |
           export DOCKER_AUTH_CONFIG=$(cat $HOME/.docker/config.json)
+          export TESTCONTAINERS_RYUK_DISABLED=true
+          cat .docker/config.json | jq 'walk(.auth?="XXX")'
+          echo $DOCKER_AUTH_CONFIG | jq 'walk(.auth?="XXX")'
+          echo $DOCKER_HOST
           ./gradlew jacocoTestReport --no-daemon
 
       - name: Publish code coverage to code climate
