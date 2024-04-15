@@ -10,6 +10,9 @@ on:
   pull_request:
     types: [ opened, synchronize, reopened, ready_for_review ]
 
+permissions:
+  packages: read
+
 jobs:
   test_coverage:
     name: Run tests and coverage calculation
