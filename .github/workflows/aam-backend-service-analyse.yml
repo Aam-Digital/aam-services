@@ -39,9 +39,10 @@ jobs:
         env:
           JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
         run: |
+          docker pull ghcr.io/aam-digital/aam-sqs-linux
           export DOCKER_AUTH_CONFIG=$(cat $HOME/.docker/config.json)
           export TESTCONTAINERS_RYUK_DISABLED=true
-          echo TESTCONTAINERS_RYUK_DISABLED
+          echo $TESTCONTAINERS_RYUK_DISABLED
           ./gradlew jacocoTestReport --no-daemon
 
       - name: Publish code coverage to code climate
