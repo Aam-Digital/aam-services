@@ -16,7 +16,6 @@ class InternalServerException(
     code: String = "INTERNAL_SERVER_ERROR"
 ) : AamException(message, cause, code)
 
-
 class ExternalSystemException(
     message: String = "",
     cause: Throwable? = null,

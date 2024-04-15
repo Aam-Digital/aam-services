@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.reporting.report.storage
+package com.aamdigital.aambackendservice.reporting.storage
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
 import com.aamdigital.aambackendservice.couchdb.core.getQueryParamsAllDocs

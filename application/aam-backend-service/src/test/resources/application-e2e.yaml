@@ -10,6 +10,16 @@ spring:
     url: r2dbc:h2:file://././data/dbh2;DB_CLOSE_DELAY=-1
     username: local
     password: local
+  rabbitmq:
+    virtual-host: /
+    listener:
+      direct:
+        retry:
+          enabled: true
+          max-attempts: 5
+
+server:
+  port: 9000
 
 management:
   endpoint:
@@ -23,39 +33,6 @@ management:
           - info
           - health
 
----
-
-spring:
-  config:
-    activate:
-      on-profile: local-development
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8080/realms/dummy-realm
-  rabbitmq:
-    virtual-host: /
-    listener:
-      direct:
-        retry:
-          enabled: true
-          max-attempts: 5
-  webflux:
-    base-path: /api
-
-server:
-  error:
-    include-message: always
-    include-binding-errors: always
-  port: 9000
-logging:
-  level:
-    #    org.springframework.amqp.rabbit: warn
-    #    org.springframework.http.client: debug
-    #    reactor.netty.http.client: debug
-    com.aamdigital.aambackendservice: trace
-
 couch-db-client-configuration:
   base-path: http://localhost:5984
   basic-auth-username: admin
@@ -67,10 +44,13 @@ sqs-client-configuration:
   basic-auth-password: docker
 
 database-change-detection:
-  enabled: true
+  enabled: false
 
 report-calculation-processor:
   enabled: true
+
+crypto-configuration:
+  secret: super-duper-secret
 
 sentry:
   logging:

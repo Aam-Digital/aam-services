@@ -23,6 +23,7 @@ sealed class ReportCalculationOutcome {
 }
 
 data class ReportCalculation(
+    @JsonProperty("_id")
     val id: String,
     val report: DomainReference,
     var status: ReportCalculationStatus,

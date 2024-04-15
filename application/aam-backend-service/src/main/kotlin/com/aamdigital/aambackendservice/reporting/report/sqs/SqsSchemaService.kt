@@ -1,7 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.report.sqs
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
-import com.aamdigital.aambackendservice.crypto.core.CryptoService
 import com.aamdigital.aambackendservice.domain.EntityAttribute
 import com.aamdigital.aambackendservice.domain.EntityConfig
 import com.aamdigital.aambackendservice.domain.EntityType
@@ -11,6 +10,8 @@ import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
 import reactor.core.publisher.Mono
 import java.security.MessageDigest
+import java.util.*
+import kotlin.jvm.optionals.getOrNull
 
 data class AppConfigAttribute(
     val dataType: String,
@@ -41,7 +42,7 @@ data class TableName(
 
 data class SqlObject(
     val tables: Map<String, TableFields>,
-    val indexes: List<String>,
+    val indexes: List<String>?,
     val options: SqlOptions,
 )
 
@@ -72,7 +73,6 @@ data class SqsSchema(
 @Service
 class SqsSchemaService(
     private val couchDbStorage: CouchDbStorage,
-    private val cryptoService: CryptoService,
 ) {
 
     companion object {
@@ -110,13 +110,15 @@ class SqsSchemaService(
                 queryParams = LinkedMultiValueMap(),
                 kClass = SqsSchema::class
             )
+                .map { Optional.of(it) }
+                .onErrorResume { Mono.just(Optional.empty()) }
         )
             .flatMap {
                 val entityConfig = it.t1
-                val currentSqsSchema = it.t2
+                val currentSqsSchema = it.t2.getOrNull()
                 val newSqsSchema: SqsSchema = mapToSqsSchema(entityConfig)
 
-                if (currentSqsSchema.configVersion == newSqsSchema.configVersion) {
+                if (currentSqsSchema?.configVersion == newSqsSchema.configVersion) {
                     return@flatMap Mono.just(Unit)
                 }
 

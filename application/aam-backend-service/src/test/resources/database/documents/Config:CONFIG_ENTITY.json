@@ -1,0 +1,107 @@
+{
+  "_id": "Config:CONFIG_ENTITY",
+  "data": {
+    "entity:Child": {
+      "label": "Child",
+      "labelPlural": "Children",
+      "attributes": {
+        "address": {
+          "dataType": "location",
+          "label": "Address"
+        },
+        "health_bloodGroup": {
+          "dataType": "string",
+          "label": "Blood Group"
+        },
+        "religion": {
+          "dataType": "string",
+          "label": "Religion"
+        },
+        "gender": {
+          "dataType": "configurable-enum",
+          "additional": "genders",
+          "label": "Gender"
+        },
+        "motherTongue": {
+          "dataType": "string",
+          "label": "Mother Tongue",
+          "description": "The primary language spoken at home",
+          "searchable": true
+        },
+        "health_lastDentalCheckup": {
+          "dataType": "date",
+          "label": "Last Dental Check-Up"
+        },
+        "birth_certificate": {
+          "dataType": "file",
+          "label": "Birth certificate"
+        },
+        "dob": {
+          "dataType": "date-with-age",
+          "labelShort": "Geb.",
+          "label": "Custom DoB",
+          "defaultValue": "NEU"
+        },
+        "category": {
+          "dataType": "array",
+          "innerDataType": "configurable-enum",
+          "additional": "xxx",
+          "label": "Custom Cat"
+        },
+        "editor": {
+          "dataType": "entity-array",
+          "additional": "User",
+          "label": "Bearbeiter:in(en)",
+          "defaultValue": "$current_user"
+        }
+      }
+    },
+    "entity:School": {
+      "attributes": {
+        "name": {
+          "dataType": "string",
+          "label": "Name"
+        },
+        "privateSchool": {
+          "dataType": "boolean",
+          "label": "Private School"
+        },
+        "language": {
+          "dataType": "string",
+          "label": "Language",
+          "searchable": true
+        },
+        "address": {
+          "dataType": "location",
+          "label": "Address"
+        },
+        "phone": {
+          "dataType": "string",
+          "label": "Phone Number"
+        },
+        "timing": {
+          "dataType": "string",
+          "label": "School Timing"
+        },
+        "remarks": {
+          "dataType": "string",
+          "label": "Remarks"
+        }
+      }
+    },
+    "entity:User": {
+      "attributes": {
+        "phone": {
+          "dataType": "string",
+          "label": "Contact"
+        }
+      }
+    }
+  },
+  "created": {
+    "at": "2024-01-26T08:24:54.866Z"
+  },
+  "updated": {
+    "at": "2024-01-26T08:24:54.866Z"
+  }
+}
