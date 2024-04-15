@@ -11,6 +11,7 @@ on:
     types: [ opened, synchronize, reopened, ready_for_review ]
 
 permissions:
+  contents: read
   packages: read
 
 jobs:
@@ -42,10 +43,7 @@ jobs:
         env:
           JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
         run: |
-          docker pull ghcr.io/aam-digital/aam-sqs-linux
-          export DOCKER_AUTH_CONFIG=$(cat $HOME/.docker/config.json)
-          export TESTCONTAINERS_RYUK_DISABLED=true
-          echo $TESTCONTAINERS_RYUK_DISABLED
+          git pull ghcr.io/aam-digital/aam-sqs-linux
           ./gradlew jacocoTestReport --no-daemon
 
       - name: Publish code coverage to code climate
