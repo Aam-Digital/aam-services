@@ -7,7 +7,6 @@ import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.RabbitMQContainer
-import org.testcontainers.images.PullPolicy
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
@@ -22,7 +21,7 @@ object TestContainers {
     fun init(registry: DynamicPropertyRegistry) {
         CONTAINER_KEYCLOAK.start()
         CONTAINER_COUCHDB.start()
-        CONTAINER_SQS.start()
+//        CONTAINER_SQS.start()
         registry.add(
             "spring.security.oauth2.resourceserver.jwt.issuer-uri"
         ) {
@@ -33,11 +32,11 @@ object TestContainers {
         ) {
             "http://localhost:${CONTAINER_COUCHDB.getMappedPort(5984)}"
         }
-        registry.add(
-            "sqs-client-configuration.base-path",
-        ) {
-            "http://localhost:${CONTAINER_SQS.getMappedPort(4984)}"
-        }
+//        registry.add(
+//            "sqs-client-configuration.base-path",
+//        ) {
+//            "http://localhost:${CONTAINER_SQS.getMappedPort(4984)}"
+//        }
     }
 
     @Container
@@ -75,23 +74,23 @@ object TestContainers {
             )
             .withExposedPorts(5984)
 
-    @Container
-    @JvmStatic
-    val CONTAINER_SQS: GenericContainer<*> =
-        GenericContainer(
-            DockerImageName
-                .parse("ghcr.io/aam-digital/aam-sqs-linux")
-                .asCompatibleSubstituteFor("aam-sqs-linux")
-                .withTag("latest")
-        )
-            .withImagePullPolicy(PullPolicy.alwaysPull())
-            .withNetwork(network)
-            .withNetworkAliases("sqs")
-            .withEnv(
-                mapOf(
-                    Pair("SQS_COUCHDB_URL", "http://couchdb:5984"),
-                )
-            )
-            .withExposedPorts(4984)
+//    @Container
+//    @JvmStatic
+//    val CONTAINER_SQS: GenericContainer<*> =
+//        GenericContainer(
+//            DockerImageName
+//                .parse("ghcr.io/aam-digital/aam-sqs-linux")
+//                .asCompatibleSubstituteFor("aam-sqs-linux")
+//                .withTag("latest")
+//        )
+//            .withImagePullPolicy(PullPolicy.alwaysPull())
+//            .withNetwork(network)
+//            .withNetworkAliases("sqs")
+//            .withEnv(
+//                mapOf(
+//                    Pair("SQS_COUCHDB_URL", "http://couchdb:5984"),
+//                )
+//            )
+//            .withExposedPorts(4984)
 
 }

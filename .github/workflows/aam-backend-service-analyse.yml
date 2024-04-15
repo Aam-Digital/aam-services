@@ -41,9 +41,7 @@ jobs:
         run: |
           export DOCKER_AUTH_CONFIG=$(cat $HOME/.docker/config.json)
           export TESTCONTAINERS_RYUK_DISABLED=true
-          cat .docker/config.json | jq 'walk(.auth?="XXX")'
-          echo $DOCKER_AUTH_CONFIG | jq 'walk(.auth?="XXX")'
-          echo $DOCKER_HOST
+          echo TESTCONTAINERS_RYUK_DISABLED
           ./gradlew jacocoTestReport --no-daemon
 
       - name: Publish code coverage to code climate
