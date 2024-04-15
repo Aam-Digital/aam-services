@@ -41,7 +41,6 @@ jobs:
         env:
           JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
         run: |
-          docker pull ghcr.io/aam-digital/aam-sqs-linux:latest
           ./gradlew jacocoTestReport --no-daemon
 
       - name: Publish code coverage to code climate
