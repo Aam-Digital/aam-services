@@ -42,16 +42,7 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
             documentContent = File("src/test/resources/database/documents/$document.json").readText()
         )
     }
-
-    @Given("_design document {} is stored in database {}")
-    fun `store _design document in database`(document: String, database: String) {
-        couchDbTestingService.createDocument(
-            database = database,
-            documentName = "_design/$document",
-            documentContent = File("src/test/resources/database/documents/_design/$document.json").readText()
-        )
-    }
-
+    
     @When("the client calls GET {word}")
     @Throws(Throwable::class)
     fun `the client issues GET endpoint`(endpoint: String) {

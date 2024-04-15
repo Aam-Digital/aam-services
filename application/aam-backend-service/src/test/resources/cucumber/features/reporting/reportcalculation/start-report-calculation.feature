@@ -43,7 +43,6 @@ Feature: the report calculation endpoint persist to database
     Scenario: Pending ReportCalculation is processed within 30 seconds
         Given document ReportConfig:1 is stored in database app
         Given document Config:CONFIG_ENTITY is stored in database app
-        Given _design document sqlite:config is stored in database app
         Given document ReportCalculation:2 is stored in database report-calculation
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls GET /v1/reporting/report-calculation/ReportCalculation:2
