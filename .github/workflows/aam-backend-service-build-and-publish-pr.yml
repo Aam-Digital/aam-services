@@ -1,9 +1,9 @@
-name: aam-backend-service-build-pr
+name: aam-backend-service-build-and-publish-pr
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/aam-backend-service-build-pr.yml'
+      - '.github/workflows/aam-backend-service-build-and-publish-pr.yml'
       - 'application/aam-backend-service/**'
   workflow_dispatch:
 

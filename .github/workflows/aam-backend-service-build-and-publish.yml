@@ -1,16 +1,11 @@
-name: aam-backend-service-build
+name: aam-backend-service-build-and-publish
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/aam-backend-service-build.yml'
-      - 'application/aam-backend-service/**'
-  workflow_dispatch:
+  release:
+    types: [ released ]
 
 jobs:
-  push_to_registry:
+  build_and_publish:
     name: Build aam-backend-service and publish to container registry
     runs-on: ubuntu-latest
     permissions:
@@ -38,10 +33,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Parse version tag
+        run: |
+          TAG_VERSION=$(echo ${{ github.event.release.tag_name }} | cut -d'/' -f2)
+          echo "TAG_VERSION=$TAG_VERSION" >> $GITHUB_ENV
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           platforms: linux/amd64
           context: ./application/aam-backend-service
           push: true
-          tags: ghcr.io/aam-digital/aam-backend-service:latest
+          tags: ghcr.io/aam-digital/aam-backend-service:${{ env.TAG_VERSION }},ghcr.io/aam-digital/aam-backend-service:latest
