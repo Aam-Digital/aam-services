@@ -41,7 +41,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           context: ./application/aam-backend-service
           push: true
           tags: ghcr.io/aam-digital/aam-backend-service:${{ env.TAG_VERSION }},ghcr.io/aam-digital/aam-backend-service:latest
