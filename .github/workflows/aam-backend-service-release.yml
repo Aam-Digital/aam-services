@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - '.github/workflows/aam-backend-service-release.yml'
+      - '.github/workflows/aam-backend-build-and-publish.yml'
       - 'application/aam-backend-service/**'
 
 jobs:
