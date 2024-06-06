@@ -50,9 +50,9 @@ class DefaultReportingStorage(
                         id = it.id,
                         name = it.doc.title,
                         mode = it.doc.mode,
-                        query = it.doc.aggregationDefinition,
+                        query = it.doc.aggregationDefinition ?: "",
                         schema = ReportSchema(
-                            fields = reportSchemaGenerator.getTableNamesByQuery(it.doc.aggregationDefinition)
+                            fields = reportSchemaGenerator.getTableNamesByQuery(it.doc.aggregationDefinition ?: "")
                         )
                     )
                 }
@@ -68,10 +68,10 @@ class DefaultReportingStorage(
                 Report(
                     id = reportDoc.id,
                     name = reportDoc.title,
-                    query = reportDoc.aggregationDefinition,
+                    query = reportDoc.aggregationDefinition ?: "",
                     mode = reportDoc.mode,
                     schema = ReportSchema(
-                        fields = reportSchemaGenerator.getTableNamesByQuery(reportDoc.aggregationDefinition)
+                        fields = reportSchemaGenerator.getTableNamesByQuery(reportDoc.aggregationDefinition ?: "")
                     )
                 )
             )
