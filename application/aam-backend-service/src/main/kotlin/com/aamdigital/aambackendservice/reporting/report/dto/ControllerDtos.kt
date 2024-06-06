@@ -20,8 +20,8 @@ data class ReportDoc(
     @JsonProperty("_rev")
     val rev: String,
     val title: String,
-    val mode: String,
-    val aggregationDefinition: String,
+    val mode: String = "unknown",
+    val aggregationDefinition: String?,
     val created: EditAtBy?,
     val updated: EditAtBy?,
 )
