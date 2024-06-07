@@ -24,6 +24,8 @@ class DefaultAddWebhookSubscriptionUseCase(
                     createReportCalculationUseCase.startReportCalculation(
                         CreateReportCalculationRequest(
                             report = report,
+                            from = null,
+                            to = null
                         )
                     ).flatMap {
                         Mono.just(Unit)

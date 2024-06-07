@@ -9,13 +9,20 @@ import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationResult
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
+import com.aamdigital.aambackendservice.reporting.reportcalculation.dto.ReportCalculationDto
+import com.aamdigital.aambackendservice.reporting.reportcalculation.dto.ReportDataDto
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.*
 
 @RestController
 @RequestMapping("/v1/reporting/report-calculation")
@@ -26,7 +33,9 @@ class ReportCalculationController(
 ) {
     @PostMapping("/report/{reportId}")
     fun startCalculation(
-        @PathVariable reportId: String
+        @PathVariable reportId: String,
+        @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") from: Date?,
+        @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") to: Date?,
     ): Mono<DomainReference> {
         return reportingStorage.fetchReport(DomainReference(id = reportId))
             .flatMap { reportOptional ->
@@ -36,7 +45,11 @@ class ReportCalculationController(
 
                 createReportCalculationUseCase.startReportCalculation(
                     CreateReportCalculationRequest(
-                        report = DomainReference(report.id)
+                        report = DomainReference(report.id),
+                        from = from?.toInstant()?.atOffset(ZoneOffset.UTC)
+                            ?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        to = to?.toInstant()?.atOffset(ZoneOffset.UTC)
+                            ?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
                     )
                 ).handle { result, sink ->
                     when (result) {
@@ -53,14 +66,16 @@ class ReportCalculationController(
     @GetMapping("/report/{reportId}")
     fun fetchReportCalculations(
         @PathVariable reportId: String
-    ): Mono<List<ReportCalculation>> {
-        return reportingStorage.fetchCalculations(DomainReference(id = reportId))
+    ): Mono<List<ReportCalculationDto>> {
+        return reportingStorage.fetchCalculations(DomainReference(id = reportId)).map { calculations ->
+            calculations.map { toDto(it) }
+        }
     }
 
     @GetMapping("/{calculationId}")
     fun fetchReportCalculation(
         @PathVariable calculationId: String
-    ): Mono<ReportCalculation> {
+    ): Mono<ReportCalculationDto> {
         return reportingStorage.fetchCalculation(DomainReference(id = calculationId))
             .map { calculationOptional ->
                 val calculation = calculationOptional.orElseThrow {
@@ -69,14 +84,14 @@ class ReportCalculationController(
 
                 // TODO Auth check
 
-                calculation
+                toDto(calculation)
             }
     }
 
     @GetMapping("/{calculationId}/data")
     fun fetchReportCalculationData(
         @PathVariable calculationId: String
-    ): Mono<ReportData> {
+    ): Mono<ReportDataDto> {
         return reportingStorage.fetchData(DomainReference(id = calculationId))
             .map { calculationOptional ->
                 val calculation = calculationOptional.orElseThrow {
@@ -85,8 +100,24 @@ class ReportCalculationController(
 
                 // TODO Auth check
 
-                calculation
+                toDto(calculation)
             }
     }
 
+    private fun toDto(it: ReportData): ReportDataDto = ReportDataDto(
+        id = it.id,
+        report = it.report,
+        calculation = it.calculation,
+        data = it.data,
+    )
+
+    private fun toDto(it: ReportCalculation): ReportCalculationDto = ReportCalculationDto(
+        id = it.id,
+        report = it.report,
+        status = it.status,
+        startDate = it.startDate,
+        endDate = it.endDate,
+        params = it.params,
+        outcome = it.outcome,
+    )
 }

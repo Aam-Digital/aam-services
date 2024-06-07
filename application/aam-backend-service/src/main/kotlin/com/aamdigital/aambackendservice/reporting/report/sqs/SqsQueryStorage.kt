@@ -49,8 +49,9 @@ class SqsQueryStorage(
                         }
                     }
             }
-            .doOnError {
+            .onErrorResume {
                 logger.error("[SqsQueryStorage]: ${it.localizedMessage}", it)
+                Mono.error(InvalidArgumentException(it.localizedMessage))
             }
     }
 }

@@ -190,7 +190,7 @@ class SqsSchemaService(
 
     private fun parseEntityConfig(entityKey: String, config: AppConfigEntry): EntityType {
         return EntityType(
-            label = config.label ?: entityKey.split(":")[1],
+            label = entityKey.split(":")[1],
             attributes = config.attributes.orEmpty().map {
                 EntityAttribute(
                     name = it.key,

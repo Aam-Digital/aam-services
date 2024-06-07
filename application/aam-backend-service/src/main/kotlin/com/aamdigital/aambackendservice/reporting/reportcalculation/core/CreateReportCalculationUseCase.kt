@@ -7,6 +7,8 @@ import reactor.core.publisher.Mono
 
 data class CreateReportCalculationRequest(
     val report: DomainReference,
+    val from: String?,
+    val to: String?,
 )
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)

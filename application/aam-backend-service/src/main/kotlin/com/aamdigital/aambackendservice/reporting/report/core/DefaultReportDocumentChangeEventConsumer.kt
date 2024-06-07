@@ -51,7 +51,9 @@ class DefaultReportDocumentChangeEventConsumer(
 
                     return createReportCalculationUseCase.startReportCalculation(
                         request = CreateReportCalculationRequest(
-                            report = DomainReference(reportRef)
+                            report = DomainReference(reportRef),
+                            from = null,
+                            to = null,
                         )
                     ).flatMap { Mono.empty() }
                 }
@@ -74,7 +76,9 @@ class DefaultReportDocumentChangeEventConsumer(
                                 createReportCalculationUseCase
                                     .startReportCalculation(
                                         request = CreateReportCalculationRequest(
-                                            report = report
+                                            report = report,
+                                            from = null,
+                                            to = null,
                                         )
                                     )
                             }

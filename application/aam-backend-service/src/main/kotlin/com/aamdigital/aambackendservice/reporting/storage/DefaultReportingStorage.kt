@@ -145,6 +145,7 @@ class DefaultReportingStorage(
         status = entity.doc.status,
         startDate = entity.doc.startDate,
         endDate = entity.doc.endDate,
+        params = entity.doc.params,
         outcome = entity.doc.outcome
     )
 }

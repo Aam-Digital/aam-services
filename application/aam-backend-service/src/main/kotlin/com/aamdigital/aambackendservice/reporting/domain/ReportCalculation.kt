@@ -22,6 +22,11 @@ sealed class ReportCalculationOutcome {
     ) : ReportCalculationOutcome()
 }
 
+data class ReportCalculationParams(
+    val from: String?,
+    val to: String?,
+)
+
 data class ReportCalculation(
     @JsonProperty("_id")
     val id: String,
@@ -29,6 +34,7 @@ data class ReportCalculation(
     var status: ReportCalculationStatus,
     var startDate: String? = null,
     var endDate: String? = null,
+    var params: ReportCalculationParams?,
     var outcome: ReportCalculationOutcome? = null,
 ) {
     fun setStatus(status: ReportCalculationStatus): ReportCalculation {
@@ -48,6 +54,11 @@ data class ReportCalculation(
 
     fun setOutcome(outcome: ReportCalculationOutcome?): ReportCalculation {
         this.outcome = outcome
+        return this
+    }
+
+    fun setParams(params: ReportCalculationParams): ReportCalculation {
+        this.params = params
         return this
     }
 }

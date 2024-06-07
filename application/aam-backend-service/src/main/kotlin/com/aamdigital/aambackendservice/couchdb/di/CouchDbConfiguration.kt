@@ -21,13 +21,18 @@ class CouchDbConfiguration {
     ): CouchDbStorage = CouchDbClient(webClient, objectMapper)
 
     @Bean(name = ["couch-db-client"])
-    fun couchDbWebClient(couchDbClientConfiguration: CouchDbClientConfiguration): WebClient {
+    fun couchDbWebClient(configuration: CouchDbClientConfiguration): WebClient {
         val clientBuilder =
-            WebClient.builder().baseUrl(couchDbClientConfiguration.basePath)
+            WebClient.builder()
+                .codecs {
+                    it.defaultCodecs()
+                        .maxInMemorySize(configuration.maxInMemorySizeInMegaBytes * 1024 * 1024)
+                }
+                .baseUrl(configuration.basePath)
                 .defaultHeaders {
                     it.setBasicAuth(
-                        couchDbClientConfiguration.basicAuthUsername,
-                        couchDbClientConfiguration.basicAuthPassword,
+                        configuration.basicAuthUsername,
+                        configuration.basicAuthPassword,
                     )
                 }
         return clientBuilder.clientConnector(ReactorClientHttpConnector(HttpClient.create())).build()
@@ -39,4 +44,5 @@ class CouchDbClientConfiguration(
     val basePath: String,
     val basicAuthUsername: String,
     val basicAuthPassword: String,
+    val maxInMemorySizeInMegaBytes: Int = 16,
 )
