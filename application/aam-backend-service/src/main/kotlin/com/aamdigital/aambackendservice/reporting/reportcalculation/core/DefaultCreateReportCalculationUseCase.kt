@@ -2,7 +2,6 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationParams
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import org.springframework.stereotype.Service
@@ -13,15 +12,13 @@ import java.util.*
 class DefaultCreateReportCalculationUseCase(
     private val reportingStorage: ReportingStorage,
 ) : CreateReportCalculationUseCase {
-    override fun startReportCalculation(request: CreateReportCalculationRequest): Mono<CreateReportCalculationResult> {
+
+    override fun createReportCalculation(request: CreateReportCalculationRequest): Mono<CreateReportCalculationResult> {
         val calculation = ReportCalculation(
             id = "ReportCalculation:${UUID.randomUUID()}",
             report = request.report,
             status = ReportCalculationStatus.PENDING,
-            params = ReportCalculationParams(
-                from = request.from,
-                to = request.to,
-            )
+            args = request.args
         )
 
         return reportingStorage.storeCalculation(calculation)

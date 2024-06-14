@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.reporting.report.sqs
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
 import com.aamdigital.aambackendservice.domain.EntityAttribute
+import com.aamdigital.aambackendservice.domain.EntityAttributeType
 import com.aamdigital.aambackendservice.domain.EntityConfig
 import com.aamdigital.aambackendservice.domain.EntityType
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -31,7 +32,7 @@ data class AppConfigFile(
 )
 
 data class TableFields(
-    val fields: Map<String, String>
+    val fields: Map<String, EntityAttributeType>
 )
 
 data class TableName(
@@ -137,12 +138,15 @@ class SqsSchemaService(
         val tables = entityConfig.entities.map { entityType ->
             val attributes = entityType.attributes
                 .filter {
-                    it.type != "file"
+                    it.type.type != "file"
                 }
                 .map {
                     EntityAttribute(
                         it.name,
-                        mapConfigDataTypeToSqsDataType(it.type)
+                        EntityAttributeType(
+                            it.name,
+                            type = mapConfigDataTypeToSqsDataType(it.type.type)
+                        )
                     )
                 }
                 .plus(getDefaultEntityAttributes())
@@ -179,12 +183,54 @@ class SqsSchemaService(
     }
 
     private fun getDefaultEntityAttributes(): List<EntityAttribute> = listOf(
-        EntityAttribute("_id", "TEXT"),
-        EntityAttribute("_rev", "TEXT"),
-        EntityAttribute("created", "TEXT"),
-        EntityAttribute("updated", "TEXT"),
-        EntityAttribute("inactive", "INTEGER"),
-        EntityAttribute("anonymized", "INTEGER"),
+        EntityAttribute(
+            "_id", EntityAttributeType(
+                field = "_id",
+                type = "TEXT"
+            )
+        ),
+        EntityAttribute(
+            "_rev", EntityAttributeType(
+                field = "_rev",
+                type = "TEXT"
+            )
+        ),
+        EntityAttribute(
+            "created_at", EntityAttributeType(
+                field = "created.at",
+                type = "DATE"
+            )
+        ),
+        EntityAttribute(
+            "created_by", EntityAttributeType(
+                field = "created.by",
+                type = "TEXT"
+            )
+        ),
+        EntityAttribute(
+            "updated_at", EntityAttributeType(
+                field = "updated.at",
+                type = "DATE"
+            )
+        ),
+        EntityAttribute(
+            "updated_by", EntityAttributeType(
+                field = "updated.by",
+                type = "TEXT"
+            )
+        ),
+        EntityAttribute(
+            "inactive", EntityAttributeType(
+                field = "inactive",
+                type = "INTEGER"
+            )
+        ),
+        EntityAttribute(
+            "anonymized", EntityAttributeType(
+                field = "anonymized",
+                type = "INTEGER"
+            )
+        ),
     )
 
 
@@ -194,7 +240,10 @@ class SqsSchemaService(
             attributes = config.attributes.orEmpty().map {
                 EntityAttribute(
                     name = it.key,
-                    type = it.value.dataType
+                    type = EntityAttributeType(
+                        field = it.key,
+                        type = it.value.dataType
+                    )
                 )
             }
         )

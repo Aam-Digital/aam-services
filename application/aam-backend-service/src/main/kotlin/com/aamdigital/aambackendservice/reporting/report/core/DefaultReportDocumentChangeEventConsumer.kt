@@ -49,11 +49,10 @@ class DefaultReportDocumentChangeEventConsumer(
 
                     val reportRef = payload.currentVersion["_id"] as String
 
-                    return createReportCalculationUseCase.startReportCalculation(
+                    return createReportCalculationUseCase.createReportCalculation(
                         request = CreateReportCalculationRequest(
                             report = DomainReference(reportRef),
-                            from = null,
-                            to = null,
+                            args = mutableMapOf()
                         )
                     ).flatMap { Mono.empty() }
                 }
@@ -74,11 +73,10 @@ class DefaultReportDocumentChangeEventConsumer(
                         Mono.zip(
                             affectedReports.map { report ->
                                 createReportCalculationUseCase
-                                    .startReportCalculation(
+                                    .createReportCalculation(
                                         request = CreateReportCalculationRequest(
                                             report = report,
-                                            from = null,
-                                            to = null,
+                                            args = mutableMapOf()
                                         )
                                     )
                             }

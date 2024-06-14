@@ -11,7 +11,8 @@ import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
 
 data class QueryRequest(
-    val query: String
+    val query: String,
+    val args: List<String>
 )
 
 data class QueryResult(

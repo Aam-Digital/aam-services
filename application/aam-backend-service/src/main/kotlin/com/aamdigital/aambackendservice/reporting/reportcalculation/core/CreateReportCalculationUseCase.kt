@@ -7,8 +7,7 @@ import reactor.core.publisher.Mono
 
 data class CreateReportCalculationRequest(
     val report: DomainReference,
-    val from: String?,
-    val to: String?,
+    val args: MutableMap<String, String>,
 )
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
@@ -33,5 +32,5 @@ sealed class CreateReportCalculationResult {
 }
 
 interface CreateReportCalculationUseCase {
-    fun startReportCalculation(request: CreateReportCalculationRequest): Mono<CreateReportCalculationResult>
+    fun createReportCalculation(request: CreateReportCalculationRequest): Mono<CreateReportCalculationResult>
 }

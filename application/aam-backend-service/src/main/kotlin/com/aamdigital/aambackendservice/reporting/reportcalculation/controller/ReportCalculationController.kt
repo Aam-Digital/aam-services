@@ -43,13 +43,20 @@ class ReportCalculationController(
                     NotFoundException()
                 }
 
-                createReportCalculationUseCase.startReportCalculation(
+                val args = mutableMapOf<String, String>()
+
+                if (from != null) {
+                    args["from"] = from.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
+                }
+
+                if (to != null) {
+                    args["to"] = to.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
+                }
+
+                createReportCalculationUseCase.createReportCalculation(
                     CreateReportCalculationRequest(
                         report = DomainReference(report.id),
-                        from = from?.toInstant()?.atOffset(ZoneOffset.UTC)
-                            ?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
-                        to = to?.toInstant()?.atOffset(ZoneOffset.UTC)
-                            ?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                        args = args
                     )
                 ).handle { result, sink ->
                     when (result) {
@@ -117,7 +124,7 @@ class ReportCalculationController(
         status = it.status,
         startDate = it.startDate,
         endDate = it.endDate,
-        params = it.params,
+        args = it.args,
         outcome = it.outcome,
     )
 }

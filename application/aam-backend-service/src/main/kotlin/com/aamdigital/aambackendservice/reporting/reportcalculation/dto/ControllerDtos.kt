@@ -2,7 +2,6 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.dto
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationOutcome
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationParams
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.security.MessageDigest
@@ -16,7 +15,7 @@ data class ReportCalculationDto(
     var status: ReportCalculationStatus,
     var startDate: String? = null,
     var endDate: String? = null,
-    var params: ReportCalculationParams?,
+    var args: Map<String, String>,
     var outcome: ReportCalculationOutcome? = null,
 )
 
