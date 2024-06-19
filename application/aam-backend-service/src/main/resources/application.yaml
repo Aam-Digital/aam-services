@@ -23,6 +23,13 @@ management:
           - info
           - health
 
+sqs-client-configuration:
+  max-in-memory-size-in-mega-bytes: 16
+
+
+couch-db-client-configuration:
+  max-in-memory-size-in-mega-bytes: 16
+
 ---
 
 spring:
@@ -67,7 +74,7 @@ sqs-client-configuration:
   basic-auth-password: docker
 
 database-change-detection:
-  enabled: true
+  enabled: false
 
 report-calculation-processor:
   enabled: true

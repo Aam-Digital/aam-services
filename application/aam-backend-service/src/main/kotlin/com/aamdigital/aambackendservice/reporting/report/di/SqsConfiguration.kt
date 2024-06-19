@@ -12,7 +12,12 @@ class SqsConfiguration {
     @Bean(name = ["sqs-client"])
     fun sqsWebClient(configuration: SqsClientConfiguration): WebClient {
         val clientBuilder =
-            WebClient.builder().baseUrl(configuration.basePath)
+            WebClient.builder()
+                .codecs {
+                    it.defaultCodecs()
+                        .maxInMemorySize(configuration.maxInMemorySizeInMegaBytes * 1024 * 1024)
+                }
+                .baseUrl(configuration.basePath)
                 .defaultHeaders {
                     it.setBasicAuth(
                         configuration.basicAuthUsername,
@@ -28,4 +33,5 @@ class SqsClientConfiguration(
     val basePath: String,
     val basicAuthUsername: String,
     val basicAuthPassword: String,
+    val maxInMemorySizeInMegaBytes: Int = 16,
 )
