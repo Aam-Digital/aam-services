@@ -22,6 +22,7 @@ data class ReportDoc(
     val title: String,
     val mode: String = "unknown",
     val aggregationDefinition: String?,
+    val neededArgs: List<String> = emptyList(),
     val created: EditAtBy?,
     val updated: EditAtBy?,
 )

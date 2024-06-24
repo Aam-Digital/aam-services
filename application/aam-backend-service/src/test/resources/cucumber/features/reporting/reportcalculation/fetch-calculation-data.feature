@@ -11,7 +11,7 @@ Feature: the report calculation data endpoint persist to database
         Then the client receives an json object
         Then the client receives status code of 200
         Then the client receives value 22cfbb91fcbff5a2e0755cc26567a81078898dfe939d07c9745149f45863ca31 for property dataHash
-        Then the client receives value ReportData:1 for property _id
+        Then the client receives value ReportData:1 for property id
 
     # ReportCalculation not available
     Scenario: client makes call to GET /reporting/report-calculation/ReportCalculation:42/data and receives NotFound

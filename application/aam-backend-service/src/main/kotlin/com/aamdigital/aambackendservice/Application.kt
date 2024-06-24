@@ -6,6 +6,7 @@ import org.springframework.boot.runApplication
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
+import java.util.*
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
@@ -13,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController
 class Application
 
 fun main(args: Array<String>) {
+    TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+
     runApplication<Application>(*args)
 }
 

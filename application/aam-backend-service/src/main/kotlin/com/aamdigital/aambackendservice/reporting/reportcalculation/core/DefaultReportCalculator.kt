@@ -18,6 +18,12 @@ class DefaultReportCalculator(
     private val reportingStorage: ReportingStorage,
     private val queryStorage: QueryStorage,
 ) : ReportCalculator {
+
+    companion object {
+        const val DEFAULT_FROM_DATE = "0000-01-01T00:00:00.000Z"
+        const val DEFAULT_TO_DATE = "9999-12-31T23:59:59.999Z"
+    }
+
     override fun calculate(reportCalculation: ReportCalculation): Mono<ReportData> {
         return reportingStorage.fetchReport(reportCalculation.report)
             .flatMap { reportOptional ->
@@ -28,8 +34,15 @@ class DefaultReportCalculator(
                     return@flatMap Mono.error(InvalidArgumentException())
                 }
 
+                if (reportCalculation.args["from"] == reportCalculation.args["to"]) {
+                    reportCalculation.args.remove("to")
+                }
+
                 queryStorage.executeQuery(
-                    query = QueryRequest(query = report.query)
+                    query = QueryRequest(
+                        query = report.query,
+                        args = getReportCalculationArgs(report.neededArgs, reportCalculation.args)
+                    )
                 )
                     .map { queryResult ->
                         ReportData(
@@ -40,5 +53,21 @@ class DefaultReportCalculator(
                         )
                     }
             }
+    }
+
+    private fun getReportCalculationArgs(neededArgs: List<String>, givenArgs: Map<String, String>): List<String> =
+        neededArgs
+            .map {
+                givenArgs[it]
+                    ?: getDefaultValue(it)
+                    ?: throw NotFoundException(
+                        "Argument $it is missing. All report args are needed for a successful ReportCalculation."
+                    )
+            }
+
+    private fun getDefaultValue(arg: String): String? = when (arg) {
+        "from" -> DEFAULT_FROM_DATE
+        "to" -> DEFAULT_TO_DATE
+        else -> null
     }
 }

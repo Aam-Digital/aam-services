@@ -53,7 +53,8 @@ class DefaultReportingStorage(
                         query = it.doc.aggregationDefinition ?: "",
                         schema = ReportSchema(
                             fields = reportSchemaGenerator.getTableNamesByQuery(it.doc.aggregationDefinition ?: "")
-                        )
+                        ),
+                        neededArgs = it.doc.neededArgs
                     )
                 }
             }
@@ -72,7 +73,8 @@ class DefaultReportingStorage(
                     mode = reportDoc.mode,
                     schema = ReportSchema(
                         fields = reportSchemaGenerator.getTableNamesByQuery(reportDoc.aggregationDefinition ?: "")
-                    )
+                    ),
+                    neededArgs = reportDoc.neededArgs
                 )
             )
         }
@@ -145,6 +147,7 @@ class DefaultReportingStorage(
         status = entity.doc.status,
         startDate = entity.doc.startDate,
         endDate = entity.doc.endDate,
+        args = entity.doc.args,
         outcome = entity.doc.outcome
     )
 }

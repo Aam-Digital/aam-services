@@ -29,6 +29,7 @@ data class ReportCalculation(
     var status: ReportCalculationStatus,
     var startDate: String? = null,
     var endDate: String? = null,
+    var args: MutableMap<String, String> = mutableMapOf(),
     var outcome: ReportCalculationOutcome? = null,
 ) {
     fun setStatus(status: ReportCalculationStatus): ReportCalculation {

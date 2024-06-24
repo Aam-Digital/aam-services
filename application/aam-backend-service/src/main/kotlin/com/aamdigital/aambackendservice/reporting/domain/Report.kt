@@ -6,4 +6,5 @@ data class Report(
     val mode: String?,
     val schema: ReportSchema?,
     val query: String,
+    val neededArgs: List<String> = emptyList(),
 )

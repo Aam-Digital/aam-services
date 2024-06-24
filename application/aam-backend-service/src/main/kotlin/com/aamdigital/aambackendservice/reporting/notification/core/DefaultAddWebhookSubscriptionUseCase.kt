@@ -21,9 +21,10 @@ class DefaultAddWebhookSubscriptionUseCase(
                 reportReference = report
             ).flatMap { calculations ->
                 if (calculations.isEmpty()) {
-                    createReportCalculationUseCase.startReportCalculation(
+                    createReportCalculationUseCase.createReportCalculation(
                         CreateReportCalculationRequest(
                             report = report,
+                            args = mutableMapOf()
                         )
                     ).flatMap {
                         Mono.just(Unit)

@@ -34,11 +34,13 @@ management:
           - health
 
 couch-db-client-configuration:
+  max-in-memory-size-in-mega-bytes: 16
   base-path: http://localhost:5984
   basic-auth-username: admin
   basic-auth-password: docker
 
 sqs-client-configuration:
+  max-in-memory-size-in-mega-bytes: 16
   base-path: http://localhost:4984
   basic-auth-username: admin
   basic-auth-password: docker
