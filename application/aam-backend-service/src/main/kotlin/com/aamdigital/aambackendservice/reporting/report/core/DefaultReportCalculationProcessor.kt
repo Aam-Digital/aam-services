@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.report.core
 
+import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
@@ -30,8 +31,8 @@ class DefaultReportCalculationProcessor(
                     .flatMap {
                         reportCalculator.calculate(reportCalculation = it)
                     }
-                    .flatMap { reportData ->
-                        reportingStorage.fetchCalculation(reportData.calculation)
+                    .flatMap {
+                        reportingStorage.fetchCalculation(DomainReference(calculation.id))
                     }
                     .flatMap { updatedCalculation ->
                         reportingStorage.storeCalculation(
@@ -45,14 +46,20 @@ class DefaultReportCalculationProcessor(
                                 .setEndDate(getIsoLocalDateTime())
                         ).map {}
                     }
-                    .onErrorResume {
-                        // todo move this logic to storage to be sure, latest version is updated
-                        reportingStorage.storeCalculation(
-                            reportCalculation = calculation
-                                .setStatus(ReportCalculationStatus.FINISHED_ERROR)
-                                .setErrorDetails(it.localizedMessage)
-                                .setEndDate(getIsoLocalDateTime())
-                        ).map {}
+                    .onErrorResume { error ->
+                        /*
+                            We should think about moving the "prefetch" inside the ReportCalculationStorage,
+                            instead of manually think about this every time. The "prefetch" ensures,
+                            that the latest calculation is edited
+                        */
+                        reportingStorage.fetchCalculation(DomainReference(calculation.id)).flatMap {
+                            reportingStorage.storeCalculation(
+                                reportCalculation = calculation
+                                    .setStatus(ReportCalculationStatus.FINISHED_ERROR)
+                                    .setErrorDetails(error.localizedMessage)
+                                    .setEndDate(getIsoLocalDateTime())
+                            ).map {}
+                        }
                     }
             }
     }

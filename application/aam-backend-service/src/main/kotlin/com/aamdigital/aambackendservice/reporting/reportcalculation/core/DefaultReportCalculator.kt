@@ -1,11 +1,9 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
-import com.aamdigital.aambackendservice.reporting.domain.ReportData
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
 import com.aamdigital.aambackendservice.reporting.report.sqs.QueryRequest
 import com.aamdigital.aambackendservice.reporting.storage.DefaultReportStorage
@@ -25,7 +23,7 @@ class DefaultReportCalculator(
         const val DEFAULT_TO_DATE = "9999-12-31T23:59:59.999Z"
     }
 
-    override fun calculate(reportCalculation: ReportCalculation): Mono<ReportData> {
+    override fun calculate(reportCalculation: ReportCalculation): Mono<ReportCalculation> {
         return reportStorage.fetchReport(reportCalculation.report)
             .flatMap { reportOptional ->
                 val report = reportOptional.getOrDefault(null)
@@ -52,11 +50,7 @@ class DefaultReportCalculator(
                     attachmentId = "data.json",
                     file = queryResult,
                 ).map {
-                    ReportData(
-                        id = "data.json",
-                        report = reportCalculation.report,
-                        calculation = DomainReference(reportCalculation.id),
-                    )
+                    reportCalculation
                 }
             }
     }

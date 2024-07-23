@@ -21,7 +21,7 @@ Feature: the report calculation data endpoint persist to database
         Then the client receives an json object
         Then the client receives status code of 404
 
-    # ReportData not available
+    # Data is not available yet
     Scenario: client makes call to GET /reporting/report-calculation/ReportCalculation:42/data and receives NotFound 2
         Given database app is created
         Given database report-calculation is created

@@ -45,7 +45,7 @@ class DefaultAddWebhookSubscriptionUseCase(
                 report = report,
                 webhook = webhook,
                 reportCalculation = DomainReference(
-                    calculations.sortedByDescending { it.endDate }.first().id
+                    calculations.sortedByDescending { it.calculationCompleted }.first().id
                 )
             )
             Mono.just(Unit)

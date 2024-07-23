@@ -150,8 +150,8 @@ class ReportCalculationController(
         id = it.id,
         report = it.report,
         status = it.status,
-        startDate = it.startDate,
-        endDate = it.endDate,
+        startDate = it.calculationStarted,
+        endDate = it.calculationCompleted,
         args = it.args,
         attachments = it.attachments,
     )

@@ -33,7 +33,7 @@ class DefaultReportCalculationChangeUseCase(
             .map { calculations ->
                 calculations
                     .filter { it.id != currentReportCalculation.id }
-                    .sortedBy { it.endDate }
+                    .sortedBy { it.calculationCompleted }
             }
             .flatMap {
                 val existingDigest = it.last().attachments["data.json"]?.digest

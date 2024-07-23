@@ -2,7 +2,6 @@ package com.aamdigital.aambackendservice.reporting.report.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
-import com.aamdigital.aambackendservice.reporting.domain.ReportData
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.HttpHeaders
 import reactor.core.publisher.Flux
@@ -20,7 +19,6 @@ interface ReportingStorage {
 
     fun headData(calculationReference: DomainReference): Mono<HttpHeaders>
     fun fetchData(calculationReference: DomainReference): Flux<DataBuffer>
-    fun storeData(reportData: ReportData): Mono<ReportData>
 
     fun isCalculationOngoing(reportReference: DomainReference): Mono<Boolean>
 }

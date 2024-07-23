@@ -19,6 +19,7 @@ data class ReportCalculationDto(
 
 /**
  * used by /data endpoint in ReportCalculationController, but response is build dynamically
+ * Just kept for backwarts compatibility
  */
 data class ReportDataDto(
     val id: String,

@@ -5,7 +5,6 @@ import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
-import com.aamdigital.aambackendservice.reporting.domain.ReportData
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.core.io.buffer.DataBuffer
@@ -72,10 +71,6 @@ class DefaultReportingStorage(
             }
     }
 
-    override fun storeData(reportData: ReportData): Mono<ReportData> {
-        return reportCalculationRepository.storeData(reportData)
-    }
-
     override fun fetchData(calculationReference: DomainReference): Flux<DataBuffer> {
         return reportCalculationRepository.fetchData(calculationReference)
     }
@@ -102,8 +97,8 @@ class DefaultReportingStorage(
         id = entity.doc.id,
         report = entity.doc.report,
         status = entity.doc.status,
-        startDate = entity.doc.startDate,
-        endDate = entity.doc.endDate,
+        calculationStarted = entity.doc.calculationStarted,
+        calculationCompleted = entity.doc.calculationCompleted,
         args = entity.doc.args,
         attachments = entity.doc.attachments
 

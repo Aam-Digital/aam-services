@@ -10,8 +10,8 @@ data class ReportCalculation(
     val report: DomainReference,
     var status: ReportCalculationStatus,
     var errorDetails: String? = null,
-    var startDate: String? = null,
-    var endDate: String? = null,
+    var calculationStarted: String? = null,
+    var calculationCompleted: String? = null,
     var args: MutableMap<String, String> = mutableMapOf(),
     @JsonProperty("_attachments")
     val attachments: MutableMap<String, AttachmentMetaData> = mutableMapOf(),
@@ -22,7 +22,7 @@ data class ReportCalculation(
     }
 
     fun setStartDate(startDate: String?): ReportCalculation {
-        this.startDate = startDate
+        this.calculationStarted = startDate
         return this
     }
 
@@ -32,7 +32,7 @@ data class ReportCalculation(
     }
 
     fun setEndDate(endDate: String?): ReportCalculation {
-        this.endDate = endDate
+        this.calculationCompleted = endDate
         return this
     }
 }

@@ -4,9 +4,7 @@ import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.couchdb.core.getQueryParamsAllDocs
 import com.aamdigital.aambackendservice.couchdb.dto.DocSuccess
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
-import com.aamdigital.aambackendservice.reporting.domain.ReportData
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.HttpHeaders
 import org.springframework.stereotype.Service
@@ -52,26 +50,6 @@ class ReportCalculationRepository(
             .map { Optional.of(it) }
             .defaultIfEmpty(Optional.empty())
             .onErrorReturn(Optional.empty<ReportCalculation>())
-    }
-
-    fun storeData(data: ReportData): Mono<ReportData> {
-        return couchDbClient.putDatabaseDocument(
-            database = REPORT_CALCULATION_DATABASE,
-            documentId = data.id,
-            body = data,
-        )
-            .flatMap { fetchCalculation(data.calculation) }
-            .flatMap {
-                val calculation = it.orElseThrow {
-                    NotFoundException()
-                }
-
-                couchDbClient.putDatabaseDocument(
-                    database = REPORT_CALCULATION_DATABASE,
-                    documentId = calculation.id,
-                    body = calculation
-                )
-            }.map { data }
     }
 
     fun headData(calculationReference: DomainReference): Mono<HttpHeaders> {
