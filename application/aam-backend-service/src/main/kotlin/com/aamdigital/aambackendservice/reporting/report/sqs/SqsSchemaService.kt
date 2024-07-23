@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.report.sqs
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
+import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.domain.EntityAttribute
 import com.aamdigital.aambackendservice.domain.EntityAttributeType
 import com.aamdigital.aambackendservice.domain.EntityConfig
@@ -73,7 +73,7 @@ data class SqsSchema(
 
 @Service
 class SqsSchemaService(
-    private val couchDbStorage: CouchDbStorage,
+    private val couchDbClient: CouchDbClient,
 ) {
 
     companion object {
@@ -87,7 +87,7 @@ class SqsSchemaService(
 
     fun updateSchema(): Mono<Unit> {
         return Mono.zip(
-            couchDbStorage.getDatabaseDocument(
+            couchDbClient.getDatabaseDocument(
                 database = TARGET_DATABASE,
                 documentId = FILENAME_CONFIG_ENTITY,
                 queryParams = LinkedMultiValueMap(),
@@ -105,7 +105,7 @@ class SqsSchemaService(
 
                     EntityConfig(config.rev, entities)
                 },
-            couchDbStorage.getDatabaseDocument(
+            couchDbClient.getDatabaseDocument(
                 database = TARGET_DATABASE,
                 documentId = SCHEMA_PATH,
                 queryParams = LinkedMultiValueMap(),
@@ -123,7 +123,7 @@ class SqsSchemaService(
                     return@flatMap Mono.just(Unit)
                 }
 
-                couchDbStorage.putDatabaseDocument(
+                couchDbClient.putDatabaseDocument(
                     database = TARGET_DATABASE,
                     documentId = SCHEMA_PATH,
                     body = newSqsSchema,
@@ -192,6 +192,12 @@ class SqsSchemaService(
         EntityAttribute(
             "_rev", EntityAttributeType(
                 field = "_rev",
+                type = "TEXT"
+            )
+        ),
+        EntityAttribute(
+            "_attachments", EntityAttributeType(
+                field = "_attachments",
                 type = "TEXT"
             )
         ),

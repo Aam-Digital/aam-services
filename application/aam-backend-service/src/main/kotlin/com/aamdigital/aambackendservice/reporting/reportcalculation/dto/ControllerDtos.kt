@@ -1,10 +1,8 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.dto
 
+import com.aamdigital.aambackendservice.couchdb.dto.AttachmentMetaData
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationOutcome
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
-import com.fasterxml.jackson.databind.ObjectMapper
-import java.security.MessageDigest
 
 /**
  * This is the interface shared to external users of the API endpoints.
@@ -16,21 +14,15 @@ data class ReportCalculationDto(
     var startDate: String? = null,
     var endDate: String? = null,
     var args: Map<String, String>,
-    var outcome: ReportCalculationOutcome? = null,
+    var attachments: Map<String, AttachmentMetaData> = emptyMap(),
 )
 
+/**
+ * used by /data endpoint in ReportCalculationController, but response is build dynamically
+ */
 data class ReportDataDto(
     val id: String,
     val report: DomainReference,
     val calculation: DomainReference,
-    var data: List<*>,
-) {
-    @OptIn(ExperimentalStdlibApi::class)
-    fun getDataHash(): String {
-        val mapper = ObjectMapper()
-        val md = MessageDigest.getInstance("SHA-256")
-        val input = mapper.writeValueAsString(data).toByteArray()
-        val bytes = md.digest(input)
-        return bytes.toHexString()
-    }
-}
+    val data: String
+)

@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.changes.core
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
+import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.reporting.changes.di.ChangesQueueConfiguration.Companion.DB_CHANGES_QUEUE
 import com.aamdigital.aambackendservice.reporting.changes.repository.SyncEntry
@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 class CouchDbDatabaseChangeDetection(
-    private val couchDbStorage: CouchDbStorage,
+    private val couchDbClient: CouchDbClient,
     private val documentChangeEventPublisher: ChangeEventPublisher,
     private val syncRepository: SyncRepository,
 ) : DatabaseChangeDetection {
@@ -27,7 +27,7 @@ class CouchDbDatabaseChangeDetection(
      */
     override fun checkForChanges(): Mono<Unit> {
         logger.trace("[CouchDatabaseChangeDetection] start couchdb change detection...")
-        return couchDbStorage.allDatabases().flatMap { databases ->
+        return couchDbClient.allDatabases().flatMap { databases ->
             val requests = databases.filter { !it.startsWith("_") }.map { database ->
                 fetchChangesForDatabase(database)
             }
@@ -55,7 +55,7 @@ class CouchDbDatabaseChangeDetection(
                 queryParams.set("limit", CHANGES_LIMIT.toString())
                 queryParams.set("include_docs", "true")
 
-                couchDbStorage.changes(
+                couchDbClient.changes(
                     database = database, queryParams = queryParams
                 )
             }

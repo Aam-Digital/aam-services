@@ -4,6 +4,7 @@ import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import com.aamdigital.aambackendservice.reporting.report.dto.ReportDto
+import com.aamdigital.aambackendservice.reporting.storage.DefaultReportStorage
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -16,10 +17,11 @@ import reactor.core.publisher.Mono
 @Validated
 class ReportController(
     private val reportingStorage: ReportingStorage,
+    private val reportStorage: DefaultReportStorage,
 ) {
     @GetMapping
     fun fetchReports(): Mono<List<ReportDto>> {
-        return reportingStorage.fetchAllReports("sql")
+        return reportStorage.fetchAllReports("sql")
             .zipWith(
                 reportingStorage.fetchPendingCalculations()
             ).map { results ->
@@ -42,7 +44,7 @@ class ReportController(
     fun fetchReport(
         @PathVariable reportId: String
     ): Mono<ReportDto> {
-        return reportingStorage
+        return reportStorage
             .fetchReport(DomainReference(id = reportId))
             .zipWith(
                 reportingStorage.fetchPendingCalculations()

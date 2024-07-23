@@ -28,7 +28,7 @@ class NotificationService(
     }
 
     fun sendNotifications(report: DomainReference, reportCalculation: DomainReference): Mono<Unit> {
-        logger.trace("[NotificationService]: Trigger all affected webhooks for ${report.id}")
+        logger.debug("[NotificationService]: Trigger all affected webhooks for ${report.id}")
         return getAffectedWebhooks(report)
             .map { webhooks ->
                 webhooks.map { webhook ->
@@ -42,7 +42,7 @@ class NotificationService(
     }
 
     fun triggerWebhook(report: DomainReference, reportCalculation: DomainReference, webhook: DomainReference) {
-        logger.trace("[NotificationService]: Trigger NotificationEvent for ${webhook.id} and ${report.id}")
+        logger.debug("[NotificationService]: Trigger NotificationEvent for ${webhook.id} and ${report.id}")
         notificationEventPublisher.publish(
             NotificationQueueConfiguration.NOTIFICATION_QUEUE,
             NotificationEvent(

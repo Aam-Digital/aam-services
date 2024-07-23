@@ -1,22 +1,23 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
+import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.domain.ReportData
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
-import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import com.aamdigital.aambackendservice.reporting.report.sqs.QueryRequest
+import com.aamdigital.aambackendservice.reporting.storage.DefaultReportStorage
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
-import java.util.*
 import kotlin.jvm.optionals.getOrDefault
 
 @Service
 class DefaultReportCalculator(
-    private val reportingStorage: ReportingStorage,
+    private val reportStorage: DefaultReportStorage,
     private val queryStorage: QueryStorage,
+    private val couchDbClient: CouchDbClient,
 ) : ReportCalculator {
 
     companion object {
@@ -25,7 +26,7 @@ class DefaultReportCalculator(
     }
 
     override fun calculate(reportCalculation: ReportCalculation): Mono<ReportData> {
-        return reportingStorage.fetchReport(reportCalculation.report)
+        return reportStorage.fetchReport(reportCalculation.report)
             .flatMap { reportOptional ->
                 val report = reportOptional.getOrDefault(null)
                     ?: return@flatMap Mono.error(NotFoundException())
@@ -38,20 +39,25 @@ class DefaultReportCalculator(
                     reportCalculation.args.remove("to")
                 }
 
-                queryStorage.executeQuery(
+                val queryResult = queryStorage.executeQuery(
                     query = QueryRequest(
                         query = report.query,
                         args = getReportCalculationArgs(report.neededArgs, reportCalculation.args)
                     )
                 )
-                    .map { queryResult ->
-                        ReportData(
-                            id = "ReportData:${UUID.randomUUID()}",
-                            report = reportCalculation.report,
-                            calculation = DomainReference(reportCalculation.id),
-                            data = queryResult.result
-                        )
-                    }
+
+                couchDbClient.putAttachment(
+                    database = "report-calculation",
+                    documentId = reportCalculation.id,
+                    attachmentId = "data.json",
+                    file = queryResult,
+                ).map {
+                    ReportData(
+                        id = "data.json",
+                        report = reportCalculation.report,
+                        calculation = DomainReference(reportCalculation.id),
+                    )
+                }
             }
     }
 

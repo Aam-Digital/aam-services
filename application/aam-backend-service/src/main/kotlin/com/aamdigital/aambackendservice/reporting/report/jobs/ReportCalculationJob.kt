@@ -18,6 +18,6 @@ class ReportCalculationJob(
             .doOnError {
                 logger.error("[ReportCalculationJob] Error in job: processNextPendingCalculation()", it)
             }
-            .subscribe {}
+            .subscribe()
     }
 }

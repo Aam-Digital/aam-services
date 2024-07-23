@@ -1,36 +1,20 @@
 package com.aamdigital.aambackendservice.reporting.domain
 
+import com.aamdigital.aambackendservice.couchdb.dto.AttachmentMetaData
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.annotation.JsonSubTypes
-import com.fasterxml.jackson.annotation.JsonTypeInfo
-
-@JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
-@JsonSubTypes(
-    JsonSubTypes.Type(value = ReportCalculationOutcome.Success::class),
-    JsonSubTypes.Type(value = ReportCalculationOutcome.Failure::class),
-)
-sealed class ReportCalculationOutcome {
-    data class Success(
-        @JsonProperty("result_hash")
-        val resultHash: String,
-    ) : ReportCalculationOutcome()
-
-    data class Failure(
-        val errorCode: String,
-        val errorMessage: String,
-    ) : ReportCalculationOutcome()
-}
 
 data class ReportCalculation(
     @JsonProperty("_id")
     val id: String,
     val report: DomainReference,
     var status: ReportCalculationStatus,
+    var errorDetails: String? = null,
     var startDate: String? = null,
     var endDate: String? = null,
     var args: MutableMap<String, String> = mutableMapOf(),
-    var outcome: ReportCalculationOutcome? = null,
+    @JsonProperty("_attachments")
+    val attachments: MutableMap<String, AttachmentMetaData> = mutableMapOf(),
 ) {
     fun setStatus(status: ReportCalculationStatus): ReportCalculation {
         this.status = status
@@ -42,13 +26,13 @@ data class ReportCalculation(
         return this
     }
 
-    fun setEndDate(endDate: String?): ReportCalculation {
-        this.endDate = endDate
+    fun setErrorDetails(errorDetails: String?): ReportCalculation {
+        this.errorDetails = errorDetails
         return this
     }
 
-    fun setOutcome(outcome: ReportCalculationOutcome?): ReportCalculation {
-        this.outcome = outcome
+    fun setEndDate(endDate: String?): ReportCalculation {
+        this.endDate = endDate
         return this
     }
 }

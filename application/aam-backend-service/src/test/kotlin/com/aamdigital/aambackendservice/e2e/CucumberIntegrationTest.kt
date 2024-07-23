@@ -34,6 +34,16 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
         couchDbTestingService.createDatabase(name)
     }
 
+    @Given("attachment {} added to document {} in {}")
+    fun `store attachment in document`(attachment: String, document: String, database: String) {
+        couchDbTestingService.addAttachment(
+            database = database,
+            documentName = document,
+            attachmentName = "data.json", // fixed in business logic for now
+            documentContent = File("src/test/resources/database/documents/$attachment.json").readText()
+        )
+    }
+
     @Given("document {} is stored in database {}")
     fun `store document in database`(document: String, database: String) {
         couchDbTestingService.createDocument(
@@ -42,7 +52,7 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
             documentContent = File("src/test/resources/database/documents/$document.json").readText()
         )
     }
-    
+
     @When("the client calls GET {word}")
     @Throws(Throwable::class)
     fun `the client issues GET endpoint`(endpoint: String) {
