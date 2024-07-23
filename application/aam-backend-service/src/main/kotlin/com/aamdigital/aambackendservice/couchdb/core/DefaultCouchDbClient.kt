@@ -135,7 +135,6 @@ class DefaultCouchDbClient(
                 }
                 .accept(MediaType.APPLICATION_JSON).exchangeToMono {
                     handleResponse(it, DocSuccess::class)
-                    // todo map to string, then parse with object mapper
                 }
         }
     }
