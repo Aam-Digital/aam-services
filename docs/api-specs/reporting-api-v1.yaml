@@ -461,10 +461,12 @@ components:
           properties:
             from:
               type: string
+              description: optional start date for the time period of the data included in the report
               format: date
               nullable: true
             to:
               type: string
+              description: optional end date filtering data included in the report. If no date is given here, all data (possibly filtered by the "from" date) is included. The field considered for date filtering are defined in each report's query specifically.
               format: date
               nullable: true
         status:
