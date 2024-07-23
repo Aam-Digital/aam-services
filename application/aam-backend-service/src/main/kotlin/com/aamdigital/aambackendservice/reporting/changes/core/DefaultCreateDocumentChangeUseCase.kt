@@ -18,7 +18,7 @@ class DefaultCreateDocumentChangeUseCase(
     private val objectMapper: ObjectMapper,
     private val documentChangeEventPublisher: ChangeEventPublisher,
 ) : CreateDocumentChangeUseCase {
-    val logger = LoggerFactory.getLogger(javaClass)
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun createEvent(event: DatabaseChangeEvent): Mono<Unit> {
         val queryParams = getEmptyQueryParams()
