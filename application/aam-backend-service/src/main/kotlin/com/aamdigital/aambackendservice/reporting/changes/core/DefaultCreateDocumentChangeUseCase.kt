@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.changes.core
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
+import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.reporting.changes.di.ChangesQueueConfiguration.Companion.DOCUMENT_CHANGES_EXCHANGE
 import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
@@ -14,17 +14,17 @@ import reactor.core.publisher.Mono
  * Use case is called if a change on any database document is detected.
  */
 class DefaultCreateDocumentChangeUseCase(
-    private val couchDbStorage: CouchDbStorage,
+    private val couchDbClient: CouchDbClient,
     private val objectMapper: ObjectMapper,
     private val documentChangeEventPublisher: ChangeEventPublisher,
 ) : CreateDocumentChangeUseCase {
-    val logger = LoggerFactory.getLogger(javaClass)
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun createEvent(event: DatabaseChangeEvent): Mono<Unit> {
         val queryParams = getEmptyQueryParams()
         queryParams.set("rev", event.rev)
 
-        return couchDbStorage.getDatabaseDocument(
+        return couchDbClient.getDatabaseDocument(
             database = event.database,
             documentId = event.documentId,
             queryParams = queryParams,
@@ -33,7 +33,7 @@ class DefaultCreateDocumentChangeUseCase(
             if (event.rev.isNullOrBlank()) {
                 return Mono.empty()
             } else {
-                couchDbStorage.getPreviousDocRev(
+                couchDbClient.getPreviousDocRev(
                     database = event.database,
                     documentId = event.documentId,
                     rev = event.rev,

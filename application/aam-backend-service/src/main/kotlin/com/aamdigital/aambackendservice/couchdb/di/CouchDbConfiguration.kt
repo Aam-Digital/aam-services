@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.couchdb.di
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
+import com.aamdigital.aambackendservice.couchdb.core.DefaultCouchDbClient
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.ConfigurationProperties
@@ -18,7 +18,7 @@ class CouchDbConfiguration {
     fun defaultCouchDbStorage(
         @Qualifier("couch-db-client") webClient: WebClient,
         objectMapper: ObjectMapper,
-    ): CouchDbStorage = CouchDbClient(webClient, objectMapper)
+    ): CouchDbClient = DefaultCouchDbClient(webClient, objectMapper)
 
     @Bean(name = ["couch-db-client"])
     fun couchDbWebClient(configuration: CouchDbClientConfiguration): WebClient {

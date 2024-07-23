@@ -1,0 +1,10 @@
+{
+  "_id": "ReportConfig:3",
+  "title": "Test Report 3",
+  "mode": "sql",
+  "neededArgs": [
+    "from",
+    "to"
+  ],
+  "aggregationDefinition": "SELECT s.name as name, s.privateSchool as privateSchool FROM School as s WHERE s.date BETWEEN ? AND ?"
+}

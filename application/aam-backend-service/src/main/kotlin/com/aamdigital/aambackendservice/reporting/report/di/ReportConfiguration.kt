@@ -8,6 +8,7 @@ import com.aamdigital.aambackendservice.reporting.report.core.ReportCalculationP
 import com.aamdigital.aambackendservice.reporting.report.core.ReportSchemaGenerator
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculator
+import com.aamdigital.aambackendservice.reporting.storage.DefaultReportStorage
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -17,10 +18,10 @@ class ReportConfiguration {
 
     @Bean
     fun defaultIdentifyAffectedReportsUseCase(
-        reportingStorage: ReportingStorage,
+        reportStorage: DefaultReportStorage,
         schemaGenerator: ReportSchemaGenerator,
     ): IdentifyAffectedReportsUseCase =
-        DefaultIdentifyAffectedReportsUseCase(reportingStorage, schemaGenerator)
+        DefaultIdentifyAffectedReportsUseCase(reportStorage, schemaGenerator)
 
     @Bean
     @ConditionalOnProperty(

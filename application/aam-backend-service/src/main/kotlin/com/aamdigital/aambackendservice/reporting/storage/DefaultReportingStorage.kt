@@ -3,16 +3,14 @@ package com.aamdigital.aambackendservice.reporting.storage
 import com.aamdigital.aambackendservice.couchdb.dto.CouchDbChange
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.error.NotFoundException
-import com.aamdigital.aambackendservice.reporting.domain.Report
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
-import com.aamdigital.aambackendservice.reporting.domain.ReportData
-import com.aamdigital.aambackendservice.reporting.domain.ReportSchema
-import com.aamdigital.aambackendservice.reporting.report.core.ReportSchemaGenerator
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import com.fasterxml.jackson.annotation.JsonProperty
+import org.springframework.core.io.buffer.DataBuffer
+import org.springframework.http.HttpHeaders
 import org.springframework.stereotype.Service
-import org.springframework.util.LinkedMultiValueMap
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
@@ -31,54 +29,10 @@ data class FetchReportCalculationsResponse(
 )
 
 @Service
+@Deprecated("use sub storages directly")
 class DefaultReportingStorage(
-    private val reportRepository: ReportRepository,
     private val reportCalculationRepository: ReportCalculationRepository,
-    private val reportSchemaGenerator: ReportSchemaGenerator,
 ) : ReportingStorage {
-    override fun fetchAllReports(mode: String): Mono<List<Report>> {
-        return reportRepository.fetchReports()
-            .map { response ->
-                if (response.rows.isEmpty()) {
-                    return@map emptyList()
-                }
-
-                response.rows.filter {
-                    it.doc.mode == mode
-                }.map {
-                    Report(
-                        id = it.id,
-                        name = it.doc.title,
-                        mode = it.doc.mode,
-                        query = it.doc.aggregationDefinition ?: "",
-                        schema = ReportSchema(
-                            fields = reportSchemaGenerator.getTableNamesByQuery(it.doc.aggregationDefinition ?: "")
-                        )
-                    )
-                }
-            }
-    }
-
-    override fun fetchReport(report: DomainReference): Mono<Optional<Report>> {
-        return reportRepository.fetchReport(
-            documentId = report.id,
-            queryParams = LinkedMultiValueMap(),
-        ).map { reportDoc ->
-            Optional.of(
-                Report(
-                    id = reportDoc.id,
-                    name = reportDoc.title,
-                    query = reportDoc.aggregationDefinition ?: "",
-                    mode = reportDoc.mode,
-                    schema = ReportSchema(
-                        fields = reportSchemaGenerator.getTableNamesByQuery(reportDoc.aggregationDefinition ?: "")
-                    )
-                )
-            )
-        }
-            .onErrorReturn(Optional.empty())
-    }
-
     override fun fetchPendingCalculations(): Mono<List<ReportCalculation>> {
         return reportCalculationRepository.fetchCalculations()
             .map { response ->
@@ -117,12 +71,12 @@ class DefaultReportingStorage(
             }
     }
 
-    override fun storeData(reportData: ReportData): Mono<ReportData> {
-        return reportCalculationRepository.storeData(reportData)
+    override fun fetchData(calculationReference: DomainReference): Flux<DataBuffer> {
+        return reportCalculationRepository.fetchData(calculationReference)
     }
 
-    override fun fetchData(calculationReference: DomainReference): Mono<Optional<ReportData>> {
-        return reportCalculationRepository.fetchData(calculationReference)
+    override fun headData(calculationReference: DomainReference): Mono<HttpHeaders> {
+        return reportCalculationRepository.headData(calculationReference)
     }
 
     override fun isCalculationOngoing(reportReference: DomainReference): Mono<Boolean> {
@@ -143,8 +97,10 @@ class DefaultReportingStorage(
         id = entity.doc.id,
         report = entity.doc.report,
         status = entity.doc.status,
-        startDate = entity.doc.startDate,
-        endDate = entity.doc.endDate,
-        outcome = entity.doc.outcome
+        calculationStarted = entity.doc.calculationStarted,
+        calculationCompleted = entity.doc.calculationCompleted,
+        args = entity.doc.args,
+        attachments = entity.doc.attachments
+
     )
 }

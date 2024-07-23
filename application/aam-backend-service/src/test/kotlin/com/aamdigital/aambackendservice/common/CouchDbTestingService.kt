@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
+import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestTemplate
 
 class CouchDbTestingService(
@@ -55,6 +56,30 @@ class CouchDbTestingService(
                 ObjectNode::class.java,
             )
         logger.info("[CouchDbSetup] create Document: $database, $documentName, ${response.statusCode}")
+    }
+
+    fun addAttachment(database: String, documentName: String, attachmentName: String, documentContent: String) {
+        val responseDocument = restTemplate
+            .headForHeaders(
+                "/$database/$documentName",
+            )
+
+        val etag = responseDocument.eTag?.replace("\"", "")
+
+        val headers = LinkedMultiValueMap<String, String>()
+        headers.set("If-Match", etag)
+
+        val response = restTemplate
+            .exchange(
+                "/$database/$documentName/$attachmentName",
+                HttpMethod.PUT,
+                HttpEntity(documentContent, headers),
+                ObjectNode::class.java,
+            )
+        logger.info(
+            "[CouchDbSetup] create attachment:" +
+                    " $database, $documentName, $attachmentName, ${response.statusCode}"
+        )
     }
 
     private fun deleteDatabase(database: String) {

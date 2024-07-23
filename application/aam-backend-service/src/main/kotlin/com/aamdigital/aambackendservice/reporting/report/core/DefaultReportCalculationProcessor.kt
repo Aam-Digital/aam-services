@@ -1,7 +1,8 @@
 package com.aamdigital.aambackendservice.reporting.report.core
 
+import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationOutcome
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculator
 import reactor.core.publisher.Mono
@@ -14,7 +15,7 @@ class DefaultReportCalculationProcessor(
     private val reportCalculator: ReportCalculator,
 ) : ReportCalculationProcessor {
     override fun processNextPendingCalculation(): Mono<Unit> {
-        var calculation: ReportCalculation;
+        var calculation: ReportCalculation
         return reportingStorage.fetchPendingCalculations()
             .flatMap { calculations ->
                 calculation = calculations.firstOrNull()
@@ -30,35 +31,35 @@ class DefaultReportCalculationProcessor(
                     .flatMap {
                         reportCalculator.calculate(reportCalculation = it)
                     }
-                    .flatMap { reportData ->
-                        reportingStorage.storeData(
-                            reportData
-                        )
+                    .flatMap {
+                        reportingStorage.fetchCalculation(DomainReference(calculation.id))
                     }
-                    .flatMap { reportData ->
+                    .flatMap { updatedCalculation ->
                         reportingStorage.storeCalculation(
-                            reportCalculation = calculation
+                            reportCalculation = updatedCalculation.orElseThrow {
+                                NotFoundException(
+                                    "[DefaultReportCalculationProcessor]" +
+                                            " updated Calculation not available after reportCalculator.calculate()"
+                                )
+                            }
                                 .setStatus(ReportCalculationStatus.FINISHED_SUCCESS)
-                                .setOutcome(
-                                    ReportCalculationOutcome.Success(
-                                        resultHash = reportData.getDataHash()
-                                    )
-                                )
                                 .setEndDate(getIsoLocalDateTime())
                         ).map {}
                     }
-                    .onErrorResume {
-                        reportingStorage.storeCalculation(
-                            reportCalculation = calculation
-                                .setStatus(ReportCalculationStatus.FINISHED_ERROR)
-                                .setOutcome(
-                                    ReportCalculationOutcome.Failure(
-                                        errorCode = "CALCULATION_FAILED",
-                                        errorMessage = it.localizedMessage,
-                                    )
-                                )
-                                .setEndDate(getIsoLocalDateTime())
-                        ).map {}
+                    .onErrorResume { error ->
+                        /*
+                            We should think about moving the "prefetch" inside the ReportCalculationStorage,
+                            instead of manually think about this every time. The "prefetch" ensures,
+                            that the latest calculation is edited
+                        */
+                        reportingStorage.fetchCalculation(DomainReference(calculation.id)).flatMap {
+                            reportingStorage.storeCalculation(
+                                reportCalculation = calculation
+                                    .setStatus(ReportCalculationStatus.FINISHED_ERROR)
+                                    .setErrorDetails(error.localizedMessage)
+                                    .setEndDate(getIsoLocalDateTime())
+                            ).map {}
+                        }
                     }
             }
     }

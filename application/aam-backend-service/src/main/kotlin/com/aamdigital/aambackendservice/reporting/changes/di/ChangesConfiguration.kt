@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.changes.di
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbStorage
+import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.reporting.changes.core.ChangeEventPublisher
 import com.aamdigital.aambackendservice.reporting.changes.core.CouchDbDatabaseChangeDetection
 import com.aamdigital.aambackendservice.reporting.changes.core.CreateDocumentChangeUseCase
@@ -31,23 +31,23 @@ class ChangesConfiguration {
         matchIfMissing = true
     )
     fun couchDatabaseChangeDetection(
-        couchDbStorage: CouchDbStorage,
+        couchDbClient: CouchDbClient,
         changeEventPublisher: ChangeEventPublisher,
         syncRepository: SyncRepository,
     ): DatabaseChangeDetection = CouchDbDatabaseChangeDetection(
-        couchDbStorage,
+        couchDbClient,
         changeEventPublisher,
         syncRepository
     )
 
     @Bean
     fun defaultAnalyseDocumentChangeUseCase(
-        couchDbStorage: CouchDbStorage,
+        couchDbClient: CouchDbClient,
         objectMapper: ObjectMapper,
         changeEventPublisher: ChangeEventPublisher
     ): CreateDocumentChangeUseCase =
         DefaultCreateDocumentChangeUseCase(
-            couchDbStorage = couchDbStorage,
+            couchDbClient = couchDbClient,
             objectMapper = objectMapper,
             documentChangeEventPublisher = changeEventPublisher,
         )

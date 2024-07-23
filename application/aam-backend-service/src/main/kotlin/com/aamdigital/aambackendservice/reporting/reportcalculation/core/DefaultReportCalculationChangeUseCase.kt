@@ -33,10 +33,15 @@ class DefaultReportCalculationChangeUseCase(
             .map { calculations ->
                 calculations
                     .filter { it.id != currentReportCalculation.id }
-                    .sortedBy { it.endDate }
+                    .sortedBy { it.calculationCompleted }
             }
             .flatMap {
-                if (it.isEmpty() || it.last().outcome != currentReportCalculation.outcome) {
+                val existingDigest = it.last().attachments["data.json"]?.digest
+                val currentDigest = currentReportCalculation.attachments["data.json"]?.digest
+
+                if (it.isEmpty()
+                    || existingDigest != currentDigest
+                ) {
                     notificationService.sendNotifications(
                         report = currentReportCalculation.report,
                         reportCalculation = DomainReference(currentReportCalculation.id)

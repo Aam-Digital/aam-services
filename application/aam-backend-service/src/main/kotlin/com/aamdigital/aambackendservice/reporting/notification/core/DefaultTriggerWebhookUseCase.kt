@@ -11,6 +11,9 @@ import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
 import java.net.URI
 
+/**
+ * Calls a configured (external) webhook
+ */
 class DefaultTriggerWebhookUseCase(
     private val notificationStorage: NotificationStorage,
     private val webClient: WebClient,
@@ -55,8 +58,9 @@ class DefaultTriggerWebhookUseCase(
                         response.bodyToMono(String::class.java)
                     }
                     .map {
-                        logger.trace(
-                            "[DefaultTriggerWebhookUseCase] Webhook trigger completed for Webhook: {} Report: {} Calculation: {} - Response: {}",
+                        logger.debug(
+                            "[DefaultTriggerWebhookUseCase] Webhook trigger completed for Webhook:" +
+                                    " {} Report: {} Calculation: {} - Response: {}",
                             notificationEvent.webhookId,
                             notificationEvent.reportId,
                             notificationEvent.calculationId,

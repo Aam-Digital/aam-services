@@ -20,6 +20,15 @@ data class DocSuccess(
     val rev: String,
 )
 
+data class AttachmentMetaData(
+    @JsonProperty("content_type")
+    val contentType: String,
+    val revpos: Int,
+    val digest: String,
+    val length: Long,
+    val stub: Boolean,
+)
+
 data class FindResponse<T>(
     val docs: List<T>
 )

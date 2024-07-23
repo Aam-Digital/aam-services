@@ -39,7 +39,7 @@ Feature: the report calculation endpoint persist to database
         Then the client receives an json object
         Then the client receives status code of 200
         Then the client receives value FINISHED_SUCCESS for property status
-        Then the client receives value ReportCalculation:1 for property _id
+        Then the client receives value ReportCalculation:1 for property id
 
     Scenario: client makes call to GET /reporting/report-calculation/ReportCalculation:42 and receives NotFound
         Given database app is created

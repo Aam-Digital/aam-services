@@ -2,5 +2,6 @@
   "_id": "ReportConfig:1",
   "title": "Test Report 1",
   "mode": "sql",
+  "neededArgs": [],
   "aggregationDefinition": "SELECT s.name as name, s.privateSchool as privateSchool FROM School as s"
 }
