@@ -4,7 +4,7 @@ info:
   description: |-
     API to manage reports that provide data calculated based on any entities of the Aam Digital system
     and offer notifications when data of such reports changes.
-  version: 1.0.0-alpha.2
+  version: 1.0.0-alpha.3
 servers:
   - url: https://{customerId}.aam-digital.net/api/v1/reporting
     description: Developer Instance for testing
@@ -218,6 +218,39 @@ paths:
             application/xml:
               schema:
                 $ref: '#/components/schemas/ReportData'
+        404:
+          description: report data is not available yet (when either the calculation id is not valid or the calculation is still running)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: If the access token does not grant permission to this Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /report-calculation/{calculationId}/data-stream:
+    get:
+      security:
+        - development:
+            - reporting_read
+      tags:
+        - reporting
+      summary: Fetch just the report data for a specific calculation as stream
+      parameters:
+        - in: path
+          name: calculationId
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: The actual data that has been calculated by the calculation run. This matches the schema defined in the /report/id
+          content:
+            application/octet-stream:
+              example: [ { "foo": { "bar": "do" } } ]
         404:
           description: report data is not available yet (when either the calculation id is not valid or the calculation is still running)
           content:
