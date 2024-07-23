@@ -116,8 +116,6 @@ class ReportCalculationController(
 
                 val prefix = """
                     { 
-                        "id": "${calculationId}_data.json",
-                        "report": "removed",
                         "calculation": "$calculationId",
                         "data": 
                 """.trimIndent().toByteArray()
