@@ -57,3 +57,21 @@ Feature: the report calculation endpoint persist to database
         When the client calls GET /v1/reporting/report-calculation/ReportCalculation:2/data
         Then the client receives an json object
         Then the client receives status code of 200
+
+    Scenario: ReportCalculation with arguments is processed within 30 seconds
+        Given document ReportConfig:3 is stored in database app
+        Given document Config:CONFIG_ENTITY is stored in database app
+        Given document ReportCalculation:3 is stored in database report-calculation
+        Given signed in as client dummy-client with secret client-secret in realm dummy-realm
+        When the client calls GET /v1/reporting/report-calculation/ReportCalculation:3
+        Then the client receives an json object
+        Then the client receives status code of 200
+        Then the client receives value PENDING for property status
+        Then the client waits for 15000 milliseconds
+        When the client calls GET /v1/reporting/report-calculation/ReportCalculation:3
+        Then the client receives an json object
+        Then the client receives status code of 200
+        Then the client receives value FINISHED_SUCCESS for property status
+        When the client calls GET /v1/reporting/report-calculation/ReportCalculation:3/data
+        Then the client receives an json object
+        Then the client receives status code of 200

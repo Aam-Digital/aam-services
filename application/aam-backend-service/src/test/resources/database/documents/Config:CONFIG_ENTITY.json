@@ -83,6 +83,10 @@
           "dataType": "string",
           "label": "School Timing"
         },
+        "date": {
+          "dataType": "data",
+          "label": "Create Date"
+        },
         "remarks": {
           "dataType": "string",
           "label": "Remarks"

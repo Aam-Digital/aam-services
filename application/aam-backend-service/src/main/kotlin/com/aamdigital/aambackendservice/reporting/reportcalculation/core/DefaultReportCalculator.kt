@@ -33,9 +33,7 @@ class DefaultReportCalculator(
                     return@flatMap Mono.error(InvalidArgumentException())
                 }
 
-                if (reportCalculation.args["from"] == reportCalculation.args["to"]) {
-                    reportCalculation.args.remove("to")
-                }
+                setToDateToLastMinuteOfDay(reportCalculation.args)
 
                 val queryResult = queryStorage.executeQuery(
                     query = QueryRequest(
@@ -53,6 +51,11 @@ class DefaultReportCalculator(
                     reportCalculation
                 }
             }
+    }
+
+    private fun setToDateToLastMinuteOfDay(args: MutableMap<String, String>) {
+        val toDateString = args["to"] ?: return
+        args["to"] = toDateString.substring(IntRange(0, 9)) + "T23:59:59.999Z"
     }
 
     private fun getReportCalculationArgs(neededArgs: List<String>, givenArgs: Map<String, String>): List<String> =
