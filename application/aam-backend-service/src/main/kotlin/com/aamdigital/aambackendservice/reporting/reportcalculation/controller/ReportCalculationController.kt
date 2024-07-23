@@ -27,6 +27,7 @@ import reactor.kotlin.core.publisher.toFlux
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.jvm.optionals.getOrElse
 
 
 @RestController
@@ -114,25 +115,41 @@ class ReportCalculationController(
                 val fileContent = reportingStorage
                     .fetchData(DomainReference(id = calculationId))
 
-                val prefix = """
-                    { 
-                        "calculation": "$calculationId",
-                        "data": 
-                """.trimIndent().toByteArray()
-                val prefixBuffer = DefaultDataBufferFactory().allocateBuffer(prefix.size)
-                prefixBuffer.write(prefix)
+                reportingStorage.fetchCalculation(DomainReference(calculationId))
+                    .toFlux()
+                    .flatMap {
 
-                val suffix = """
-                    } 
-                """.trimIndent().toByteArray()
-                val suffixBuffer = DefaultDataBufferFactory().allocateBuffer(suffix.size)
-                suffixBuffer.write(suffix)
+                        val calculation = it.getOrElse {
+                            return@flatMap Flux.error { NotFoundException("No data available") }
+                        }
 
-                return@flatMap Flux.concat(
-                    Flux.just(prefixBuffer),
-                    fileContent,
-                    Flux.just(suffixBuffer),
-                )
+                        val prefix = """
+                            { 
+                                "_id": "${calculationId}_data.json",
+                                "report": {
+                                    "id": "${calculation.report.id}"
+                                },
+                                "calculation": {
+                                    "id": "$calculationId"
+                                },
+                                "dataHash": "${calculation.attachments["data.json"]?.digest}",
+                                "data": 
+                        """.trimIndent().toByteArray()
+                        val prefixBuffer = DefaultDataBufferFactory().allocateBuffer(prefix.size)
+                        prefixBuffer.write(prefix)
+
+                        val suffix = """
+                            } 
+                        """.trimIndent().toByteArray()
+                        val suffixBuffer = DefaultDataBufferFactory().allocateBuffer(suffix.size)
+                        suffixBuffer.write(suffix)
+
+                        Flux.concat(
+                            Flux.just(prefixBuffer),
+                            fileContent,
+                            Flux.just(suffixBuffer),
+                        )
+                    }
             }
     }
 
