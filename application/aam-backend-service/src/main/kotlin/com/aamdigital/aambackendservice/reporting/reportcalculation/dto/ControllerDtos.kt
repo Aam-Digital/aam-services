@@ -1,6 +1,5 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.dto
 
-import com.aamdigital.aambackendservice.couchdb.dto.AttachmentMetaData
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
 
@@ -14,7 +13,13 @@ data class ReportCalculationDto(
     var startDate: String? = null,
     var endDate: String? = null,
     var args: Map<String, String>,
-    var attachments: Map<String, AttachmentMetaData> = emptyMap(),
+    var data: ReportCalculationData?,
+)
+
+data class ReportCalculationData(
+    val contentType: String,
+    val hash: String,
+    val length: Number,
 )
 
 /**

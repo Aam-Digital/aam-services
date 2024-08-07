@@ -10,7 +10,7 @@ Feature: the report calculation data endpoint persist to database
         When the client calls GET /v1/reporting/report-calculation/ReportCalculation:1/data
         Then the client receives an json object
         Then the client receives status code of 200
-        Then the client receives value ReportCalculation:1_data.json for property _id
+        Then the client receives value ReportCalculation:1_data.json for property id
 
     # ReportCalculation not available
     Scenario: client makes call to GET /reporting/report-calculation/ReportCalculation:42/data and receives NotFound

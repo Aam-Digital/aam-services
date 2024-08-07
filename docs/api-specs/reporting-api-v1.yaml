@@ -482,15 +482,32 @@ components:
         id:
           type: string
           format: uuid
-        start_date:
+        report:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+        status:
           type: string
+          description: Current status of the run
+          enum:
+            - PENDING
+            - RUNNING
+            - FINISHED_SUCCESS
+            - FINISHED_ERROR
+        startDate:
+          type: string
+          description: The Date, the calculation starts processing the query
           example: date
-        end_date:
+        endDate:
           type: string
+          description: The Date, the calculation finished processing and the data is available
           example: date
           nullable: true
-        params:
+        args:
           type: object
+          description: Input arguments will be injected into the sql query
           properties:
             from:
               type: string
@@ -502,14 +519,15 @@ components:
               description: optional end date filtering data included in the report. If no date is given here, all data (possibly filtered by the "from" date) is included. The field considered for date filtering are defined in each report's query specifically.
               format: date
               nullable: true
-        status:
-          type: string
-          description: Current status of the run
-          enum:
-            - PENDING
-            - RUNNING
-            - FINISHED_SUCCESS
-            - FINISHED_ERROR
+        data:
+          type: object
+          properties:
+            contentType:
+              type: string
+            hash:
+              type: string
+            length:
+              type: number
 
     ReportData:
       type: object

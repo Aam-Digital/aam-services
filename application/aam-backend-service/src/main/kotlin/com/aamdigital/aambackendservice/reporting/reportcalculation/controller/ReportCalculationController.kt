@@ -8,6 +8,7 @@ import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationResult
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
+import com.aamdigital.aambackendservice.reporting.reportcalculation.dto.ReportCalculationData
 import com.aamdigital.aambackendservice.reporting.reportcalculation.dto.ReportCalculationDto
 import com.aamdigital.aambackendservice.reporting.storage.DefaultReportStorage
 import org.springframework.core.io.buffer.DataBuffer
@@ -125,7 +126,7 @@ class ReportCalculationController(
 
                         val prefix = """
                             { 
-                                "_id": "${calculationId}_data.json",
+                                "id": "${calculationId}_data.json",
                                 "report": {
                                     "id": "${calculation.report.id}"
                                 },
@@ -168,6 +169,15 @@ class ReportCalculationController(
         startDate = it.calculationStarted,
         endDate = it.calculationCompleted,
         args = it.args,
-        attachments = it.attachments,
+        data = toReportCalculationData(it),
     )
+
+    private fun toReportCalculationData(it: ReportCalculation): ReportCalculationData? {
+        val attachment = it.attachments["data.json"] ?: return null
+        return ReportCalculationData(
+            contentType = attachment.contentType,
+            hash = attachment.digest,
+            length = attachment.length
+        )
+    }
 }
