@@ -10,6 +10,10 @@ spring:
     url: r2dbc:h2:file://././data/dbh2;DB_CLOSE_DELAY=-1
     username: local
     password: local
+  rabbitmq:
+    listener:
+      simple:
+        prefetch: 1
 
 management:
   endpoint:
@@ -27,7 +31,7 @@ sqs-client-configuration:
   max-in-memory-size-in-mega-bytes: 16
 
 couch-db-client-configuration:
-  max-in-memory-size-in-mega-bytes: 16
+  max-in-memory-size-in-mega-bytes: 64
 
 ---
 

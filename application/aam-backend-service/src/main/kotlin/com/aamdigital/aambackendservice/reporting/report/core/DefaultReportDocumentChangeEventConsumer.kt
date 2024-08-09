@@ -26,7 +26,9 @@ class DefaultReportDocumentChangeEventConsumer(
 
     @RabbitListener(
         queues = [ReportQueueConfiguration.DOCUMENT_CHANGES_REPORT_QUEUE],
-        ackMode = "MANUAL"
+        ackMode = "MANUAL",
+        concurrency = "1-1",
+        batch = "1"
     )
     override fun consume(rawMessage: String, message: Message, channel: Channel): Mono<Unit> {
         val type = try {
@@ -70,19 +72,22 @@ class DefaultReportDocumentChangeEventConsumer(
                     documentChangeEvent = payload
                 )
                     .flatMap { affectedReports ->
-                        Mono.zip(
-                            affectedReports.map { report ->
-                                createReportCalculationUseCase
-                                    .createReportCalculation(
-                                        request = CreateReportCalculationRequest(
-                                            report = report,
-                                            args = mutableMapOf()
-                                        )
+                        Mono.zip(affectedReports.map { report ->
+                            createReportCalculationUseCase
+                                .createReportCalculation(
+                                    request = CreateReportCalculationRequest(
+                                        report = report,
+                                        args = mutableMapOf()
                                     )
-                            }
-                        ) { it.map { } }
+                                )
+                        }) {
+                            it.iterator()
+                        }
                     }
-                    .flatMap { Mono.empty() }
+                    .flatMap { Mono.empty<Unit>() }
+                    .doOnError {
+                        logger.error(it.localizedMessage)
+                    }
 
             }
 
