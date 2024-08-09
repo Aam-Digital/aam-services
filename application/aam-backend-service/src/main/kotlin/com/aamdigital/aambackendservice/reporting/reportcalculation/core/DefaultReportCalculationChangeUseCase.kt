@@ -36,11 +36,10 @@ class DefaultReportCalculationChangeUseCase(
                     .sortedBy { it.calculationCompleted }
             }
             .flatMap {
-                val existingDigest = it.last().attachments["data.json"]?.digest
+                val existingDigest = it.lastOrNull()?.attachments?.get("data.json")?.digest
                 val currentDigest = currentReportCalculation.attachments["data.json"]?.digest
 
-                if (it.isEmpty()
-                    || existingDigest != currentDigest
+                if (existingDigest != currentDigest
                 ) {
                     notificationService.sendNotifications(
                         report = currentReportCalculation.report,
