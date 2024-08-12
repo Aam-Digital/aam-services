@@ -5,7 +5,6 @@ import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.queue.core.QueueMessage
 import com.aamdigital.aambackendservice.reporting.domain.event.NotificationEvent
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpException
 import org.springframework.amqp.rabbit.core.RabbitTemplate
@@ -48,7 +47,7 @@ class DefaultNotificationEventPublisher(
         logger.trace(
             "[DefaultNotificationEventPublisher]: publish message to channel '{}' Payload: {}",
             channel,
-            jacksonObjectMapper().writeValueAsString(message)
+            objectMapper.writeValueAsString(message)
         )
 
         return message

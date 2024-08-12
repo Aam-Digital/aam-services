@@ -39,13 +39,13 @@ class DefaultReportDocumentChangeEventConsumer(
 
         when (type.qualifiedName) {
             DocumentChangeEvent::class.qualifiedName -> {
-                val payload = messageParser.getPayload(
+                val payload: DocumentChangeEvent = messageParser.getPayload(
                     body = rawMessage.toByteArray(),
                     kClass = DocumentChangeEvent::class
                 )
 
                 if (payload.documentId.startsWith("ReportConfig:")) {
-                    logger.info(payload.toString())
+                    logger.trace(payload.toString())
 
                     // todo if aggregationDefinition is different, skip trigger ReportCalculation
 
@@ -97,9 +97,11 @@ class DefaultReportDocumentChangeEventConsumer(
                     type.qualifiedName,
                 )
 
-                throw AmqpRejectAndDontRequeueException(
-                    "[NO_USECASE_CONFIGURED] Could not found matching use case for: ${type.qualifiedName}",
-                )
+                return Mono.error {
+                    throw AmqpRejectAndDontRequeueException(
+                        "[NO_USECASE_CONFIGURED] Could not found matching use case for: ${type.qualifiedName}",
+                    )
+                }
             }
         }
     }

@@ -63,6 +63,7 @@ dependencies {
     testImplementation("io.cucumber:cucumber-spring:7.14.0")
     testImplementation("org.junit.vintage:junit-vintage-engine:5.10.2")
 
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
     testImplementation("io.projectreactor:reactor-test")
 
