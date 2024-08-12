@@ -21,28 +21,30 @@ class DefaultCreateReportCalculationUseCase(
             args = request.args
         )
 
-        return reportingStorage.fetchCalculations(request.report).flatMap { reportCalculations ->
-            val i = reportCalculations.filter { reportCalculation ->
-                reportCalculation.status == ReportCalculationStatus.PENDING &&
-                        reportCalculation.args == calculation.args
-            }
+        return reportingStorage.fetchCalculations(request.report)
+            .flatMap { reportCalculations ->
+                val i = reportCalculations.filter { reportCalculation ->
+                    reportCalculation.status == ReportCalculationStatus.PENDING &&
+                            reportCalculation.args == calculation.args
+                }
 
-            if (i.isNotEmpty()) {
-                Mono.just(
-                    CreateReportCalculationResult.Success(
-                        DomainReference(
-                            id = i.first().id
+                if (i.isNotEmpty()) {
+                    Mono.just(
+                        CreateReportCalculationResult.Success(
+                            DomainReference(
+                                id = i.first().id
+                            )
                         )
                     )
-                )
-            } else {
-                reportingStorage.storeCalculation(calculation).map {
-                    handleResponse(it)
+                } else {
+                    reportingStorage.storeCalculation(calculation).map {
+                        handleResponse(it)
+                    }
                 }
             }
-        }.onErrorResume {
-            handleError(it)
-        }
+            .onErrorResume {
+                handleError(it)
+            }
     }
 
     private fun handleResponse(reportCalculation: ReportCalculation): CreateReportCalculationResult {
