@@ -7,15 +7,18 @@ import java.util.regex.Pattern
 @Service
 class SimpleReportSchemaGenerator : ReportSchemaGenerator {
     override fun getTableNamesByQuery(query: String): List<String> {
-        val pattern: Pattern = Pattern.compile("\\bas\\s+(\\w+)*(?=\\s*,|\\s*FROM)")
-        val fieldNames: MutableList<String> = ArrayList()
-        val matcher = pattern.matcher(query)
+        val selectFromPattern = "\\bSELECT\\b(.*?)\\bFROM\\b".toRegex()
+        val asPattern = "\\s(as|AS)\\s+(\\w+)\\b".toRegex()
 
-        while (matcher.find()) {
-            fieldNames.add(matcher.group(1))
+        val matchResult = selectFromPattern.find(query)
+
+        if (matchResult != null) {
+            val asFindings = asPattern.findAll(matchResult.groupValues[1])
+
+            return asFindings.map { row -> row.groupValues[2] }.toList()
+        } else {
+            return emptyList()
         }
-
-        return fieldNames
     }
 
     override fun getAffectedEntities(report: Report): List<String> {

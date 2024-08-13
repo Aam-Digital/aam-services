@@ -65,6 +65,9 @@ dependencies {
 
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
+    testImplementation("net.joshka:junit-json-params:5.10.2-r0")
+    testImplementation("org.eclipse.parsson:parsson:1.1.1")
+
     testImplementation("io.projectreactor:reactor-test")
 
     testImplementation("org.testcontainers:junit-jupiter:1.19.7") {
