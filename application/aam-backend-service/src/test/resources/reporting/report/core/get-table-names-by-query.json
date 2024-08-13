@@ -12,12 +12,12 @@
     ]
   },
   {
-    "query": "SELECT e._id AS event_id, e.date AS date, e.subject as event_title, e.category AS event_type FROM EventNote e WHERE e.date as eDate BETWEEN ? AND ?",
+    "query": "SELECT ask._id AS event_id, ask.date AS date, ask.subject_as as event_title_as, ask.category AS as_event_type FROM EventNote ask WHERE e.date as eDate BETWEEN ? AND ?",
     "fields": [
       "event_id",
       "date",
-      "event_title",
-      "event_type"
+      "event_title_as",
+      "as_event_type"
     ]
   },
   {
