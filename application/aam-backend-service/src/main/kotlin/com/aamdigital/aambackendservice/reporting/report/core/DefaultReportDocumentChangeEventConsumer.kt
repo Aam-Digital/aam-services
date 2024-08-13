@@ -26,7 +26,10 @@ class DefaultReportDocumentChangeEventConsumer(
 
     @RabbitListener(
         queues = [ReportQueueConfiguration.DOCUMENT_CHANGES_REPORT_QUEUE],
-        ackMode = "MANUAL"
+        ackMode = "MANUAL",
+        // avoid concurrent processing so that we do not trigger multiple calculations for same data unnecessarily
+        concurrency = "1-1",
+        batch = "1"
     )
     override fun consume(rawMessage: String, message: Message, channel: Channel): Mono<Unit> {
         val type = try {
@@ -37,13 +40,13 @@ class DefaultReportDocumentChangeEventConsumer(
 
         when (type.qualifiedName) {
             DocumentChangeEvent::class.qualifiedName -> {
-                val payload = messageParser.getPayload(
+                val payload: DocumentChangeEvent = messageParser.getPayload(
                     body = rawMessage.toByteArray(),
                     kClass = DocumentChangeEvent::class
                 )
 
                 if (payload.documentId.startsWith("ReportConfig:")) {
-                    logger.info(payload.toString())
+                    logger.trace(payload.toString())
 
                     // todo if aggregationDefinition is different, skip trigger ReportCalculation
 
@@ -70,19 +73,22 @@ class DefaultReportDocumentChangeEventConsumer(
                     documentChangeEvent = payload
                 )
                     .flatMap { affectedReports ->
-                        Mono.zip(
-                            affectedReports.map { report ->
-                                createReportCalculationUseCase
-                                    .createReportCalculation(
-                                        request = CreateReportCalculationRequest(
-                                            report = report,
-                                            args = mutableMapOf()
-                                        )
+                        Mono.zip(affectedReports.map { report ->
+                            createReportCalculationUseCase
+                                .createReportCalculation(
+                                    request = CreateReportCalculationRequest(
+                                        report = report,
+                                        args = mutableMapOf()
                                     )
-                            }
-                        ) { it.map { } }
+                                )
+                        }) {
+                            it.iterator()
+                        }
                     }
-                    .flatMap { Mono.empty() }
+                    .flatMap { Mono.empty<Unit>() }
+                    .doOnError {
+                        logger.error(it.localizedMessage)
+                    }
 
             }
 
@@ -92,9 +98,11 @@ class DefaultReportDocumentChangeEventConsumer(
                     type.qualifiedName,
                 )
 
-                throw AmqpRejectAndDontRequeueException(
-                    "[NO_USECASE_CONFIGURED] Could not found matching use case for: ${type.qualifiedName}",
-                )
+                return Mono.error {
+                    throw AmqpRejectAndDontRequeueException(
+                        "[NO_USECASE_CONFIGURED] Could not find matching use case for: ${type.qualifiedName}",
+                    )
+                }
             }
         }
     }

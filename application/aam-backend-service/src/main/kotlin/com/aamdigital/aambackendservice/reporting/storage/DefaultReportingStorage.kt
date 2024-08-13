@@ -101,6 +101,5 @@ class DefaultReportingStorage(
         calculationCompleted = entity.doc.calculationCompleted,
         args = entity.doc.args,
         attachments = entity.doc.attachments
-
     )
 }

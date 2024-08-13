@@ -7,7 +7,6 @@ import com.aamdigital.aambackendservice.reporting.changes.core.ChangeEventPublis
 import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
 import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpException
 import org.springframework.amqp.rabbit.core.RabbitTemplate
@@ -50,7 +49,7 @@ class DefaultChangeEventPublisher(
         logger.trace(
             "[DefaultDatabaseChangeEventPublisher]: publish message to channel '{}' Payload: {}",
             channel,
-            jacksonObjectMapper().writeValueAsString(message)
+            objectMapper.writeValueAsString(message)
         )
         return message
     }
@@ -82,7 +81,7 @@ class DefaultChangeEventPublisher(
         logger.trace(
             "[DefaultDocumentChangeEventPublisher]: publish message to channel '{}' Payload: {}",
             exchange,
-            jacksonObjectMapper().writeValueAsString(message)
+            objectMapper.writeValueAsString(message)
         )
         return message
     }
