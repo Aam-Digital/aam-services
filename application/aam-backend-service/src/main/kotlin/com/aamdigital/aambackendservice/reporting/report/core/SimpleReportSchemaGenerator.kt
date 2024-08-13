@@ -7,8 +7,8 @@ import java.util.regex.Pattern
 @Service
 class SimpleReportSchemaGenerator : ReportSchemaGenerator {
     override fun getTableNamesByQuery(query: String): List<String> {
-        val selectFromPattern = "(?i)\\bSELECT\\b(.*?)\\bFROM\\b".toRegex()
-        val asPattern = "(?i)(as|AS)\\s+(\\w+)\\b".toRegex()
+        val selectFromPattern = "\\bSELECT\\b(.*?)\\bFROM\\b".toRegex()
+        val asPattern = "\\s(as|AS)\\s+(\\w+)\\b".toRegex()
 
         val matchResult = selectFromPattern.find(query)
 
