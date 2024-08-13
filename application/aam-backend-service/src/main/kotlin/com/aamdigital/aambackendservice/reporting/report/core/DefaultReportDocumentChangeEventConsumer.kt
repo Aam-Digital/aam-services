@@ -27,6 +27,7 @@ class DefaultReportDocumentChangeEventConsumer(
     @RabbitListener(
         queues = [ReportQueueConfiguration.DOCUMENT_CHANGES_REPORT_QUEUE],
         ackMode = "MANUAL",
+        // avoid concurrent processing so that we do not trigger multiple calculations for same data unnecessarily
         concurrency = "1-1",
         batch = "1"
     )
@@ -99,7 +100,7 @@ class DefaultReportDocumentChangeEventConsumer(
 
                 return Mono.error {
                     throw AmqpRejectAndDontRequeueException(
-                        "[NO_USECASE_CONFIGURED] Could not found matching use case for: ${type.qualifiedName}",
+                        "[NO_USECASE_CONFIGURED] Could not find matching use case for: ${type.qualifiedName}",
                     )
                 }
             }
