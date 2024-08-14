@@ -19,8 +19,9 @@ class DefaultReportCalculator(
 ) : ReportCalculator {
 
     companion object {
-        const val DEFAULT_FROM_DATE = "0000-01-01T00:00:00.000Z"
+        const val DEFAULT_FROM_DATE = "0000-01-01"
         const val DEFAULT_TO_DATE = "9999-12-31T23:59:59.999Z"
+        const val INDEX_ISO_STRING_DATE_END = 10
     }
 
     override fun calculate(reportCalculation: ReportCalculation): Mono<ReportCalculation> {
@@ -55,11 +56,18 @@ class DefaultReportCalculator(
 
     private fun setToDateToLastMinuteOfDay(args: MutableMap<String, String>) {
         val toDateString = args["to"] ?: return
-        args["to"] = toDateString.substring(IntRange(0, 9)) + "T23:59:59.999Z"
+        args["to"] = toDateString.substring(0, INDEX_ISO_STRING_DATE_END) + "T23:59:59.999Z"
     }
 
-    private fun getReportCalculationArgs(neededArgs: List<String>, givenArgs: Map<String, String>): List<String> =
-        neededArgs
+    private fun getReportCalculationArgs(
+        neededArgs: List<String>,
+        givenArgs: MutableMap<String, String>
+    ): List<String> {
+        givenArgs["from"]?.let {
+            givenArgs["from"] = it.substring(0, INDEX_ISO_STRING_DATE_END)
+        }
+
+        return neededArgs
             .map {
                 givenArgs[it]
                     ?: getDefaultValue(it)
@@ -67,6 +75,7 @@ class DefaultReportCalculator(
                         "Argument $it is missing. All report args are needed for a successful ReportCalculation."
                     )
             }
+    }
 
     private fun getDefaultValue(arg: String): String? = when (arg) {
         "from" -> DEFAULT_FROM_DATE
