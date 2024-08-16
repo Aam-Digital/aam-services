@@ -131,12 +131,14 @@ paths:
         - in: query
           name: from
           description: start date for report period
+          required: false
           schema:
             type: string
             format: date
         - in: query
           name: to
           description: end date for report period
+          required: false
           schema:
             type: string
             format: date
