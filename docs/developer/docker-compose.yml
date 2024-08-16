@@ -69,6 +69,7 @@ services:
     image: quay.io/keycloak/keycloak:23.0
     volumes:
       - ~/docker-volumes/aam-digital/aam-services/keycloak/data:/opt/keycloak/data
+      - ~/docker-volumes/aam-digital/aam-services/keycloak/themes:/opt/keycloak/themes
     ports:
       - "8080:8080"
     environment:
