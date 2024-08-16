@@ -59,6 +59,19 @@ class DefaultReportCalculator(
         args["to"] = toDateString.substring(0, INDEX_ISO_STRING_DATE_END) + "T23:59:59.999Z"
     }
 
+    /**
+     * There are currently several versions of data in the database. In order to support all formats,
+     * the 'from' and 'to' args are adapted to sqs before the request
+     *
+     * Currently, these 'date' formats are used in our entities:
+     * - '2022-04-25'
+     * - '2022-04-25T22:00:000Z' (deprecated since some years, but still existing for old data)
+     *
+     * For sqs, we will cut the 'from' date always to '2022-04-25'
+     *
+     * If no date args are set, the default values are passed, to fetch all matching entities from all time
+     *
+     */
     private fun getReportCalculationArgs(
         neededArgs: List<String>,
         givenArgs: MutableMap<String, String>
