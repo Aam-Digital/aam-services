@@ -7,8 +7,8 @@ import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.module.kotlin.convertValue
 import org.slf4j.LoggerFactory
-import org.springframework.core.ParameterizedTypeReference
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
@@ -38,7 +38,10 @@ class DefaultCouchDbClient(
             .uri("/_all_dbs")
             .accept(MediaType.APPLICATION_JSON)
             .exchangeToMono { response ->
-                response.bodyToMono(object : ParameterizedTypeReference<List<String>>() {})
+                response.bodyToMono(String::class.java)
+            }
+            .map {
+                objectMapper.convertValue(it)
             }
     }
 
