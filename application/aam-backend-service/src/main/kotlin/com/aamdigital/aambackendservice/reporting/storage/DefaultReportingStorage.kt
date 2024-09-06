@@ -25,7 +25,7 @@ data class FetchReportCalculationsResponse(
     @JsonProperty("total_rows")
     val totalRows: Int,
     val offset: Int,
-    val rows: List<ReportCalculationEntity>,
+    val rows: List<ReportCalculationEntity> = emptyList(),
 )
 
 @Service
