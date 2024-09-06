@@ -33,6 +33,15 @@ management:
           - info
           - health
 
+aam-render-api-client-configuration:
+  base-path: https://pdf.aam-digital.dev
+  auth-config:
+    client-id: client
+    client-secret: secret
+    token-endpoint: /token
+    grant-type: client_credentials
+    scope: <needs-environment-configuration>
+
 couch-db-client-configuration:
   max-in-memory-size-in-mega-bytes: 16
   base-path: http://localhost:5984
