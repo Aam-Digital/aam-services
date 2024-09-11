@@ -68,6 +68,8 @@ abstract class SpringIntegrationTest {
             headers.set(HttpHeaders.AUTHORIZATION, "Bearer $authToken")
         }
 
+        headers.contentType = MediaType.APPLICATION_JSON
+
         val requestEntity = HttpEntity(body, headers)
 
         try {
