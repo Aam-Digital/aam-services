@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.export.di
 
 import com.aamdigital.aambackendservice.auth.core.AuthConfig
 import com.aamdigital.aambackendservice.auth.core.AuthProvider
+import com.aamdigital.aambackendservice.http.AamReadTimeoutHandler
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -16,7 +17,8 @@ import reactor.netty.http.client.HttpClient
 @ConfigurationProperties("aam-render-api-client-configuration")
 class AamRenderApiClientConfiguration(
     val basePath: String,
-    val authConfig: AuthConfig,
+    val authConfig: AuthConfig? = null,
+    val responseTimeoutInSeconds: Long = 30L,
     val maxInMemorySizeInMegaBytes: Int = 16,
 )
 
@@ -39,6 +41,8 @@ class AamRenderApiConfiguration {
                 }
                 .baseUrl(configuration.basePath)
                 .filter { request, next ->
+                    if (configuration.authConfig == null) return@filter next.exchange(request)
+
                     authProvider.fetchToken(configuration.authConfig).map {
                         ClientRequest.from(request).header(HttpHeaders.AUTHORIZATION, "Bearer ${it.token}").build()
                     }.flatMap {
@@ -46,6 +50,14 @@ class AamRenderApiConfiguration {
                     }
                 }
 
-        return clientBuilder.clientConnector(ReactorClientHttpConnector(HttpClient.create())).build()
+        return clientBuilder.clientConnector(
+            ReactorClientHttpConnector(
+                HttpClient
+                    .create()
+                    .doOnConnected {
+                        it.addHandlerLast(AamReadTimeoutHandler(configuration.responseTimeoutInSeconds))
+                    }
+            )
+        ).build()
     }
 }

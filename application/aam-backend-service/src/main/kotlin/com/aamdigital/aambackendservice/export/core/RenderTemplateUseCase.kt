@@ -1,10 +1,29 @@
 package com.aamdigital.aambackendservice.export.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.domain.DomainUseCase
+import com.aamdigital.aambackendservice.domain.UseCaseData
+import com.aamdigital.aambackendservice.domain.UseCaseErrorCode
+import com.aamdigital.aambackendservice.domain.UseCaseRequest
 import com.fasterxml.jackson.databind.JsonNode
 import org.springframework.core.io.buffer.DataBuffer
-import reactor.core.publisher.Mono
 
-interface RenderTemplateUseCase {
-    fun renderTemplate(templateRef: DomainReference, bodyData: JsonNode): Mono<DataBuffer>
+data class CreateRenderTemplateRequest(
+    val templateRef: DomainReference,
+    val bodyData: JsonNode,
+) : UseCaseRequest
+
+data class CreateRenderTemplateData(
+    val file: DataBuffer,
+) : UseCaseData
+
+enum class CreateRenderTemplateErrorCode : UseCaseErrorCode {
+    INTERNAL_SERVER_ERROR,
+    FETCH_TEMPLATE_FAILED_ERROR,
+    CREATE_RENDER_REQUEST_FAILED_ERROR,
+    FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
+    PARSE_RESPONSE_ERROR,
 }
+
+interface RenderTemplateUseCase :
+    DomainUseCase<CreateRenderTemplateRequest, CreateRenderTemplateData, CreateRenderTemplateErrorCode>

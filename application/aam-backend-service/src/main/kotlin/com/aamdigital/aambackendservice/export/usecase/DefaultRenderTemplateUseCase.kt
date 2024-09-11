@@ -1,7 +1,15 @@
 package com.aamdigital.aambackendservice.export.usecase
 
 import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.domain.UseCaseOutcome.Success
+import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.ExternalSystemException
+import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateData
+import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateErrorCode
+import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateRequest
+import com.aamdigital.aambackendservice.export.core.ExportTemplate
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.databind.JsonNode
@@ -11,10 +19,16 @@ import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
+import reactor.kotlin.core.publisher.switchIfEmpty
 
 data class RenderRequestResponseDto(
     val success: Boolean,
     val data: RenderRequestResponseDataDto,
+)
+
+data class RenderRequestErrorResponseDto(
+    val success: Boolean,
+    val error: String,
 )
 
 data class RenderRequestResponseDataDto(
@@ -26,31 +40,102 @@ class DefaultRenderTemplateUseCase(
     private val objectMapper: ObjectMapper,
     private val templateStorage: TemplateStorage,
 ) : RenderTemplateUseCase {
-    override fun renderTemplate(templateRef: DomainReference, bodyData: JsonNode): Mono<DataBuffer> {
+
+    override fun apply(
+        request: CreateRenderTemplateRequest
+    ): Mono<UseCaseOutcome<CreateRenderTemplateData, CreateRenderTemplateErrorCode>> {
+        return try {
+            return fetchTemplateRequest(request.templateRef)
+                .flatMap { template: ExportTemplate ->
+                    createRenderRequest(template.templateId, request.bodyData)
+                        .map { templateId: String ->
+                            parseRenderRequestResponse(templateId)
+                        }
+                }
+                .flatMap { renderId: String ->
+                    fetchRenderIdRequest(renderId)
+                }
+                .flatMap { file: DataBuffer ->
+                    Mono.just(
+                        Success(
+                            outcome = CreateRenderTemplateData(
+                                file = file
+                            )
+                        )
+                    )
+                }
+        } catch (it: Exception) {
+            handleError(it)
+        }
+    }
+
+    override fun handleError(
+        it: Throwable
+    ): Mono<UseCaseOutcome<CreateRenderTemplateData, CreateRenderTemplateErrorCode>> {
+        val errorCode: CreateRenderTemplateErrorCode = runCatching {
+            CreateRenderTemplateErrorCode.valueOf((it as AamException).code)
+        }.getOrDefault(CreateRenderTemplateErrorCode.INTERNAL_SERVER_ERROR)
+
+        return Mono.just(
+            UseCaseOutcome.Failure(
+                errorMessage = it.message,
+                errorCode = errorCode,
+                cause = it.cause
+            )
+        )
+    }
+
+    private fun fetchTemplateRequest(templateRef: DomainReference): Mono<ExportTemplate> {
         return templateStorage.fetchTemplate(templateRef)
-            .map { template ->
-                template.templateId
+            .switchIfEmpty {
+                Mono.error(
+                    ExternalSystemException(
+                        cause = null,
+                        message = "fetchTemplate() returned empty Mono",
+                        code = CreateRenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR.toString()
+                    )
+                )
             }
-            .flatMap { templateId ->
-                webClient.post()
-                    .uri("/render/$templateId")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaType.APPLICATION_JSON)
-                    .body(BodyInserters.fromValue(bodyData))
-                    .exchangeToMono {
-                        it.bodyToMono(String::class.java)
-                    }
-                    .map {
-                        parseRenderRequestResponse(it)
-                    }
-                    .flatMap { renderId ->
-                        webClient.get()
-                            .uri("/render/$renderId")
-                            .accept(MediaType.APPLICATION_JSON)
-                            .exchangeToMono {
-                                it.bodyToMono(DataBuffer::class.java)
-                            }
-                    }
+            .onErrorMap {
+                ExternalSystemException(
+                    cause = it,
+                    message = it.localizedMessage,
+                    code = CreateRenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR.toString()
+                )
+            }
+    }
+
+    private fun createRenderRequest(templateId: String, bodyData: JsonNode): Mono<String> {
+        return webClient.post()
+            .uri("/render/$templateId")
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(bodyData))
+            .exchangeToMono {
+                it.bodyToMono(String::class.java)
+            }
+            .onErrorMap {
+                ExternalSystemException(
+                    cause = it,
+                    message = it.localizedMessage,
+                    code = CreateRenderTemplateErrorCode.CREATE_RENDER_REQUEST_FAILED_ERROR.toString()
+                )
+            }
+    }
+
+    private fun fetchRenderIdRequest(renderId: String): Mono<DataBuffer> {
+        return webClient.get()
+            .uri("/render/$renderId")
+            .accept(MediaType.APPLICATION_JSON)
+            .exchangeToMono {
+                it.bodyToMono(DataBuffer::class.java)
+            }
+            .onErrorMap {
+                ExternalSystemException(
+                    cause = it,
+                    message = it.localizedMessage,
+                    code = FETCH_RENDER_ID_REQUEST_FAILED_ERROR.toString()
+                )
             }
     }
 
@@ -58,8 +143,19 @@ class DefaultRenderTemplateUseCase(
         try {
             val renderApiClientResponse = objectMapper.readValue(raw, RenderRequestResponseDto::class.java)
             return renderApiClientResponse.data.renderId
-        } catch (e: Exception) {
-            throw ExternalSystemException("Could not parse renderId from aam-render-api-client", e)
+        } catch (ex: Exception) {
+            val renderApiClientResponse = try {
+                val response = objectMapper.readValue(raw, RenderRequestErrorResponseDto::class.java)
+                response.error
+            } catch (ex: Exception) {
+                ex.localizedMessage
+            }
+
+            throw ExternalSystemException(
+                cause = ex,
+                message = renderApiClientResponse,
+                code = CreateRenderTemplateErrorCode.PARSE_RESPONSE_ERROR.toString()
+            )
         }
     }
 }
