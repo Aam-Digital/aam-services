@@ -23,6 +23,7 @@ object TestContainers {
         CONTAINER_KEYCLOAK.start()
         CONTAINER_COUCHDB.start()
         CONTAINER_SQS.start()
+        CONTAINER_PDF.start()
         registry.add(
             "spring.security.oauth2.resourceserver.jwt.issuer-uri"
         ) {
@@ -37,6 +38,17 @@ object TestContainers {
             "sqs-client-configuration.base-path",
         ) {
             "http://localhost:${CONTAINER_SQS.getMappedPort(4984)}"
+        }
+        registry.add(
+            "aam-render-api-client-configuration.base-path",
+        ) {
+            "http://localhost:${CONTAINER_PDF.getMappedPort(4000)}"
+        }
+        registry.add(
+            "aam-render-api-client-configuration.auth-config.token-endpoint",
+        ) {
+            "http://localhost:${CONTAINER_KEYCLOAK.getMappedPort(8080)}" +
+                    "/realms/dummy-realm/protocol/openid-connect/token"
         }
     }
 
@@ -93,5 +105,18 @@ object TestContainers {
                 )
             )
             .withExposedPorts(4984)
+
+    @Container
+    @JvmStatic
+    val CONTAINER_PDF: GenericContainer<*> =
+        GenericContainer(
+            DockerImageName
+                .parse("carbone/carbone-ee")
+                .withTag("latest")
+        )
+            .withImagePullPolicy(PullPolicy.alwaysPull())
+            .withNetwork(network)
+            .withNetworkAliases("pdf")
+            .withExposedPorts(4000)
 
 }

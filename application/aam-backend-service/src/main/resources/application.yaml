@@ -69,11 +69,12 @@ logging:
 
 aam-render-api-client-configuration:
   base-path: https://pdf.aam-digital.dev
-# client-id: <needs-environment-configuration>
-# client-secret: <needs-environment-configuration>
-# token-endpoint: <needs-environment-configuration>
-# grant-type: <needs-environment-configuration>
-# scope: <needs-environment-configuration>
+#  auth-config:
+#   client-id: <needs-environment-configuration>
+#   client-secret: <needs-environment-configuration>
+#   token-endpoint: <needs-environment-configuration>
+#   grant-type: <needs-environment-configuration>
+#   scope: <needs-environment-configuration>
 
 couch-db-client-configuration:
   base-path: http://localhost:5984

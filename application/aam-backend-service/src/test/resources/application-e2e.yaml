@@ -34,13 +34,12 @@ management:
           - health
 
 aam-render-api-client-configuration:
-  base-path: https://pdf.aam-digital.dev
   auth-config:
-    client-id: client
-    client-secret: secret
-    token-endpoint: /token
+    client-id: dummy-client
+    client-secret: client-secret
+    token-endpoint: /realms/dummy-realm/protocol/openid-connect/token
     grant-type: client_credentials
-    scope: <needs-environment-configuration>
+    scope:
 
 couch-db-client-configuration:
   max-in-memory-size-in-mega-bytes: 16

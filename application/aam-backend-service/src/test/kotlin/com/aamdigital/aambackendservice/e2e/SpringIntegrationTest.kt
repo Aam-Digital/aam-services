@@ -12,14 +12,18 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.context.ImportTestcontainers
 import org.springframework.boot.web.client.RestTemplateBuilder
+import org.springframework.core.io.Resource
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatusCode
+import org.springframework.http.MediaType
+import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
+
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT
@@ -70,6 +74,38 @@ abstract class SpringIntegrationTest {
             restTemplate.exchange(
                 url,
                 method,
+                requestEntity,
+                String::class.java,
+            ).let {
+                latestResponseStatus = it.statusCode
+                latestResponseBody = it.body
+            }
+        } catch (ex: HttpClientErrorException) {
+            latestResponseStatus = ex.statusCode
+            latestResponseBody = ex.responseBodyAsString
+        }
+    }
+
+    fun exchangeMultipart(url: String, file: Resource) {
+        val headers = HttpHeaders()
+
+        if (authToken != null) {
+            headers.set(HttpHeaders.AUTHORIZATION, "Bearer $authToken")
+        }
+
+        headers.contentType = MediaType.MULTIPART_FORM_DATA
+        headers.accept = listOf(MediaType.APPLICATION_JSON)
+
+        val builder = MultipartBodyBuilder()
+
+        builder
+            .part("template", file)
+
+        val requestEntity = HttpEntity(builder.build(), headers)
+
+        try {
+            restTemplate.postForEntity(
+                url,
                 requestEntity,
                 String::class.java,
             ).let {

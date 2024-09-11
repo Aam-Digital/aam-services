@@ -8,6 +8,7 @@ import io.cucumber.spring.CucumberContextConfiguration
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
+import org.springframework.core.io.ClassPathResource
 import org.springframework.http.HttpMethod
 import java.io.File
 
@@ -76,6 +77,12 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
     @Throws(Throwable::class)
     fun `the client issues POST endpoint with body`(endpoint: String, body: String) {
         exchange(endpoint, HttpMethod.POST, File("src/test/resources/database/documents/$body.json").readText())
+    }
+
+    @When("the client calls POST {} with file {}")
+    @Throws(Throwable::class)
+    fun `the client issues POST endpoint with file`(endpoint: String, file: String) {
+        exchangeMultipart(endpoint, ClassPathResource("files/$file"))
     }
 
     @Then("the client receives a json array")
