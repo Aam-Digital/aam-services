@@ -58,6 +58,7 @@ abstract class SpringIntegrationTest {
     )
 
     var latestResponseBody: String? = null
+    var latestResponseHeaders: HttpHeaders? = null
     var latestResponseStatus: HttpStatusCode? = null
     var authToken: String? = null
 
@@ -81,10 +82,12 @@ abstract class SpringIntegrationTest {
             ).let {
                 latestResponseStatus = it.statusCode
                 latestResponseBody = it.body
+                latestResponseHeaders = it.headers
             }
         } catch (ex: HttpClientErrorException) {
             latestResponseStatus = ex.statusCode
             latestResponseBody = ex.responseBodyAsString
+            latestResponseHeaders = ex.responseHeaders
         }
     }
 
@@ -113,10 +116,12 @@ abstract class SpringIntegrationTest {
             ).let {
                 latestResponseStatus = it.statusCode
                 latestResponseBody = it.body
+                latestResponseHeaders = it.headers
             }
         } catch (ex: HttpClientErrorException) {
             latestResponseStatus = ex.statusCode
             latestResponseBody = ex.responseBodyAsString
+            latestResponseHeaders = ex.responseHeaders
         }
     }
 
@@ -124,6 +129,10 @@ abstract class SpringIntegrationTest {
         return latestResponseBody?.let {
             objectMapper.readValue<ObjectNode>(it)
         }
+    }
+
+    fun parseHeader(name: String): List<String> {
+        return latestResponseHeaders?.getOrElse(name) { emptyList() } ?: emptyList()
     }
 
     fun parseBodyToArrayNode(): ArrayNode? {

@@ -103,6 +103,13 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
         Assert.assertEquals(statusCode, latestResponseStatus?.value())
     }
 
+    @Then("the client receives value {} for header {}")
+    @Throws(Throwable::class)
+    fun `the client receives value for header `(value: String, property: String) {
+        Assert.assertEquals(true, parseHeader(property).isNotEmpty())
+        Assert.assertEquals(value, parseHeader(property).first())
+    }
+
     @Then("the client receives value {} for property {}")
     @Throws(Throwable::class)
     fun `the client receives value for property`(value: String, property: String) {

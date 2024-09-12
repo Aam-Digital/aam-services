@@ -1,0 +1,10 @@
+{
+  "_id": "ExportTemplate:2",
+  "templateId": "9545b4b168c892e32367e499fa913ce85c738562b0fd3bfc3a4023204adcebf0",
+  "title": "ExportTemplate 2",
+  "description": "This is a test ExportTemplate",
+  "applicableForEntityTypes": [
+    "School",
+    "Child"
+  ]
+}
