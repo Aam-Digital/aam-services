@@ -14,6 +14,16 @@ data class KeycloakTokenResponse(
     @JsonProperty("access_token") val accessToken: String,
 )
 
+/**
+ * This class is an implementation of the AuthProvider interface and is responsible for
+ * fetching tokens from a Keycloak authentication server. Used for accessing
+ * third party systems and services.
+ *
+ * Not related to authentication mechanics related to endpoints we provide to others.
+ *
+ * @property webClient The WebClient used for making HTTP requests.
+ * @property objectMapper The ObjectMapper used for parsing JSON responses.
+ */
 class KeycloakAuthProvider(
     val webClient: WebClient,
     val objectMapper: ObjectMapper,

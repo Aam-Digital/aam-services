@@ -8,16 +8,16 @@ import com.aamdigital.aambackendservice.domain.UseCaseRequest
 import com.fasterxml.jackson.databind.JsonNode
 import org.springframework.core.io.buffer.DataBuffer
 
-data class CreateRenderTemplateRequest(
+data class RenderTemplateRequest(
     val templateRef: DomainReference,
     val bodyData: JsonNode,
 ) : UseCaseRequest
 
-data class CreateRenderTemplateData(
+data class RenderTemplateData(
     val file: DataBuffer,
 ) : UseCaseData
 
-enum class CreateRenderTemplateErrorCode : UseCaseErrorCode {
+enum class RenderTemplateErrorCode : UseCaseErrorCode {
     INTERNAL_SERVER_ERROR,
     FETCH_TEMPLATE_FAILED_ERROR,
     CREATE_RENDER_REQUEST_FAILED_ERROR,
@@ -26,4 +26,4 @@ enum class CreateRenderTemplateErrorCode : UseCaseErrorCode {
 }
 
 interface RenderTemplateUseCase :
-    DomainUseCase<CreateRenderTemplateRequest, CreateRenderTemplateData, CreateRenderTemplateErrorCode>
+    DomainUseCase<RenderTemplateRequest, RenderTemplateData, RenderTemplateErrorCode>

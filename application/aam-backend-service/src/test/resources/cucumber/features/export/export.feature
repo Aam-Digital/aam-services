@@ -2,7 +2,6 @@ Feature: the export endpoint handles template creation
 
     Scenario: client makes call to POST /export/template with pdf-test-file and receives an template id
         Given database app is created
-        Given database report-calculation is created
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls POST /v1/export/template with file pdf-test-file-1.pdf
         Then the client receives an json object
@@ -11,7 +10,6 @@ Feature: the export endpoint handles template creation
 
     Scenario: client makes call to POST /export/template with docx-test-file and receives an template id
         Given database app is created
-        Given database report-calculation is created
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls POST /v1/export/template with file docx-test-file-1.docx
         Then the client receives an json object
@@ -20,14 +18,12 @@ Feature: the export endpoint handles template creation
 
     Scenario: client makes call to POST /export/template without token and receives Unauthorized
         Given database app is created
-        Given database report-calculation is created
         When the client calls POST /v1/export/template with file pdf-test-file-1.pdf
         Then the client receives an json object
         Then the client receives status code of 401
 
     Scenario: client makes call to POST /export/render/ExportTemplate:1 and receives an template id
         Given database app is created
-        Given database report-calculation is created
         Given document ExportTemplate:1 is stored in database app
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls POST /v1/export/render/ExportTemplate:1 with body RenderRequest:1
@@ -36,7 +32,6 @@ Feature: the export endpoint handles template creation
 
     Scenario: client makes call to POST /export/render/ExportTemplate:2 and receives an template id
         Given database app is created
-        Given database report-calculation is created
         Given document ExportTemplate:2 is stored in database app
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls POST /v1/export/render/ExportTemplate:2 with body RenderRequest:1
@@ -45,7 +40,6 @@ Feature: the export endpoint handles template creation
 
     Scenario: client makes call to POST /export/render/ExportTemplate:2 and receives an docx
         Given database app is created
-        Given database report-calculation is created
         Given document ExportTemplate:2 is stored in database app
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls POST /v1/export/render/ExportTemplate:2 with body RenderRequest:2

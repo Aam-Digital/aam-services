@@ -6,9 +6,9 @@ import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.error.NetworkException
-import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateErrorCode
-import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.ExportTemplate
+import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode
+import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.databind.JsonNode
@@ -64,14 +64,14 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
         // Act & Assert
         StepVerifier.create(
             service.execute(
-                CreateRenderTemplateRequest(
+                RenderTemplateRequest(
                     templateRef, bodyData
                 )
             )
         ).assertNext {
             assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
             assertEquals(
-                CreateRenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR, (it as UseCaseOutcome.Failure).errorCode
+                RenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR, (it as UseCaseOutcome.Failure).errorCode
             )
         }.verifyComplete()
     }
@@ -95,7 +95,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
         // when
         StepVerifier.create(
             service.execute(
-                CreateRenderTemplateRequest(
+                RenderTemplateRequest(
                     templateRef, bodyData
                 )
             )
@@ -103,7 +103,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             // then
             assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
             assertEquals(
-                CreateRenderTemplateErrorCode.PARSE_RESPONSE_ERROR, (it as UseCaseOutcome.Failure).errorCode
+                RenderTemplateErrorCode.PARSE_RESPONSE_ERROR, (it as UseCaseOutcome.Failure).errorCode
             )
         }.verifyComplete()
     }
@@ -121,7 +121,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
         // when
         StepVerifier.create(
             service.execute(
-                CreateRenderTemplateRequest(
+                RenderTemplateRequest(
                     templateRef, bodyData
                 )
             )
@@ -129,7 +129,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             // then
             assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
             assertEquals(
-                CreateRenderTemplateErrorCode.INTERNAL_SERVER_ERROR, (it as UseCaseOutcome.Failure).errorCode
+                RenderTemplateErrorCode.INTERNAL_SERVER_ERROR, (it as UseCaseOutcome.Failure).errorCode
             )
         }.verifyComplete()
     }
@@ -145,7 +145,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
         // when
         StepVerifier.create(
             service.execute(
-                CreateRenderTemplateRequest(
+                RenderTemplateRequest(
                     templateRef, bodyData
                 )
             )
@@ -153,7 +153,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             // then
             assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
             assertEquals(
-                CreateRenderTemplateErrorCode.INTERNAL_SERVER_ERROR, (it as UseCaseOutcome.Failure).errorCode
+                RenderTemplateErrorCode.INTERNAL_SERVER_ERROR, (it as UseCaseOutcome.Failure).errorCode
             )
         }.verifyComplete()
     }
@@ -169,7 +169,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
         // when
         StepVerifier.create(
             service.execute(
-                CreateRenderTemplateRequest(
+                RenderTemplateRequest(
                     templateRef, bodyData
                 )
             )
@@ -177,7 +177,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             // then
             assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
             assertEquals(
-                CreateRenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR, (it as UseCaseOutcome.Failure).errorCode
+                RenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR, (it as UseCaseOutcome.Failure).errorCode
             )
         }.verifyComplete()
     }
@@ -228,7 +228,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
 
         StepVerifier.create(
             service.execute(
-                CreateRenderTemplateRequest(
+                RenderTemplateRequest(
                     templateRef, bodyData
                 )
             )
@@ -270,7 +270,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
 
         StepVerifier.create(
             service.execute(
-                CreateRenderTemplateRequest(
+                RenderTemplateRequest(
                     templateRef, bodyData
                 )
             )
@@ -301,7 +301,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
 
         StepVerifier.create(
             service.execute(
-                CreateRenderTemplateRequest(
+                RenderTemplateRequest(
                     templateRef, bodyData
                 )
             )
@@ -317,7 +317,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
                     .isInstanceOf(NetworkException::class.java)
 
                 assertThat(response.errorCode)
-                    .isEqualTo(CreateRenderTemplateErrorCode.CREATE_RENDER_REQUEST_FAILED_ERROR)
+                    .isEqualTo(RenderTemplateErrorCode.CREATE_RENDER_REQUEST_FAILED_ERROR)
             }
             .verifyComplete()
     }
@@ -352,7 +352,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
 
         StepVerifier.create(
             service.execute(
-                CreateRenderTemplateRequest(
+                RenderTemplateRequest(
                     templateRef, bodyData
                 )
             )
@@ -368,7 +368,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
                     .isInstanceOf(NetworkException::class.java)
 
                 assertThat(response.errorCode)
-                    .isEqualTo(CreateRenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR)
+                    .isEqualTo(RenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR)
             }
             .verifyComplete()
     }

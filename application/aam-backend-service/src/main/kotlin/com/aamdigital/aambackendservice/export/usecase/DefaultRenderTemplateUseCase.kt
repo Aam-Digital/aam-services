@@ -5,11 +5,11 @@ import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome.Success
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.ExternalSystemException
-import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateData
-import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateErrorCode
-import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
-import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.ExportTemplate
+import com.aamdigital.aambackendservice.export.core.RenderTemplateData
+import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode
+import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.databind.JsonNode
@@ -42,8 +42,8 @@ class DefaultRenderTemplateUseCase(
 ) : RenderTemplateUseCase {
 
     override fun apply(
-        request: CreateRenderTemplateRequest
-    ): Mono<UseCaseOutcome<CreateRenderTemplateData, CreateRenderTemplateErrorCode>> {
+        request: RenderTemplateRequest
+    ): Mono<UseCaseOutcome<RenderTemplateData, RenderTemplateErrorCode>> {
         return try {
             return fetchTemplateRequest(request.templateRef)
                 .flatMap { template: ExportTemplate ->
@@ -58,7 +58,7 @@ class DefaultRenderTemplateUseCase(
                 .flatMap { file: DataBuffer ->
                     Mono.just(
                         Success(
-                            outcome = CreateRenderTemplateData(
+                            outcome = RenderTemplateData(
                                 file = file
                             )
                         )
@@ -71,10 +71,10 @@ class DefaultRenderTemplateUseCase(
 
     override fun handleError(
         it: Throwable
-    ): Mono<UseCaseOutcome<CreateRenderTemplateData, CreateRenderTemplateErrorCode>> {
-        val errorCode: CreateRenderTemplateErrorCode = runCatching {
-            CreateRenderTemplateErrorCode.valueOf((it as AamException).code)
-        }.getOrDefault(CreateRenderTemplateErrorCode.INTERNAL_SERVER_ERROR)
+    ): Mono<UseCaseOutcome<RenderTemplateData, RenderTemplateErrorCode>> {
+        val errorCode: RenderTemplateErrorCode = runCatching {
+            RenderTemplateErrorCode.valueOf((it as AamException).code)
+        }.getOrDefault(RenderTemplateErrorCode.INTERNAL_SERVER_ERROR)
 
         return Mono.just(
             UseCaseOutcome.Failure(
@@ -92,7 +92,7 @@ class DefaultRenderTemplateUseCase(
                     ExternalSystemException(
                         cause = null,
                         message = "fetchTemplate() returned empty Mono",
-                        code = CreateRenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR.toString()
+                        code = RenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR.toString()
                     )
                 )
             }
@@ -100,7 +100,7 @@ class DefaultRenderTemplateUseCase(
                 ExternalSystemException(
                     cause = it,
                     message = it.localizedMessage,
-                    code = CreateRenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR.toString()
+                    code = RenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR.toString()
                 )
             }
     }
@@ -118,7 +118,7 @@ class DefaultRenderTemplateUseCase(
                 ExternalSystemException(
                     cause = it,
                     message = it.localizedMessage,
-                    code = CreateRenderTemplateErrorCode.CREATE_RENDER_REQUEST_FAILED_ERROR.toString()
+                    code = RenderTemplateErrorCode.CREATE_RENDER_REQUEST_FAILED_ERROR.toString()
                 )
             }
     }
@@ -154,7 +154,7 @@ class DefaultRenderTemplateUseCase(
             throw ExternalSystemException(
                 cause = ex,
                 message = renderApiClientResponse,
-                code = CreateRenderTemplateErrorCode.PARSE_RESPONSE_ERROR.toString()
+                code = RenderTemplateErrorCode.PARSE_RESPONSE_ERROR.toString()
             )
         }
     }

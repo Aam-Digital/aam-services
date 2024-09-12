@@ -6,11 +6,11 @@ import com.aamdigital.aambackendservice.domain.UseCaseOutcome.Success
 import com.aamdigital.aambackendservice.error.ExternalSystemException
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
-import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateErrorCode
-import com.aamdigital.aambackendservice.export.core.CreateRenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.CreateTemplateErrorCode
 import com.aamdigital.aambackendservice.export.core.CreateTemplateRequest
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase
+import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode
+import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.fasterxml.jackson.databind.JsonNode
 import org.springframework.beans.factory.annotation.Qualifier
@@ -40,6 +40,16 @@ data class CreateTemplateResponseDto(
     val templateId: String,
 )
 
+/**
+ * REST controller responsible for handling export operations related to templates.
+ * Provides endpoints for checking status, posting a new template, and rendering a template.
+ *
+ * In Aam, this API is especially used for generating PDFs for an entity.
+ *
+ * @param webClient The WebClient used to interact with external services.
+ * @param createTemplateUseCase Use case for creating a new template.
+ * @param renderTemplateUseCase Use case for rendering an existing template.
+ */
 @RestController
 @RequestMapping("/v1/export")
 @Validated
@@ -88,7 +98,7 @@ class TemplateExportController(
         @RequestBody templateData: JsonNode,
     ): Mono<ResponseEntity<DataBuffer>> {
         return renderTemplateUseCase.execute(
-            CreateRenderTemplateRequest(
+            RenderTemplateRequest(
                 templateRef = DomainReference(templateId),
                 bodyData = templateData
             )
@@ -136,13 +146,13 @@ class TemplateExportController(
         )
     }
 
-    private fun getError(errorCode: CreateRenderTemplateErrorCode, message: String): Throwable =
+    private fun getError(errorCode: RenderTemplateErrorCode, message: String): Throwable =
         when (errorCode) {
-            CreateRenderTemplateErrorCode.INTERNAL_SERVER_ERROR -> throw InternalServerException(message)
-            CreateRenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR -> throw ExternalSystemException(message)
-            CreateRenderTemplateErrorCode.CREATE_RENDER_REQUEST_FAILED_ERROR -> throw ExternalSystemException(message)
-            CreateRenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR -> throw ExternalSystemException(message)
-            CreateRenderTemplateErrorCode.PARSE_RESPONSE_ERROR -> throw ExternalSystemException(message)
+            RenderTemplateErrorCode.INTERNAL_SERVER_ERROR -> throw InternalServerException(message)
+            RenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR -> throw ExternalSystemException(message)
+            RenderTemplateErrorCode.CREATE_RENDER_REQUEST_FAILED_ERROR -> throw ExternalSystemException(message)
+            RenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR -> throw ExternalSystemException(message)
+            RenderTemplateErrorCode.PARSE_RESPONSE_ERROR -> throw ExternalSystemException(message)
         }
 
     private fun getError(errorCode: CreateTemplateErrorCode): Throwable =
