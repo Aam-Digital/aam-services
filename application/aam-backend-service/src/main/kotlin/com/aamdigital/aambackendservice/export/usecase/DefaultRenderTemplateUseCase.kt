@@ -14,7 +14,9 @@ import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import org.springframework.core.io.buffer.DataBuffer
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
@@ -41,12 +43,21 @@ class DefaultRenderTemplateUseCase(
     private val templateStorage: TemplateStorage,
 ) : RenderTemplateUseCase {
 
+    private data class FileResponse(
+        val file: DataBuffer,
+        val headers: HttpHeaders,
+    )
+
     override fun apply(
         request: RenderTemplateRequest
     ): Mono<UseCaseOutcome<RenderTemplateData, RenderTemplateErrorCode>> {
         return try {
             return fetchTemplateRequest(request.templateRef)
                 .flatMap { template: ExportTemplate ->
+                    val fileName = template.targetFileName
+
+                    (request.bodyData as ObjectNode).put("reportName", fileName)
+
                     createRenderRequest(template.templateId, request.bodyData)
                         .map { templateId: String ->
                             parseRenderRequestResponse(templateId)
@@ -55,11 +66,12 @@ class DefaultRenderTemplateUseCase(
                 .flatMap { renderId: String ->
                     fetchRenderIdRequest(renderId)
                 }
-                .flatMap { file: DataBuffer ->
+                .flatMap { fileResponse: FileResponse ->
                     Mono.just(
                         Success(
                             outcome = RenderTemplateData(
-                                file = file
+                                file = fileResponse.file,
+                                responseHeaders = fileResponse.headers
                             )
                         )
                     )
@@ -123,12 +135,23 @@ class DefaultRenderTemplateUseCase(
             }
     }
 
-    private fun fetchRenderIdRequest(renderId: String): Mono<DataBuffer> {
+    private fun fetchRenderIdRequest(renderId: String): Mono<FileResponse> {
         return webClient.get()
             .uri("/render/$renderId")
             .accept(MediaType.APPLICATION_JSON)
-            .exchangeToMono {
-                it.bodyToMono(DataBuffer::class.java)
+            .exchangeToMono { exchange ->
+                exchange.bodyToMono(DataBuffer::class.java).map { dataBuffer ->
+                    val responseHeaders = exchange.headers().asHttpHeaders()
+
+                    val forwardHeaders = HttpHeaders()
+                    forwardHeaders.contentType = responseHeaders.contentType
+                    forwardHeaders["Content-Disposition"] = responseHeaders["Content-Disposition"]
+
+                    FileResponse(
+                        file = dataBuffer,
+                        headers = forwardHeaders
+                    )
+                }
             }
             .onErrorMap {
                 ExternalSystemException(

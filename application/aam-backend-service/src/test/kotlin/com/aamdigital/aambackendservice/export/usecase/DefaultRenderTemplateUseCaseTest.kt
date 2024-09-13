@@ -12,7 +12,7 @@ import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.TextNode
+import com.fasterxml.jackson.module.kotlin.readValue
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.mockwebserver.MockResponse
 import okio.Buffer
@@ -56,7 +56,11 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure when fetchTemplate returns an error`() {
         // Arrange
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = TextNode("body-data")
+        val bodyData: JsonNode = objectMapper.readValue(
+            """
+                {"foo":"bar"}
+            """.trimIndent()
+        )
         val exception = InternalServerException(message = "fetchTemplate error", cause = null)
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.error(exception))
@@ -80,10 +84,15 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure when json response could not be parsed`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = TextNode("body-data")
+        val bodyData: JsonNode = objectMapper.readValue(
+            """
+                {"foo":"bar"}
+            """.trimIndent()
+        )
         val exportTemplate = ExportTemplate(
             id = "export-id",
             templateId = "export-template-id",
+            targetFileName = "target_file_name.file",
             title = "export-title",
             description = "export-description",
             applicableForEntityTypes = emptyList()
@@ -112,7 +121,11 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure when fetchTemplateRequest throws exception`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = TextNode("body-data")
+        val bodyData: JsonNode = objectMapper.readValue(
+            """
+                {"foo":"bar"}
+            """.trimIndent()
+        )
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenAnswer {
             throw InvalidArgumentException()
@@ -138,7 +151,11 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure when fetchTemplateRequest returns Mono error`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = TextNode("body-data")
+        val bodyData: JsonNode = objectMapper.readValue(
+            """
+                {"foo":"bar"}
+            """.trimIndent()
+        )
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.error(RuntimeException()))
 
@@ -162,7 +179,11 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure when fetchTemplateRequest returns Mono empty`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = TextNode("body-data")
+        val bodyData: JsonNode = objectMapper.readValue(
+            """
+                {"foo":"bar"}
+            """.trimIndent()
+        )
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.empty())
 
@@ -186,10 +207,15 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Success with DataBuffer`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = TextNode("body-data")
+        val bodyData: JsonNode = objectMapper.readValue(
+            """
+                {"foo":"bar"}
+            """.trimIndent()
+        )
         val exportTemplate = ExportTemplate(
             id = "export-id",
             templateId = "export-template-id",
+            targetFileName = "target_file_name.file",
             title = "export-title",
             description = "export-description",
             applicableForEntityTypes = emptyList()
@@ -246,10 +272,15 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure with parsed error message`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = TextNode("body-data")
+        val bodyData: JsonNode = objectMapper.readValue(
+            """
+                {"foo":"bar"}
+            """.trimIndent()
+        )
         val exportTemplate = ExportTemplate(
             id = "export-id",
             templateId = "export-template-id",
+            targetFileName = "target_file_name.file",
             title = "export-title",
             description = "export-description",
             applicableForEntityTypes = emptyList()
@@ -288,10 +319,15 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure when createRenderRequest returns no response`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = TextNode("body-data")
+        val bodyData: JsonNode = objectMapper.readValue(
+            """
+                {"foo":"bar"}
+            """.trimIndent()
+        )
         val exportTemplate = ExportTemplate(
             id = "export-id",
             templateId = "export-template-id",
+            targetFileName = "target_file_name.file",
             title = "export-title",
             description = "export-description",
             applicableForEntityTypes = emptyList()
@@ -326,10 +362,15 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure when fetchRenderIdRequest fails`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = TextNode("body-data")
+        val bodyData: JsonNode = objectMapper.readValue(
+            """
+                {"foo":"bar"}
+            """.trimIndent()
+        )
         val exportTemplate = ExportTemplate(
             id = "export-id",
             templateId = "export-template-id",
+            targetFileName = "target_file_name.file",
             title = "export-title",
             description = "export-description",
             applicableForEntityTypes = emptyList()

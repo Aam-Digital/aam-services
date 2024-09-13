@@ -12,6 +12,7 @@ data class ExportTemplateDto(
     @JsonProperty("_id")
     val id: String,
     val templateId: String,
+    val targetFileName: String,
     val title: String,
     val description: String,
     val applicableForEntityTypes: List<String>,
@@ -37,6 +38,7 @@ class DefaultTemplateStorage(
 
     private fun toEntity(dto: ExportTemplateDto): ExportTemplate = ExportTemplate(
         id = dto.id,
+        targetFileName = dto.targetFileName,
         templateId = dto.templateId,
         title = dto.title,
         description = dto.description,

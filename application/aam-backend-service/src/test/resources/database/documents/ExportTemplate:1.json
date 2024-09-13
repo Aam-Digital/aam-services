@@ -1,6 +1,7 @@
 {
   "_id": "ExportTemplate:1",
   "templateId": "042ca26f8ca2eb3df4a6ee4ad0dc1f509928f7e83af24c01fd44362a2cc5921f",
+  "targetFileName": "test.file",
   "title": "ExportTemplate 1",
   "description": "This is a test ExportTemplate",
   "applicableForEntityTypes": [

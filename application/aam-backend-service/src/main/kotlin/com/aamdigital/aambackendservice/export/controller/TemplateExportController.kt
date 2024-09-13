@@ -9,6 +9,9 @@ import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.export.core.CreateTemplateErrorCode
 import com.aamdigital.aambackendservice.export.core.CreateTemplateRequest
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase
+import com.aamdigital.aambackendservice.export.core.FetchTemplateErrorCode
+import com.aamdigital.aambackendservice.export.core.FetchTemplateRequest
+import com.aamdigital.aambackendservice.export.core.FetchTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode
 import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
@@ -29,7 +32,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.function.client.bodyToMono
 import reactor.core.publisher.Mono
 
 
@@ -48,6 +50,7 @@ data class CreateTemplateResponseDto(
  *
  * @param webClient The WebClient used to interact with external services.
  * @param createTemplateUseCase Use case for creating a new template.
+ * @param fetchTemplateUseCase Use case for fetching an existing template (file).
  * @param renderTemplateUseCase Use case for rendering an existing template.
  */
 @RestController
@@ -56,15 +59,9 @@ data class CreateTemplateResponseDto(
 class TemplateExportController(
     @Qualifier("aam-render-api-client") val webClient: WebClient,
     val createTemplateUseCase: CreateTemplateUseCase,
+    val fetchTemplateUseCase: FetchTemplateUseCase,
     val renderTemplateUseCase: RenderTemplateUseCase,
 ) {
-
-    @GetMapping("/status")
-    fun getStatus(): Mono<String> {
-        return webClient.get().uri("/status").exchangeToMono {
-            it.bodyToMono()
-        }
-    }
 
     @PostMapping("/template")
     fun postTemplate(
@@ -91,9 +88,33 @@ class TemplateExportController(
             }
     }
 
+    @GetMapping("/template/{templateId}")
+    fun fetchTemplate(
+        @PathVariable templateId: String,
+    ): Mono<ResponseEntity<DataBuffer>> {
+        return fetchTemplateUseCase.execute(
+            FetchTemplateRequest(
+                templateRef = DomainReference(templateId),
+            )
+        ).handle { result, sink ->
+            when (result) {
+                is Success -> {
+                    sink.next(ResponseEntity(result.outcome.file, result.outcome.responseHeaders, HttpStatus.OK))
+                }
+
+                is Failure ->
+                    sink.error(
+                        getError(
+                            result.errorCode,
+                            "[${result.errorCode}] ${result.errorMessage}".trimIndent()
+                        )
+                    )
+            }
+        }
+    }
 
     @PostMapping("/render/{templateId}")
-    fun getTemplate(
+    fun renderTemplate(
         @PathVariable templateId: String,
         @RequestBody templateData: JsonNode,
     ): Mono<ResponseEntity<DataBuffer>> {
@@ -145,6 +166,13 @@ class TemplateExportController(
             code = "INVALID_VALUE_FOR_CONVERT_TO"
         )
     }
+
+    private fun getError(errorCode: FetchTemplateErrorCode, message: String): Throwable =
+        when (errorCode) {
+            FetchTemplateErrorCode.INTERNAL_SERVER_ERROR -> throw InternalServerException(message)
+            FetchTemplateErrorCode.FETCH_TEMPLATE_REQUEST_FAILED_ERROR -> throw ExternalSystemException(message)
+            FetchTemplateErrorCode.PARSE_RESPONSE_ERROR -> throw ExternalSystemException(message)
+        }
 
     private fun getError(errorCode: RenderTemplateErrorCode, message: String): Throwable =
         when (errorCode) {

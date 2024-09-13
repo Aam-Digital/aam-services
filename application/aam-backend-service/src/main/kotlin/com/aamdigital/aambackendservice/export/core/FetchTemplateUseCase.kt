@@ -5,27 +5,24 @@ import com.aamdigital.aambackendservice.domain.DomainUseCase
 import com.aamdigital.aambackendservice.domain.UseCaseData
 import com.aamdigital.aambackendservice.domain.UseCaseErrorCode
 import com.aamdigital.aambackendservice.domain.UseCaseRequest
-import com.fasterxml.jackson.databind.JsonNode
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.HttpHeaders
 
-data class RenderTemplateRequest(
+data class FetchTemplateRequest(
     val templateRef: DomainReference,
-    val bodyData: JsonNode,
 ) : UseCaseRequest
 
-data class RenderTemplateData(
+data class FetchTemplateData(
     val file: DataBuffer,
     val responseHeaders: HttpHeaders,
 ) : UseCaseData
 
-enum class RenderTemplateErrorCode : UseCaseErrorCode {
+
+enum class FetchTemplateErrorCode : UseCaseErrorCode {
     INTERNAL_SERVER_ERROR,
-    FETCH_TEMPLATE_FAILED_ERROR,
-    CREATE_RENDER_REQUEST_FAILED_ERROR,
-    FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
     PARSE_RESPONSE_ERROR,
+    FETCH_TEMPLATE_REQUEST_FAILED_ERROR
 }
 
-interface RenderTemplateUseCase :
-    DomainUseCase<RenderTemplateRequest, RenderTemplateData, RenderTemplateErrorCode>
+interface FetchTemplateUseCase :
+    DomainUseCase<FetchTemplateRequest, FetchTemplateData, FetchTemplateErrorCode>

@@ -2,10 +2,12 @@ package com.aamdigital.aambackendservice.export.di
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase
+import com.aamdigital.aambackendservice.export.core.FetchTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.aamdigital.aambackendservice.export.storage.DefaultTemplateStorage
 import com.aamdigital.aambackendservice.export.usecase.DefaultCreateTemplateUseCase
+import com.aamdigital.aambackendservice.export.usecase.DefaultFetchTemplateUseCase
 import com.aamdigital.aambackendservice.export.usecase.DefaultRenderTemplateUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
@@ -25,6 +27,12 @@ class UseCaseConfiguration {
         @Qualifier("aam-render-api-client") webClient: WebClient,
         objectMapper: ObjectMapper
     ): CreateTemplateUseCase = DefaultCreateTemplateUseCase(webClient, objectMapper)
+
+
+    @Bean(name = ["default-fetch-template-use-case"])
+    fun defaultFetchTemplateUseCase(
+        @Qualifier("aam-render-api-client") webClient: WebClient,
+    ): FetchTemplateUseCase = DefaultFetchTemplateUseCase(webClient)
 
     @Bean(name = ["default-render-template-use-case"])
     fun defaultRenderTemplateUseCase(
