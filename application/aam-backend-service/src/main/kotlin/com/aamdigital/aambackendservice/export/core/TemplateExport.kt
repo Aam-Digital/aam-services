@@ -8,7 +8,7 @@ package com.aamdigital.aambackendservice.export.core
  * @property templateId Identifier of the corresponding template in the template engine.
  * @property targetFileName Name of the target file to be generated.
  * @property title Title of the export template, visible in frontend
- * @property description Description providing details about the export template, visible in frontend.
+ * @property description (optional) Description providing details about the export template, visible in frontend.
  * @property applicableForEntityTypes List of entity types for which this export template is applicable.
  */
 data class TemplateExport(
@@ -16,6 +16,6 @@ data class TemplateExport(
     val templateId: String,
     val targetFileName: String,
     val title: String,
-    val description: String,
+    val description: String? = null,
     val applicableForEntityTypes: List<String>,
 )
