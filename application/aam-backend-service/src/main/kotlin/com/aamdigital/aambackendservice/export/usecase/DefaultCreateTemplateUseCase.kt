@@ -27,10 +27,15 @@ data class CreateTemplateResponseDataDto(
     val templateId: String,
 )
 
+
 /**
- * Will create a template in our aam-central template export engine (pdf service) and return the
- * external Identifier.
- * The ExportTemplate entity is then created in the frontend.
+ * Default implementation of the [CreateTemplateUseCase] interface.
+ *
+ * This use case is responsible for creating a template by making a POST request to a specified
+ * template creation endpoint. The ExportTemplate entity is then created in the frontend.
+ *
+ * @property webClient The WebClient used to make HTTP requests to the template engine.
+ * @property objectMapper The ObjectMapper used to parse JSON responses.
  */
 class DefaultCreateTemplateUseCase(
     private val webClient: WebClient,

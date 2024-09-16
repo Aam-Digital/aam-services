@@ -40,6 +40,18 @@ data class RenderRequestResponseDataDto(
     val renderId: String,
 )
 
+/**
+ * Default implementation of the [RenderTemplateUseCase] interface.
+ *
+ * This use case is responsible for creating a template rendering request to a specified template endpoint
+ * and fetch the rendered file afterward.
+ *
+ * The file metadata is forwarded to the client.
+ *
+ * @property webClient The WebClient used to make HTTP requests.
+ * @property objectMapper The ObjectMapper used for JSON processing.
+ * @property templateStorage The TemplateStorage used to fetch templates.
+ */
 class DefaultRenderTemplateUseCase(
     private val webClient: WebClient,
     private val objectMapper: ObjectMapper,

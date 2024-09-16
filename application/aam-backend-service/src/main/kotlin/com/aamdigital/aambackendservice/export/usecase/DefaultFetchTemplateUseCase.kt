@@ -21,6 +21,15 @@ import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
 import reactor.kotlin.core.publisher.switchIfEmpty
 
+/**
+ * Default implementation of the [FetchTemplateUseCase].
+ *
+ * This use case is responsible for fetching a template based on a given request by making a GET request
+ * to a specified template fetch endpoint.
+ *
+ * @property webClient The WebClient used to make HTTP requests to the template engine.
+ * @property templateStorage The TemplateStorage instance used to fetch template metadata.
+ */
 class DefaultFetchTemplateUseCase(
     private val webClient: WebClient,
     private val templateStorage: TemplateStorage,
