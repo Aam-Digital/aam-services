@@ -5,10 +5,10 @@ import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
-import com.aamdigital.aambackendservice.export.core.ExportTemplate
 import com.aamdigital.aambackendservice.export.core.FetchTemplateErrorCode
 import com.aamdigital.aambackendservice.export.core.FetchTemplateRequest
 import com.aamdigital.aambackendservice.export.core.FetchTemplateUseCase
+import com.aamdigital.aambackendservice.export.core.TemplateExport
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.mockwebserver.MockResponse
@@ -122,7 +122,7 @@ class DefaultFetchTemplateUseCaseTest : WebClientTestBase() {
         // Arrange
         val templateRef = DomainReference("some-id")
 
-        val exportTemplate = ExportTemplate(
+        val templateExport = TemplateExport(
             id = "export-id",
             templateId = "export-template-id",
             targetFileName = "target_file_name.file",
@@ -131,7 +131,7 @@ class DefaultFetchTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(exportTemplate))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
 
         // Act & Assert
         StepVerifier.create(
@@ -153,7 +153,7 @@ class DefaultFetchTemplateUseCaseTest : WebClientTestBase() {
         // given
         val templateRef = DomainReference("some-id")
 
-        val exportTemplate = ExportTemplate(
+        val templateExport = TemplateExport(
             id = "export-id",
             templateId = "export-template-id",
             targetFileName = "target_file_name.file",
@@ -162,7 +162,7 @@ class DefaultFetchTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(exportTemplate))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
 
         val buffer = Buffer()
         buffer.writeAll(File("src/test/resources/files/docx-test-file-1.docx").source())

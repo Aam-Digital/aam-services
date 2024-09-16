@@ -4,5 +4,5 @@ import com.aamdigital.aambackendservice.domain.DomainReference
 import reactor.core.publisher.Mono
 
 interface TemplateStorage {
-    fun fetchTemplate(template: DomainReference): Mono<ExportTemplate>
+    fun fetchTemplate(template: DomainReference): Mono<TemplateExport>
 }

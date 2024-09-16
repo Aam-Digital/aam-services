@@ -6,10 +6,10 @@ import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.error.NetworkException
-import com.aamdigital.aambackendservice.export.core.ExportTemplate
 import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode
 import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
+import com.aamdigital.aambackendservice.export.core.TemplateExport
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -88,7 +88,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
                 {"foo":"bar"}
             """.trimIndent()
         )
-        val exportTemplate = ExportTemplate(
+        val templateExport = TemplateExport(
             id = "export-id",
             templateId = "export-template-id",
             targetFileName = "target_file_name.file",
@@ -97,7 +97,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(exportTemplate))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
         mockWebServer.enqueue(MockResponse().setBody("invalid json"))
 
         // when
@@ -211,7 +211,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
                 {"foo":"bar"}
             """.trimIndent()
         )
-        val exportTemplate = ExportTemplate(
+        val templateExport = TemplateExport(
             id = "export-id",
             templateId = "export-template-id",
             targetFileName = "target_file_name.file",
@@ -220,7 +220,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(exportTemplate))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
 
         mockWebServer.enqueue(
             MockResponse().setBody(
@@ -276,7 +276,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
                 {"foo":"bar"}
             """.trimIndent()
         )
-        val exportTemplate = ExportTemplate(
+        val templateExport = TemplateExport(
             id = "export-id",
             templateId = "export-template-id",
             targetFileName = "target_file_name.file",
@@ -285,7 +285,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(exportTemplate))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
 
         mockWebServer.enqueue(
             MockResponse().setBody(
@@ -323,7 +323,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
                 {"foo":"bar"}
             """.trimIndent()
         )
-        val exportTemplate = ExportTemplate(
+        val templateExport = TemplateExport(
             id = "export-id",
             templateId = "export-template-id",
             targetFileName = "target_file_name.file",
@@ -332,7 +332,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(exportTemplate))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
 
         StepVerifier.create(
             service.execute(
@@ -366,7 +366,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
                 {"foo":"bar"}
             """.trimIndent()
         )
-        val exportTemplate = ExportTemplate(
+        val templateExport = TemplateExport(
             id = "export-id",
             templateId = "export-template-id",
             targetFileName = "target_file_name.file",
@@ -375,7 +375,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(exportTemplate))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
 
         mockWebServer.enqueue(
             MockResponse().setBody(

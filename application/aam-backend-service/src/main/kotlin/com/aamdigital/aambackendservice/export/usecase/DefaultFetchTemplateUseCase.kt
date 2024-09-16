@@ -7,11 +7,11 @@ import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.ExternalSystemException
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.error.NotFoundException
-import com.aamdigital.aambackendservice.export.core.ExportTemplate
 import com.aamdigital.aambackendservice.export.core.FetchTemplateData
 import com.aamdigital.aambackendservice.export.core.FetchTemplateErrorCode
 import com.aamdigital.aambackendservice.export.core.FetchTemplateRequest
 import com.aamdigital.aambackendservice.export.core.FetchTemplateUseCase
+import com.aamdigital.aambackendservice.export.core.TemplateExport
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import org.slf4j.LoggerFactory
 import org.springframework.core.io.buffer.DataBuffer
@@ -107,7 +107,7 @@ class DefaultFetchTemplateUseCase(
         )
     }
 
-    private fun fetchTemplateRequest(templateRef: DomainReference): Mono<ExportTemplate> {
+    private fun fetchTemplateRequest(templateRef: DomainReference): Mono<TemplateExport> {
         return templateStorage.fetchTemplate(templateRef)
             .switchIfEmpty {
                 Mono.error(

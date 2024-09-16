@@ -7,12 +7,12 @@ import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.ExternalSystemException
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.error.NotFoundException
-import com.aamdigital.aambackendservice.export.core.ExportTemplate
 import com.aamdigital.aambackendservice.export.core.RenderTemplateData
 import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode
 import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
 import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
+import com.aamdigital.aambackendservice.export.core.TemplateExport
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -70,7 +70,7 @@ class DefaultRenderTemplateUseCase(
     ): Mono<UseCaseOutcome<RenderTemplateData, RenderTemplateErrorCode>> {
         return try {
             return fetchTemplateRequest(request.templateRef)
-                .flatMap { template: ExportTemplate ->
+                .flatMap { template: TemplateExport ->
                     val fileName = template.targetFileName
 
                     (request.bodyData as ObjectNode).put("reportName", fileName)
@@ -116,7 +116,7 @@ class DefaultRenderTemplateUseCase(
         )
     }
 
-    private fun fetchTemplateRequest(templateRef: DomainReference): Mono<ExportTemplate> {
+    private fun fetchTemplateRequest(templateRef: DomainReference): Mono<TemplateExport> {
         return templateStorage.fetchTemplate(templateRef)
             .switchIfEmpty {
                 Mono.error(

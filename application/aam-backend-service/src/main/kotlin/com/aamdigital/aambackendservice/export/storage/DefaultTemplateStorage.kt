@@ -2,13 +2,13 @@ package com.aamdigital.aambackendservice.export.storage
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.export.core.ExportTemplate
+import com.aamdigital.aambackendservice.export.core.TemplateExport
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.util.LinkedMultiValueMap
 import reactor.core.publisher.Mono
 
-data class ExportTemplateDto(
+data class TemplateExportDto(
     @JsonProperty("_id")
     val id: String,
     val templateId: String,
@@ -25,18 +25,18 @@ class DefaultTemplateStorage(
         private const val TARGET_COUCH_DB = "app"
     }
 
-    override fun fetchTemplate(template: DomainReference): Mono<ExportTemplate> {
+    override fun fetchTemplate(template: DomainReference): Mono<TemplateExport> {
         return couchDbClient.getDatabaseDocument(
             database = TARGET_COUCH_DB,
             documentId = template.id,
             queryParams = LinkedMultiValueMap(mapOf()),
-            kClass = ExportTemplateDto::class
+            kClass = TemplateExportDto::class
         ).map {
             toEntity(it)
         }
     }
 
-    private fun toEntity(dto: ExportTemplateDto): ExportTemplate = ExportTemplate(
+    private fun toEntity(dto: TemplateExportDto): TemplateExport = TemplateExport(
         id = dto.id,
         targetFileName = dto.targetFileName,
         templateId = dto.templateId,
