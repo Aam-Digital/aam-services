@@ -18,3 +18,20 @@ REST controller responsible for handling export operations related to templates.
 #### Specification
 
 [export-api-v1.yaml](../api-specs/export-api-v1.yaml)
+
+## Setup
+
+Configure a compatible render api in the environment. You can use the default, aam-internal implementation,
+but make sure, that the authentication is configured:
+
+```
+aam-render-api-client-configuration:
+  base-path: https://pdf.aam-digital.dev
+    auth-config:
+      client-id: <needs-environment-configuration>
+      client-secret: <needs-environment-configuration>
+      token-endpoint: <needs-environment-configuration>
+      grant-type: <needs-environment-configuration>
+      scope: <needs-environment-configuration>
+```
+
