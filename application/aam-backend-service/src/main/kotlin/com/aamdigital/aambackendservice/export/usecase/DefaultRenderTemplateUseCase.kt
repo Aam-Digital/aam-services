@@ -5,6 +5,8 @@ import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome.Success
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.ExternalSystemException
+import com.aamdigital.aambackendservice.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.ExportTemplate
 import com.aamdigital.aambackendservice.export.core.RenderTemplateData
 import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode
@@ -15,6 +17,7 @@ import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import org.slf4j.LoggerFactory
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
@@ -42,6 +45,8 @@ class DefaultRenderTemplateUseCase(
     private val objectMapper: ObjectMapper,
     private val templateStorage: TemplateStorage,
 ) : RenderTemplateUseCase {
+
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     private data class FileResponse(
         val file: DataBuffer,
@@ -88,9 +93,11 @@ class DefaultRenderTemplateUseCase(
             RenderTemplateErrorCode.valueOf((it as AamException).code)
         }.getOrDefault(RenderTemplateErrorCode.INTERNAL_SERVER_ERROR)
 
+        logger.error("[${errorCode}] ${it.localizedMessage}", it.cause)
+
         return Mono.just(
             UseCaseOutcome.Failure(
-                errorMessage = it.message,
+                errorMessage = it.localizedMessage,
                 errorCode = errorCode,
                 cause = it.cause
             )
@@ -109,11 +116,19 @@ class DefaultRenderTemplateUseCase(
                 )
             }
             .onErrorMap {
-                ExternalSystemException(
-                    cause = it,
-                    message = it.localizedMessage,
-                    code = RenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR.toString()
-                )
+                if (it is InvalidArgumentException) {
+                    NotFoundException(
+                        cause = it,
+                        message = it.localizedMessage,
+                        code = RenderTemplateErrorCode.NOT_FOUND_ERROR.toString()
+                    )
+                } else {
+                    ExternalSystemException(
+                        cause = it,
+                        message = it.localizedMessage,
+                        code = RenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR.toString()
+                    )
+                }
             }
     }
 
@@ -145,7 +160,10 @@ class DefaultRenderTemplateUseCase(
 
                     val forwardHeaders = HttpHeaders()
                     forwardHeaders.contentType = responseHeaders.contentType
-                    forwardHeaders["Content-Disposition"] = responseHeaders["Content-Disposition"]
+
+                    if (!responseHeaders["Content-Disposition"].isNullOrEmpty()) {
+                        forwardHeaders["Content-Disposition"] = responseHeaders["Content-Disposition"]
+                    }
 
                     FileResponse(
                         file = dataBuffer,

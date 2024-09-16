@@ -32,7 +32,8 @@ class UseCaseConfiguration {
     @Bean(name = ["default-fetch-template-use-case"])
     fun defaultFetchTemplateUseCase(
         @Qualifier("aam-render-api-client") webClient: WebClient,
-    ): FetchTemplateUseCase = DefaultFetchTemplateUseCase(webClient)
+        templateStorage: TemplateStorage
+    ): FetchTemplateUseCase = DefaultFetchTemplateUseCase(webClient, templateStorage)
 
     @Bean(name = ["default-render-template-use-case"])
     fun defaultRenderTemplateUseCase(

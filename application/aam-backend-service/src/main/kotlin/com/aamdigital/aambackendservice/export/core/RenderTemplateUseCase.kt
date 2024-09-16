@@ -25,6 +25,7 @@ enum class RenderTemplateErrorCode : UseCaseErrorCode {
     CREATE_RENDER_REQUEST_FAILED_ERROR,
     FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
     PARSE_RESPONSE_ERROR,
+    NOT_FOUND_ERROR
 }
 
 interface RenderTemplateUseCase :

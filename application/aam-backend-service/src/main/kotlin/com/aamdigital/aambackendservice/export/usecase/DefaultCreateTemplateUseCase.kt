@@ -11,6 +11,7 @@ import com.aamdigital.aambackendservice.export.core.CreateTemplateErrorCode.PARS
 import com.aamdigital.aambackendservice.export.core.CreateTemplateRequest
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.web.reactive.function.BodyInserters
@@ -35,6 +36,9 @@ class DefaultCreateTemplateUseCase(
     private val webClient: WebClient,
     private val objectMapper: ObjectMapper,
 ) : CreateTemplateUseCase {
+
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     override fun apply(
         request: CreateTemplateRequest
     ): Mono<UseCaseOutcome<CreateTemplateData, CreateTemplateErrorCode>> {
@@ -73,9 +77,11 @@ class DefaultCreateTemplateUseCase(
             CreateTemplateErrorCode.valueOf((it as AamException).code)
         }.getOrDefault(CreateTemplateErrorCode.INTERNAL_SERVER_ERROR)
 
+        logger.error("[${errorCode}] ${it.localizedMessage}", it.cause)
+
         return Mono.just(
             UseCaseOutcome.Failure(
-                errorMessage = it.message,
+                errorMessage = it.localizedMessage,
                 errorCode = errorCode,
                 cause = it.cause
             )

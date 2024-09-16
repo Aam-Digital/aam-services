@@ -30,12 +30,11 @@ import org.springframework.web.reactive.function.client.WebClientRequestExceptio
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.io.File
-import java.math.BigInteger
-import java.security.MessageDigest
 
 
 @ExtendWith(MockitoExtension::class)
 class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
+
     @Mock
     lateinit var templateStorage: TemplateStorage
 
@@ -412,10 +411,5 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
                     .isEqualTo(RenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR)
             }
             .verifyComplete()
-    }
-
-    private fun getHash(byteArray: ByteArray): String {
-        val md = MessageDigest.getInstance("MD5")
-        return BigInteger(1, md.digest(byteArray)).toString(16).padStart(32, '0')
     }
 }

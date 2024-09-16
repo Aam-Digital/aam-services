@@ -5,6 +5,7 @@ import com.aamdigital.aambackendservice.domain.UseCaseOutcome.Failure
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome.Success
 import com.aamdigital.aambackendservice.error.ExternalSystemException
 import com.aamdigital.aambackendservice.error.InternalServerException
+import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.CreateTemplateErrorCode
 import com.aamdigital.aambackendservice.export.core.CreateTemplateRequest
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase
@@ -146,7 +147,7 @@ class TemplateExportController(
         when (errorCode) {
             FetchTemplateErrorCode.INTERNAL_SERVER_ERROR -> throw InternalServerException(message)
             FetchTemplateErrorCode.FETCH_TEMPLATE_REQUEST_FAILED_ERROR -> throw ExternalSystemException(message)
-            FetchTemplateErrorCode.PARSE_RESPONSE_ERROR -> throw ExternalSystemException(message)
+            FetchTemplateErrorCode.NOT_FOUND_ERROR -> throw NotFoundException(message)
         }
 
     private fun getError(errorCode: RenderTemplateErrorCode, message: String): Throwable =
@@ -156,6 +157,7 @@ class TemplateExportController(
             RenderTemplateErrorCode.CREATE_RENDER_REQUEST_FAILED_ERROR -> throw ExternalSystemException(message)
             RenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR -> throw ExternalSystemException(message)
             RenderTemplateErrorCode.PARSE_RESPONSE_ERROR -> throw ExternalSystemException(message)
+            RenderTemplateErrorCode.NOT_FOUND_ERROR -> throw NotFoundException(message)
         }
 
     private fun getError(errorCode: CreateTemplateErrorCode): Throwable =

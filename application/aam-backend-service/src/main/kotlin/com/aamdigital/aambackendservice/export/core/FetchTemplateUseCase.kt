@@ -20,8 +20,8 @@ data class FetchTemplateData(
 
 enum class FetchTemplateErrorCode : UseCaseErrorCode {
     INTERNAL_SERVER_ERROR,
-    PARSE_RESPONSE_ERROR,
-    FETCH_TEMPLATE_REQUEST_FAILED_ERROR
+    FETCH_TEMPLATE_REQUEST_FAILED_ERROR,
+    NOT_FOUND_ERROR
 }
 
 interface FetchTemplateUseCase :
