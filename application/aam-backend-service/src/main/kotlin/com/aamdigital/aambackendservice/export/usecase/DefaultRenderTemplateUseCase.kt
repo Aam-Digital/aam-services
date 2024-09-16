@@ -73,7 +73,10 @@ class DefaultRenderTemplateUseCase(
                 .flatMap { template: TemplateExport ->
                     val fileName = template.targetFileName
 
-                    (request.bodyData as ObjectNode).put("reportName", fileName)
+                    (request.bodyData as ObjectNode).put(
+                        "reportName", fileName
+                            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    )
 
                     createRenderRequest(template.templateId, request.bodyData)
                         .map { templateId: String ->
