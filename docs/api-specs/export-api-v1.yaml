@@ -89,14 +89,15 @@ paths:
                   errorMessage:
                     type: string
     get:
-      summary: Fetch an existing template
+      summary: Fetch an existing template file
+      description: Get the uploaded template file with its placeholders (not a generated document filled with data based on the template)
       parameters:
         - name: templateId
           in: path
           required: true
           schema:
             type: string
-            description: The ID of the template to be rendered
+            description: The ID of the TemplateExport entity
       responses:
         '200':
           description: Rendered template
