@@ -31,7 +31,7 @@ data class CreateTemplateResponseDataDto(
 /**
  * Default implementation of the [CreateTemplateUseCase] interface.
  *
- * This use case is responsible for creating a template by making a POST request to a specified
+ * This use case is responsible for registering a template file by making a POST request to a specified
  * template creation endpoint. The TemplateExport entity is then created in the frontend.
  *
  * @property webClient The WebClient used to make HTTP requests to the template engine.
