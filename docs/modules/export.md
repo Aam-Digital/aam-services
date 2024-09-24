@@ -2,7 +2,8 @@
 
 ## Overview
 
-The export module is responsible for handling various template-based export operations. This module primarily focuses on generating PDFs for entities within the AAM system.
+The export module is responsible for handling various template-based export operations.
+This module primarily focuses on generating PDFs for entities within the Aam Digital system.
 
 ### Dependencies
 
