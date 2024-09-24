@@ -53,7 +53,7 @@ paths:
               properties:
                 convertTo:
                   type: string
-                  description: The format to convert the template to
+                  description: The format to convert the template to, e.g. "pdf" in order to receive a PDF file in the reponse
                 data:
                   type: object
                   additionalProperties: true
