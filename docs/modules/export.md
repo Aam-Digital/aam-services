@@ -7,7 +7,7 @@ This module primarily focuses on generating PDFs for entities within the Aam Dig
 
 ### Dependencies
 
-This service is using an external template engine for handle placeholder replacement in files and render PDF files.  
+This service is using an external template engine to handle placeholder replacement in files and render PDF (or other supported) files.  
 See https://carbone.io for more information and the specification [carboneio-api-spec.yaml](../api-specs/carboneio-api-spec.yaml)
 
 ## Controllers
