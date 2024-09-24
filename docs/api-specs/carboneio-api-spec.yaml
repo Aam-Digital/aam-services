@@ -3,6 +3,7 @@ openapi: 3.0.3
 info:
   description: |-
     Carbone Cloud/On-premise Open API reference.
+    This API is used by the aam-services backend internally, exposing its functionality through our own, auth protected endpoints.
 
     For requesting:
     - Carbone Cloud API: find your API key on your [Carbone account](https://account.carbone.io). Home page > Copy the `production` or `testing` API key.
