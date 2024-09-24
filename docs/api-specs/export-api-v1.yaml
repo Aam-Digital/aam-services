@@ -10,6 +10,7 @@ paths:
   /template:
     post:
       summary: Post a new template
+      description: Registers a template file. Creating the TemplateExport entity is handled by the client not by this endpoint through the server.
       requestBody:
         required: true
         content:
