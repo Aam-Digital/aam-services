@@ -44,6 +44,7 @@ class CouchDbDatabaseChangeDetection(
 
         return syncRepository.findByDatabase(database).defaultIfEmpty(SyncEntry(database = database, latestRef = ""))
             .flatMap {
+                logger.debug("latestRef: {}", it.latestRef)
                 LATEST_REFS[database] = it.latestRef
 
                 val queryParams = getEmptyQueryParams()
