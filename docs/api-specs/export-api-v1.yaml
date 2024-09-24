@@ -43,7 +43,7 @@ paths:
           required: true
           schema:
             type: string
-            description: The ID of the template to be rendered
+            description: The ID of the TemplateExport entity to be rendered
       requestBody:
         required: true
         content:
