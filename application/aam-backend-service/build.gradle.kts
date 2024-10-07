@@ -1,32 +1,32 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     application
     distribution
     jacoco
-    id("org.springframework.boot") version "3.2.3"
-    id("io.spring.dependency-management") version "1.1.4"
-    id("io.sentry.jvm.gradle") version "4.3.1"
-    kotlin("kapt") version "1.9.22"
-    kotlin("jvm") version "1.9.22"
+    id("org.springframework.boot") version "3.3.4"
+    id("io.spring.dependency-management") version "1.1.6"
+    id("io.sentry.jvm.gradle") version "4.11.0"
+    id("org.jetbrains.kotlin.kapt") version "1.9.25"
+    kotlin("jvm") version "1.9.25"
     kotlin("plugin.spring") version "1.9.22"
 }
 
 group = "com.aam-digital"
 version = "0.0.1-SNAPSHOT"
 
-application {
-    mainClass.set("com.aamdigital.aambackendservice.ApplicationKt")
-}
-
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 configurations {
     compileOnly {
         extendsFrom(configurations.annotationProcessor.get())
     }
+}
+
+application {
+    mainClass.set("com.aamdigital.aambackendservice.ApplicationKt")
 }
 
 repositories {
@@ -119,10 +119,9 @@ sentry {
     version = System.getenv("APPLICATION_VERSION")
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        freeCompilerArgs += "-Xjsr305=strict"
-        jvmTarget = "17"
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll("-Xjsr305=strict")
     }
 }
 
