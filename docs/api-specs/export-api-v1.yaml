@@ -1,0 +1,130 @@
+openapi: 3.0.3
+info:
+  title: Template Export API
+  description: REST API for handling export operations related to templates in Aam.
+  version: 1.0.0
+servers:
+  - url: /v1/export
+
+paths:
+  /template:
+    post:
+      summary: Post a new template
+      description: Registers a template file. Creating the TemplateExport entity is handled by the client not by this endpoint through the server.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                template:
+                  type: string
+                  format: binary
+                  description: The template file to upload
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templateId:
+                    type: string
+                    description: The external identifier of the implementing TemplateEngine
+
+  /render/{templateId}:
+    post:
+      summary: Render an existing template
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: The ID of the TemplateExport entity to be rendered
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                convertTo:
+                  type: string
+                  description: The format to convert the template to, e.g. "pdf" in order to receive a PDF file in the reponse
+                data:
+                  type: object
+                  additionalProperties: true
+                  description: Additional data for rendering the template
+      responses:
+        '200':
+          description: Rendered template
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorCode:
+                    type: string
+                  errorMessage:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorCode:
+                    type: string
+                  errorMessage:
+                    type: string
+    get:
+      summary: Fetch an existing template file
+      description: Get the uploaded template file with its placeholders (not a generated document filled with data based on the template)
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: The ID of the TemplateExport entity
+      responses:
+        '200':
+          description: Rendered template
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorCode:
+                    type: string
+                  errorMessage:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorCode:
+                    type: string
+                  errorMessage:
+                    type: string

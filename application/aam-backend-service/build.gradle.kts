@@ -66,9 +66,12 @@ dependencies {
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
     testImplementation("net.joshka:junit-json-params:5.10.2-r0")
-    testImplementation("org.eclipse.parsson:parsson:1.1.1")
+    testImplementation("org.eclipse.parsson:parsson:1.1.7")
 
     testImplementation("io.projectreactor:reactor-test")
+
+    testImplementation("com.squareup.okhttp3:okhttp:4.12.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 
     testImplementation("org.testcontainers:junit-jupiter:1.19.7") {
         constraints {
@@ -78,7 +81,7 @@ dependencies {
         }
     }
     testImplementation("org.testcontainers:rabbitmq:1.19.7")
-    testImplementation("com.github.dasniko:testcontainers-keycloak:3.3.0") {
+    testImplementation("com.github.dasniko:testcontainers-keycloak:3.4.0") {
         constraints {
             testImplementation("org.apache.james:apache-mime4j-core:0.8.11") {
                 because("previous versions have security issues")

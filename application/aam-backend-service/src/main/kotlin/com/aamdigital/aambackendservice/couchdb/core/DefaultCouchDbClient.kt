@@ -3,7 +3,9 @@ package com.aamdigital.aambackendservice.couchdb.core
 import com.aamdigital.aambackendservice.couchdb.dto.CouchDbChangesResponse
 import com.aamdigital.aambackendservice.couchdb.dto.DocSuccess
 import com.aamdigital.aambackendservice.couchdb.dto.FindResponse
+import com.aamdigital.aambackendservice.error.ExternalSystemException
 import com.aamdigital.aambackendservice.error.InternalServerException
+import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -102,13 +104,21 @@ class DefaultCouchDbClient(
         queryParams: MultiValueMap<String, String>,
         kClass: KClass<T>,
     ): Mono<T> {
-        return webClient.get().uri {
-            it.path("/$database/$documentId")
-            it.queryParams(queryParams)
-            it.build()
-        }.accept(MediaType.APPLICATION_JSON).exchangeToMono {
-            handleResponse(it, kClass)
-        }
+        return webClient.get()
+            .uri {
+                it.path("/$database/$documentId")
+                it.queryParams(queryParams)
+                it.build()
+            }
+            .accept(MediaType.APPLICATION_JSON)
+            .exchangeToMono { response: ClientResponse ->
+                if (response.statusCode().is4xxClientError) {
+                    throw InvalidArgumentException(
+                        message = "Document \"$documentId\" could not be found in database \"$database\""
+                    )
+                }
+                handleResponse(response, kClass)
+            }
     }
 
     override fun putDatabaseDocument(
@@ -264,10 +274,20 @@ class DefaultCouchDbClient(
     }
 
     private fun <T : Any> handleResponse(
-        response: ClientResponse, typeReference: KClass<T>
+        response: ClientResponse,
+        typeReference: KClass<T>
     ): Mono<T> {
-        return response.bodyToMono(typeReference.java).mapNotNull {
-            it
-        }
+        return response.bodyToMono(String::class.java)
+            .mapNotNull {
+                try {
+                    val renderApiClientResponse = objectMapper.readValue(it, typeReference.java)
+                    renderApiClientResponse
+                } catch (ex: Exception) {
+                    throw ExternalSystemException(
+                        message = ex.localizedMessage,
+                        cause = ex,
+                    )
+                }
+            }
     }
 }

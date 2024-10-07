@@ -33,6 +33,14 @@ management:
           - info
           - health
 
+aam-render-api-client-configuration:
+  auth-config:
+    client-id: dummy-client
+    client-secret: client-secret
+    token-endpoint: /realms/dummy-realm/protocol/openid-connect/token
+    grant-type: client_credentials
+    scope:
+
 couch-db-client-configuration:
   max-in-memory-size-in-mega-bytes: 16
   base-path: http://localhost:5984

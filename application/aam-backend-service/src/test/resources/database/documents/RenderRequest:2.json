@@ -1,0 +1,10 @@
+{
+  "convertTo": "docx",
+  "data": {
+    "participant": "Mr. Robot",
+    "sign": "An Aam Digital TEST",
+    "issuer": "Aam Digital GmbH",
+    "date": "11.09.2024"
+  },
+  "reportName": "test_certificate_{d.issuer}_{d.participant}"
+}

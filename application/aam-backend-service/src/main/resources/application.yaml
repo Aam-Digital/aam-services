@@ -62,9 +62,19 @@ server:
 logging:
   level:
     #    org.springframework.amqp.rabbit: warn
-    #    org.springframework.http.client: debug
-    #    reactor.netty.http.client: debug
+    #    org.springframework.web: debug
+    #    org.springframework.http: debug
+    #    reactor.netty: debug
     com.aamdigital.aambackendservice: trace
+
+aam-render-api-client-configuration:
+  base-path: https://pdf.aam-digital.dev
+#  auth-config:
+#   client-id: <needs-environment-configuration>
+#   client-secret: <needs-environment-configuration>
+#   token-endpoint: <needs-environment-configuration>
+#   grant-type: <needs-environment-configuration>
+#   scope: <needs-environment-configuration>
 
 couch-db-client-configuration:
   base-path: http://localhost:5984

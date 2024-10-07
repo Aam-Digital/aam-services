@@ -12,14 +12,18 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.context.ImportTestcontainers
 import org.springframework.boot.web.client.RestTemplateBuilder
+import org.springframework.core.io.Resource
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatusCode
+import org.springframework.http.MediaType
+import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
+
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT
@@ -54,6 +58,7 @@ abstract class SpringIntegrationTest {
     )
 
     var latestResponseBody: String? = null
+    var latestResponseHeaders: HttpHeaders? = null
     var latestResponseStatus: HttpStatusCode? = null
     var authToken: String? = null
 
@@ -63,6 +68,8 @@ abstract class SpringIntegrationTest {
         if (authToken != null) {
             headers.set(HttpHeaders.AUTHORIZATION, "Bearer $authToken")
         }
+
+        headers.contentType = MediaType.APPLICATION_JSON
 
         val requestEntity = HttpEntity(body, headers)
 
@@ -75,10 +82,46 @@ abstract class SpringIntegrationTest {
             ).let {
                 latestResponseStatus = it.statusCode
                 latestResponseBody = it.body
+                latestResponseHeaders = it.headers
             }
         } catch (ex: HttpClientErrorException) {
             latestResponseStatus = ex.statusCode
             latestResponseBody = ex.responseBodyAsString
+            latestResponseHeaders = ex.responseHeaders
+        }
+    }
+
+    fun exchangeMultipart(url: String, file: Resource) {
+        val headers = HttpHeaders()
+
+        if (authToken != null) {
+            headers.set(HttpHeaders.AUTHORIZATION, "Bearer $authToken")
+        }
+
+        headers.contentType = MediaType.MULTIPART_FORM_DATA
+        headers.accept = listOf(MediaType.APPLICATION_JSON)
+
+        val builder = MultipartBodyBuilder()
+
+        builder
+            .part("template", file)
+
+        val requestEntity = HttpEntity(builder.build(), headers)
+
+        try {
+            restTemplate.postForEntity(
+                url,
+                requestEntity,
+                String::class.java,
+            ).let {
+                latestResponseStatus = it.statusCode
+                latestResponseBody = it.body
+                latestResponseHeaders = it.headers
+            }
+        } catch (ex: HttpClientErrorException) {
+            latestResponseStatus = ex.statusCode
+            latestResponseBody = ex.responseBodyAsString
+            latestResponseHeaders = ex.responseHeaders
         }
     }
 
@@ -86,6 +129,10 @@ abstract class SpringIntegrationTest {
         return latestResponseBody?.let {
             objectMapper.readValue<ObjectNode>(it)
         }
+    }
+
+    fun parseHeader(name: String): List<String> {
+        return latestResponseHeaders?.getOrElse(name) { emptyList() } ?: emptyList()
     }
 
     fun parseBodyToArrayNode(): ArrayNode? {
