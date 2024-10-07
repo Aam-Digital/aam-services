@@ -1,8 +1,6 @@
 # ***************************************************************
 # start local development environment (without application)
 # ***************************************************************
-
-version: '3'
 name: aam-services
 services:
   reverse-proxy:
@@ -84,3 +82,12 @@ services:
       - db-keycloak
     command:
       - start-dev
+
+  carbone-io:
+    image: carbone/carbone-ee
+    platform: amd64
+    volumes:
+      - ~/docker-volumes/aam-digital/aam-services/carbone-io/template:/app/template
+      - ~/docker-volumes/aam-digital/aam-services/carbone-io/render:/app/render
+    ports:
+      - "4000:4000"
