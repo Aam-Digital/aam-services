@@ -75,7 +75,7 @@ class DefaultRenderTemplateUseCase(
 
                     (request.bodyData as ObjectNode).put(
                         "reportName", fileName
-                            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                            .replace(Regex("[\\\\/*?\"<>|]"), "_")
                     )
 
                     createRenderRequest(template.templateId, request.bodyData)
