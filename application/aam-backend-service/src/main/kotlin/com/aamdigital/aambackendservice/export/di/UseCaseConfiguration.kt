@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.client.RestClient
 
 @Configuration
 class UseCaseConfiguration {
@@ -24,21 +24,21 @@ class UseCaseConfiguration {
 
     @Bean(name = ["default-create-template-use-case"])
     fun defaultCreateTemplateUseCase(
-        @Qualifier("aam-render-api-client") webClient: WebClient,
+        @Qualifier("aam-render-api-client") restClient: RestClient,
         objectMapper: ObjectMapper
-    ): CreateTemplateUseCase = DefaultCreateTemplateUseCase(webClient, objectMapper)
+    ): CreateTemplateUseCase = DefaultCreateTemplateUseCase(restClient, objectMapper)
 
 
     @Bean(name = ["default-fetch-template-use-case"])
     fun defaultFetchTemplateUseCase(
-        @Qualifier("aam-render-api-client") webClient: WebClient,
+        @Qualifier("aam-render-api-client") restClient: RestClient,
         templateStorage: TemplateStorage
-    ): FetchTemplateUseCase = DefaultFetchTemplateUseCase(webClient, templateStorage)
+    ): FetchTemplateUseCase = DefaultFetchTemplateUseCase(restClient, templateStorage)
 
     @Bean(name = ["default-render-template-use-case"])
     fun defaultRenderTemplateUseCase(
-        @Qualifier("aam-render-api-client") webClient: WebClient,
+        @Qualifier("aam-render-api-client") restClient: RestClient,
         objectMapper: ObjectMapper,
         templateStorage: TemplateStorage
-    ): RenderTemplateUseCase = DefaultRenderTemplateUseCase(webClient, objectMapper, templateStorage)
+    ): RenderTemplateUseCase = DefaultRenderTemplateUseCase(restClient, objectMapper, templateStorage)
 }

@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.domain.TestErrorCode
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import org.assertj.core.api.Assertions.assertThat
@@ -13,8 +14,6 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
-import reactor.core.publisher.Mono
-import reactor.test.StepVerifier
 
 @ExtendWith(MockitoExtension::class)
 class DefaultCreateReportCalculationUseCaseTest {
@@ -35,29 +34,26 @@ class DefaultCreateReportCalculationUseCaseTest {
         // given
         whenever(reportingStorage.fetchCalculations(any()))
             .thenAnswer {
-                Mono.error<List<*>> {
-                    InternalServerException()
-                }
+                throw InternalServerException(
+                    message = "error",
+                    code = TestErrorCode.TEST_EXCEPTION,
+                    cause = null
+                )
             }
 
-        StepVerifier
-            // when
-            .create(
-                service.createReportCalculation(
-                    CreateReportCalculationRequest(
-                        report = DomainReference("Report:1"),
-                        args = mutableMapOf()
-                    )
-                )
+        // when
+        val response = service.createReportCalculation(
+            CreateReportCalculationRequest(
+                report = DomainReference("Report:1"),
+                args = mutableMapOf()
             )
-            // then
-            .assertNext {
-                assertThat(it).isInstanceOf(CreateReportCalculationResult.Failure::class.java)
-                Assertions.assertEquals(
-                    CreateReportCalculationResult.ErrorCode.INTERNAL_SERVER_ERROR,
-                    (it as CreateReportCalculationResult.Failure).errorCode
-                )
-            }
-            .verifyComplete()
+        )
+
+        // then
+        assertThat(response).isInstanceOf(CreateReportCalculationResult.Failure::class.java)
+        Assertions.assertEquals(
+            CreateReportCalculationResult.ErrorCode.INTERNAL_SERVER_ERROR,
+            (response as CreateReportCalculationResult.Failure).errorCode
+        )
     }
 }

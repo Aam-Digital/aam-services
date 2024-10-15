@@ -18,6 +18,7 @@ Feature: the export endpoint handles template creation
 
     Scenario: client makes call to GET /export/template/TemplateExport:2 and receives an docx
         Given database app is created
+        Given template docx-test-file-1.docx is stored in template engine
         Given document TemplateExport:2 is stored in database app
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls GET /v1/export/template/TemplateExport:2

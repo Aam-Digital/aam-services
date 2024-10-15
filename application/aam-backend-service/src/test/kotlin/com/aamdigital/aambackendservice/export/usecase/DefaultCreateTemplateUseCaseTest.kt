@@ -2,7 +2,7 @@ package com.aamdigital.aambackendservice.export.usecase
 
 import com.aamdigital.aambackendservice.common.WebClientTestBase
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.export.core.CreateTemplateErrorCode
+import com.aamdigital.aambackendservice.export.core.CreateTemplateError
 import com.aamdigital.aambackendservice.export.core.CreateTemplateRequest
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase
 import okhttp3.mockwebserver.MockResponse
@@ -11,22 +11,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.junit.jupiter.MockitoExtension
-import org.springframework.core.io.buffer.DataBuffer
-import org.springframework.http.HttpHeaders
-import org.springframework.http.codec.multipart.FilePart
-import org.springframework.util.LinkedMultiValueMap
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
-import reactor.test.StepVerifier
-import java.nio.file.Path
-
-class FilePartTestImpl(val name: String) : FilePart {
-    override fun name(): String = name
-    override fun headers(): HttpHeaders = HttpHeaders.readOnlyHttpHeaders(LinkedMultiValueMap())
-    override fun content(): Flux<DataBuffer> = Flux.empty()
-    override fun filename(): String = "$name.file"
-    override fun transferTo(dest: Path): Mono<Void> = Mono.empty()
-}
+import org.springframework.mock.web.MockMultipartFile
 
 @ExtendWith(MockitoExtension::class)
 class DefaultCreateTemplateUseCaseTest : WebClientTestBase() {
@@ -36,7 +21,7 @@ class DefaultCreateTemplateUseCaseTest : WebClientTestBase() {
     override fun setUp() {
         super.setUp()
         service = DefaultCreateTemplateUseCase(
-            webClient = webClient,
+            restClient = restClient,
             objectMapper = objectMapper,
         )
     }
@@ -47,20 +32,18 @@ class DefaultCreateTemplateUseCaseTest : WebClientTestBase() {
         mockWebServer.enqueue(MockResponse().setBody("invalid json"))
 
         // when
-        StepVerifier.create(
-            service.execute(
-                CreateTemplateRequest(
-                    file = FilePartTestImpl("test"),
-                )
+        val response = service.run(
+            CreateTemplateRequest(
+                file = MockMultipartFile("test", "dummy-content".byteInputStream()),
             )
-        ).assertNext {
-            // then
-            assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-            assertEquals(
-                CreateTemplateErrorCode.PARSE_RESPONSE_ERROR,
-                (it as UseCaseOutcome.Failure).errorCode
-            )
-        }.verifyComplete()
+        )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        assertEquals(
+            CreateTemplateError.PARSE_RESPONSE_ERROR,
+            (response as UseCaseOutcome.Failure).errorCode
+        )
     }
 
     @Test
@@ -68,20 +51,18 @@ class DefaultCreateTemplateUseCaseTest : WebClientTestBase() {
         // given
 
         // when
-        StepVerifier.create(
-            service.execute(
-                CreateTemplateRequest(
-                    file = FilePartTestImpl("test"),
-                )
+        val response = service.run(
+            CreateTemplateRequest(
+                file = MockMultipartFile("test", "dummy-content".byteInputStream()),
             )
-        ).assertNext {
-            // then
-            assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-            assertEquals(
-                CreateTemplateErrorCode.CREATE_TEMPLATE_REQUEST_FAILED_ERROR,
-                (it as UseCaseOutcome.Failure).errorCode
-            )
-        }.verifyComplete()
+        )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        assertEquals(
+            CreateTemplateError.CREATE_TEMPLATE_REQUEST_FAILED_ERROR,
+            (response as UseCaseOutcome.Failure).errorCode
+        )
     }
 
     @Test
@@ -101,19 +82,17 @@ class DefaultCreateTemplateUseCaseTest : WebClientTestBase() {
         )
 
         // when
-        StepVerifier.create(
-            service.execute(
-                CreateTemplateRequest(
-                    file = FilePartTestImpl("test"),
-                )
+        val response = service.run(
+            CreateTemplateRequest(
+                file = MockMultipartFile("test", "dummy-content".byteInputStream()),
             )
-        ).assertNext {
-            // then
-            assertThat(it).isInstanceOf(UseCaseOutcome.Success::class.java)
-            assertEquals(
-                "template-id",
-                (it as UseCaseOutcome.Success).outcome.templateRef.id
-            )
-        }.verifyComplete()
+        )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        assertEquals(
+            "template-id",
+            (response as UseCaseOutcome.Success).data.templateRef.id
+        )
     }
 }

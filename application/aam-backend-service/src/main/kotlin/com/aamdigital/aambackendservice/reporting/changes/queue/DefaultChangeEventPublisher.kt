@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.changes.queue
 
+import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.queue.core.QueueMessage
@@ -19,6 +20,10 @@ class DefaultChangeEventPublisher(
     private val objectMapper: ObjectMapper,
     private val rabbitTemplate: RabbitTemplate,
 ) : ChangeEventPublisher {
+
+    enum class DefaultChangeEventPublisherErrorCode : AamErrorCode {
+        EVENT_PUBLISH_ERROR
+    }
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -41,7 +46,7 @@ class DefaultChangeEventPublisher(
         } catch (ex: AmqpException) {
             throw InternalServerException(
                 message = "Could not publish DatabaseChangeEvent: $event",
-                code = "EVENT_PUBLISH_ERROR",
+                code = DefaultChangeEventPublisherErrorCode.EVENT_PUBLISH_ERROR,
                 cause = ex
             )
         }
@@ -73,7 +78,7 @@ class DefaultChangeEventPublisher(
         } catch (ex: AmqpException) {
             throw InternalServerException(
                 message = "Could not publish DocumentChangeEvent: $event",
-                code = "EVENT_PUBLISH_ERROR",
+                code = DefaultChangeEventPublisherErrorCode.EVENT_PUBLISH_ERROR,
                 cause = ex
             )
         }

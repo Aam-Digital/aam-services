@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.e2e
 
+import com.aamdigital.aambackendservice.container.TestContainers
 import io.cucumber.java.After
 import io.cucumber.java.en.Given
 import io.cucumber.java.en.Then
@@ -51,6 +52,14 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
             database = database,
             documentName = document,
             documentContent = File("src/test/resources/database/documents/$document.json").readText()
+        )
+    }
+
+    @Given("template {} is stored in template engine")
+    fun `store template in template engine`(file: String) {
+        exchangeMultipart(
+            "http://${TestContainers.CONTAINER_PDF.host}:${TestContainers.CONTAINER_PDF.getMappedPort(4000)}/template",
+            ClassPathResource("files/$file")
         )
     }
 

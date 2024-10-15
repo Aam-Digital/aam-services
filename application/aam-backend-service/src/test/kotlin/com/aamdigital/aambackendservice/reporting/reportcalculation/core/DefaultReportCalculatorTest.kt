@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.keycloak.common.util.Base64.InputStream
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
@@ -24,10 +25,6 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.springframework.core.io.buffer.DataBuffer
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
-import reactor.test.StepVerifier
 import java.util.*
 
 @ExtendWith(MockitoExtension::class)
@@ -79,39 +76,34 @@ class DefaultReportCalculatorTest {
 
         whenever(reportStorage.fetchReport(reportCalculation.report))
             .thenAnswer {
-                Mono.just(Optional.of(report))
+                Optional.of(report)
             }
 
         whenever(queryStorage.executeQuery(any()))
             .thenAnswer {
-                Flux.empty<DataBuffer>()
+                InputStream.nullInputStream()
             }
 
         configureCouchDbClientDocSuccessResponse(reportCalculation.id)
 
-        StepVerifier
-            // when
-            .create(
-                service.calculate(
-                    reportCalculation = reportCalculation
-                )
-            )
-            // then
-            .assertNext {
-                assertThat(it).isInstanceOf(ReportCalculation::class.java)
-                Assertions.assertEquals(reportCalculation, it)
-                verify(queryStorage).executeQuery(
-                    eq(
-                        QueryRequest(
-                            query = "SELECT * FROM foo",
-                            args = listOf(
-                                "2010-01-15", "2010-01-16T23:59:59.999Z"
-                            )
-                        )
+        // when
+        val response = service.calculate(
+            reportCalculation = reportCalculation
+        )
+
+        // then
+        assertThat(response).isInstanceOf(ReportCalculation::class.java)
+        Assertions.assertEquals(reportCalculation, response)
+        verify(queryStorage).executeQuery(
+            eq(
+                QueryRequest(
+                    query = "SELECT * FROM foo",
+                    args = listOf(
+                        "2010-01-15", "2010-01-16T23:59:59.999Z"
                     )
                 )
-            }
-            .verifyComplete()
+            )
+        )
     }
 
     @Test
@@ -140,50 +132,43 @@ class DefaultReportCalculatorTest {
 
         whenever(reportStorage.fetchReport(reportCalculation.report))
             .thenAnswer {
-                Mono.just(Optional.of(report))
+                Optional.of(report)
             }
 
         whenever(queryStorage.executeQuery(any()))
             .thenAnswer {
-                Flux.empty<DataBuffer>()
+                InputStream.nullInputStream()
             }
 
         configureCouchDbClientDocSuccessResponse(reportCalculation.id)
 
-        StepVerifier
-            // when
-            .create(
-                service.calculate(
-                    reportCalculation = reportCalculation
-                )
-            )
-            // then
-            .assertNext {
-                assertThat(it).isInstanceOf(ReportCalculation::class.java)
-                Assertions.assertEquals(reportCalculation, it)
-                verify(queryStorage).executeQuery(
-                    eq(
-                        QueryRequest(
-                            query = "SELECT * FROM foo",
-                            args = listOf(
-                                DEFAULT_FROM_DATE, DEFAULT_TO_DATE
-                            )
-                        )
+        // when
+        val response = service.calculate(
+            reportCalculation = reportCalculation
+        )
+
+        // then
+        assertThat(response).isInstanceOf(ReportCalculation::class.java)
+        Assertions.assertEquals(reportCalculation, response)
+        verify(queryStorage).executeQuery(
+            eq(
+                QueryRequest(
+                    query = "SELECT * FROM foo",
+                    args = listOf(
+                        DEFAULT_FROM_DATE, DEFAULT_TO_DATE
                     )
                 )
-            }
-            .verifyComplete()
+            )
+        )
     }
 
     private fun configureCouchDbClientDocSuccessResponse(id: String) {
         whenever(couchDbClient.putAttachment(any(), any(), any(), any()))
             .thenAnswer {
-                Mono.just(
-                    DocSuccess(
-                        id = id,
-                        ok = true,
-                        rev = "foo"
-                    )
+                DocSuccess(
+                    id = id,
+                    ok = true,
+                    rev = "foo"
                 )
             }
     }

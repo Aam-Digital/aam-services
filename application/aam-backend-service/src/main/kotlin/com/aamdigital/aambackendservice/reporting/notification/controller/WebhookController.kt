@@ -1,7 +1,8 @@
 package com.aamdigital.aambackendservice.reporting.notification.controller
 
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.error.ForbiddenAccessException
+import com.aamdigital.aambackendservice.error.HttpErrorDto
+import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.notification.core.AddWebhookSubscriptionUseCase
 import com.aamdigital.aambackendservice.reporting.notification.core.CreateWebhookRequest
 import com.aamdigital.aambackendservice.reporting.notification.core.NotificationStorage
@@ -9,6 +10,8 @@ import com.aamdigital.aambackendservice.reporting.notification.dto.Webhook
 import com.aamdigital.aambackendservice.reporting.notification.dto.WebhookAuthenticationType
 import com.aamdigital.aambackendservice.reporting.notification.dto.WebhookTarget
 import com.aamdigital.aambackendservice.reporting.notification.storage.WebhookOwner
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -17,7 +20,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import reactor.core.publisher.Mono
 import java.security.Principal
 
 data class WebhookAuthenticationWriteDto(
@@ -55,70 +57,132 @@ class WebhookController(
     @GetMapping
     fun fetchWebhooks(
         principal: Principal,
-    ): Mono<List<WebhookDto>> {
-        return notificationStorage.fetchAllWebhooks().map { webhooks ->
-            webhooks
-                .filter {
-                    it.owner.creator == principal.name
+    ): ResponseEntity<Any> {
+        val webhooks = try {
+            notificationStorage.fetchAllWebhooks()
+                .filter { webhook ->
+                    webhook.owner.creator == principal.name
                 }
-                .map {
-                    mapToDto(it)
+                .map { webhook ->
+                    mapToDto(webhook)
                 }
+        } catch (ex: Exception) {
+            return when (ex) {
+                is NotFoundException -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "NOT_FOUND",
+                            errorMessage = ex.localizedMessage,
+                        )
+                    )
+
+                else -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "INTERNAL_SERVER_ERROR",
+                            errorMessage = ex.localizedMessage,
+                        )
+                    )
+            }
         }
+        return ResponseEntity.ok(webhooks)
     }
 
     @GetMapping("/{webhookId}")
     fun fetchWebhook(
         @PathVariable webhookId: String,
         principal: Principal,
-    ): Mono<WebhookDto> {
-        return notificationStorage.fetchWebhook(DomainReference(webhookId))
-            .handle { webhook, sink ->
-                if (webhook.owner.creator == principal.name) {
-                    sink.next(mapToDto(webhook))
-                } else {
-                    sink.error(ForbiddenAccessException())
-                }
+    ): ResponseEntity<Any> {
+        val webhook = try {
+            notificationStorage.fetchWebhook(DomainReference(webhookId))
+        } catch (ex: Exception) {
+            return when (ex) {
+                is NotFoundException -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "NOT_FOUND",
+                            errorMessage = ex.localizedMessage,
+                        )
+                    )
+
+                else -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "INTERNAL_SERVER_ERROR",
+                            errorMessage = ex.localizedMessage,
+                        )
+                    )
             }
+        }
+
+        return if (webhook.owner.creator == principal.name) {
+            ResponseEntity.ok(mapToDto(webhook))
+        } else {
+            ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+        }
     }
 
     @PostMapping
     fun storeWebhook(
         @RequestBody request: CreateWebhookRequestDto,
         principal: Principal,
-    ): Mono<DomainReference> {
-        return notificationStorage.createWebhook(
-            CreateWebhookRequest(
-                user = principal.name,
-                label = request.label,
-                target = request.target,
-                authentication = request.authentication
+    ): ResponseEntity<Any> {
+        val webhook = try {
+            notificationStorage.createWebhook(
+                CreateWebhookRequest(
+                    user = principal.name,
+                    label = request.label,
+                    target = request.target,
+                    authentication = request.authentication
+                )
             )
-        ).map {
-            DomainReference(it.id)
+        } catch (ex: Exception) {
+            return when (ex) {
+                is NotFoundException -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "NOT_FOUND",
+                            errorMessage = ex.localizedMessage,
+                        )
+                    )
+
+                else -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "INTERNAL_SERVER_ERROR",
+                            errorMessage = ex.localizedMessage,
+                        )
+                    )
+            }
         }
+
+        return ResponseEntity.ok(DomainReference(webhook.id))
     }
 
     @PostMapping("/{webhookId}/subscribe/report/{reportId}")
     fun registerReportNotification(
         @PathVariable webhookId: String,
         @PathVariable reportId: String,
-    ): Mono<Unit> {
-        return addWebhookSubscriptionUseCase.subscribe(
+    ): ResponseEntity<*> {
+        addWebhookSubscriptionUseCase.subscribe(
             report = DomainReference(reportId),
             webhook = DomainReference(webhookId)
         )
+
+        return ResponseEntity.ok().build<Any>()
     }
 
     @DeleteMapping("/{webhookId}/subscribe/report/{reportId}")
     fun unregisterReportNotification(
         @PathVariable webhookId: String,
         @PathVariable reportId: String,
-    ): Mono<Unit> {
-        return notificationStorage.removeSubscription(
+    ): ResponseEntity<*> {
+        notificationStorage.removeSubscription(
             DomainReference(webhookId),
             DomainReference(reportId)
         )
+
+        return ResponseEntity.ok().build<Any>()
     }
 
     private fun mapToDto(it: Webhook): WebhookDto {

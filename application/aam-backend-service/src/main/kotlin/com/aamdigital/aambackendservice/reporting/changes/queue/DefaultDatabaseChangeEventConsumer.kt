@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.core.Message
 import org.springframework.amqp.rabbit.annotation.RabbitListener
-import reactor.core.publisher.Mono
 
 class DefaultDatabaseChangeEventConsumer(
     private val messageParser: QueueMessageParser,
@@ -24,11 +23,11 @@ class DefaultDatabaseChangeEventConsumer(
         queues = [DB_CHANGES_QUEUE],
         ackMode = "MANUAL"
     )
-    override fun consume(rawMessage: String, message: Message, channel: Channel): Mono<Unit> {
+    override fun consume(rawMessage: String, message: Message, channel: Channel) {
         val type = try {
             messageParser.getTypeKClass(rawMessage.toByteArray())
         } catch (ex: AamException) {
-            return Mono.error { throw AmqpRejectAndDontRequeueException("[${ex.code}] ${ex.localizedMessage}", ex) }
+            throw AmqpRejectAndDontRequeueException("[${ex.code}] ${ex.localizedMessage}", ex)
         }
 
         when (type.qualifiedName) {
@@ -40,9 +39,7 @@ class DefaultDatabaseChangeEventConsumer(
 
                 logger.debug("Payload parsed: {}", payload)
 
-                return useCase.createEvent(payload).flatMap {
-                    Mono.empty()
-                }
+                return useCase.createEvent(payload)
             }
 
             else -> {

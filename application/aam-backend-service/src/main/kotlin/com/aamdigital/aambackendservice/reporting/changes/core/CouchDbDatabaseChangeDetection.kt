@@ -7,8 +7,8 @@ import com.aamdigital.aambackendservice.reporting.changes.repository.SyncEntry
 import com.aamdigital.aambackendservice.reporting.changes.repository.SyncRepository
 import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
 import org.slf4j.LoggerFactory
-import reactor.core.publisher.Mono
 import java.util.*
+import kotlin.jvm.optionals.getOrDefault
 
 class CouchDbDatabaseChangeDetection(
     private val couchDbClient: CouchDbClient,
@@ -25,70 +25,63 @@ class CouchDbDatabaseChangeDetection(
     /**
      * Will reach out to CouchDb and convert _changes to  Domain.DocumentChangeEvent's
      */
-    override fun checkForChanges(): Mono<Unit> {
+    override fun checkForChanges() {
         logger.trace("[CouchDatabaseChangeDetection] start couchdb change detection...")
-        return couchDbClient.allDatabases().flatMap { databases ->
-            val requests = databases.filter { !it.startsWith("_") }.map { database ->
+        couchDbClient
+            .allDatabases()
+            .filter { !it.startsWith("_") }.map { database ->
                 fetchChangesForDatabase(database)
             }
-            Mono.zip(requests) {
-                it.map { }
-            }
-        }.map {
-            logger.trace("[CouchDatabaseChangeDetection] ...completed couchdb change detection.")
-        }
+        logger.trace("[CouchDatabaseChangeDetection] ...completed couchdb change detection.")
     }
 
-    private fun fetchChangesForDatabase(database: String): Mono<Unit> {
+    private fun fetchChangesForDatabase(database: String) {
         logger.trace("[CouchDatabaseChangeDetection] check changes for database \"{}\"...", database)
 
-        return syncRepository.findByDatabase(database).defaultIfEmpty(SyncEntry(database = database, latestRef = ""))
-            .flatMap {
-                LATEST_REFS[database] = it.latestRef
+        var syncEntry =
+            syncRepository.findByDatabase(database).getOrDefault(SyncEntry(database = database, latestRef = ""))
 
-                val queryParams = getEmptyQueryParams()
+        LATEST_REFS[database] = syncEntry.latestRef
 
-                if (LATEST_REFS.containsKey(database) && LATEST_REFS.getValue(database).isNotEmpty()) {
-                    queryParams.set("last-event-id", LATEST_REFS.getValue(database))
-                }
+        val queryParams = getEmptyQueryParams()
 
-                queryParams.set("limit", CHANGES_LIMIT.toString())
-                queryParams.set("include_docs", "true")
+        if (LATEST_REFS.containsKey(database) && LATEST_REFS.getValue(database).isNotEmpty()) {
+            queryParams.set("last-event-id", LATEST_REFS.getValue(database))
+        }
 
-                couchDbClient.changes(
-                    database = database, queryParams = queryParams
+        queryParams.set("limit", CHANGES_LIMIT.toString())
+        queryParams.set("include_docs", "true")
+
+        val changes = couchDbClient.changes(
+            database = database, queryParams = queryParams
+        )
+
+        changes.results.forEachIndexed { index, couchDbChangeResult ->
+            logger.trace("$database $index: {}", couchDbChangeResult.toString())
+
+            val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
+
+            if (!couchDbChangeResult.id.startsWith("_design")) {
+                documentChangeEventPublisher.publish(
+                    channel = DB_CHANGES_QUEUE,
+                    DatabaseChangeEvent(
+                        documentId = couchDbChangeResult.id,
+                        database = database,
+                        rev = rev,
+                        deleted = couchDbChangeResult.deleted == true
+                    )
                 )
             }
-            .map { changes ->
-                changes.results.forEachIndexed { index, couchDbChangeResult ->
-                    logger.trace("$database $index: {}", couchDbChangeResult.toString())
 
-                    val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
+            LATEST_REFS[database] = couchDbChangeResult.seq
+        }
 
-                    if (!couchDbChangeResult.id.startsWith("_design")) {
-                        documentChangeEventPublisher.publish(
-                            channel = DB_CHANGES_QUEUE,
-                            DatabaseChangeEvent(
-                                documentId = couchDbChangeResult.id,
-                                database = database,
-                                rev = rev,
-                                deleted = couchDbChangeResult.deleted == true
-                            )
-                        )
-                    }
+        syncEntry =
+            syncRepository.findByDatabase(database).getOrDefault(SyncEntry(database = database, latestRef = ""))
 
-                    LATEST_REFS[database] = couchDbChangeResult.seq
-                }
-            }
-            .flatMap {
-                syncRepository.findByDatabase(database).defaultIfEmpty(SyncEntry(database = database, latestRef = ""))
-            }
-            .flatMap {
-                it.latestRef = LATEST_REFS[database].orEmpty()
-                syncRepository.save(it)
-            }
-            .map {
-                logger.trace("[CouchDatabaseChangeDetection] ...completed changes check for database \"{}\".", database)
-            }
+        syncEntry.latestRef = LATEST_REFS[database].orEmpty()
+        syncRepository.save(syncEntry)
+
+        logger.trace("[CouchDatabaseChangeDetection] ...completed changes check for database \"{}\".", database)
     }
 }

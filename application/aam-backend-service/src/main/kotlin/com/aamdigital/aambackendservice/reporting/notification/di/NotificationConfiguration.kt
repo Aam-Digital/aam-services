@@ -16,9 +16,7 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateR
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.client.reactive.ReactorClientHttpConnector
-import org.springframework.web.reactive.function.client.WebClient
-import reactor.netty.http.client.HttpClient
+import org.springframework.web.client.RestClient
 
 @Configuration
 class NotificationConfiguration {
@@ -43,16 +41,16 @@ class NotificationConfiguration {
     @Bean
     fun defaultTriggerWebhookUseCase(
         notificationStorage: NotificationStorage,
-        @Qualifier("webhook-web-client") webClient: WebClient,
+        @Qualifier("webhook-web-client") restClient: RestClient,
         uriParser: UriParser,
-    ): TriggerWebhookUseCase = DefaultTriggerWebhookUseCase(notificationStorage, webClient, uriParser)
+    ): TriggerWebhookUseCase = DefaultTriggerWebhookUseCase(notificationStorage, restClient, uriParser)
 
     @Bean(name = ["webhook-web-client"])
-    fun webhookWebClient(): WebClient {
+    fun webhookWebClient(): RestClient {
         val clientBuilder =
-            WebClient.builder()
+            RestClient.builder()
 
-        return clientBuilder.clientConnector(ReactorClientHttpConnector(HttpClient.create())).build()
+        return clientBuilder.build()
     }
 
     @Bean
