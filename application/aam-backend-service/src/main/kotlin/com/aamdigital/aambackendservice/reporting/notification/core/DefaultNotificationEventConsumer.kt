@@ -36,7 +36,7 @@ class DefaultNotificationEventConsumer(
                 logger.debug("Payload parsed: {}", payload)
                 try {
                     useCase.trigger(payload)
-                } catch (ex: AamException) {
+                } catch (ex: Exception) {
                     throw AmqpRejectAndDontRequeueException(
                         "[USECASE_ERROR] ${ex.localizedMessage}",
                         ex
