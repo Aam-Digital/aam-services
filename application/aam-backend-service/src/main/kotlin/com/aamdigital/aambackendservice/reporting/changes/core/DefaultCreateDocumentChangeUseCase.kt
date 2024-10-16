@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.reporting.changes.core
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.couchdb.core.getEmptyQueryParams
+import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.reporting.changes.di.ChangesQueueConfiguration.Companion.DOCUMENT_CHANGES_EXCHANGE
 import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
 import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
@@ -35,14 +36,19 @@ class DefaultCreateDocumentChangeUseCase(
             return
         }
 
-        val previousDoc = couchDbClient.getPreviousDocRev(
-            database = event.database,
-            documentId = event.documentId,
-            rev = event.rev,
-            kClass = ObjectNode::class
-        ).getOrDefault(
+        val previousDoc: ObjectNode = try {
+            couchDbClient.getPreviousDocRev(
+                database = event.database,
+                documentId = event.documentId,
+                rev = event.rev,
+                kClass = ObjectNode::class
+            ).getOrDefault(
+                objectMapper.createObjectNode()
+            )
+        } catch (ex: AamException) {
+            logger.debug(ex.message, ex)
             objectMapper.createObjectNode()
-        )
+        }
 
         val changeEvent = if (currentDoc.has("_deleted")
             && currentDoc.get("_deleted").isBoolean
