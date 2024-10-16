@@ -19,7 +19,6 @@ class DefaultNotificationEventConsumer(
 
     @RabbitListener(
         queues = [NOTIFICATION_QUEUE],
-        ackMode = "MANUAL"
     )
     override fun consume(rawMessage: String, message: Message, channel: Channel) {
         val type = try {

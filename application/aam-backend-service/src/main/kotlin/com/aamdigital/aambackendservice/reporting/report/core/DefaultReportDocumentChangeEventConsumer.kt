@@ -25,10 +25,8 @@ class DefaultReportDocumentChangeEventConsumer(
 
     @RabbitListener(
         queues = [ReportQueueConfiguration.DOCUMENT_CHANGES_REPORT_QUEUE],
-        ackMode = "MANUAL",
         // avoid concurrent processing so that we do not trigger multiple calculations for same data unnecessarily
         concurrency = "1-1",
-        batch = "1"
     )
     override fun consume(rawMessage: String, message: Message, channel: Channel) {
         val type = try {

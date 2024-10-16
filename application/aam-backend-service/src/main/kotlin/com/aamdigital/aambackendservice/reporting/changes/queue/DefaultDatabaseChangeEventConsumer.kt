@@ -21,7 +21,6 @@ class DefaultDatabaseChangeEventConsumer(
 
     @RabbitListener(
         queues = [DB_CHANGES_QUEUE],
-        ackMode = "MANUAL"
     )
     override fun consume(rawMessage: String, message: Message, channel: Channel) {
         val type = try {
