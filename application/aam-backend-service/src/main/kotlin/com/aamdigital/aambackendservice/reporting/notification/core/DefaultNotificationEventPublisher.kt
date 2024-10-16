@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.notification.core
 
+import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.queue.core.QueueMessage
@@ -17,6 +18,10 @@ class DefaultNotificationEventPublisher(
     private val objectMapper: ObjectMapper,
     private val rabbitTemplate: RabbitTemplate,
 ) : NotificationEventPublisher {
+
+    enum class DefaultNotificationEventPublisherErrorCode : AamErrorCode {
+        EVENT_PUBLISH_ERROR
+    }
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -39,7 +44,7 @@ class DefaultNotificationEventPublisher(
         } catch (ex: AmqpException) {
             throw InternalServerException(
                 message = "Could not publish NotificationEvent: $event",
-                code = "EVENT_PUBLISH_ERROR",
+                code = DefaultNotificationEventPublisherErrorCode.EVENT_PUBLISH_ERROR,
                 cause = ex
             )
         }

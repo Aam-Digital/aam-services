@@ -1,16 +1,25 @@
 package com.aamdigital.aambackendservice.reporting.changes.repository
 
-import org.springframework.data.annotation.Id
-import org.springframework.data.repository.reactive.ReactiveCrudRepository
-import reactor.core.publisher.Mono
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import org.springframework.data.repository.CrudRepository
+import org.springframework.stereotype.Repository
+import java.util.*
 
+@Entity
 data class SyncEntry(
     @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
     var id: Long = 0,
     var database: String,
+    @Column(columnDefinition = "TEXT")
     var latestRef: String,
 )
 
-interface SyncRepository : ReactiveCrudRepository<SyncEntry, String> {
-    fun findByDatabase(database: String): Mono<SyncEntry>
+@Repository
+interface SyncRepository : CrudRepository<SyncEntry, String> {
+    fun findByDatabase(database: String): Optional<SyncEntry>
 }

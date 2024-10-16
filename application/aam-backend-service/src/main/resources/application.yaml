@@ -6,14 +6,22 @@ spring:
   jackson:
     deserialization:
       accept-empty-string-as-null-object: true
-  r2dbc:
-    url: r2dbc:h2:file://././data/dbh2;DB_CLOSE_DELAY=-1
-    username: local
-    password: local
   rabbitmq:
     listener:
       simple:
         prefetch: 1
+  datasource:
+    driver-class-name: org.h2.Driver
+    username: local
+    password: local
+    url: jdbc:h2:file:./data/dbh2;DB_CLOSE_DELAY=-1
+  jpa:
+    generate-ddl: true
+    hibernate:
+      ddl-auto: update
+  threads:
+    virtual:
+      enabled: true
 
 management:
   endpoint:
@@ -26,12 +34,6 @@ management:
         include:
           - info
           - health
-
-sqs-client-configuration:
-  max-in-memory-size-in-mega-bytes: 16
-
-couch-db-client-configuration:
-  max-in-memory-size-in-mega-bytes: 64
 
 ---
 
@@ -51,14 +53,15 @@ spring:
         retry:
           enabled: true
           max-attempts: 5
-  webflux:
-    base-path: /api
 
 server:
   error:
     include-message: always
     include-binding-errors: always
   port: 9000
+  servlet:
+    context-path: /api
+
 logging:
   level:
     #    org.springframework.amqp.rabbit: warn

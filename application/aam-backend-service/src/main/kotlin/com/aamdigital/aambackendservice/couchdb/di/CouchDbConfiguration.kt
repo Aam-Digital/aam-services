@@ -7,35 +7,29 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.client.reactive.ReactorClientHttpConnector
-import org.springframework.web.reactive.function.client.WebClient
-import reactor.netty.http.client.HttpClient
+import org.springframework.web.client.RestClient
 
 @Configuration
 class CouchDbConfiguration {
 
     @Bean
     fun defaultCouchDbStorage(
-        @Qualifier("couch-db-client") webClient: WebClient,
+        @Qualifier("couch-db-client") restClient: RestClient,
         objectMapper: ObjectMapper,
-    ): CouchDbClient = DefaultCouchDbClient(webClient, objectMapper)
+    ): CouchDbClient = DefaultCouchDbClient(restClient, objectMapper)
 
     @Bean(name = ["couch-db-client"])
-    fun couchDbWebClient(configuration: CouchDbClientConfiguration): WebClient {
-        val clientBuilder =
-            WebClient.builder()
-                .codecs {
-                    it.defaultCodecs()
-                        .maxInMemorySize(configuration.maxInMemorySizeInMegaBytes * 1024 * 1024)
-                }
-                .baseUrl(configuration.basePath)
-                .defaultHeaders {
-                    it.setBasicAuth(
-                        configuration.basicAuthUsername,
-                        configuration.basicAuthPassword,
-                    )
-                }
-        return clientBuilder.clientConnector(ReactorClientHttpConnector(HttpClient.create())).build()
+    fun couchDbWebClient(configuration: CouchDbClientConfiguration): RestClient {
+        val clientBuilder = RestClient.builder()
+            .baseUrl(configuration.basePath)
+            .defaultHeaders {
+                it.setBasicAuth(
+                    configuration.basicAuthUsername,
+                    configuration.basicAuthPassword,
+                )
+            }
+
+        return clientBuilder.build()
     }
 }
 
@@ -44,5 +38,4 @@ class CouchDbClientConfiguration(
     val basePath: String,
     val basicAuthUsername: String,
     val basicAuthPassword: String,
-    val maxInMemorySizeInMegaBytes: Int = 16,
 )

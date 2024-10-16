@@ -3,23 +3,21 @@ package com.aamdigital.aambackendservice.export.usecase
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome.Success
-import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.ExternalSystemException
-import com.aamdigital.aambackendservice.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.error.NetworkException
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.FetchTemplateData
-import com.aamdigital.aambackendservice.export.core.FetchTemplateErrorCode
+import com.aamdigital.aambackendservice.export.core.FetchTemplateError
 import com.aamdigital.aambackendservice.export.core.FetchTemplateRequest
 import com.aamdigital.aambackendservice.export.core.FetchTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.TemplateExport
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
-import org.slf4j.LoggerFactory
-import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
-import org.springframework.web.reactive.function.client.WebClient
-import reactor.core.publisher.Mono
-import reactor.kotlin.core.publisher.switchIfEmpty
+import org.springframework.web.client.ResourceAccessException
+import org.springframework.web.client.RestClient
+import java.io.ByteArrayInputStream
+import java.io.InputStream
 
 /**
  * Default implementation of the [FetchTemplateUseCase].
@@ -27,111 +25,93 @@ import reactor.kotlin.core.publisher.switchIfEmpty
  * This use case is responsible for fetching a template based on a given request by making a GET request
  * to a specified template fetch endpoint.
  *
- * @property webClient The WebClient used to make HTTP requests to the template engine.
+ * @property restClient The RestClient used to make HTTP requests to the template engine.
  * @property templateStorage The TemplateStorage instance used to fetch template metadata.
  */
 class DefaultFetchTemplateUseCase(
-    private val webClient: WebClient,
+    private val restClient: RestClient,
     private val templateStorage: TemplateStorage,
-) : FetchTemplateUseCase {
-
-    private val logger = LoggerFactory.getLogger(javaClass)
+) : FetchTemplateUseCase() {
 
     private data class FileResponse(
-        val file: DataBuffer,
+        val file: InputStream,
         val headers: HttpHeaders,
     )
 
     override fun apply(
         request: FetchTemplateRequest
-    ): Mono<UseCaseOutcome<FetchTemplateData, FetchTemplateErrorCode>> {
-        return try {
-            fetchTemplateRequest(request.templateRef)
-                .flatMap { template ->
-                    webClient.get()
-                        .uri("/template/${template.templateId}")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .exchangeToMono { exchange ->
-                            exchange.bodyToMono(DataBuffer::class.java).map { dataBuffer ->
-                                val responseHeaders = exchange.headers().asHttpHeaders()
+    ): UseCaseOutcome<FetchTemplateData> {
+        val template = fetchTemplateRequest(request.templateRef)
 
-                                val forwardHeaders = HttpHeaders()
-                                forwardHeaders.contentType = responseHeaders.contentType
+        var responseHeaders = HttpHeaders()
 
-                                if (!responseHeaders["Content-Disposition"].isNullOrEmpty()) {
-                                    forwardHeaders["Content-Disposition"] = responseHeaders["Content-Disposition"]
-                                }
+        val fileStream = try {
+            restClient.get()
+                .uri("/template/${template.templateId}")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange { _, clientResponse ->
 
-                                FileResponse(
-                                    file = dataBuffer,
-                                    headers = forwardHeaders
-                                )
-                            }
-                        }
-                        .onErrorMap {
-                            ExternalSystemException(
-                                cause = it,
-                                message = it.localizedMessage,
-                                code = FetchTemplateErrorCode.FETCH_TEMPLATE_REQUEST_FAILED_ERROR.toString()
-                            )
-                        }
-                        .flatMap { fileResponse: FileResponse ->
-                            Mono.just(
-                                Success(
-                                    outcome = FetchTemplateData(
-                                        file = fileResponse.file,
-                                        responseHeaders = fileResponse.headers
-                                    )
-                                )
-                            )
-                        }
+                    if (clientResponse.statusCode.is4xxClientError) {
+                        throw NotFoundException(
+                            code = FetchTemplateError.NOT_FOUND_ERROR,
+                            message = "Template not found in template engine. Please re-upload" +
+                                    " the template and try again."
+                        )
+                    }
+
+                    responseHeaders = clientResponse.headers
+
+                    clientResponse.bodyTo(ByteArray::class.java)
+                        ?: throw ExternalSystemException(
+                            code = FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR,
+                            message = "Could not fetch the template file from the template engine."
+                        )
                 }
-        } catch (it: Exception) {
-            handleError(it)
+        } catch (ex: ResourceAccessException) {
+            throw NetworkException(
+                cause = ex,
+                message = ex.localizedMessage,
+                code = FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR
+            )
         }
-    }
 
-    override fun handleError(it: Throwable): Mono<UseCaseOutcome<FetchTemplateData, FetchTemplateErrorCode>> {
-        val errorCode: FetchTemplateErrorCode = runCatching {
-            FetchTemplateErrorCode.valueOf((it as AamException).code)
-        }.getOrDefault(FetchTemplateErrorCode.INTERNAL_SERVER_ERROR)
+        val forwardHeaders = HttpHeaders()
+        forwardHeaders.contentType = responseHeaders.contentType
 
-        logger.error("[${errorCode}] ${it.localizedMessage}", it.cause)
+        if (!responseHeaders["Content-Disposition"].isNullOrEmpty()) {
+            forwardHeaders["Content-Disposition"] = responseHeaders["Content-Disposition"]
+        }
 
-        return Mono.just(
-            UseCaseOutcome.Failure(
-                errorMessage = it.localizedMessage,
-                errorCode = errorCode,
-                cause = it.cause
+        val inputStream = ByteArrayInputStream(fileStream)
+
+        val fileResponse = FileResponse(
+            file = inputStream,
+            headers = forwardHeaders
+        )
+
+        return Success(
+            data = FetchTemplateData(
+                file = fileResponse.file,
+                responseHeaders = fileResponse.headers
             )
         )
     }
 
-    private fun fetchTemplateRequest(templateRef: DomainReference): Mono<TemplateExport> {
-        return templateStorage.fetchTemplate(templateRef)
-            .switchIfEmpty {
-                Mono.error(
-                    ExternalSystemException(
-                        cause = null,
-                        message = "fetchTemplate() returned empty Mono",
-                        code = FetchTemplateErrorCode.FETCH_TEMPLATE_REQUEST_FAILED_ERROR.toString()
-                    )
-                )
-            }
-            .onErrorMap {
-                if (it is InvalidArgumentException) {
-                    NotFoundException(
-                        cause = it,
-                        message = it.localizedMessage,
-                        code = FetchTemplateErrorCode.NOT_FOUND_ERROR.toString()
-                    )
-                } else {
-                    ExternalSystemException(
-                        cause = it,
-                        message = it.localizedMessage,
-                        code = FetchTemplateErrorCode.FETCH_TEMPLATE_REQUEST_FAILED_ERROR.toString()
-                    )
-                }
-            }
+    private fun fetchTemplateRequest(templateRef: DomainReference): TemplateExport {
+        return try {
+            templateStorage.fetchTemplate(templateRef)
+        } catch (ex: NotFoundException) {
+            throw NotFoundException(
+                cause = ex,
+                message = ex.localizedMessage,
+                code = FetchTemplateError.NOT_FOUND_ERROR
+            )
+        } catch (ex: Exception) {
+            throw ExternalSystemException(
+                cause = ex,
+                message = ex.localizedMessage,
+                code = FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR
+            )
+        }
     }
 }

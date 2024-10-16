@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.queue.core
 
+import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.fasterxml.jackson.core.JacksonException
 import com.fasterxml.jackson.databind.JsonNode
@@ -10,6 +11,14 @@ import kotlin.reflect.KClass
 class DefaultQueueMessageParser(
     private val objectMapper: ObjectMapper,
 ) : QueueMessageParser {
+
+    enum class DefaultQueueMessageParserErrorCode : AamErrorCode {
+        INVALID_JSON,
+        MISSING_TYPE_FIELD,
+        INVALID_CLASS_NAME,
+        MISSING_PAYLOAD_FIELD,
+        INVALID_PAYLOAD
+    }
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -24,7 +33,7 @@ class DefaultQueueMessageParser(
         } catch (ex: JacksonException) {
             throw InvalidArgumentException(
                 message = "Could not parse message.",
-                code = "INVALID_JSON",
+                code = DefaultQueueMessageParserErrorCode.INVALID_JSON,
                 cause = ex,
             )
         }
@@ -37,7 +46,7 @@ class DefaultQueueMessageParser(
         if (!jsonNode.has(TYPE_FIELD)) {
             throw InvalidArgumentException(
                 message = "Could not extract type from message.",
-                code = "MISSING_TYPE_FIELD",
+                code = DefaultQueueMessageParserErrorCode.MISSING_TYPE_FIELD,
             )
         }
 
@@ -54,7 +63,7 @@ class DefaultQueueMessageParser(
             logger.debug("INVALID_CLASS_NAME_DEBUG_EX", ex)
             throw InvalidArgumentException(
                 message = "Could not find Class for this type.",
-                code = "INVALID_CLASS_NAME",
+                code = DefaultQueueMessageParserErrorCode.INVALID_CLASS_NAME,
             )
         }
     }
@@ -66,7 +75,7 @@ class DefaultQueueMessageParser(
         if (!jsonNode.has(PAYLOAD_FIELD)) {
             throw InvalidArgumentException(
                 message = "Could not extract payload from message.",
-                code = "MISSING_PAYLOAD_FIELD",
+                code = DefaultQueueMessageParserErrorCode.MISSING_PAYLOAD_FIELD,
             )
         }
 
@@ -75,7 +84,7 @@ class DefaultQueueMessageParser(
         } catch (ex: JacksonException) {
             throw InvalidArgumentException(
                 message = "Could not parse payload object from message.",
-                code = "INVALID_PAYLOAD",
+                code = DefaultQueueMessageParserErrorCode.INVALID_PAYLOAD,
                 cause = ex,
             )
         }

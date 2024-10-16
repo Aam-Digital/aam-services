@@ -1,28 +1,26 @@
 package com.aamdigital.aambackendservice.domain
 
+import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.InternalServerException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.junit.jupiter.MockitoExtension
-import reactor.core.publisher.Mono
-import reactor.test.StepVerifier
+
+enum class TestErrorCode : AamErrorCode {
+    TEST_EXCEPTION,
+}
 
 @ExtendWith(MockitoExtension::class)
 class BasicDomainUseCaseTest {
 
-    enum class BasicUseCaseErrorCode : UseCaseErrorCode {
-        UNKNOWN
-    }
+    class BasicTestUseCase : DomainUseCase<UseCaseRequest, UseCaseData>() {
 
-    class BasicTestUseCase : DomainUseCase<UseCaseRequest, UseCaseData, UseCaseErrorCode> {
-        override fun apply(request: UseCaseRequest): Mono<UseCaseOutcome<UseCaseData, UseCaseErrorCode>> {
-            throw InternalServerException("error")
-        }
 
-        override fun handleError(it: Throwable): Mono<UseCaseOutcome<UseCaseData, UseCaseErrorCode>> {
-            return Mono.just(
-                UseCaseOutcome.Failure(errorCode = BasicUseCaseErrorCode.UNKNOWN, cause = it)
+        override fun apply(request: UseCaseRequest): UseCaseOutcome<UseCaseData> {
+            throw InternalServerException(
+                message = "error",
+                code = TestErrorCode.TEST_EXCEPTION
             )
         }
     }
@@ -30,13 +28,13 @@ class BasicDomainUseCaseTest {
     private val useCase = BasicTestUseCase()
 
     @Test
-    fun `should catch exception in UseCaseOutcome when call execute()`() {
+    fun `should catch exception in UseCaseOutcome when call apply()`() {
         val request: UseCaseRequest = object : UseCaseRequest {}
 
-        StepVerifier.create(
-            useCase.execute(request)
-        ).assertNext {
-            Assertions.assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-        }
+        val response = useCase.run(request)
+
+        Assertions.assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        Assertions.assertThat((response as UseCaseOutcome.Failure).errorCode)
+            .isEqualTo(TestErrorCode.TEST_EXCEPTION)
     }
 }

@@ -4,44 +4,24 @@ import com.aamdigital.aambackendservice.auth.core.AuthProvider
 import com.aamdigital.aambackendservice.auth.core.KeycloakAuthProvider
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.client.reactive.ReactorClientHttpConnector
-import org.springframework.web.reactive.function.client.WebClient
-import reactor.netty.http.client.HttpClient
-
-
-@ConfigurationProperties("aam-keycloak-client-configuration")
-data class KeycloakConfiguration(
-    val maxInMemorySizeInMegaBytes: Int = 16,
-)
+import org.springframework.web.client.RestClient
 
 @Configuration
 class AuthConfiguration {
-    companion object {
-        const val MEGA_BYTES_MULTIPLIER = 1024 * 1024
-    }
-
+    
     @Bean(name = ["aam-keycloak-client"])
-    fun aamKeycloakWebClient(
-        configuration: KeycloakConfiguration,
-    ): WebClient {
-        val clientBuilder =
-            WebClient.builder()
-                .codecs {
-                    it.defaultCodecs()
-                        .maxInMemorySize(configuration.maxInMemorySizeInMegaBytes * MEGA_BYTES_MULTIPLIER)
-                }
-
-        return clientBuilder.clientConnector(ReactorClientHttpConnector(HttpClient.create())).build()
+    fun aamKeycloakRestClient(
+    ): RestClient {
+        val clientBuilder = RestClient.builder()
+        return clientBuilder.build()
     }
 
     @Bean(name = ["aam-keycloak"])
     fun aamKeycloakAuthProvider(
-        @Qualifier("aam-keycloak-client") webClient: WebClient,
+        @Qualifier("aam-keycloak-client") webClient: RestClient,
         objectMapper: ObjectMapper,
     ): AuthProvider =
-        KeycloakAuthProvider(webClient = webClient, objectMapper = objectMapper)
-
+        KeycloakAuthProvider(httpClient = webClient, objectMapper = objectMapper)
 }

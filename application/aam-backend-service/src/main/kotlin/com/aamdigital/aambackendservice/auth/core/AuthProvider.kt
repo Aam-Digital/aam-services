@@ -1,7 +1,5 @@
 package com.aamdigital.aambackendservice.auth.core
 
-import reactor.core.publisher.Mono
-
 data class TokenResponse(val token: String)
 
 
@@ -28,5 +26,5 @@ data class AuthConfig(
  * Used for fetching access tokens for third party systems.
  */
 interface AuthProvider {
-    fun fetchToken(authClientConfig: AuthConfig): Mono<TokenResponse>
+    fun fetchToken(authClientConfig: AuthConfig): TokenResponse
 }

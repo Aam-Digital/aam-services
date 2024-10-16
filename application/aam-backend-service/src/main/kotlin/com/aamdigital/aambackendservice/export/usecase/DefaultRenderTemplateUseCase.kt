@@ -3,13 +3,12 @@ package com.aamdigital.aambackendservice.export.usecase
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome.Success
-import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.ExternalSystemException
-import com.aamdigital.aambackendservice.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.error.NetworkException
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.RenderTemplateData
-import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode
-import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+import com.aamdigital.aambackendservice.export.core.RenderTemplateError
+import com.aamdigital.aambackendservice.export.core.RenderTemplateError.CREATE_RENDER_REQUEST_FAILED_ERROR
 import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.TemplateExport
@@ -17,14 +16,11 @@ import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import org.slf4j.LoggerFactory
-import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
-import org.springframework.web.reactive.function.BodyInserters
-import org.springframework.web.reactive.function.client.WebClient
-import reactor.core.publisher.Mono
-import reactor.kotlin.core.publisher.switchIfEmpty
+import org.springframework.web.client.ResourceAccessException
+import org.springframework.web.client.RestClient
+import java.io.InputStream
 
 data class RenderRequestResponseDto(
     val success: Boolean,
@@ -48,130 +44,109 @@ data class RenderRequestResponseDataDto(
  *
  * The file metadata is forwarded to the client.
  *
- * @property webClient The WebClient used to make HTTP requests.
+ * @property renderClient The RestClient used to make HTTP requests.
  * @property objectMapper The ObjectMapper used for JSON processing.
  * @property templateStorage The TemplateStorage used to fetch templates.
  */
 class DefaultRenderTemplateUseCase(
-    private val webClient: WebClient,
+    private val renderClient: RestClient,
     private val objectMapper: ObjectMapper,
     private val templateStorage: TemplateStorage,
-) : RenderTemplateUseCase {
-
-    private val logger = LoggerFactory.getLogger(javaClass)
+) : RenderTemplateUseCase() {
 
     private data class FileResponse(
-        val file: DataBuffer,
+        val file: InputStream,
         val headers: HttpHeaders,
     )
 
     override fun apply(
         request: RenderTemplateRequest
-    ): Mono<UseCaseOutcome<RenderTemplateData, RenderTemplateErrorCode>> {
-        return try {
-            return fetchTemplateRequest(request.templateRef)
-                .flatMap { template: TemplateExport ->
-                    val fileName = template.targetFileName
+    ): UseCaseOutcome<RenderTemplateData> {
 
-                    (request.bodyData as ObjectNode).put(
-                        "reportName", fileName
-                            .replace(Regex("[\\\\/*?\"<>|]"), "_")
-                    )
+        val template = fetchTemplate(request.templateRef)
 
-                    createRenderRequest(template.templateId, request.bodyData)
-                        .map { templateId: String ->
-                            parseRenderRequestResponse(templateId)
-                        }
-                }
-                .flatMap { renderId: String ->
-                    fetchRenderIdRequest(renderId)
-                }
-                .flatMap { fileResponse: FileResponse ->
-                    Mono.just(
-                        Success(
-                            outcome = RenderTemplateData(
-                                file = fileResponse.file,
-                                responseHeaders = fileResponse.headers
-                            )
-                        )
-                    )
-                }
-        } catch (it: Exception) {
-            handleError(it)
-        }
-    }
+        val targetFileName = template.targetFileName
+            .replace(Regex("[\\\\/*?\"<>|]"), "_")
 
-    override fun handleError(
-        it: Throwable
-    ): Mono<UseCaseOutcome<RenderTemplateData, RenderTemplateErrorCode>> {
-        val errorCode: RenderTemplateErrorCode = runCatching {
-            RenderTemplateErrorCode.valueOf((it as AamException).code)
-        }.getOrDefault(RenderTemplateErrorCode.INTERNAL_SERVER_ERROR)
+        (request.bodyData as ObjectNode).put(
+            "reportName",
+            targetFileName.replace(Regex("[\\\\/*?\"<>|]"), "_")
+        )
 
-        logger.error("[${errorCode}] ${it.localizedMessage}", it.cause)
+        val templateId = createRenderRequest(template.templateId, request.bodyData)
+        val renderId = parseRenderRequestResponse(templateId)
+        val fileResponse = fetchRenderIdRequest(renderId)
 
-        return Mono.just(
-            UseCaseOutcome.Failure(
-                errorMessage = it.localizedMessage,
-                errorCode = errorCode,
-                cause = it.cause
+        return Success(
+            data = RenderTemplateData(
+                file = fileResponse.file,
+                responseHeaders = fileResponse.headers
             )
         )
     }
 
-    private fun fetchTemplateRequest(templateRef: DomainReference): Mono<TemplateExport> {
-        return templateStorage.fetchTemplate(templateRef)
-            .switchIfEmpty {
-                Mono.error(
-                    ExternalSystemException(
-                        cause = null,
-                        message = "fetchTemplate() returned empty Mono",
-                        code = RenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR.toString()
-                    )
+    private fun fetchTemplate(templateRef: DomainReference): TemplateExport {
+        return try {
+            templateStorage.fetchTemplate(templateRef)
+        } catch (ex: Exception) {
+            throw when (ex) {
+                is NotFoundException -> NotFoundException(
+                    cause = ex.cause ?: ex,
+                    message = ex.localizedMessage,
+                    code = RenderTemplateError.NOT_FOUND_ERROR
                 )
+
+                is NetworkException -> NetworkException(
+                    cause = ex.cause ?: ex,
+                    message = ex.localizedMessage,
+                    code = RenderTemplateError.FETCH_TEMPLATE_FAILED_ERROR
+                )
+
+                else -> ExternalSystemException(
+                    cause = ex.cause ?: ex,
+                    message = "Could not create render request to template engine.",
+                    code = RenderTemplateError.FETCH_TEMPLATE_FAILED_ERROR
+                )
+
             }
-            .onErrorMap {
-                if (it is InvalidArgumentException) {
-                    NotFoundException(
-                        cause = it,
-                        message = it.localizedMessage,
-                        code = RenderTemplateErrorCode.NOT_FOUND_ERROR.toString()
-                    )
-                } else {
-                    ExternalSystemException(
-                        cause = it,
-                        message = it.localizedMessage,
-                        code = RenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR.toString()
-                    )
-                }
-            }
+        }
     }
 
-    private fun createRenderRequest(templateId: String, bodyData: JsonNode): Mono<String> {
-        return webClient.post()
-            .uri("/render/$templateId")
-            .contentType(MediaType.APPLICATION_JSON)
-            .accept(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(bodyData))
-            .exchangeToMono {
-                it.bodyToMono(String::class.java)
-            }
-            .onErrorMap {
-                ExternalSystemException(
-                    cause = it,
-                    message = it.localizedMessage,
-                    code = RenderTemplateErrorCode.CREATE_RENDER_REQUEST_FAILED_ERROR.toString()
-                )
-            }
+    private fun createRenderRequest(templateId: String, bodyData: JsonNode): String {
+        val response = try {
+            renderClient.post()
+                .uri("/render/$templateId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(bodyData)
+                .retrieve()
+                .body(String::class.java)
+        } catch (ex: Exception) {
+            throw ExternalSystemException(
+                cause = ex,
+                message = ex.localizedMessage,
+                code = CREATE_RENDER_REQUEST_FAILED_ERROR
+            )
+        }
+
+        if (response.isNullOrEmpty()) {
+            throw ExternalSystemException(
+                cause = null,
+                message = "Null or empty response from renderClient.",
+                code = CREATE_RENDER_REQUEST_FAILED_ERROR
+            )
+        }
+
+        return response
     }
 
-    private fun fetchRenderIdRequest(renderId: String): Mono<FileResponse> {
-        return webClient.get()
-            .uri("/render/$renderId")
-            .accept(MediaType.APPLICATION_JSON)
-            .exchangeToMono { exchange ->
-                exchange.bodyToMono(DataBuffer::class.java).map { dataBuffer ->
-                    val responseHeaders = exchange.headers().asHttpHeaders()
+    private fun fetchRenderIdRequest(renderId: String): FileResponse {
+        return try {
+            renderClient.get()
+                .uri("/render/$renderId")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange { _, clientResponse ->
+                    val responseHeaders = clientResponse.headers
 
                     val forwardHeaders = HttpHeaders()
                     forwardHeaders.contentType = responseHeaders.contentType
@@ -180,19 +155,32 @@ class DefaultRenderTemplateUseCase(
                         forwardHeaders["Content-Disposition"] = responseHeaders["Content-Disposition"]
                     }
 
+                    val buffer = clientResponse.bodyTo(ByteArray::class.java) ?: throw ExternalSystemException(
+                        cause = null,
+                        message = "Could not convert body to Resource.",
+                        code = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+                    )
+
                     FileResponse(
-                        file = dataBuffer,
+                        file = buffer.inputStream(),
                         headers = forwardHeaders
                     )
                 }
-            }
-            .onErrorMap {
-                ExternalSystemException(
-                    cause = it,
-                    message = it.localizedMessage,
-                    code = FETCH_RENDER_ID_REQUEST_FAILED_ERROR.toString()
+        } catch (ex: Exception) {
+            throw when (ex) {
+                is ResourceAccessException -> NetworkException(
+                    cause = ex.cause ?: ex,
+                    message = ex.localizedMessage,
+                    code = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+                )
+
+                else -> ExternalSystemException(
+                    cause = ex.cause ?: ex,
+                    message = "Could not create render request to template engine.",
+                    code = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
                 )
             }
+        }
     }
 
     private fun parseRenderRequestResponse(raw: String): String {
@@ -210,7 +198,7 @@ class DefaultRenderTemplateUseCase(
             throw ExternalSystemException(
                 cause = ex,
                 message = renderApiClientResponse,
-                code = RenderTemplateErrorCode.PARSE_RESPONSE_ERROR.toString()
+                code = RenderTemplateError.PARSE_RESPONSE_ERROR
             )
         }
     }

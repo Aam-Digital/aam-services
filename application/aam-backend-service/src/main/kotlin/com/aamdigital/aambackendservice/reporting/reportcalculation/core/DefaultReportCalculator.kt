@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
@@ -8,8 +9,6 @@ import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
 import com.aamdigital.aambackendservice.reporting.report.sqs.QueryRequest
 import com.aamdigital.aambackendservice.reporting.storage.DefaultReportStorage
 import org.springframework.stereotype.Service
-import reactor.core.publisher.Mono
-import kotlin.jvm.optionals.getOrDefault
 
 @Service
 class DefaultReportCalculator(
@@ -18,40 +17,49 @@ class DefaultReportCalculator(
     private val couchDbClient: CouchDbClient,
 ) : ReportCalculator {
 
+    enum class DefaultReportCalculatorErrorCode : AamErrorCode {
+        NOT_FOUND,
+        INVALID_ARGUMENT,
+    }
+
     companion object {
         const val DEFAULT_FROM_DATE = "0000-01-01"
         const val DEFAULT_TO_DATE = "9999-12-31T23:59:59.999Z"
         const val INDEX_ISO_STRING_DATE_END = 10
     }
 
-    override fun calculate(reportCalculation: ReportCalculation): Mono<ReportCalculation> {
-        return reportStorage.fetchReport(reportCalculation.report)
-            .flatMap { reportOptional ->
-                val report = reportOptional.getOrDefault(null)
-                    ?: return@flatMap Mono.error(NotFoundException())
+    override fun calculate(reportCalculation: ReportCalculation): ReportCalculation {
+        val report = reportStorage.fetchReport(reportCalculation.report).orElseThrow {
+            NotFoundException(
+                message = "[DefaultReportCalculator] Could not fetch Report ${reportCalculation.report.id}",
+                code = DefaultReportCalculatorErrorCode.NOT_FOUND
+            )
+        }
 
-                if (report.mode != "sql") {
-                    return@flatMap Mono.error(InvalidArgumentException())
-                }
+        if (report.mode != "sql") {
+            throw InvalidArgumentException(
+                message = "[DefaultReportCalculator] Just 'sql' reports are supported.",
+                code = DefaultReportCalculatorErrorCode.INVALID_ARGUMENT
+            )
+        }
 
-                setToDateToLastMinuteOfDay(reportCalculation.args)
+        setToDateToLastMinuteOfDay(reportCalculation.args)
 
-                val queryResult = queryStorage.executeQuery(
-                    query = QueryRequest(
-                        query = report.query,
-                        args = getReportCalculationArgs(report.neededArgs, reportCalculation.args)
-                    )
-                )
+        val queryResult = queryStorage.executeQuery(
+            query = QueryRequest(
+                query = report.query,
+                args = getReportCalculationArgs(report.neededArgs, reportCalculation.args)
+            )
+        )
 
-                couchDbClient.putAttachment(
-                    database = "report-calculation",
-                    documentId = reportCalculation.id,
-                    attachmentId = "data.json",
-                    file = queryResult,
-                ).map {
-                    reportCalculation
-                }
-            }
+        couchDbClient.putAttachment(
+            database = "report-calculation",
+            documentId = reportCalculation.id,
+            attachmentId = "data.json",
+            file = queryResult,
+        )
+
+        return reportCalculation
     }
 
     private fun setToDateToLastMinuteOfDay(args: MutableMap<String, String>) {
@@ -85,7 +93,9 @@ class DefaultReportCalculator(
                 givenArgs[it]
                     ?: getDefaultValue(it)
                     ?: throw NotFoundException(
-                        "Argument $it is missing. All report args are needed for a successful ReportCalculation."
+                        message = "Argument $it is missing. " +
+                                "All report args are needed for a successful ReportCalculation.",
+                        code = DefaultReportCalculatorErrorCode.NOT_FOUND
                     )
             }
     }

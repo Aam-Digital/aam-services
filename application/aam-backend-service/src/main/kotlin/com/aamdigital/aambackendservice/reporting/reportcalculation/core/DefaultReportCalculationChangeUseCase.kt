@@ -8,7 +8,6 @@ import com.aamdigital.aambackendservice.reporting.notification.core.Notification
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
-import reactor.core.publisher.Mono
 
 class DefaultReportCalculationChangeUseCase(
     private val reportingStorage: ReportingStorage,
@@ -18,41 +17,37 @@ class DefaultReportCalculationChangeUseCase(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    override fun handle(documentChangeEvent: DocumentChangeEvent): Mono<Unit> {
-
+    override fun handle(documentChangeEvent: DocumentChangeEvent) {
         val currentReportCalculation =
             objectMapper.convertValue(documentChangeEvent.currentVersion, ReportCalculation::class.java)
 
         if (currentReportCalculation.status != ReportCalculationStatus.FINISHED_SUCCESS) {
-            return Mono.just(Unit)
+            return
         }
 
-        return reportingStorage.fetchCalculations(
-            reportReference = currentReportCalculation.report
-        )
-            .map { calculations ->
-                calculations
-                    .filter { it.id != currentReportCalculation.id }
-                    .sortedBy { it.calculationCompleted }
-            }
-            .flatMap {
-                val existingDigest = it.lastOrNull()?.attachments?.get("data.json")?.digest
-                val currentDigest = currentReportCalculation.attachments["data.json"]?.digest
+        try {
+            val calculations = reportingStorage.fetchCalculations(
+                reportReference = currentReportCalculation.report
+            )
 
-                if (existingDigest != currentDigest
-                ) {
-                    notificationService.sendNotifications(
-                        report = currentReportCalculation.report,
-                        reportCalculation = DomainReference(currentReportCalculation.id)
-                    )
-                } else {
-                    logger.debug("skipped notification for ${currentReportCalculation.id}")
-                    Mono.just(Unit)
-                }
+            val existingDigest = calculations
+                .filter { it.id != currentReportCalculation.id }
+                .sortedBy { it.calculationCompleted }
+                .lastOrNull()?.attachments?.get("data.json")?.digest
+
+            val currentDigest = currentReportCalculation.attachments["data.json"]?.digest
+
+            if (existingDigest != currentDigest
+            ) {
+                notificationService.sendNotifications(
+                    report = currentReportCalculation.report,
+                    reportCalculation = DomainReference(currentReportCalculation.id)
+                )
+            } else {
+                logger.debug("skipped notification for ${currentReportCalculation.id}")
             }
-            .onErrorResume {
-                logger.warn("Could not find ${currentReportCalculation.id}. Skipped.")
-                Mono.just(Unit)
-            }
+        } catch (ex: Exception) {
+            logger.warn("Could not fetch ${currentReportCalculation.id}. Skipped.", ex)
+        }
     }
 }

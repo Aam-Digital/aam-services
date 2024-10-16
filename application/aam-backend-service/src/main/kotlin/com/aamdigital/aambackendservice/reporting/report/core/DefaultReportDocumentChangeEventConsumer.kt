@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.core.Message
 import org.springframework.amqp.rabbit.annotation.RabbitListener
-import reactor.core.publisher.Mono
 
 class DefaultReportDocumentChangeEventConsumer(
     private val messageParser: QueueMessageParser,
@@ -26,16 +25,14 @@ class DefaultReportDocumentChangeEventConsumer(
 
     @RabbitListener(
         queues = [ReportQueueConfiguration.DOCUMENT_CHANGES_REPORT_QUEUE],
-        ackMode = "MANUAL",
         // avoid concurrent processing so that we do not trigger multiple calculations for same data unnecessarily
         concurrency = "1-1",
-        batch = "1"
     )
-    override fun consume(rawMessage: String, message: Message, channel: Channel): Mono<Unit> {
+    override fun consume(rawMessage: String, message: Message, channel: Channel) {
         val type = try {
             messageParser.getTypeKClass(rawMessage.toByteArray())
         } catch (ex: AamException) {
-            return Mono.error { throw AmqpRejectAndDontRequeueException("[${ex.code}] ${ex.localizedMessage}", ex) }
+            throw AmqpRejectAndDontRequeueException("[${ex.code}] ${ex.localizedMessage}", ex)
         }
 
         when (type.qualifiedName) {
@@ -52,44 +49,41 @@ class DefaultReportDocumentChangeEventConsumer(
 
                     val reportRef = payload.currentVersion["_id"] as String
 
-                    return createReportCalculationUseCase.createReportCalculation(
+                    createReportCalculationUseCase.createReportCalculation(
                         request = CreateReportCalculationRequest(
                             report = DomainReference(reportRef),
                             args = mutableMapOf()
                         )
-                    ).flatMap { Mono.empty() }
+                    )
+
+                    return
                 }
 
                 if (payload.documentId.startsWith("ReportCalculation:")) {
                     if (payload.deleted) {
-                        return Mono.empty()
+                        return
                     }
-                    return reportCalculationChangeUseCase.handle(
+                    reportCalculationChangeUseCase.handle(
                         documentChangeEvent = payload
-                    ).flatMap { Mono.empty() }
+                    )
+                    return
                 }
 
-                return identifyAffectedReportsUseCase.analyse(
+                val affectedReports = identifyAffectedReportsUseCase.analyse(
                     documentChangeEvent = payload
                 )
-                    .flatMap { affectedReports ->
-                        Mono.zip(affectedReports.map { report ->
-                            createReportCalculationUseCase
-                                .createReportCalculation(
-                                    request = CreateReportCalculationRequest(
-                                        report = report,
-                                        args = mutableMapOf()
-                                    )
-                                )
-                        }) {
-                            it.iterator()
-                        }
-                    }
-                    .flatMap { Mono.empty<Unit>() }
-                    .doOnError {
-                        logger.error(it.localizedMessage)
-                    }
 
+                affectedReports.forEach { report ->
+                    createReportCalculationUseCase
+                        .createReportCalculation(
+                            request = CreateReportCalculationRequest(
+                                report = report,
+                                args = mutableMapOf()
+                            )
+                        )
+                }
+
+                return
             }
 
             else -> {
@@ -97,12 +91,9 @@ class DefaultReportDocumentChangeEventConsumer(
                     "[DefaultReportDocumentChangeEventConsumer] Could not find any use case for this EventType: {}",
                     type.qualifiedName,
                 )
-
-                return Mono.error {
-                    throw AmqpRejectAndDontRequeueException(
-                        "[NO_USECASE_CONFIGURED] Could not find matching use case for: ${type.qualifiedName}",
-                    )
-                }
+                throw AmqpRejectAndDontRequeueException(
+                    "[NO_USECASE_CONFIGURED] Could not find matching use case for: ${type.qualifiedName}",
+                )
             }
         }
     }

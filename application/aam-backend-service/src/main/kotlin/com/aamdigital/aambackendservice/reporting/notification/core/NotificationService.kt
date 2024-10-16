@@ -5,7 +5,6 @@ import com.aamdigital.aambackendservice.reporting.domain.event.NotificationEvent
 import com.aamdigital.aambackendservice.reporting.notification.di.NotificationQueueConfiguration
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import reactor.core.publisher.Mono
 
 @Service
 class NotificationService(
@@ -14,31 +13,30 @@ class NotificationService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun getAffectedWebhooks(report: DomainReference): Mono<List<DomainReference>> {
-        return notificationStorage.fetchAllWebhooks()
-            .map { webhooks ->
-                val affectedWebhooks: MutableList<DomainReference> = mutableListOf()
-                webhooks.forEach { webhook ->
-                    if (webhook.reportSubscriptions.contains(report)) {
-                        affectedWebhooks.add(DomainReference(webhook.id))
-                    }
-                }
-                affectedWebhooks
+    fun getAffectedWebhooks(report: DomainReference): List<DomainReference> {
+        val webhooks = notificationStorage.fetchAllWebhooks()
+
+        val affectedWebhooks: MutableList<DomainReference> = mutableListOf()
+        webhooks.forEach { webhook ->
+            if (webhook.reportSubscriptions.contains(report)) {
+                affectedWebhooks.add(DomainReference(webhook.id))
             }
+        }
+
+        return affectedWebhooks
     }
 
-    fun sendNotifications(report: DomainReference, reportCalculation: DomainReference): Mono<Unit> {
+    fun sendNotifications(report: DomainReference, reportCalculation: DomainReference) {
         logger.debug("[NotificationService]: Trigger all affected webhooks for ${report.id}")
-        return getAffectedWebhooks(report)
-            .map { webhooks ->
-                webhooks.map { webhook ->
-                    triggerWebhook(
-                        report = report,
-                        reportCalculation = reportCalculation,
-                        webhook = webhook
-                    )
-                }
-            }
+        val affectedWebhooks = getAffectedWebhooks(report)
+        
+        affectedWebhooks.map { webhook ->
+            triggerWebhook(
+                report = report,
+                reportCalculation = reportCalculation,
+                webhook = webhook
+            )
+        }
     }
 
     fun triggerWebhook(report: DomainReference, reportCalculation: DomainReference, webhook: DomainReference) {

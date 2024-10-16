@@ -6,10 +6,18 @@ spring:
   jackson:
     deserialization:
       accept-empty-string-as-null-object: true
-  r2dbc:
-    url: r2dbc:h2:file://././data/dbh2;DB_CLOSE_DELAY=-1
+  datasource:
+    driver-class-name: org.h2.Driver
     username: local
     password: local
+    url: jdbc:h2:file:./test-data/dbh2;DB_CLOSE_DELAY=-1
+  jpa:
+    generate-ddl: true
+    hibernate:
+      ddl-auto: create-drop
+  threads:
+    virtual:
+      enabled: true
   rabbitmq:
     virtual-host: /
     listener:
@@ -17,6 +25,7 @@ spring:
         retry:
           enabled: true
           max-attempts: 5
+
 
 server:
   port: 9000
@@ -42,13 +51,11 @@ aam-render-api-client-configuration:
     scope:
 
 couch-db-client-configuration:
-  max-in-memory-size-in-mega-bytes: 16
   base-path: http://localhost:5984
   basic-auth-username: admin
   basic-auth-password: docker
 
 sqs-client-configuration:
-  max-in-memory-size-in-mega-bytes: 16
   base-path: http://localhost:4984
   basic-auth-username: admin
   basic-auth-password: docker
@@ -65,3 +72,7 @@ crypto-configuration:
 sentry:
   logging:
     enabled: false
+
+logging:
+  level:
+    com.aamdigital.aambackendservice: trace

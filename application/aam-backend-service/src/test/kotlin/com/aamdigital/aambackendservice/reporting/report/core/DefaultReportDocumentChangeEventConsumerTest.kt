@@ -1,14 +1,15 @@
 package com.aamdigital.aambackendservice.reporting.report.core
 
+import com.aamdigital.aambackendservice.domain.TestErrorCode
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.rabbitmq.client.Channel
-import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
@@ -17,7 +18,6 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.core.Message
-import reactor.test.StepVerifier
 
 @ExtendWith(MockitoExtension::class)
 class DefaultReportDocumentChangeEventConsumerTest {
@@ -66,18 +66,20 @@ class DefaultReportDocumentChangeEventConsumerTest {
 
         whenever(messageParser.getTypeKClass(any()))
             .thenAnswer {
-                throw InternalServerException()
+                throw InternalServerException(
+                    message = "error",
+                    code = TestErrorCode.TEST_EXCEPTION,
+                    cause = null
+                )
             }
 
-        StepVerifier
-            // when
-            .create(service.consume(rawMessage, mockMessage, mockChannel))
-            // then
-            .expectErrorSatisfies {
-                assertThat(it).isInstanceOf(AmqpRejectAndDontRequeueException::class.java)
-                Assertions.assertTrue(it.localizedMessage.startsWith("[INTERNAL_SERVER_ERROR]"))
-            }
-            .verify()
+        // when
+        val response = assertThrows<AmqpRejectAndDontRequeueException> {
+            service.consume(rawMessage, mockMessage, mockChannel)
+        }
+
+        // then
+        Assertions.assertTrue(response.localizedMessage.startsWith("[TEST_EXCEPTION]"))
     }
 
     @Test
@@ -90,14 +92,12 @@ class DefaultReportDocumentChangeEventConsumerTest {
                 String::class
             }
 
-        StepVerifier
-            // when
-            .create(service.consume(rawMessage, mockMessage, mockChannel))
-            // then
-            .expectErrorSatisfies {
-                assertThat(it).isInstanceOf(AmqpRejectAndDontRequeueException::class.java)
-                Assertions.assertTrue(it.localizedMessage.startsWith("[NO_USECASE_CONFIGURED]"))
-            }
-            .verify()
+        // when
+        val response = assertThrows<AmqpRejectAndDontRequeueException> {
+            service.consume(rawMessage, mockMessage, mockChannel)
+        }
+
+        // then
+        Assertions.assertTrue(response.localizedMessage.startsWith("[NO_USECASE_CONFIGURED]"))
     }
 }

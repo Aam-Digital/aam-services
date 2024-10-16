@@ -5,7 +5,6 @@ import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
-import reactor.core.publisher.Mono
 
 class DefaultAddWebhookSubscriptionUseCase(
     private val notificationStorage: NotificationStorage,
@@ -13,33 +12,31 @@ class DefaultAddWebhookSubscriptionUseCase(
     private val notificationService: NotificationService,
     private val createReportCalculationUseCase: CreateReportCalculationUseCase
 ) : AddWebhookSubscriptionUseCase {
-    override fun subscribe(report: DomainReference, webhook: DomainReference): Mono<Unit> {
-        return notificationStorage.addSubscription(
+    override fun subscribe(report: DomainReference, webhook: DomainReference) {
+        notificationStorage.addSubscription(
             webhookRef = webhook,
             entityRef = report
-        ).flatMap {
-            reportingStorage.fetchCalculations(
-                reportReference = report
-            ).flatMap { reportCalculations ->
-                handleReportCalculations(reportCalculations, report, webhook)
-            }
-        }
+        )
+
+        val reportCalculations = reportingStorage.fetchCalculations(
+            reportReference = report
+        )
+
+        handleReportCalculations(reportCalculations, report, webhook)
     }
 
     private fun handleReportCalculations(
         calculations: List<ReportCalculation>,
         report: DomainReference,
         webhook: DomainReference
-    ): Mono<Unit> {
-        return if (calculations.isEmpty()) {
+    ) {
+        if (calculations.isEmpty()) {
             createReportCalculationUseCase.createReportCalculation(
                 CreateReportCalculationRequest(
                     report = report,
                     args = mutableMapOf()
                 )
-            ).flatMap {
-                Mono.just(Unit)
-            }
+            )
         } else {
             notificationService.triggerWebhook(
                 report = report,
@@ -48,7 +45,6 @@ class DefaultAddWebhookSubscriptionUseCase(
                     calculations.sortedByDescending { it.calculationCompleted }.first().id
                 )
             )
-            Mono.just(Unit)
         }
     }
 }

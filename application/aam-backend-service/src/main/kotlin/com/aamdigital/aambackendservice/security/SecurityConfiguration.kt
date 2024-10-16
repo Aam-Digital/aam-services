@@ -1,62 +1,61 @@
 package com.aamdigital.aambackendservice.security
 
-import com.aamdigital.aambackendservice.error.ForbiddenAccessException
-import com.aamdigital.aambackendservice.error.UnauthorizedAccessException
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
-import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
-import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
-import org.springframework.security.config.web.server.ServerHttpSecurity
-import org.springframework.security.core.AuthenticationException
-import org.springframework.security.web.server.SecurityWebFilterChain
-import org.springframework.security.web.server.ServerAuthenticationEntryPoint
-import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler
-import org.springframework.web.server.ServerWebExchange
-import reactor.core.publisher.Mono
+import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.config.annotation.web.invoke
+import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint
+import org.springframework.security.web.SecurityFilterChain
 
 @Configuration
-@EnableWebFluxSecurity
-@EnableReactiveMethodSecurity
+@EnableWebSecurity
 class SecurityConfiguration {
 
     @Bean
-    fun securityWebFilterChain(
-        http: ServerHttpSecurity,
-    ): SecurityWebFilterChain {
-        return http
-            .authorizeExchange {
-                it.pathMatchers(HttpMethod.GET, "/").permitAll()
-                it.pathMatchers(HttpMethod.GET, "/actuator").permitAll()
-                it.pathMatchers(HttpMethod.GET, "/actuator/**").permitAll()
-                it.anyExchange().authenticated()
+    fun filterChain(http: HttpSecurity): SecurityFilterChain {
+        http {
+            authorizeRequests {
+                authorize(HttpMethod.GET, "/", permitAll)
+                authorize(HttpMethod.GET, "/actuator", permitAll)
+                authorize(HttpMethod.GET, "/actuator/**", permitAll)
+                authorize(anyRequest, authenticated)
             }
-            .csrf {
-                it.disable()
+            httpBasic {
+                disable()
             }
-            .exceptionHandling {
-                it.accessDeniedHandler(customServerAccessDeniedHandler())
-                it.authenticationEntryPoint(CustomAuthenticationEntryPoint())
+            csrf {
+                disable()
             }
-            .oauth2ResourceServer {
-                it.jwt {}
+            formLogin {
+                disable()
             }
-            .build()
+            sessionManagement {
+                sessionCreationPolicy = SessionCreationPolicy.STATELESS
+            }
+            exceptionHandling {
+                authenticationEntryPoint =
+                    AamAuthenticationEntryPoint(
+                        parentEntryPoint = BearerTokenAuthenticationEntryPoint(),
+                        objectMapper = jacksonObjectMapper()
+                    )
+            }
+            oauth2ResourceServer {
+                jwt {
+                    authenticationEntryPoint =
+                        AamAuthenticationEntryPoint(
+                            parentEntryPoint = BearerTokenAuthenticationEntryPoint(),
+                            objectMapper = jacksonObjectMapper()
+                        )
+                }
+            }
+        }
+        return http.build()
     }
 
-    private fun customServerAccessDeniedHandler(): ServerAccessDeniedHandler {
-        return ServerAccessDeniedHandler { _, denied ->
-            throw ForbiddenAccessException(
-                message = "Access Token not sufficient for operation",
-                cause = denied
-            )
-        }
-    }
-
-    private class CustomAuthenticationEntryPoint : ServerAuthenticationEntryPoint {
-        override fun commence(exchange: ServerWebExchange, ex: AuthenticationException): Mono<Void> {
-            throw UnauthorizedAccessException("Access Token invalid or missing")
-        }
-    }
 
 }
+

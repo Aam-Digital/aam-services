@@ -10,23 +10,22 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
-import org.springframework.web.reactive.function.client.WebClient
-import reactor.core.publisher.Mono
+import org.springframework.web.client.RestClient
 
 open class WebClientTestBase {
     companion object {
         const val WEBSERVER_PORT = 6000
         val objectMapper = jacksonObjectMapper()
-        lateinit var webClient: WebClient
+        lateinit var restClient: RestClient
         lateinit var mockWebServer: MockWebServer
 
         @JvmStatic
         @BeforeAll
         fun init() {
             val config = AamRenderApiConfiguration()
-            webClient = config.aamRenderApiClient(
+            restClient = config.aamRenderApiClient(
                 authProvider = object : AuthProvider {
-                    override fun fetchToken(authClientConfig: AuthConfig): Mono<TokenResponse> = Mono.empty()
+                    override fun fetchToken(authClientConfig: AuthConfig): TokenResponse = TokenResponse("dummy-token")
                 },
                 configuration = AamRenderApiClientConfiguration(
                     basePath = "http://localhost:$WEBSERVER_PORT",

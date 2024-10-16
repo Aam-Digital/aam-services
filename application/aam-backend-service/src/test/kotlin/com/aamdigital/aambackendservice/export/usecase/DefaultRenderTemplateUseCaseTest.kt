@@ -2,11 +2,12 @@ package com.aamdigital.aambackendservice.export.usecase
 
 import com.aamdigital.aambackendservice.common.WebClientTestBase
 import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.domain.TestErrorCode
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.InternalServerException
-import com.aamdigital.aambackendservice.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.error.ExternalSystemException
 import com.aamdigital.aambackendservice.error.NetworkException
-import com.aamdigital.aambackendservice.export.core.RenderTemplateErrorCode
+import com.aamdigital.aambackendservice.error.NotFoundException
+import com.aamdigital.aambackendservice.export.core.RenderTemplateError
 import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.TemplateExport
@@ -25,11 +26,10 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
-import org.springframework.core.io.buffer.DataBuffer
-import org.springframework.web.reactive.function.client.WebClientRequestException
-import reactor.core.publisher.Mono
-import reactor.test.StepVerifier
+import org.springframework.web.client.RestClientException
+import java.io.ByteArrayInputStream
 import java.io.File
+import java.net.SocketTimeoutException
 
 
 @ExtendWith(MockitoExtension::class)
@@ -45,7 +45,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
         reset(templateStorage)
 
         service = DefaultRenderTemplateUseCase(
-            webClient = webClient,
+            renderClient = restClient,
             objectMapper = objectMapper,
             templateStorage = templateStorage,
         )
@@ -53,30 +53,36 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
 
     @Test
     fun `should return Failure when fetchTemplate returns an error`() {
-        // Arrange
+        // given
         val templateRef = DomainReference("some-id")
         val bodyData: JsonNode = objectMapper.readValue(
             """
                 {"foo":"bar"}
             """.trimIndent()
         )
-        val exception = InternalServerException(message = "fetchTemplate error", cause = null)
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.error(exception))
+        val exception = ExternalSystemException(
+            message = "fetchTemplate error",
+            code = TestErrorCode.TEST_EXCEPTION,
+            cause = null
+        )
 
-        // Act & Assert
-        StepVerifier.create(
-            service.execute(
-                RenderTemplateRequest(
-                    templateRef, bodyData
-                )
+        whenever(templateStorage.fetchTemplate(templateRef)).thenAnswer {
+            throw exception
+        }
+
+        // when
+        val response = service.run(
+            RenderTemplateRequest(
+                templateRef, bodyData
             )
-        ).assertNext {
-            assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-            assertEquals(
-                RenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR, (it as UseCaseOutcome.Failure).errorCode
-            )
-        }.verifyComplete()
+        )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        assertEquals(
+            RenderTemplateError.FETCH_TEMPLATE_FAILED_ERROR, (response as UseCaseOutcome.Failure).errorCode
+        )
     }
 
     @Test
@@ -97,27 +103,25 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
         mockWebServer.enqueue(MockResponse().setBody("invalid json"))
 
         // when
-        StepVerifier.create(
-            service.execute(
-                RenderTemplateRequest(
-                    templateRef, bodyData
-                )
+        val response = service.run(
+            RenderTemplateRequest(
+                templateRef, bodyData
             )
-        ).assertNext {
-            // then
-            assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-            assertEquals(
-                RenderTemplateErrorCode.PARSE_RESPONSE_ERROR, (it as UseCaseOutcome.Failure).errorCode
-            )
-        }.verifyComplete()
+        )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        assertEquals(
+            RenderTemplateError.PARSE_RESPONSE_ERROR, (response as UseCaseOutcome.Failure).errorCode
+        )
     }
 
     @Test
-    fun `should return Failure when fetchTemplateRequest throws exception`() {
+    fun `should return Failure with NOT_FOUND_ERROR when fetchTemplate throws NotFoundException exception`() {
         // given
         val templateRef = DomainReference("some-id")
         val bodyData: JsonNode = objectMapper.readValue(
@@ -127,79 +131,23 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
         )
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenAnswer {
-            throw InvalidArgumentException()
+            throw NotFoundException(
+                code = TestErrorCode.TEST_EXCEPTION,
+            )
         }
 
         // when
-        StepVerifier.create(
-            service.execute(
-                RenderTemplateRequest(
-                    templateRef, bodyData
-                )
+        val response = service.run(
+            RenderTemplateRequest(
+                templateRef, bodyData
             )
-        ).assertNext {
-            // then
-            assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-            assertEquals(
-                RenderTemplateErrorCode.INTERNAL_SERVER_ERROR, (it as UseCaseOutcome.Failure).errorCode
-            )
-        }.verifyComplete()
-    }
-
-    @Test
-    fun `should return Failure when fetchTemplateRequest returns Mono error`() {
-        // given
-        val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = objectMapper.readValue(
-            """
-                {"foo":"bar"}
-            """.trimIndent()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.error(RuntimeException()))
-
-        // when
-        StepVerifier.create(
-            service.execute(
-                RenderTemplateRequest(
-                    templateRef, bodyData
-                )
-            )
-        ).assertNext {
-            // then
-            assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-            assertEquals(
-                RenderTemplateErrorCode.INTERNAL_SERVER_ERROR, (it as UseCaseOutcome.Failure).errorCode
-            )
-        }.verifyComplete()
-    }
-
-    @Test
-    fun `should return Failure when fetchTemplateRequest returns Mono empty`() {
-        // given
-        val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = objectMapper.readValue(
-            """
-                {"foo":"bar"}
-            """.trimIndent()
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        assertEquals(
+            RenderTemplateError.NOT_FOUND_ERROR, (response as UseCaseOutcome.Failure).errorCode
         )
-
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.empty())
-
-        // when
-        StepVerifier.create(
-            service.execute(
-                RenderTemplateRequest(
-                    templateRef, bodyData
-                )
-            )
-        ).assertNext {
-            // then
-            assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-            assertEquals(
-                RenderTemplateErrorCode.FETCH_TEMPLATE_FAILED_ERROR, (it as UseCaseOutcome.Failure).errorCode
-            )
-        }.verifyComplete()
     }
 
     @Test
@@ -220,7 +168,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
 
         mockWebServer.enqueue(
             MockResponse().setBody(
@@ -251,20 +199,17 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
 
         )
 
-        StepVerifier.create(
-            service.execute(
-                RenderTemplateRequest(
-                    templateRef, bodyData
-                )
+        // when
+        val response = service.run(
+            RenderTemplateRequest(
+                templateRef, bodyData
             )
         )
-            .consumeNextWith { response ->
-                // then
-                assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
 
-                assertThat((response as UseCaseOutcome.Success).outcome.file).isInstanceOf(DataBuffer::class.java)
-            }
-            .verifyComplete()
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+
+        assertThat((response as UseCaseOutcome.Success).data.file).isInstanceOf(ByteArrayInputStream::class.java)
     }
 
     @Test
@@ -285,7 +230,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
 
         mockWebServer.enqueue(
             MockResponse().setBody(
@@ -298,24 +243,21 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             )
         )
 
-        StepVerifier.create(
-            service.execute(
-                RenderTemplateRequest(
-                    templateRef, bodyData
-                )
+        // when
+        val response = service.run(
+            RenderTemplateRequest(
+                templateRef, bodyData
             )
         )
-            .consumeNextWith { response ->
-                // then
-                assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
 
-                assertEquals("this is an error message", (response as UseCaseOutcome.Failure).errorMessage)
-            }
-            .verifyComplete()
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+
+        assertEquals("this is an error message", (response as UseCaseOutcome.Failure).errorMessage)
     }
 
     @Test
-    fun `should return Failure when createRenderRequest returns no response`() {
+    fun `should return Failure when createRenderRequest runs in timeout`() {
         // given
         val templateRef = DomainReference("some-id")
         val bodyData: JsonNode = objectMapper.readValue(
@@ -332,29 +274,26 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
 
-        StepVerifier.create(
-            service.execute(
-                RenderTemplateRequest(
-                    templateRef, bodyData
-                )
+        // when
+        val response = service.run(
+            RenderTemplateRequest(
+                templateRef, bodyData
             )
         )
-            .consumeNextWith { response ->
-                // then
-                assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
 
-                assertThat((response as UseCaseOutcome.Failure).cause)
-                    .isInstanceOf(WebClientRequestException::class.java)
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
 
-                assertThat(response.cause?.cause)
-                    .isInstanceOf(NetworkException::class.java)
+        assertThat((response as UseCaseOutcome.Failure).cause)
+            .isInstanceOf(ExternalSystemException::class.java)
 
-                assertThat(response.errorCode)
-                    .isEqualTo(RenderTemplateErrorCode.CREATE_RENDER_REQUEST_FAILED_ERROR)
-            }
-            .verifyComplete()
+        assertThat(response.cause?.cause)
+            .isInstanceOf(RestClientException::class.java)
+
+        assertThat(response.errorCode)
+            .isEqualTo(RenderTemplateError.CREATE_RENDER_REQUEST_FAILED_ERROR)
     }
 
     @Test
@@ -375,7 +314,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
 
         mockWebServer.enqueue(
             MockResponse().setBody(
@@ -390,26 +329,23 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
             )
         )
 
-        StepVerifier.create(
-            service.execute(
-                RenderTemplateRequest(
-                    templateRef, bodyData
-                )
+        // when
+        val response = service.run(
+            RenderTemplateRequest(
+                templateRef, bodyData
             )
         )
-            .consumeNextWith { response ->
-                // then
-                assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
 
-                assertThat((response as UseCaseOutcome.Failure).cause)
-                    .isInstanceOf(WebClientRequestException::class.java)
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
 
-                assertThat(response.cause?.cause)
-                    .isInstanceOf(NetworkException::class.java)
+        assertThat((response as UseCaseOutcome.Failure).cause)
+            .isInstanceOf(NetworkException::class.java)
 
-                assertThat(response.errorCode)
-                    .isEqualTo(RenderTemplateErrorCode.FETCH_RENDER_ID_REQUEST_FAILED_ERROR)
-            }
-            .verifyComplete()
+        assertThat(response.cause?.cause)
+            .isInstanceOf(SocketTimeoutException::class.java)
+
+        assertThat(response.errorCode)
+            .isEqualTo(RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR)
     }
 }

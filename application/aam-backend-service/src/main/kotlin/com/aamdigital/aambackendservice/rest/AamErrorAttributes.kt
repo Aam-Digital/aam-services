@@ -9,19 +9,19 @@ import com.aamdigital.aambackendservice.error.NetworkException
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.error.UnauthorizedAccessException
 import org.springframework.boot.web.error.ErrorAttributeOptions
-import org.springframework.boot.web.reactive.error.DefaultErrorAttributes
+import org.springframework.boot.web.servlet.error.DefaultErrorAttributes
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.support.WebExchangeBindException
-import org.springframework.web.reactive.function.server.ServerRequest
-import org.springframework.web.reactive.resource.NoResourceFoundException
+import org.springframework.web.context.request.WebRequest
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @Component
 class AamErrorAttributes : DefaultErrorAttributes() {
 
     override fun getErrorAttributes(
-        request: ServerRequest,
+        request: WebRequest,
         options: ErrorAttributeOptions
     ): MutableMap<String, Any> {
         val errorAttributes = super.getErrorAttributes(request, options)
