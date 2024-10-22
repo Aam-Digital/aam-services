@@ -2,12 +2,13 @@ plugins {
     application
     distribution
     jacoco
+    kotlin("jvm") version "1.9.25"
+    kotlin("plugin.spring") version "1.9.25"
+    kotlin("plugin.jpa") version "1.9.25"
     id("org.springframework.boot") version "3.3.4"
     id("io.spring.dependency-management") version "1.1.6"
-    id("io.sentry.jvm.gradle") version "4.11.0"
     id("org.jetbrains.kotlin.kapt") version "1.9.25"
-    kotlin("jvm") version "1.9.25"
-    kotlin("plugin.spring") version "1.9.22"
+    id("io.sentry.jvm.gradle") version "4.11.0"
 }
 
 group = "com.aam-digital"
@@ -35,26 +36,22 @@ repositories {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
-    implementation("org.springframework.boot:spring-boot-starter-cache")
-    implementation("org.springframework.boot:spring-boot-starter-security")
+//    implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springframework.boot:spring-boot-starter-webflux")
-
-    implementation("org.springframework.data:spring-data-r2dbc")
-
-    implementation("org.springframework.security:spring-security-oauth2-resource-server")
-    implementation("org.springframework.security:spring-security-oauth2-jose")
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
     implementation("org.apache.commons:commons-lang3")
-
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-    implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
-
+    implementation("io.micrometer:micrometer-tracing-bridge-brave")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 
-    implementation("io.r2dbc:r2dbc-h2")
+    runtimeOnly("org.postgresql:postgresql:42.7.4")
+    runtimeOnly("com.h2database:h2")
 
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 

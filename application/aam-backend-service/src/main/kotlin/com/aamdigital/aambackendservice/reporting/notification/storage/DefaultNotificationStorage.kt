@@ -7,60 +7,47 @@ import com.aamdigital.aambackendservice.reporting.notification.core.CreateWebhoo
 import com.aamdigital.aambackendservice.reporting.notification.core.NotificationStorage
 import com.aamdigital.aambackendservice.reporting.notification.dto.Webhook
 import com.aamdigital.aambackendservice.reporting.notification.dto.WebhookAuthentication
-import reactor.core.publisher.Mono
 import java.util.*
 
 class DefaultNotificationStorage(
     private val webhookRepository: WebhookRepository,
     private val cryptoService: CryptoService,
 ) : NotificationStorage {
-    override fun addSubscription(webhookRef: DomainReference, entityRef: DomainReference): Mono<Unit> {
-        return webhookRepository.fetchWebhook(
+    override fun addSubscription(webhookRef: DomainReference, entityRef: DomainReference) {
+        val webhook = webhookRepository.fetchWebhook(
             webhookRef = webhookRef
         )
-            .map { webhook ->
-                if (webhook.reportSubscriptions.indexOf(entityRef.id) == -1) {
-                    webhook.reportSubscriptions.add(entityRef.id)
-                }
-                webhook
-            }
-            .flatMap { webhook ->
-                webhookRepository.storeWebhook(webhook)
-            }
-            .map { }
-    }
 
-    override fun removeSubscription(webhookRef: DomainReference, entityRef: DomainReference): Mono<Unit> {
-        return webhookRepository.fetchWebhook(
-            webhookRef = webhookRef
-        )
-            .map { document ->
-                document.reportSubscriptions.remove(entityRef.id)
-                document
-            }
-            .flatMap {
-                webhookRepository.storeWebhook(it)
-            }
-            .map { }
-    }
-
-    override fun fetchAllWebhooks(): Mono<List<Webhook>> {
-        return webhookRepository.fetchAllWebhooks().map { entities ->
-            entities.map { mapFromEntity(it) }
+        if (webhook.reportSubscriptions.indexOf(entityRef.id) == -1) {
+            webhook.reportSubscriptions.add(entityRef.id)
         }
+
+        webhookRepository.storeWebhook(webhook)
     }
 
-    override fun fetchWebhook(webhookRef: DomainReference): Mono<Webhook> {
-        return webhookRepository.fetchWebhook(webhookRef = webhookRef).map {
+    override fun removeSubscription(webhookRef: DomainReference, entityRef: DomainReference) {
+        val webhook = webhookRepository.fetchWebhook(
+            webhookRef = webhookRef
+        )
+        webhook.reportSubscriptions.remove(entityRef.id)
+        webhookRepository.storeWebhook(webhook)
+    }
+
+    override fun fetchAllWebhooks(): List<Webhook> {
+        return webhookRepository.fetchAllWebhooks().map {
             mapFromEntity(it)
         }
     }
 
-    override fun createWebhook(request: CreateWebhookRequest): Mono<DomainReference> {
+    override fun fetchWebhook(webhookRef: DomainReference): Webhook {
+        return mapFromEntity(webhookRepository.fetchWebhook(webhookRef = webhookRef))
+    }
+
+    override fun createWebhook(request: CreateWebhookRequest): DomainReference {
         val encryptedKey = cryptoService.encrypt(request.authentication.apiKey)
         val newId = "Webhook:${UUID.randomUUID()}"
 
-        return webhookRepository.storeWebhook(
+        webhookRepository.storeWebhook(
             webhook = WebhookEntity(
                 id = newId,
                 label = request.label,
@@ -78,9 +65,9 @@ class DefaultNotificationStorage(
                 ),
                 reportSubscriptions = mutableListOf()
             )
-        ).map {
-            DomainReference(newId)
-        }
+        )
+
+        return DomainReference(newId)
     }
 
     private fun mapFromEntity(entity: WebhookEntity): Webhook =

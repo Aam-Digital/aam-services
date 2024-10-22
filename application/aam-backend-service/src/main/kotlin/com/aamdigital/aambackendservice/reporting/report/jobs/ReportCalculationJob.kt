@@ -9,15 +9,14 @@ import org.springframework.scheduling.annotation.Scheduled
 class ReportCalculationJob(
     private val reportCalculationProcessor: ReportCalculationProcessor
 ) {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @Scheduled(fixedDelay = 10000)
     fun handleReportCalculation() {
-        reportCalculationProcessor.processNextPendingCalculation()
-            .doOnError {
-                logger.error("[ReportCalculationJob] Error in job: processNextPendingCalculation()", it)
-            }
-            .subscribe()
+        try {
+            reportCalculationProcessor.processNextPendingCalculation()
+        } catch (ex: Exception) {
+            logger.error("[ReportCalculationJob] Error in job: processNextPendingCalculation()", ex)
+        }
     }
 }

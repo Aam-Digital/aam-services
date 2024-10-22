@@ -2,21 +2,17 @@ package com.aamdigital.aambackendservice.export.usecase
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.ExternalSystemException
 import com.aamdigital.aambackendservice.export.core.CreateTemplateData
-import com.aamdigital.aambackendservice.export.core.CreateTemplateErrorCode
-import com.aamdigital.aambackendservice.export.core.CreateTemplateErrorCode.CREATE_TEMPLATE_REQUEST_FAILED_ERROR
-import com.aamdigital.aambackendservice.export.core.CreateTemplateErrorCode.PARSE_RESPONSE_ERROR
+import com.aamdigital.aambackendservice.export.core.CreateTemplateError.CREATE_TEMPLATE_REQUEST_FAILED_ERROR
+import com.aamdigital.aambackendservice.export.core.CreateTemplateError.PARSE_RESPONSE_ERROR
 import com.aamdigital.aambackendservice.export.core.CreateTemplateRequest
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.http.client.MultipartBodyBuilder
-import org.springframework.web.reactive.function.BodyInserters
-import org.springframework.web.reactive.function.client.WebClient
-import reactor.core.publisher.Mono
+import org.springframework.web.client.RestClient
+
 
 data class CreateTemplateResponseDto(
     val success: Boolean,
@@ -34,61 +30,48 @@ data class CreateTemplateResponseDataDto(
  * This use case is responsible for registering a template file by making a POST request to a specified
  * template creation endpoint. The TemplateExport entity is then created in the frontend.
  *
- * @property webClient The WebClient used to make HTTP requests to the template engine.
+ * @property restClient The RestClient used to make HTTP requests to the template engine.
  * @property objectMapper The ObjectMapper used to parse JSON responses.
  */
 class DefaultCreateTemplateUseCase(
-    private val webClient: WebClient,
+    private val restClient: RestClient,
     private val objectMapper: ObjectMapper,
-) : CreateTemplateUseCase {
-
-    private val logger = LoggerFactory.getLogger(javaClass)
+) : CreateTemplateUseCase() {
 
     override fun apply(
         request: CreateTemplateRequest
-    ): Mono<UseCaseOutcome<CreateTemplateData, CreateTemplateErrorCode>> {
+    ): UseCaseOutcome<CreateTemplateData> {
         val builder = MultipartBodyBuilder()
 
         builder
-            .part("template", request.file)
-            .filename(request.file.filename())
+            .part("template", request.file.resource)
+            .filename(request.file.name)
 
-        return webClient.post()
-            .uri("/template")
-            .contentType(MediaType.MULTIPART_FORM_DATA)
-            .accept(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromMultipartData(builder.build()))
-            .exchangeToMono {
-                it.bodyToMono(String::class.java)
-            }
-            .onErrorMap {
-                ExternalSystemException(
-                    cause = it,
-                    message = it.localizedMessage,
-                    code = CREATE_TEMPLATE_REQUEST_FAILED_ERROR.toString()
-                )
-            }
-            .map {
-                UseCaseOutcome.Success(
-                    outcome = CreateTemplateData(
-                        templateRef = DomainReference(parseResponse(it))
-                    )
-                )
-            }
-    }
+        val response = try {
+            restClient.post()
+                .uri("/template")
+                .accept(MediaType.APPLICATION_JSON)
+                .body(builder.build())
+                .retrieve()
+                .body(String::class.java)
+        } catch (it: Exception) {
+            throw ExternalSystemException(
+                cause = it,
+                message = it.localizedMessage,
+                code = CREATE_TEMPLATE_REQUEST_FAILED_ERROR
+            )
+        }
 
-    override fun handleError(it: Throwable): Mono<UseCaseOutcome<CreateTemplateData, CreateTemplateErrorCode>> {
-        val errorCode: CreateTemplateErrorCode = runCatching {
-            CreateTemplateErrorCode.valueOf((it as AamException).code)
-        }.getOrDefault(CreateTemplateErrorCode.INTERNAL_SERVER_ERROR)
+        if (response.isNullOrEmpty()) {
+            return UseCaseOutcome.Failure(
+                errorMessage = "Response from template service was null or empty.",
+                errorCode = CREATE_TEMPLATE_REQUEST_FAILED_ERROR,
+            )
+        }
 
-        logger.error("[${errorCode}] ${it.localizedMessage}", it.cause)
-
-        return Mono.just(
-            UseCaseOutcome.Failure(
-                errorMessage = it.localizedMessage,
-                errorCode = errorCode,
-                cause = it.cause
+        return UseCaseOutcome.Success(
+            data = CreateTemplateData(
+                templateRef = DomainReference(parseResponse(response))
             )
         )
     }
@@ -102,7 +85,7 @@ class DefaultCreateTemplateUseCase(
             throw ExternalSystemException(
                 cause = ex,
                 message = ex.localizedMessage,
-                code = PARSE_RESPONSE_ERROR.toString()
+                code = PARSE_RESPONSE_ERROR,
             )
         }
     }

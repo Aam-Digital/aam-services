@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.core.Message
 import org.springframework.amqp.rabbit.annotation.RabbitListener
-import reactor.core.publisher.Mono
 
 class DefaultNotificationEventConsumer(
     private val messageParser: QueueMessageParser,
@@ -20,13 +19,12 @@ class DefaultNotificationEventConsumer(
 
     @RabbitListener(
         queues = [NOTIFICATION_QUEUE],
-        ackMode = "MANUAL"
     )
-    override fun consume(rawMessage: String, message: Message, channel: Channel): Mono<Unit> {
+    override fun consume(rawMessage: String, message: Message, channel: Channel) {
         val type = try {
             messageParser.getTypeKClass(rawMessage.toByteArray())
         } catch (ex: AamException) {
-            return Mono.error { throw AmqpRejectAndDontRequeueException("[${ex.code}] ${ex.localizedMessage}", ex) }
+            throw AmqpRejectAndDontRequeueException("[${ex.code}] ${ex.localizedMessage}", ex)
         }
 
         when (type.qualifiedName) {
@@ -35,12 +33,16 @@ class DefaultNotificationEventConsumer(
                     body = rawMessage.toByteArray(),
                     kClass = NotificationEvent::class
                 )
-
                 logger.debug("Payload parsed: {}", payload)
-
-                return useCase.trigger(payload).flatMap {
-                    Mono.empty()
+                try {
+                    useCase.trigger(payload)
+                } catch (ex: Exception) {
+                    throw AmqpRejectAndDontRequeueException(
+                        "[USECASE_ERROR] ${ex.localizedMessage}",
+                        ex
+                    )
                 }
+                return
             }
 
             else -> {

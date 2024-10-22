@@ -4,7 +4,6 @@ import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.notification.controller.WebhookAuthenticationWriteDto
 import com.aamdigital.aambackendservice.reporting.notification.dto.Webhook
 import com.aamdigital.aambackendservice.reporting.notification.dto.WebhookTarget
-import reactor.core.publisher.Mono
 
 data class CreateWebhookRequest(
     val user: String,
@@ -14,9 +13,9 @@ data class CreateWebhookRequest(
 )
 
 interface NotificationStorage {
-    fun addSubscription(webhookRef: DomainReference, entityRef: DomainReference): Mono<Unit>
-    fun removeSubscription(webhookRef: DomainReference, entityRef: DomainReference): Mono<Unit>
-    fun fetchAllWebhooks(): Mono<List<Webhook>>
-    fun fetchWebhook(webhookRef: DomainReference): Mono<Webhook>
-    fun createWebhook(request: CreateWebhookRequest): Mono<DomainReference>
+    fun addSubscription(webhookRef: DomainReference, entityRef: DomainReference)
+    fun removeSubscription(webhookRef: DomainReference, entityRef: DomainReference)
+    fun fetchAllWebhooks(): List<Webhook>
+    fun fetchWebhook(webhookRef: DomainReference): Webhook
+    fun createWebhook(request: CreateWebhookRequest): DomainReference
 }

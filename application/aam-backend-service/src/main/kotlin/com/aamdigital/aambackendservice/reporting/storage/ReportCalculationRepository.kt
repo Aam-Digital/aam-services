@@ -5,12 +5,10 @@ import com.aamdigital.aambackendservice.couchdb.core.getQueryParamsAllDocs
 import com.aamdigital.aambackendservice.couchdb.dto.DocSuccess
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
-import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.HttpHeaders
 import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
+import java.io.InputStream
 import java.util.*
 
 @Service
@@ -23,7 +21,7 @@ class ReportCalculationRepository(
 
     fun storeCalculation(
         reportCalculation: ReportCalculation,
-    ): Mono<DocSuccess> {
+    ): DocSuccess {
         return couchDbClient.putDatabaseDocument(
             database = REPORT_CALCULATION_DATABASE,
             documentId = reportCalculation.id,
@@ -31,7 +29,7 @@ class ReportCalculationRepository(
         )
     }
 
-    fun fetchCalculations(): Mono<FetchReportCalculationsResponse> {
+    fun fetchCalculations(): FetchReportCalculationsResponse {
         return couchDbClient.getDatabaseDocument(
             database = REPORT_CALCULATION_DATABASE,
             documentId = "_all_docs",
@@ -40,19 +38,22 @@ class ReportCalculationRepository(
         )
     }
 
-    fun fetchCalculation(calculationReference: DomainReference): Mono<Optional<ReportCalculation>> {
-        return couchDbClient.getDatabaseDocument(
-            database = REPORT_CALCULATION_DATABASE,
-            documentId = calculationReference.id,
-            queryParams = LinkedMultiValueMap(),
-            kClass = ReportCalculation::class
-        )
-            .map { Optional.of(it) }
-            .defaultIfEmpty(Optional.empty())
-            .onErrorReturn(Optional.empty<ReportCalculation>())
+    fun fetchCalculation(calculationReference: DomainReference): Optional<ReportCalculation> {
+        return try {
+            return Optional.of(
+                couchDbClient.getDatabaseDocument(
+                    database = REPORT_CALCULATION_DATABASE,
+                    documentId = calculationReference.id,
+                    queryParams = LinkedMultiValueMap(),
+                    kClass = ReportCalculation::class
+                )
+            )
+        } catch (ex: Exception) {
+            Optional.empty<ReportCalculation>()
+        }
     }
 
-    fun headData(calculationReference: DomainReference): Mono<HttpHeaders> {
+    fun headData(calculationReference: DomainReference): HttpHeaders {
         return couchDbClient.headAttachment(
             database = "report-calculation",
             documentId = calculationReference.id,
@@ -60,7 +61,7 @@ class ReportCalculationRepository(
         )
     }
 
-    fun fetchData(calculationReference: DomainReference): Flux<DataBuffer> {
+    fun fetchData(calculationReference: DomainReference): InputStream {
         return couchDbClient.getAttachment(
             database = "report-calculation",
             documentId = calculationReference.id,

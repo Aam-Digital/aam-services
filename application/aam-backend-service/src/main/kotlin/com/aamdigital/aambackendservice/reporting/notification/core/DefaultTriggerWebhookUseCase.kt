@@ -6,9 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
-import org.springframework.web.reactive.function.BodyInserters
-import org.springframework.web.reactive.function.client.WebClient
-import reactor.core.publisher.Mono
+import org.springframework.web.client.RestClient
 import java.net.URI
 
 /**
@@ -16,57 +14,52 @@ import java.net.URI
  */
 class DefaultTriggerWebhookUseCase(
     private val notificationStorage: NotificationStorage,
-    private val webClient: WebClient,
+    private val httpClient: RestClient,
     private val uriParser: UriParser,
 ) : TriggerWebhookUseCase {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    override fun trigger(notificationEvent: NotificationEvent): Mono<Unit> {
-        return notificationStorage.fetchWebhook(
+    override fun trigger(notificationEvent: NotificationEvent) {
+        val webhook = notificationStorage.fetchWebhook(
             webhookRef = DomainReference(notificationEvent.webhookId)
         )
-            .flatMap { webhook ->
-                val uri = URI(
-                    uriParser.replacePlaceholder(
-                        webhook.target.url,
-                        mapOf(
-                            Pair("reportId", notificationEvent.reportId)
-                        )
-                    )
-                )
 
-                webClient
-                    .method(HttpMethod.valueOf(webhook.target.method))
-                    .uri {
-                        it.scheme(uri.scheme)
-                        it.host(uri.host)
-                        it.path(uri.path)
-                        it.build()
-                    }
-                    .headers {
-                        it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
-                    }
-                    .body(
-                        BodyInserters.fromValue(
-                            mapOf(
-                                Pair("calculation_id", notificationEvent.calculationId)
-                            )
-                        )
-                    )
-                    .accept(MediaType.APPLICATION_JSON)
-                    .exchangeToMono { response ->
-                        response.bodyToMono(String::class.java)
-                    }
-                    .map {
-                        logger.debug(
-                            "[DefaultTriggerWebhookUseCase] Webhook trigger completed for Webhook:" +
-                                    " {} Report: {} Calculation: {} - Response: {}",
-                            notificationEvent.webhookId,
-                            notificationEvent.reportId,
-                            notificationEvent.calculationId,
-                            it
-                        )
-                    }
+        val uri = URI(
+            uriParser.replacePlaceholder(
+                webhook.target.url,
+                mapOf(
+                    Pair("reportId", notificationEvent.reportId)
+                )
+            )
+        )
+
+        val response = httpClient
+            .method(HttpMethod.valueOf(webhook.target.method))
+            .uri {
+                it.scheme(uri.scheme)
+                it.host(uri.host)
+                it.path(uri.path)
+                it.build()
             }
+            .headers {
+                it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
+            }
+            .body(
+                mapOf(
+                    Pair("calculation_id", notificationEvent.calculationId)
+                )
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .retrieve()
+            .body(String::class.java)
+
+        logger.debug(
+            "[DefaultTriggerWebhookUseCase] Webhook trigger completed for Webhook:" +
+                    " {} Report: {} Calculation: {} - Response: {}",
+            notificationEvent.webhookId,
+            notificationEvent.reportId,
+            notificationEvent.calculationId,
+            response
+        )
     }
 }

@@ -20,28 +20,21 @@ class CouchDbChangeDetectionJob(
     @Scheduled(fixedDelay = 8000)
     fun checkForCouchDbChanges() {
         if (ERROR_COUNTER >= MAX_ERROR_COUNT) {
+            logger.trace("[CouchDbChangeDetectionJob]: MAX_ERROR_COUNT reached. Not starting job again.")
             return
         }
         logger.trace("[CouchDbChangeDetectionJob] Starting job...")
         try {
             databaseChangeDetection.checkForChanges()
-                .doOnError {
-                    logger.error(
-                        "[CouchDbChangeDetectionJob] An error occurred (count: $ERROR_COUNTER): {}",
-                        it.localizedMessage
-                    )
-                    logger.debug("[CouchDbChangeDetectionJob] Debug information", it)
-                    ERROR_COUNTER += 1
-                }
-                .subscribe {
-                    logger.trace("[CouchDbChangeDetectionJob]: ...job completed.")
-                }
         } catch (ex: Exception) {
             logger.error(
-                "[CouchDbChangeDetectionJob] An error occurred {}",
+                "[CouchDbChangeDetectionJob] An error occurred (count: $ERROR_COUNTER): {}",
                 ex.localizedMessage
             )
             logger.debug("[CouchDbChangeDetectionJob] Debug information", ex)
+            ERROR_COUNTER += 1
         }
+
+        logger.trace("[CouchDbChangeDetectionJob]: ...job completed.")
     }
 }

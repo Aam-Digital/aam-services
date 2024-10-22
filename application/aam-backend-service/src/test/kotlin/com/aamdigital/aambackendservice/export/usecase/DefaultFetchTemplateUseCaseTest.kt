@@ -2,10 +2,11 @@ package com.aamdigital.aambackendservice.export.usecase
 
 import com.aamdigital.aambackendservice.common.WebClientTestBase
 import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.domain.TestErrorCode
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.error.ExternalSystemException
 import com.aamdigital.aambackendservice.error.InternalServerException
-import com.aamdigital.aambackendservice.error.InvalidArgumentException
-import com.aamdigital.aambackendservice.export.core.FetchTemplateErrorCode
+import com.aamdigital.aambackendservice.export.core.FetchTemplateError
 import com.aamdigital.aambackendservice.export.core.FetchTemplateRequest
 import com.aamdigital.aambackendservice.export.core.FetchTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.TemplateExport
@@ -22,10 +23,8 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
-import org.springframework.core.io.buffer.DataBuffer
-import reactor.core.publisher.Mono
-import reactor.test.StepVerifier
-import java.io.File
+import org.springframework.core.io.ClassPathResource
+import java.io.InputStream
 
 
 @ExtendWith(MockitoExtension::class)
@@ -41,55 +40,65 @@ class DefaultFetchTemplateUseCaseTest : WebClientTestBase() {
         reset(templateStorage)
 
         service = DefaultFetchTemplateUseCase(
-            webClient = webClient,
+            restClient = restClient,
             templateStorage = templateStorage
         )
     }
 
     @Test
     fun `should return Failure when fetchTemplate returns an error`() {
-        // Arrange
+        // given
         val templateRef = DomainReference("some-id")
-        val exception = InternalServerException(message = "fetchTemplate error", cause = null)
+        val exception = InternalServerException(
+            message = "fetchTemplate error",
+            code = TestErrorCode.TEST_EXCEPTION,
+            cause = null
+        )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.error(exception))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenAnswer {
+            throw exception
+        }
 
-        // Act & Assert
-        StepVerifier.create(
-            service.execute(
-                FetchTemplateRequest(
-                    templateRef
-                )
+        // when
+        val response = service.run(
+            FetchTemplateRequest(
+                templateRef
             )
-        ).assertNext {
-            assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-            assertEquals(
-                FetchTemplateErrorCode.FETCH_TEMPLATE_REQUEST_FAILED_ERROR, (it as UseCaseOutcome.Failure).errorCode
-            )
-        }.verifyComplete()
+        )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        assertEquals(
+            FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR, (response as UseCaseOutcome.Failure).errorCode
+        )
     }
 
     @Test
     fun `should return Failure when fetchTemplate returns empty response`() {
-        // Arrange
+        // given
         val templateRef = DomainReference("some-id")
-        val exception = InternalServerException(message = "fetchTemplate error", cause = null)
+        val exception = InternalServerException(
+            message = "fetchTemplate error",
+            code = TestErrorCode.TEST_EXCEPTION,
+            cause = null
+        )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.empty())
+        whenever(templateStorage.fetchTemplate(templateRef)).thenAnswer {
+            throw exception
+        }
 
-        // Act & Assert
-        StepVerifier.create(
-            service.execute(
-                FetchTemplateRequest(
-                    templateRef
-                )
+        // when
+        val response = service.run(
+            FetchTemplateRequest(
+                templateRef
             )
-        ).assertNext {
-            assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-            assertEquals(
-                FetchTemplateErrorCode.FETCH_TEMPLATE_REQUEST_FAILED_ERROR, (it as UseCaseOutcome.Failure).errorCode
-            )
-        }.verifyComplete()
+        )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        assertEquals(
+            FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR, (response as UseCaseOutcome.Failure).errorCode
+        )
     }
 
     @Test
@@ -97,59 +106,31 @@ class DefaultFetchTemplateUseCaseTest : WebClientTestBase() {
         // given
         val templateRef = DomainReference("some-id")
 
+        val exception = ExternalSystemException(
+            message = "fetchTemplate error",
+            code = TestErrorCode.TEST_EXCEPTION,
+            cause = null
+        )
+
         whenever(templateStorage.fetchTemplate(templateRef)).thenAnswer {
-            throw InvalidArgumentException()
+            throw exception
         }
 
         // when
-        StepVerifier.create(
-            service.execute(
-                FetchTemplateRequest(
-                    templateRef
-                )
+        val response = service.run(
+            FetchTemplateRequest(
+                templateRef
             )
-        ).assertNext {
-            // then
-            assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-            assertEquals(
-                FetchTemplateErrorCode.INTERNAL_SERVER_ERROR, (it as UseCaseOutcome.Failure).errorCode
-            )
-        }.verifyComplete()
+        )
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        assertEquals(
+            FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR, (response as UseCaseOutcome.Failure).errorCode
+        )
     }
 
     @Test
     fun `should return Failure when response could not be processed`() {
-        // Arrange
-        val templateRef = DomainReference("some-id")
-
-        val templateExport = TemplateExport(
-            id = "export-id",
-            templateId = "export-template-id",
-            targetFileName = "target_file_name.file",
-            title = "export-title",
-            description = "export-description",
-            applicableForEntityTypes = emptyList()
-        )
-
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
-
-        // Act & Assert
-        StepVerifier.create(
-            service.execute(
-                FetchTemplateRequest(
-                    templateRef
-                )
-            )
-        ).assertNext {
-            assertThat(it).isInstanceOf(UseCaseOutcome.Failure::class.java)
-            assertEquals(
-                FetchTemplateErrorCode.FETCH_TEMPLATE_REQUEST_FAILED_ERROR, (it as UseCaseOutcome.Failure).errorCode
-            )
-        }.verifyComplete()
-    }
-
-    @Test
-    fun `should return Success with DataBuffer`() {
         // given
         val templateRef = DomainReference("some-id")
 
@@ -162,10 +143,39 @@ class DefaultFetchTemplateUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(Mono.just(templateExport))
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
+
+        // when
+        val response = service.run(
+            FetchTemplateRequest(
+                templateRef
+            )
+        )
+
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        assertEquals(
+            FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR, (response as UseCaseOutcome.Failure).errorCode
+        )
+    }
+
+    @Test
+    fun `should return Success with InputStream`() {
+        // given
+        val templateRef = DomainReference("some-id")
+
+        val templateExport = TemplateExport(
+            id = "export-id",
+            templateId = "export-template-id",
+            targetFileName = "target_file_name.file",
+            title = "export-title",
+            description = "export-description",
+            applicableForEntityTypes = emptyList()
+        )
+
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
 
         val buffer = Buffer()
-        buffer.writeAll(File("src/test/resources/files/docx-test-file-1.docx").source())
+        buffer.writeAll(ClassPathResource("files/docx-test-file-1.docx").file.source())
 
         mockWebServer.enqueue(
             MockResponse()
@@ -180,19 +190,16 @@ class DefaultFetchTemplateUseCaseTest : WebClientTestBase() {
 
         )
 
-        StepVerifier.create(
-            service.execute(
-                FetchTemplateRequest(
-                    templateRef
-                )
+        // when
+        val response = service.run(
+            FetchTemplateRequest(
+                templateRef
             )
         )
-            .consumeNextWith { response ->
-                // then
-                assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
 
-                assertThat((response as UseCaseOutcome.Success).outcome.file).isInstanceOf(DataBuffer::class.java)
-            }
-            .verifyComplete()
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+
+        assertThat((response as UseCaseOutcome.Success).data.file).isInstanceOf(InputStream::class.java)
     }
 }
