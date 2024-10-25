@@ -3,10 +3,7 @@
   "report": {
     "id": "ReportConfig:1"
   },
-  "args": {
-    "from": "2024-01-01T00:00:00Z",
-    "to": "2024-04-30T00:00:00Z"
-  },
+  "args": {},
   "status": "PENDING",
   "startDate": null,
   "endDate": null

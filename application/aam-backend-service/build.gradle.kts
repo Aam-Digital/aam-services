@@ -46,7 +46,10 @@ dependencies {
 
     implementation("org.apache.commons:commons-lang3")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-    implementation("io.micrometer:micrometer-tracing-bridge-brave")
+
+    implementation("io.micrometer:micrometer-tracing-bridge-otel")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
+
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 

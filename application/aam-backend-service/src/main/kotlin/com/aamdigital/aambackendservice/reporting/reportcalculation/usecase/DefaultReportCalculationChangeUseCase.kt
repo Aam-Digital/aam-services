@@ -1,16 +1,17 @@
-package com.aamdigital.aambackendservice.reporting.reportcalculation.core
+package com.aamdigital.aambackendservice.reporting.reportcalculation.usecase
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
 import com.aamdigital.aambackendservice.reporting.notification.core.NotificationService
-import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 
 class DefaultReportCalculationChangeUseCase(
-    private val reportingStorage: ReportingStorage,
+    private val reportCalculationStorage: ReportCalculationStorage,
     private val objectMapper: ObjectMapper,
     private val notificationService: NotificationService,
 ) : ReportCalculationChangeUseCase {
@@ -26,8 +27,8 @@ class DefaultReportCalculationChangeUseCase(
         }
 
         try {
-            val calculations = reportingStorage.fetchCalculations(
-                reportReference = currentReportCalculation.report
+            val calculations = reportCalculationStorage.fetchReportCalculations(
+                report = currentReportCalculation.report
             )
 
             val existingDigest = calculations

@@ -2,10 +2,9 @@ package com.aamdigital.aambackendservice.reporting.domain
 
 import com.aamdigital.aambackendservice.couchdb.dto.AttachmentMetaData
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.fasterxml.jackson.annotation.JsonProperty
 
+// todo remove connection to couchdb.* from domain model
 data class ReportCalculation(
-    @JsonProperty("_id")
     val id: String,
     val report: DomainReference,
     var status: ReportCalculationStatus,
@@ -13,7 +12,6 @@ data class ReportCalculation(
     var calculationStarted: String? = null,
     var calculationCompleted: String? = null,
     var args: MutableMap<String, String> = mutableMapOf(),
-    @JsonProperty("_attachments")
     val attachments: MutableMap<String, AttachmentMetaData> = mutableMapOf(),
 ) {
     fun setStatus(status: ReportCalculationStatus): ReportCalculation {

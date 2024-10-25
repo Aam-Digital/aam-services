@@ -23,8 +23,8 @@ class DefaultQueueMessageParser(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
-        private const val TYPE_FIELD = "type"
-        private const val PAYLOAD_FIELD = "payload"
+        private const val TYPE_FIELD = "eventType"
+        private const val PAYLOAD_FIELD = "event"
     }
 
     private fun getJsonNode(body: ByteArray): JsonNode {

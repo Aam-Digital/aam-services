@@ -10,12 +10,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
 import org.springframework.core.ParameterizedTypeReference
-import org.springframework.core.io.Resource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.util.MultiValueMap
 import org.springframework.web.client.RestClient
-import java.io.InputStream
 import java.io.InterruptedIOException
 import java.util.*
 import kotlin.reflect.KClass
@@ -38,7 +36,6 @@ class DefaultCouchDbClient(
     companion object {
         private const val CHANGES_URL = "/_changes"
         private const val FIND_URL = "/_find"
-        private const val BYTE_ARRAY_BUFFER_LENGTH = 4096
     }
 
     override fun allDatabases(): List<String> {
@@ -260,119 +257,16 @@ class DefaultCouchDbClient(
         return Optional.of(objectMapper.convertValue(previousDoc, kClass.java))
     }
 
-    override fun getAttachment(
-        database: String,
-        documentId: String,
-        attachmentId: String,
-    ): InputStream {
-        val response = httpClient.get()
-            .uri {
-                it.path("$database/$documentId/$attachmentId")
-                it.build()
-            }
-            .accept(MediaType.APPLICATION_OCTET_STREAM)
-            .retrieve()
-            .onStatus({ it.is4xxClientError }, { _, _ ->
-                throw NotFoundException(
-                    message = "Could not find attachment: $database/$documentId/$attachmentId",
-                    code = DefaultCouchDbClientErrorCode.NOT_FOUND
-                )
-            })
-            .onStatus({ it.is5xxServerError }, { _, response ->
-                logger.warn(
-                    "[DefaultCouchDbClient.getAttachment] CouchDb responses with ${response.statusCode.value()} error"
-                )
-            })
-            .body(Resource::class.java)
-
-
-        if (response == null) {
-            throw ExternalSystemException(
-                message = "Could not parse response to Resource",
-                code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
-            )
-        }
-
-        return response.inputStream
-    }
-
-    override fun headAttachment(
-        database: String,
-        documentId: String,
-        attachmentId: String,
-    ): HttpHeaders {
-        return httpClient.head()
-            .uri {
-                it.path("$database/$documentId/$attachmentId")
-                it.build()
-            }
-            .accept(MediaType.APPLICATION_JSON)
-            .exchange { _, clientResponse ->
-                if (clientResponse.statusCode.is2xxSuccessful) {
-                    clientResponse.headers
-                } else if (clientResponse.statusCode.is4xxClientError) {
-                    HttpHeaders()
-                } else {
-                    throw ExternalSystemException(
-                        message = "Retrieved HTTP 500 from CouchDb, ${clientResponse.bodyTo(String::class.java)}",
-                        code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
-                    )
-                }
-            }
-    }
-
-    override fun putAttachment(
-        database: String,
-        documentId: String,
-        attachmentId: String,
-        file: InputStream
-    ): DocSuccess {
-        val httpHeaders = headDatabaseDocument(
-            database = database,
-            documentId = documentId,
-        )
-        val etag = httpHeaders.eTag?.replace("\"", "")
-
-        val response = httpClient.put()
-            .uri {
-                it.path("$database/$documentId/$attachmentId")
-                it.build()
-            }
-            .headers {
-                if (etag.isNullOrBlank().not()) {
-                    it.set("If-Match", etag)
-                }
-                it.contentType = MediaType.APPLICATION_JSON
-            }
-            .body { outputStream ->
-                val buffer = ByteArray(BYTE_ARRAY_BUFFER_LENGTH)
-                var bytesRead: Int
-                while ((file.read(buffer).also { bytesRead = it }) != -1) {
-                    outputStream.write(buffer, 0, bytesRead)
-                }
-            }
-            .retrieve()
-            .body(DocSuccess::class.java)
-
-        if (response == null) {
-            throw ExternalSystemException(
-                message = "[CouchDbClient] PUT Attachment failed",
-                code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
-            )
-        }
-
-        logger.trace("[CouchDbClient] PUT Attachment response: {}", response.id)
-
-        return response
-    }
-
     @Throws(ExternalSystemException::class)
     private fun <T : Any> handleResponse(
         response: RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse,
         typeReference: KClass<T>
     ): T {
         val rawResponse = try {
-            response.bodyTo(String::class.java)
+            response.bodyTo(String::class.java) ?: throw ExternalSystemException(
+                message = "[DefaultCouchDbClient] empty response from server",
+                code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
+            )
         } catch (ex: Exception) {
             logger.error(
                 "[DefaultCouchDbClient] Invalid response from couchdb. Could not parse response to String.",
@@ -383,6 +277,11 @@ class DefaultCouchDbClient(
                 cause = ex,
                 code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
             )
+        }
+
+        if (typeReference == String::class) {
+            @Suppress("UNCHECKED_CAST")
+            return rawResponse as T
         }
 
         try {

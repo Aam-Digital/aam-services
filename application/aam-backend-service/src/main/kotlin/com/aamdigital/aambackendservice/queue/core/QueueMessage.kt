@@ -1,12 +1,11 @@
 package com.aamdigital.aambackendservice.queue.core
 
+import com.aamdigital.aambackendservice.events.DomainEvent
 import java.util.*
 
 data class QueueMessage(
     val id: UUID,
-    val type: String,
-    val payload: Any,
+    val eventType: String,
+    val event: DomainEvent,
     val createdAt: String,
-    val spanId: String? = null,
-    val traceId: String? = null,
 )

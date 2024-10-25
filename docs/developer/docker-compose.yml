@@ -85,9 +85,18 @@ services:
 
   carbone-io:
     image: carbone/carbone-ee
-    platform: amd64
+    platform: linux/amd64
     volumes:
       - ~/docker-volumes/aam-digital/aam-services/carbone-io/template:/app/template
       - ~/docker-volumes/aam-digital/aam-services/carbone-io/render:/app/render
     ports:
       - "4000:4000"
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686" # the jaeger UI
+      - "4317:4317" # the OpenTelemetry collector grpc
+      - "4318:4318" # the OpenTelemetry collector http
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true

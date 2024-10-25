@@ -26,7 +26,6 @@ spring:
           enabled: true
           max-attempts: 5
 
-
 server:
   port: 9000
 

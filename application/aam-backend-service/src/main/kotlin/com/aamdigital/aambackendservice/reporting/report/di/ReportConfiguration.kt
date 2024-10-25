@@ -1,15 +1,12 @@
 package com.aamdigital.aambackendservice.reporting.report.di
 
-import com.aamdigital.aambackendservice.reporting.report.core.DefaultIdentifyAffectedReportsUseCase
-import com.aamdigital.aambackendservice.reporting.report.core.DefaultReportCalculationProcessor
+import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
-import com.aamdigital.aambackendservice.reporting.report.core.NoopReportCalculationProcessor
-import com.aamdigital.aambackendservice.reporting.report.core.ReportCalculationProcessor
 import com.aamdigital.aambackendservice.reporting.report.core.ReportSchemaGenerator
-import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculator
-import com.aamdigital.aambackendservice.reporting.storage.DefaultReportStorage
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
+import com.aamdigital.aambackendservice.reporting.report.storage.DefaultReportStorage
+import com.aamdigital.aambackendservice.reporting.report.usecase.DefaultIdentifyAffectedReportsUseCase
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -17,31 +14,19 @@ import org.springframework.context.annotation.Configuration
 class ReportConfiguration {
 
     @Bean
+    fun defaultReportStorage(
+        couchDbClient: CouchDbClient,
+        objectMapper: ObjectMapper,
+    ): ReportStorage = DefaultReportStorage(
+        couchDbClient = couchDbClient,
+        objectMapper = objectMapper
+    )
+
+    @Bean
     fun defaultIdentifyAffectedReportsUseCase(
-        reportStorage: DefaultReportStorage,
+        reportStorage: ReportStorage,
         schemaGenerator: ReportSchemaGenerator,
     ): IdentifyAffectedReportsUseCase =
         DefaultIdentifyAffectedReportsUseCase(reportStorage, schemaGenerator)
 
-    @Bean
-    @ConditionalOnProperty(
-        prefix = "report-calculation-processor",
-        name = ["enabled"],
-        havingValue = "false"
-    )
-    fun noopReportCalculationProcessor(): ReportCalculationProcessor = NoopReportCalculationProcessor()
-
-    @Bean
-    @ConditionalOnProperty(
-        prefix = "report-calculation-processor",
-        name = ["enabled"],
-        matchIfMissing = true
-    )
-    fun defaultReportCalculationProcessor(
-        reportCalculator: ReportCalculator,
-        reportingStorage: ReportingStorage,
-    ): ReportCalculationProcessor = DefaultReportCalculationProcessor(
-        reportCalculator = reportCalculator,
-        reportingStorage = reportingStorage,
-    )
 }

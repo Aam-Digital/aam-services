@@ -1,11 +1,13 @@
-package com.aamdigital.aambackendservice.reporting.report.core
+package com.aamdigital.aambackendservice.reporting.report.usecase
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
-import com.aamdigital.aambackendservice.reporting.storage.DefaultReportStorage
+import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
+import com.aamdigital.aambackendservice.reporting.report.core.ReportSchemaGenerator
+import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 
 class DefaultIdentifyAffectedReportsUseCase(
-    private val reportStorage: DefaultReportStorage,
+    private val reportStorage: ReportStorage,
     private val reportSchemaGenerator: ReportSchemaGenerator,
 ) : IdentifyAffectedReportsUseCase {
 

@@ -1,6 +1,8 @@
 package com.aamdigital.aambackendservice.e2e
 
 import com.aamdigital.aambackendservice.container.TestContainers
+import com.aamdigital.aambackendservice.reporting.domain.event.ReportCalculationEvent
+import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
 import io.cucumber.java.After
 import io.cucumber.java.en.Given
 import io.cucumber.java.en.Then
@@ -14,7 +16,9 @@ import org.springframework.http.HttpMethod
 import java.io.File
 
 @CucumberContextConfiguration
-class CucumberIntegrationTest : SpringIntegrationTest() {
+class CucumberIntegrationTest(
+    val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher,
+) : SpringIntegrationTest() {
 
     @After
     fun `reset all databases`() {
@@ -67,6 +71,18 @@ class CucumberIntegrationTest : SpringIntegrationTest() {
     @Throws(Throwable::class)
     fun `the client issues GET endpoint`(endpoint: String) {
         exchange(endpoint, HttpMethod.GET)
+    }
+
+    @Given("emit ReportCalculationEvent for {word} in tenant {word}")
+    @Throws(Throwable::class)
+    fun `emit ReportCalculationEvent`(reportCalculationId: String, tenant: String) {
+        reportCalculationEventPublisher.publish(
+            "report.calculation",
+            ReportCalculationEvent(
+//                tenant = tenant, // to prepare multi tenant
+                reportCalculationId = reportCalculationId,
+            )
+        )
     }
 
     @When("the client calls GET {word} with id from latest response")

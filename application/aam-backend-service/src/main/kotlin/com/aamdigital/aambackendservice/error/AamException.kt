@@ -14,12 +14,14 @@ class InternalServerException(
     code: AamErrorCode,
 ) : AamException(message, cause, code)
 
+// todo merge with network exception and rename to IOException
 class ExternalSystemException(
     message: String = "Unspecific ExternalSystemException",
     cause: Throwable? = null,
     code: AamErrorCode,
 ) : AamException(message, cause, code)
 
+// todo merge with network exception and rename to IOException
 class NetworkException(
     message: String = "Unspecific NetworkException",
     cause: Throwable? = null,
