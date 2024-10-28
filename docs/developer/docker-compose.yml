@@ -19,7 +19,7 @@ services:
       - "1080:1080"
 
   db-couch:
-    image: couchdb:3.3
+    image: couchdb:3.4
     volumes:
       - ~/docker-volumes/aam-digital/aam-services/db-couch/document-data:/opt/couchdb/data
       - ~/docker-volumes/aam-digital/aam-services/db-couch/document-etc-locald:/opt/couchdb/etc/local.d

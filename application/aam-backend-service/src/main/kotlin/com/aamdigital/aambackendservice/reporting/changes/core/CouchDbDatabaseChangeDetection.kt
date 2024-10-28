@@ -19,7 +19,7 @@ class CouchDbDatabaseChangeDetection(
 
     companion object {
         private val LATEST_REFS: MutableMap<String, String> = Collections.synchronizedMap(hashMapOf())
-        private const val CHANGES_LIMIT: Int = 300
+        private const val CHANGES_LIMIT: Int = 150
     }
 
     /**
@@ -36,6 +36,8 @@ class CouchDbDatabaseChangeDetection(
     private fun fetchChangesForDatabase(database: String) {
         var syncEntry =
             syncRepository.findByDatabase(database).getOrDefault(SyncEntry(database = database, latestRef = ""))
+
+        // todo if latestRef is empty, use latest
 
         LATEST_REFS[database] = syncEntry.latestRef
 

@@ -11,7 +11,7 @@ class ReportCalculationJob(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 10000)
     fun handleReportCalculation() {
         try {
             reportCalculationProcessor.processNextPendingCalculation()
