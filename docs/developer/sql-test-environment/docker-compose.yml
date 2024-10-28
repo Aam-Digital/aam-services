@@ -1,0 +1,27 @@
+# ***************************************************************
+# start local development environment for SQL query testing
+# ***************************************************************
+name: aam-services-sql-environment
+services:
+  db-couch:
+    image: couchdb:3.4
+    volumes:
+      - ~/docker-volumes/aam-digital/db-couch/document-data:/opt/couchdb/data
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: docker
+      COUCHDB_SECRET: docker
+    ports:
+      - "5984:5984"
+
+  sqs:
+    image: ghcr.io/aam-digital/aam-sqs-linux:latest
+    #    platform: linux/amd64
+    depends_on:
+      - db-couch
+    ports:
+      - "4984:4984"
+    volumes:
+      - ~/docker-volumes/aam-digital/sqs/data:/data
+    environment:
+      SQS_COUCHDB_URL: http://db-couch:5984
