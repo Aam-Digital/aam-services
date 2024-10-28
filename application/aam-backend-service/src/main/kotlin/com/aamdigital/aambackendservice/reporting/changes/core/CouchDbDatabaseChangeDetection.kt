@@ -19,25 +19,21 @@ class CouchDbDatabaseChangeDetection(
 
     companion object {
         private val LATEST_REFS: MutableMap<String, String> = Collections.synchronizedMap(hashMapOf())
-        private const val CHANGES_LIMIT: Int = 100
+        private const val CHANGES_LIMIT: Int = 300
     }
 
     /**
      * Will reach out to CouchDb and convert _changes to  Domain.DocumentChangeEvent's
      */
     override fun checkForChanges() {
-        logger.trace("[CouchDatabaseChangeDetection] start couchdb change detection...")
         couchDbClient
             .allDatabases()
             .filter { !it.startsWith("_") }.map { database ->
                 fetchChangesForDatabase(database)
             }
-        logger.trace("[CouchDatabaseChangeDetection] ...completed couchdb change detection.")
     }
 
     private fun fetchChangesForDatabase(database: String) {
-        logger.trace("[CouchDatabaseChangeDetection] check changes for database \"{}\"...", database)
-
         var syncEntry =
             syncRepository.findByDatabase(database).getOrDefault(SyncEntry(database = database, latestRef = ""))
 
@@ -57,7 +53,7 @@ class CouchDbDatabaseChangeDetection(
         )
 
         changes.results.forEachIndexed { index, couchDbChangeResult ->
-            logger.trace("$database $index: {}", couchDbChangeResult.toString())
+//            logger.trace("$database $index: {}", couchDbChangeResult.toString())
 
             val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
 
@@ -81,7 +77,5 @@ class CouchDbDatabaseChangeDetection(
 
         syncEntry.latestRef = LATEST_REFS[database].orEmpty()
         syncRepository.save(syncEntry)
-
-        logger.trace("[CouchDatabaseChangeDetection] ...completed changes check for database \"{}\".", database)
     }
 }

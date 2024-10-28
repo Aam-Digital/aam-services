@@ -36,8 +36,6 @@ class DefaultDatabaseChangeEventConsumer(
                     kClass = DatabaseChangeEvent::class
                 )
 
-                logger.debug("Payload parsed: {}", payload)
-
                 return useCase.createEvent(payload)
             }
 

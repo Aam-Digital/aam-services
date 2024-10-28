@@ -73,7 +73,7 @@ class DefaultCreateDocumentChangeUseCase(
             )
         }
 
-        logger.debug("[{}]: send event: {}", DOCUMENT_CHANGES_EXCHANGE, changeEvent)
+//        logger.debug("[{}]: send event: {}", DOCUMENT_CHANGES_EXCHANGE, changeEvent)
 
         documentChangeEventPublisher.publish(DOCUMENT_CHANGES_EXCHANGE, changeEvent)
     }

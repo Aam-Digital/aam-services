@@ -33,6 +33,10 @@ class DefaultTriggerWebhookUseCase(
             )
         )
 
+        val body = hashMapOf(
+            "calculation_id" to notificationEvent.calculationId
+        )
+
         val response = try {
             httpClient
                 .method(HttpMethod.valueOf(webhook.target.method))
@@ -45,11 +49,7 @@ class DefaultTriggerWebhookUseCase(
                 .headers {
                     it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
                 }
-                .body(
-                    mapOf(
-                        Pair("calculation_id", notificationEvent.calculationId)
-                    )
-                )
+                .body(body)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .body(String::class.java)

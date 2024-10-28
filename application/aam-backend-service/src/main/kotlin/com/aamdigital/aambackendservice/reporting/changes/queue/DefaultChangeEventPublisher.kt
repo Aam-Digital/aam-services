@@ -51,11 +51,11 @@ class DefaultChangeEventPublisher(
             )
         }
 
-        logger.trace(
-            "[DefaultDatabaseChangeEventPublisher]: publish message to channel '{}' Payload: {}",
-            channel,
-            objectMapper.writeValueAsString(message)
-        )
+//        logger.trace(
+//            "[DefaultDatabaseChangeEventPublisher]: publish message to channel '{}' Payload: {}",
+//            channel,
+//            objectMapper.writeValueAsString(message)
+//        )
         return message
     }
 
@@ -83,11 +83,11 @@ class DefaultChangeEventPublisher(
             )
         }
 
-        logger.trace(
-            "[DefaultDocumentChangeEventPublisher]: publish message to channel '{}' Payload: {}",
-            exchange,
-            objectMapper.writeValueAsString(message)
-        )
+//        logger.trace(
+//            "[DefaultDocumentChangeEventPublisher]: publish message to channel '{}' Payload: {}",
+//            exchange,
+//            objectMapper.writeValueAsString(message)
+//        )
         return message
     }
 }
