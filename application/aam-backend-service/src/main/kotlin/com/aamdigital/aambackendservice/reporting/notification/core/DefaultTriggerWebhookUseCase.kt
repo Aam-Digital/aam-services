@@ -33,25 +33,30 @@ class DefaultTriggerWebhookUseCase(
             )
         )
 
-        val response = httpClient
-            .method(HttpMethod.valueOf(webhook.target.method))
-            .uri {
-                it.scheme(uri.scheme)
-                it.host(uri.host)
-                it.path(uri.path)
-                it.build()
-            }
-            .headers {
-                it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
-            }
-            .body(
-                mapOf(
-                    Pair("calculation_id", notificationEvent.calculationId)
+        val response = try {
+            httpClient
+                .method(HttpMethod.valueOf(webhook.target.method))
+                .uri {
+                    it.scheme(uri.scheme)
+                    it.host(uri.host)
+                    it.path(uri.path)
+                    it.build()
+                }
+                .headers {
+                    it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
+                }
+                .body(
+                    mapOf(
+                        Pair("calculation_id", notificationEvent.calculationId)
+                    )
                 )
-            )
-            .accept(MediaType.APPLICATION_JSON)
-            .retrieve()
-            .body(String::class.java)
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .body(String::class.java)
+        } catch (ex: Exception) {
+            logger.warn("[DefaultTriggerWebhookUseCase] Could not trigger webhook. Error: {}", ex.message)
+            return
+        }
 
         logger.debug(
             "[DefaultTriggerWebhookUseCase] Webhook trigger completed for Webhook:" +
