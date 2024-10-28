@@ -37,6 +37,8 @@ class DefaultTriggerWebhookUseCase(
             "calculation_id" to notificationEvent.calculationId
         )
 
+        logger.trace("trigger url: {}", uri)
+
         val response = try {
             httpClient
                 .method(HttpMethod.valueOf(webhook.target.method))
