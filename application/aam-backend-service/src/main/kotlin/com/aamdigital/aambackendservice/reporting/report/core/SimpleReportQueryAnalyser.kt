@@ -5,7 +5,6 @@ import com.aamdigital.aambackendservice.reporting.domain.ReportItem
 import java.util.regex.Pattern
 
 class SimpleReportQueryAnalyser : ReportQueryAnalyser {
-
     companion object {
         private val EXTRACT_ENTITIES_FROM_SQL_REGEX: Pattern = Pattern.compile(
             "(FROM|from|JOIN|join)\\s+(`\\w+.+\\w+\\s*`|(\\[)\\w+.+\\w+\\s*(])|\\w+\\s*\\.+\\s*\\w*|\\w+\\b)"

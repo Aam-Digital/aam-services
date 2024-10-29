@@ -21,6 +21,58 @@ class SimpleReportQueryAnalyserTest {
     }
 
     @Test
+    fun `should be able to handle empty items`() {
+        // given
+        val report = Report(
+            id = "report-1",
+            title = "Report 1",
+            version = 1,
+            transformations = emptyMap(),
+            items = listOf()
+        )
+
+        // when
+        val result = service.getAffectedEntities(report)
+
+        // then
+        Assertions.assertEquals(
+            emptyList<String>(),
+            result
+        )
+    }
+
+    @Test
+    fun `should be able to handle invalid SQL queries`() {
+        // given
+        val report = Report(
+            id = "report-1",
+            title = "Report 1",
+            version = 1,
+            transformations = emptyMap(),
+            items = listOf(
+                ReportItem.ReportQuery(
+                    sql = "SELECT nothing"
+                ),
+                ReportItem.ReportQuery(
+                    sql = "SELECT nothing FROM"
+                ),
+                ReportItem.ReportQuery(
+                    sql = "FROM"
+                )
+            )
+        )
+
+        // when
+        val result = service.getAffectedEntities(report)
+
+        // then
+        Assertions.assertEquals(
+            emptyList<String>(),
+            result
+        )
+    }
+
+    @Test
     fun `should extract Entities from Report with one ReportQuery`() {
         // given
         val report = Report(
