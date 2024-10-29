@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.domain
 
 /**
- * Represents a SQL based Report
+ * Represents a SQL based Report definition
  *
  * @param id unique identifier
  * @param title human-readable title of the Report
