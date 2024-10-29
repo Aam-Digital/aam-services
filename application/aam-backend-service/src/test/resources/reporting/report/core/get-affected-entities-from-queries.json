@@ -1,0 +1,22 @@
+[
+  {
+    "query": "SELECT * FROM Children c JOIN School s WHERE c.school_id = s.id",
+    "entities": [
+      "Children",
+      "School"
+    ]
+  },
+  {
+    "query": "SELECT * FROM Children JOIN School WHERE c.school_id = s.id",
+    "entities": [
+      "Children",
+      "School"
+    ]
+  },
+  {
+    "query": "SELECT name, foo, bar FROM Children WHERE c.school_id = s.id",
+    "entities": [
+      "Children"
+    ]
+  }
+]
