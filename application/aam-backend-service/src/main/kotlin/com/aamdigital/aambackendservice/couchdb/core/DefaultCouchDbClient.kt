@@ -31,6 +31,7 @@ class DefaultCouchDbClient(
         PARSING_ERROR,
         EMPTY_RESPONSE,
         NOT_FOUND,
+        CLIENT_ERROR,
     }
 
     companion object {

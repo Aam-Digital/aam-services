@@ -4,6 +4,7 @@ import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.core.ReportSchemaGenerator
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
+import com.aamdigital.aambackendservice.reporting.report.core.SimpleReportSchemaGenerator
 import com.aamdigital.aambackendservice.reporting.report.storage.DefaultReportStorage
 import com.aamdigital.aambackendservice.reporting.report.usecase.DefaultIdentifyAffectedReportsUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -21,6 +22,9 @@ class ReportConfiguration {
         couchDbClient = couchDbClient,
         objectMapper = objectMapper
     )
+
+    @Bean
+    fun defaultSimpleReportSchemaGenerator(): ReportSchemaGenerator = SimpleReportSchemaGenerator()
 
     @Bean
     fun defaultIdentifyAffectedReportsUseCase(

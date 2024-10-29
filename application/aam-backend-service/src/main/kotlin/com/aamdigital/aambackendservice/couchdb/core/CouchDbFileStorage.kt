@@ -5,11 +5,13 @@ import com.aamdigital.aambackendservice.couchdb.dto.DocSuccess
 import com.aamdigital.aambackendservice.domain.FileStorage
 import com.aamdigital.aambackendservice.domain.FileStorageError
 import com.aamdigital.aambackendservice.error.ExternalSystemException
+import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.stream.handleInputStreamToOutputStream
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.client.RestClient
 import java.io.IOException
@@ -70,11 +72,18 @@ class CouchDbFileStorage(
             .uri("$path/$fileName")
             .accept(MediaType.APPLICATION_OCTET_STREAM)
             .retrieve()
-            .onStatus({ it.is4xxClientError }, { _, _ ->
-                throw NotFoundException(
-                    message = "Could not find file: $path/$fileName",
-                    code = DefaultCouchDbClientErrorCode.NOT_FOUND
-                )
+            .onStatus({ it.is4xxClientError }, { _, response ->
+                when (response.statusCode) {
+                    HttpStatus.NOT_FOUND -> throw NotFoundException(
+                        message = "Could not find file: $path/$fileName",
+                        code = DefaultCouchDbClientErrorCode.NOT_FOUND
+                    )
+
+                    else -> throw InvalidArgumentException(
+                        message = "Server responded with ${response.statusCode} for $path/$fileName.",
+                        code = DefaultCouchDbClientErrorCode.CLIENT_ERROR
+                    )
+                }
             })
             .body(Resource::class.java)
 

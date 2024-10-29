@@ -61,15 +61,7 @@ class DefaultReportStorage(
                     throw handleException(ex)
                 }
 
-                when (val report = parseReportEntity(rawReportConfig.doc, version)) {
-                    is ReportConfigV1Entity -> toReport(report)
-                    is ReportConfigEntity -> toReport(report)
-                    else -> throw InternalServerException(
-                        message =
-                        "Invalid ReportConfig version. Only supports ReportConfigEntity and ReportConfigV1Entity",
-                        code = ReportStorageErrorCode.INVALID_REPORT_CONFIG
-                    ) // should not be possible
-                }
+                anyEntityToReport(rawReportConfig.doc, version)
             }
     }
 
@@ -106,12 +98,16 @@ class DefaultReportStorage(
             )
         }
 
-        return when (val report = parseReportEntity(rawReportConfig, version)) {
+        return anyEntityToReport(rawReportConfig, version)
+    }
+
+    private fun anyEntityToReport(doc: ObjectNode, version: Int): Report {
+        return when (val report = parseReportEntity(doc, version)) {
             is ReportConfigV1Entity -> toReport(report)
             is ReportConfigEntity -> toReport(report)
-
             else -> throw InternalServerException(
-                message = "Invalid ReportConfig version. Only supports ReportConfigEntity and ReportConfigV1Entity",
+                message =
+                "Invalid ReportConfig version. Only supports ReportConfigEntity and ReportConfigV1Entity",
                 code = ReportStorageErrorCode.INVALID_REPORT_CONFIG
             ) // should not be possible
         }
