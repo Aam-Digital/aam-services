@@ -27,6 +27,10 @@ data class ReportConfigEntity(
     val reportDefinition: List<ReportDefinitionDto>,
 )
 
+/**
+ * One query (or group) making up a report.
+ * This should either have `query` or `groupTitle` + `items` properties, not both.
+ */
 data class ReportDefinitionDto(
     val query: String?,
     val groupTitle: String?,
