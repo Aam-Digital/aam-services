@@ -51,6 +51,7 @@ class DefaultTriggerWebhookUseCase(
                 .headers {
                     it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
                 }
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
