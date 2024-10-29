@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component
 
 /**
  * Process ReportCalculationEvents from RabbitMQ
- * When enabled, an RabbitListener is registered wich will handle incoming events.
+ * When enabled, an RabbitListener is registered which will handle incoming events.
  * When disabled, ReportCalculations will not be calculated.
  */
 @Component
