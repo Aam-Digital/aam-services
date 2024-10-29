@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.reporting.notification.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.domain.event.NotificationEvent
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
@@ -16,6 +17,7 @@ class DefaultTriggerWebhookUseCase(
     private val notificationStorage: NotificationStorage,
     private val httpClient: RestClient,
     private val uriParser: UriParser,
+    private val objectMapper: ObjectMapper,
 ) : TriggerWebhookUseCase {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -33,10 +35,6 @@ class DefaultTriggerWebhookUseCase(
             )
         )
 
-        val body = hashMapOf(
-            "calculation_id" to notificationEvent.calculationId
-        )
-
         logger.trace("trigger url: {}", uri)
 
         val response = try {
@@ -52,7 +50,13 @@ class DefaultTriggerWebhookUseCase(
                     it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
                 }
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
+                .body(
+                    objectMapper.writeValueAsString(
+                        hashMapOf(
+                            "calculation_id" to notificationEvent.calculationId
+                        )
+                    )
+                )
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .body(String::class.java)
