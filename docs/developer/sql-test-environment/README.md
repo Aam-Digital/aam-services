@@ -15,6 +15,7 @@ If you're on an ARM based system, you need to enable for the SQS container:
 - `platform: linux/amd64`
 
 #### Authorization ghcr.io
+SQS is not open source and only available to developers of the Aam Digital team through a private docker image.
 
 You will need to do a `docker login` for ghcr.io, to be able to fetch sqs image.
 
