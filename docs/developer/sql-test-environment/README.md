@@ -42,6 +42,8 @@ Then start the couchdb container again. Nothing more to do.
 
 To run a Query, you can use the POST endpoint: `http://localhost:4984/app/_design/sqlite:config`
 
+Note that the query payload you send here is _not_ the ReportConfig entity used within Aam Digital but the raw SQS payload as shown in the example below.
+
 #### Authentication
 
 You need to set a 'basic auth' Authorization-Header with the couchdb credentials.
