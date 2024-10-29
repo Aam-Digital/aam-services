@@ -33,7 +33,6 @@ class DefaultNotificationEventConsumer(
                     body = rawMessage.toByteArray(),
                     kClass = NotificationEvent::class
                 )
-                logger.debug("Payload parsed: {}", payload)
                 try {
                     useCase.trigger(payload)
                 } catch (ex: Exception) {

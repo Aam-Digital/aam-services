@@ -6,7 +6,6 @@ import com.aamdigital.aambackendservice.reporting.changes.di.ChangesQueueConfigu
 import com.aamdigital.aambackendservice.reporting.changes.repository.SyncEntry
 import com.aamdigital.aambackendservice.reporting.changes.repository.SyncRepository
 import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
-import org.slf4j.LoggerFactory
 import java.util.*
 import kotlin.jvm.optionals.getOrDefault
 
@@ -15,8 +14,6 @@ class CouchDbDatabaseChangeDetection(
     private val documentChangeEventPublisher: ChangeEventPublisher,
     private val syncRepository: SyncRepository,
 ) : DatabaseChangeDetection {
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     companion object {
         private val LATEST_REFS: MutableMap<String, String> = Collections.synchronizedMap(hashMapOf())
         private const val CHANGES_LIMIT: Int = 100
@@ -26,20 +23,18 @@ class CouchDbDatabaseChangeDetection(
      * Will reach out to CouchDb and convert _changes to  Domain.DocumentChangeEvent's
      */
     override fun checkForChanges() {
-        logger.trace("[CouchDatabaseChangeDetection] start couchdb change detection...")
         couchDbClient
             .allDatabases()
             .filter { !it.startsWith("_") }.map { database ->
                 fetchChangesForDatabase(database)
             }
-        logger.trace("[CouchDatabaseChangeDetection] ...completed couchdb change detection.")
     }
 
     private fun fetchChangesForDatabase(database: String) {
-        logger.trace("[CouchDatabaseChangeDetection] check changes for database \"{}\"...", database)
-
         var syncEntry =
             syncRepository.findByDatabase(database).getOrDefault(SyncEntry(database = database, latestRef = ""))
+
+        // todo if latestRef is empty, use latest
 
         LATEST_REFS[database] = syncEntry.latestRef
 
@@ -57,8 +52,6 @@ class CouchDbDatabaseChangeDetection(
         )
 
         changes.results.forEachIndexed { index, couchDbChangeResult ->
-            logger.trace("$database $index: {}", couchDbChangeResult.toString())
-
             val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
 
             if (!couchDbChangeResult.id.startsWith("_design")) {
@@ -81,7 +74,5 @@ class CouchDbDatabaseChangeDetection(
 
         syncEntry.latestRef = LATEST_REFS[database].orEmpty()
         syncRepository.save(syncEntry)
-
-        logger.trace("[CouchDatabaseChangeDetection] ...completed changes check for database \"{}\".", database)
     }
 }

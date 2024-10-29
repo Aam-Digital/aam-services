@@ -39,13 +39,6 @@ class RabbitMqReportCalculationEventPublisher(
                 cause = ex
             )
         }
-
-        logger.trace(
-            "[DefaultDatabaseChangeEventPublisher]: publish message to channel '{}' Payload: {}",
-            channel,
-            objectMapper.writeValueAsString(event)
-        )
-
         return
     }
 }

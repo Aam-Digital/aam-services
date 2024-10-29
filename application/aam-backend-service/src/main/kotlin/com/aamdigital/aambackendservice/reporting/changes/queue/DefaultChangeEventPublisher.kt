@@ -50,12 +50,6 @@ class DefaultChangeEventPublisher(
                 cause = ex
             )
         }
-
-        logger.trace(
-            "[DefaultDatabaseChangeEventPublisher]: publish message to channel '{}' Payload: {}",
-            channel,
-            objectMapper.writeValueAsString(message)
-        )
         return message
     }
 

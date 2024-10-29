@@ -72,9 +72,6 @@ class DefaultCreateDocumentChangeUseCase(
                 deleted = event.deleted
             )
         }
-
-        logger.debug("[{}]: send event: {}", DOCUMENT_CHANGES_EXCHANGE, changeEvent)
-
         documentChangeEventPublisher.publish(DOCUMENT_CHANGES_EXCHANGE, changeEvent)
     }
 }
