@@ -67,7 +67,6 @@ logging:
     #    org.springframework.amqp.rabbit: warn
     #    org.springframework.web: debug
     #    org.springframework.http: debug
-    #    reactor.netty: debug
     com.aamdigital.aambackendservice: trace
 
 aam-render-api-client-configuration:
