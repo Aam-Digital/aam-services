@@ -62,9 +62,6 @@ sqs-client-configuration:
 database-change-detection:
   enabled: false
 
-report-calculation-processor:
-  enabled: true
-
 crypto-configuration:
   secret: super-duper-secret
 

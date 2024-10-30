@@ -2,10 +2,13 @@ package com.aamdigital.aambackendservice.reporting.changes.core
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.couchdb.core.getEmptyQueryParams
+import com.aamdigital.aambackendservice.error.AamErrorCode
+import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.reporting.changes.di.ChangesQueueConfiguration.Companion.DB_CHANGES_QUEUE
 import com.aamdigital.aambackendservice.reporting.changes.repository.SyncEntry
 import com.aamdigital.aambackendservice.reporting.changes.repository.SyncRepository
 import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
+import com.fasterxml.jackson.databind.node.ObjectNode
 import java.util.*
 import kotlin.jvm.optionals.getOrDefault
 
@@ -19,6 +22,10 @@ class CouchDbDatabaseChangeDetection(
         private const val CHANGES_LIMIT: Int = 100
     }
 
+    enum class CouchDbChangeDetectionError : AamErrorCode {
+        COULD_NOT_FETCH_LATEST_REF
+    }
+
     /**
      * Will reach out to CouchDb and convert _changes to  Domain.DocumentChangeEvent's
      */
@@ -30,11 +37,26 @@ class CouchDbDatabaseChangeDetection(
             }
     }
 
+    private fun getLatestRef(database: String): String {
+        return try {
+            couchDbClient.getDatabaseDocument(
+                database = database,
+                documentId = "",
+                kClass = ObjectNode::class
+            ).get("update_seq").textValue()
+        } catch (ex: Exception) {
+            throw InvalidArgumentException(
+                message = "Could not fetch latest update_seq",
+                cause = ex,
+                code = CouchDbChangeDetectionError.COULD_NOT_FETCH_LATEST_REF
+            )
+        }
+    }
+
     private fun fetchChangesForDatabase(database: String) {
         var syncEntry =
-            syncRepository.findByDatabase(database).getOrDefault(SyncEntry(database = database, latestRef = ""))
-
-        // todo if latestRef is empty, use latest
+            syncRepository.findByDatabase(database)
+                .getOrDefault(SyncEntry(database = database, latestRef = getLatestRef(database)))
 
         LATEST_REFS[database] = syncEntry.latestRef
 
@@ -51,7 +73,7 @@ class CouchDbDatabaseChangeDetection(
             database = database, queryParams = queryParams
         )
 
-        changes.results.forEachIndexed { index, couchDbChangeResult ->
+        changes.results.forEachIndexed { _, couchDbChangeResult ->
             val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
 
             if (!couchDbChangeResult.id.startsWith("_design")) {
@@ -70,7 +92,8 @@ class CouchDbDatabaseChangeDetection(
         }
 
         syncEntry =
-            syncRepository.findByDatabase(database).getOrDefault(SyncEntry(database = database, latestRef = ""))
+            syncRepository.findByDatabase(database)
+                .getOrDefault(SyncEntry(database = database, latestRef = getLatestRef(database)))
 
         syncEntry.latestRef = LATEST_REFS[database].orEmpty()
         syncRepository.save(syncEntry)

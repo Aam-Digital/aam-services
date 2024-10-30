@@ -108,10 +108,7 @@ events:
       enabled: true
 
 database-change-detection:
-  enabled: false
-
-report-calculation-processor:
-  enabled: false
+  enabled: true
 
 sentry:
   logging:
