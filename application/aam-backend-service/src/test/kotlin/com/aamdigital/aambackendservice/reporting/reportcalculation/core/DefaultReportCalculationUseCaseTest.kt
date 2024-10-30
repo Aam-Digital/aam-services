@@ -35,9 +35,7 @@ import org.mockito.kotlin.whenever
 class DefaultReportCalculationUseCaseTest {
 
     private lateinit var service: DefaultReportCalculationUseCase
-
-    private val jsonFactory: JsonFactory = JsonFactory().setCodec(jacksonObjectMapper())
-
+    
     @Mock
     lateinit var reportCalculationStorage: ReportCalculationStorage
 
@@ -58,7 +56,6 @@ class DefaultReportCalculationUseCaseTest {
                 SqlToDateTransformation()
             ),
             queryStorage = queryStorage,
-            jsonFactory = jsonFactory,
         )
     }
 
