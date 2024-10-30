@@ -1,12 +1,12 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.usecase
 
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
 import com.aamdigital.aambackendservice.reporting.notification.core.NotificationService
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
+import com.aamdigital.aambackendservice.reporting.reportcalculation.storage.ReportCalculationEntity
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 
@@ -20,7 +20,7 @@ class DefaultReportCalculationChangeUseCase(
 
     override fun handle(documentChangeEvent: DocumentChangeEvent) {
         val currentReportCalculation =
-            objectMapper.convertValue(documentChangeEvent.currentVersion, ReportCalculation::class.java)
+            objectMapper.convertValue(documentChangeEvent.currentVersion, ReportCalculationEntity::class.java)
 
         if (currentReportCalculation.status != ReportCalculationStatus.FINISHED_SUCCESS) {
             return
