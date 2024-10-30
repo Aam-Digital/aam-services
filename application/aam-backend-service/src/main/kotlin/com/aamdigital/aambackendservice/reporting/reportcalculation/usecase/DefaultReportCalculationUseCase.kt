@@ -21,10 +21,6 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportC
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationUseCase
-import com.fasterxml.jackson.core.JsonFactory
-import com.fasterxml.jackson.core.JsonToken
-import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.stereotype.Component
 import java.io.InputStream
 import java.io.SequenceInputStream
@@ -56,7 +52,6 @@ class DefaultReportCalculationUseCase(
     private val reportStorage: ReportStorage,
     private val transformations: List<DataTransformation<String>>,
     private val queryStorage: QueryStorage,
-    private val jsonFactory: JsonFactory,
 ) : ReportCalculationUseCase() {
 
     override fun apply(request: ReportCalculationRequest): UseCaseOutcome<ReportCalculationData> {
@@ -153,14 +148,13 @@ class DefaultReportCalculationUseCase(
                     val queryResult = queryStorage.executeQuery(
                         handleReportQuery(queryItem, report, reportCalculation)
                     )
-                    mutableListOf(handleQueryResponse(queryResult))
+                    mutableListOf(queryResult)
                 }
 
                 is ReportItem.ReportGroup -> {
                     val prefix = "{\"${queryItem.title}\":[".byteInputStream()
                     val queryResult = handleReportItems(queryItem.items, report, reportCalculation)
                     val suffix = "]}".byteInputStream()
-
                     mutableListOf(prefix, queryResult, suffix)
                 }
             }
@@ -181,25 +175,6 @@ class DefaultReportCalculationUseCase(
                 queryStreams
             )
         )
-    }
-
-    private fun handleQueryResponse(queryResult: InputStream): InputStream {
-        val parser = jsonFactory.createParser(queryResult)
-
-        if (parser.nextToken() != JsonToken.START_ARRAY) {
-            throw InvalidArgumentException(message = "no array response", code = ReportCalculationError.PARSING_ERROR)
-        }
-
-        var result = ""
-
-        while (parser.nextToken() != JsonToken.END_ARRAY) {
-
-            val objectNode = parser.readValueAsTree<ObjectNode>()
-
-            result = jacksonObjectMapper().writeValueAsString(objectNode)
-        }
-
-        return result.byteInputStream()
     }
 
     private fun handleReportQuery(
