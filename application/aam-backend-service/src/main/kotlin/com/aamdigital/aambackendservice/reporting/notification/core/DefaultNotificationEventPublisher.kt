@@ -29,8 +29,8 @@ class DefaultNotificationEventPublisher(
     override fun publish(channel: String, event: NotificationEvent): QueueMessage {
         val message = QueueMessage(
             id = UUID.randomUUID(),
-            type = NotificationEvent::class.java.canonicalName,
-            payload = event,
+            eventType = NotificationEvent::class.java.canonicalName,
+            event = event,
             createdAt = Instant.now()
                 .atOffset(ZoneOffset.UTC)
                 .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)

@@ -23,7 +23,7 @@ class CouchDbChangeDetectionJob(
             logger.trace("[CouchDbChangeDetectionJob]: MAX_ERROR_COUNT reached. Not starting job again.")
             return
         }
-        logger.trace("[CouchDbChangeDetectionJob] Starting job...")
+
         try {
             databaseChangeDetection.checkForChanges()
         } catch (ex: Exception) {
@@ -34,7 +34,5 @@ class CouchDbChangeDetectionJob(
             logger.debug("[CouchDbChangeDetectionJob] Debug information", ex)
             ERROR_COUNTER += 1
         }
-
-        logger.trace("[CouchDbChangeDetectionJob]: ...job completed.")
     }
 }

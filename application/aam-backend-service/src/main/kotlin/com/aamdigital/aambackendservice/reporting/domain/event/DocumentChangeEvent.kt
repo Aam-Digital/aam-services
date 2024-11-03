@@ -1,5 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.domain.event
 
+import com.aamdigital.aambackendservice.events.DomainEvent
+
 data class DocumentChangeEvent(
     val database: String,
     val documentId: String,
@@ -7,4 +9,4 @@ data class DocumentChangeEvent(
     val currentVersion: Map<*, *>,
     val previousVersion: Map<*, *>,
     val deleted: Boolean
-)
+) : DomainEvent()

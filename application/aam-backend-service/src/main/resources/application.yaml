@@ -34,6 +34,15 @@ management:
         include:
           - info
           - health
+  tracing:
+    sampling:
+      probability: 1
+
+# enable/disables event processing for each queue
+events:
+  listener:
+    report-calculation:
+      enabled: true
 
 ---
 
@@ -47,12 +56,17 @@ spring:
         jwt:
           issuer-uri: http://localhost:8080/realms/dummy-realm
   rabbitmq:
-    virtual-host: /
+    virtual-host: local
     listener:
       direct:
         retry:
           enabled: true
           max-attempts: 5
+      simple:
+        observation-enabled: true
+    username: local-spring
+    password: docker
+
 
 server:
   error:
@@ -67,7 +81,6 @@ logging:
     #    org.springframework.amqp.rabbit: warn
     #    org.springframework.web: debug
     #    org.springframework.http: debug
-    #    reactor.netty: debug
     com.aamdigital.aambackendservice: trace
 
 aam-render-api-client-configuration:
@@ -89,12 +102,19 @@ sqs-client-configuration:
   basic-auth-username: admin
   basic-auth-password: docker
 
-database-change-detection:
-  enabled: true
+events:
+  listener:
+    report-calculation:
+      enabled: true
 
-report-calculation-processor:
+database-change-detection:
   enabled: true
 
 sentry:
   logging:
     enabled: false
+
+management:
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces

@@ -1,15 +1,20 @@
-package com.aamdigital.aambackendservice.reporting.reportcalculation.core
+package com.aamdigital.aambackendservice.reporting.reportcalculation.usecase
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
-import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
-import org.springframework.stereotype.Service
+import com.aamdigital.aambackendservice.reporting.domain.event.ReportCalculationEvent
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationResult
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
+import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
 import java.util.*
 
-@Service
+// todo: migrate to DomainUseCase
 class DefaultCreateReportCalculationUseCase(
-    private val reportingStorage: ReportingStorage,
+    private val reportCalculationStorage: ReportCalculationStorage,
+    private val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher
 ) : CreateReportCalculationUseCase {
 
     override fun createReportCalculation(request: CreateReportCalculationRequest): CreateReportCalculationResult {
@@ -21,7 +26,7 @@ class DefaultCreateReportCalculationUseCase(
         )
 
         return try {
-            val reportCalculations = reportingStorage.fetchCalculations(request.report)
+            val reportCalculations = reportCalculationStorage.fetchReportCalculations(request.report)
 
             val i = reportCalculations.filter { reportCalculation ->
                 reportCalculation.status == ReportCalculationStatus.PENDING &&
@@ -35,7 +40,7 @@ class DefaultCreateReportCalculationUseCase(
                     )
                 )
             } else {
-                handleResponse(reportingStorage.storeCalculation(calculation))
+                handleResponse(reportCalculationStorage.storeCalculation(calculation))
             }
         } catch (ex: Exception) {
             handleError(ex)
@@ -43,6 +48,13 @@ class DefaultCreateReportCalculationUseCase(
     }
 
     private fun handleResponse(reportCalculation: ReportCalculation): CreateReportCalculationResult {
+        reportCalculationEventPublisher.publish(
+            "report.calculation",
+            ReportCalculationEvent(
+//                tenant = "<customer>", // prepare tenant support
+                reportCalculationId = reportCalculation.id,
+            )
+        )
         return CreateReportCalculationResult.Success(
             DomainReference(id = reportCalculation.id)
         )

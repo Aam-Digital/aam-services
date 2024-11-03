@@ -31,8 +31,8 @@ class DefaultChangeEventPublisher(
     override fun publish(channel: String, event: DatabaseChangeEvent): QueueMessage {
         val message = QueueMessage(
             id = UUID.randomUUID(),
-            type = DatabaseChangeEvent::class.java.canonicalName,
-            payload = event,
+            eventType = DatabaseChangeEvent::class.java.canonicalName,
+            event = event,
             createdAt = Instant.now()
                 .atOffset(ZoneOffset.UTC)
                 .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
@@ -50,12 +50,6 @@ class DefaultChangeEventPublisher(
                 cause = ex
             )
         }
-
-        logger.trace(
-            "[DefaultDatabaseChangeEventPublisher]: publish message to channel '{}' Payload: {}",
-            channel,
-            objectMapper.writeValueAsString(message)
-        )
         return message
     }
 
@@ -63,8 +57,8 @@ class DefaultChangeEventPublisher(
     override fun publish(exchange: String, event: DocumentChangeEvent): QueueMessage {
         val message = QueueMessage(
             id = UUID.randomUUID(),
-            type = DocumentChangeEvent::class.java.canonicalName,
-            payload = event,
+            eventType = DocumentChangeEvent::class.java.canonicalName,
+            event = event,
             createdAt = Instant.now()
                 .atOffset(ZoneOffset.UTC)
                 .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)

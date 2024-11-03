@@ -47,7 +47,12 @@ class DefaultReportDocumentChangeEventConsumer(
 
                     // todo if aggregationDefinition is different, skip trigger ReportCalculation
 
-                    val reportRef = payload.currentVersion["_id"] as String
+                    val reportRef = try {
+                        payload.currentVersion["_id"] as String
+                    } catch (ex: Exception) {
+                        logger.warn(ex.message, ex)
+                        return
+                    }
 
                     createReportCalculationUseCase.createReportCalculation(
                         request = CreateReportCalculationRequest(

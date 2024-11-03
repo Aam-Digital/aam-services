@@ -26,7 +26,6 @@ spring:
           enabled: true
           max-attempts: 5
 
-
 server:
   port: 9000
 
@@ -62,9 +61,6 @@ sqs-client-configuration:
 
 database-change-detection:
   enabled: false
-
-report-calculation-processor:
-  enabled: true
 
 crypto-configuration:
   secret: super-duper-secret

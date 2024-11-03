@@ -4,7 +4,7 @@ info:
   description: |-
     API to manage reports that provide data calculated based on any entities of the Aam Digital system
     and offer notifications when data of such reports changes.
-  version: 1.0.0-alpha.4
+  version: 1.0.0
 servers:
   - url: https://{customerId}.aam-digital.net/api/v1/reporting
     description: Developer Instance for testing
@@ -212,14 +212,14 @@ paths:
           required: true
       responses:
         200:
-          description: The actual data that has been calculated by the calculation run. This matches the schema defined in the /report/id
+          description: The actual data that has been calculated by the calculation run.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReportData'
+                $ref: '#/components/schemas/ReportMetadata'
             application/xml:
               schema:
-                $ref: '#/components/schemas/ReportData'
+                $ref: '#/components/schemas/ReportMetadata'
         404:
           description: report data is not available yet (when either the calculation id is not valid or the calculation is still running)
           content:
@@ -249,10 +249,11 @@ paths:
           required: true
       responses:
         200:
-          description: The actual data that has been calculated by the calculation run. This matches the schema defined in the /report/id
+          description: The actual data that has been calculated by the calculation run.
           content:
             application/octet-stream:
-              example: [ { "foo": { "bar": "do" } } ]
+              schema:
+                $ref: '#/components/schemas/ReportData'
         404:
           description: report data is not available yet (when either the calculation id is not valid or the calculation is still running)
           content:
@@ -465,18 +466,6 @@ components:
         name:
           type: string
           example: report_all_course_members
-        calculationPending:
-          type: boolean
-        schema:
-          $ref: '#/components/schemas/ReportSchema'
-
-    ReportSchema:
-      type: object
-      properties:
-        fields:
-          type: array
-          items:
-            type: object
 
     ReportCalculation:
       type: object
@@ -526,19 +515,36 @@ components:
           properties:
             contentType:
               type: string
+              example: application/octet-stream
             hash:
               type: string
+              example: md5-pWo9Wj3ZZ27RqJUoh8C6VA==
             length:
               type: number
+              example: 368
 
-    ReportData:
+    ReportMetadata:
       type: object
       properties:
-        calculation:
+        id:
           type: string
-          format: uuid
+          example: ReportCalculation:56f22a52-5863-4d24-9da6-239a34ea83ba_data.json
+        report:
+          type: object
+          properties:
+            id:
+              type: string
+              example: ReportConfig:example
+        calculation:
+          type: object
+          properties:
+            id:
+              type: string
+              example: ReportCalculation:56f22a52-5863-4d24-9da6-239a34ea83ba
         data:
-          type: array
+          $ref: '#/components/schemas/ReportData'
+
+
 
     # notification
 
@@ -557,6 +563,31 @@ components:
           items:
             type: string
           example: [ "report_id_1", "report_id_2", "report_id_3" ]
+
+    ReportData:
+      type: array
+      example: |-
+        [
+          {
+            "foo": 1
+          },
+          {
+            "bar": 2
+          },
+          {
+            "doo": [
+              {
+                "doo foo": 0
+              },
+              {
+                "doo bar": 4
+              }
+            ]
+          },
+          {
+            "dua": 0
+          }
+        ]
 
     WebhookConfiguration:
       type: object

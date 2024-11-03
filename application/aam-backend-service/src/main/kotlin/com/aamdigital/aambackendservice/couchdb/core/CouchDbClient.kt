@@ -7,7 +7,6 @@ import com.aamdigital.aambackendservice.error.ExternalSystemException
 import com.aamdigital.aambackendservice.error.NotFoundException
 import org.springframework.http.HttpHeaders
 import org.springframework.util.MultiValueMap
-import java.io.InputStream
 import java.io.InterruptedIOException
 import java.util.*
 import kotlin.reflect.KClass
@@ -52,23 +51,4 @@ interface CouchDbClient {
         rev: String,
         kClass: KClass<T>,
     ): Optional<T>
-
-    fun headAttachment(
-        database: String,
-        documentId: String,
-        attachmentId: String,
-    ): HttpHeaders
-
-    fun getAttachment(
-        database: String,
-        documentId: String,
-        attachmentId: String,
-    ): InputStream
-
-    fun putAttachment(
-        database: String,
-        documentId: String,
-        attachmentId: String,
-        file: InputStream
-    ): DocSuccess
 }

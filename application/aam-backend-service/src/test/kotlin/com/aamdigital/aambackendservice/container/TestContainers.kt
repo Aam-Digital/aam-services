@@ -112,7 +112,7 @@ object TestContainers {
         GenericContainer(
             DockerImageName
                 .parse("carbone/carbone-ee")
-                .withTag("latest")
+                .withTag("4.23.4")
         )
             .withImagePullPolicy(PullPolicy.alwaysPull())
             .withNetwork(network)

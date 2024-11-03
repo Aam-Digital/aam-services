@@ -1,0 +1,30 @@
+{
+  "_id": "ReportConfig:4",
+  "title": "Test Report 4",
+  "mode": "sql",
+  "version": "2",
+  "transformations": {
+    "startDate": [
+      "SQL_FROM_DATE"
+    ],
+    "endDate": [
+      "SQL_TO_DATE"
+    ]
+  },
+  "reportDefinition": [
+    {
+      "query": "SELECT s.name as name, s.privateSchool as privateSchool FROM School as s WHERE s.date BETWEEN $startDate AND $endDate"
+    },
+    {
+      "groupTitle": "Sub-Group",
+      "items": [
+        {
+          "query": "SELECT s.name as name2, s.privateSchool as privateSchool FROM School as s WHERE s.date BETWEEN $startDate AND $endDate"
+        },
+        {
+          "query": "SELECT s.name as name3, s.privateSchool as privateSchool FROM School as s WHERE s.date BETWEEN $startDate AND $endDate"
+        }
+      ]
+    }
+  ]
+}

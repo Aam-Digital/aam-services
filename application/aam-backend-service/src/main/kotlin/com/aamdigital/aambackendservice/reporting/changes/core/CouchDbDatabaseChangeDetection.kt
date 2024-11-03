@@ -2,11 +2,13 @@ package com.aamdigital.aambackendservice.reporting.changes.core
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.couchdb.core.getEmptyQueryParams
+import com.aamdigital.aambackendservice.error.AamErrorCode
+import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.reporting.changes.di.ChangesQueueConfiguration.Companion.DB_CHANGES_QUEUE
 import com.aamdigital.aambackendservice.reporting.changes.repository.SyncEntry
 import com.aamdigital.aambackendservice.reporting.changes.repository.SyncRepository
 import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
-import org.slf4j.LoggerFactory
+import com.fasterxml.jackson.databind.node.ObjectNode
 import java.util.*
 import kotlin.jvm.optionals.getOrDefault
 
@@ -15,31 +17,46 @@ class CouchDbDatabaseChangeDetection(
     private val documentChangeEventPublisher: ChangeEventPublisher,
     private val syncRepository: SyncRepository,
 ) : DatabaseChangeDetection {
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     companion object {
         private val LATEST_REFS: MutableMap<String, String> = Collections.synchronizedMap(hashMapOf())
         private const val CHANGES_LIMIT: Int = 100
+    }
+
+    enum class CouchDbChangeDetectionError : AamErrorCode {
+        COULD_NOT_FETCH_LATEST_REF
     }
 
     /**
      * Will reach out to CouchDb and convert _changes to  Domain.DocumentChangeEvent's
      */
     override fun checkForChanges() {
-        logger.trace("[CouchDatabaseChangeDetection] start couchdb change detection...")
         couchDbClient
             .allDatabases()
             .filter { !it.startsWith("_") }.map { database ->
                 fetchChangesForDatabase(database)
             }
-        logger.trace("[CouchDatabaseChangeDetection] ...completed couchdb change detection.")
+    }
+
+    private fun getLatestRef(database: String): String {
+        return try {
+            couchDbClient.getDatabaseDocument(
+                database = database,
+                documentId = "",
+                kClass = ObjectNode::class
+            ).get("update_seq").textValue()
+        } catch (ex: Exception) {
+            throw InvalidArgumentException(
+                message = "Could not fetch latest update_seq",
+                cause = ex,
+                code = CouchDbChangeDetectionError.COULD_NOT_FETCH_LATEST_REF
+            )
+        }
     }
 
     private fun fetchChangesForDatabase(database: String) {
-        logger.trace("[CouchDatabaseChangeDetection] check changes for database \"{}\"...", database)
-
         var syncEntry =
-            syncRepository.findByDatabase(database).getOrDefault(SyncEntry(database = database, latestRef = ""))
+            syncRepository.findByDatabase(database)
+                .getOrDefault(SyncEntry(database = database, latestRef = getLatestRef(database)))
 
         LATEST_REFS[database] = syncEntry.latestRef
 
@@ -56,9 +73,7 @@ class CouchDbDatabaseChangeDetection(
             database = database, queryParams = queryParams
         )
 
-        changes.results.forEachIndexed { index, couchDbChangeResult ->
-            logger.trace("$database $index: {}", couchDbChangeResult.toString())
-
+        changes.results.forEachIndexed { _, couchDbChangeResult ->
             val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
 
             if (!couchDbChangeResult.id.startsWith("_design")) {
@@ -77,11 +92,10 @@ class CouchDbDatabaseChangeDetection(
         }
 
         syncEntry =
-            syncRepository.findByDatabase(database).getOrDefault(SyncEntry(database = database, latestRef = ""))
+            syncRepository.findByDatabase(database)
+                .getOrDefault(SyncEntry(database = database, latestRef = getLatestRef(database)))
 
         syncEntry.latestRef = LATEST_REFS[database].orEmpty()
         syncRepository.save(syncEntry)
-
-        logger.trace("[CouchDatabaseChangeDetection] ...completed changes check for database \"{}\".", database)
     }
 }

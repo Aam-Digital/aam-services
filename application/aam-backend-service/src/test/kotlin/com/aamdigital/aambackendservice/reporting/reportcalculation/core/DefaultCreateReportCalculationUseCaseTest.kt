@@ -3,7 +3,8 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.domain.TestErrorCode
 import com.aamdigital.aambackendservice.error.InternalServerException
-import com.aamdigital.aambackendservice.reporting.report.core.ReportingStorage
+import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
+import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultCreateReportCalculationUseCase
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -21,18 +22,21 @@ class DefaultCreateReportCalculationUseCaseTest {
     private lateinit var service: CreateReportCalculationUseCase
 
     @Mock
-    lateinit var reportingStorage: ReportingStorage
+    lateinit var reportCalculationStorage: ReportCalculationStorage
+
+    @Mock
+    lateinit var reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher
 
     @BeforeEach
     fun setUp() {
-        reset(reportingStorage)
-        service = DefaultCreateReportCalculationUseCase(reportingStorage)
+        reset(reportCalculationStorage)
+        service = DefaultCreateReportCalculationUseCase(reportCalculationStorage, reportCalculationEventPublisher)
     }
 
     @Test
     fun `should return Failure when ReportingStorage throws error`() {
         // given
-        whenever(reportingStorage.fetchCalculations(any()))
+        whenever(reportCalculationStorage.fetchReportCalculations(any()))
             .thenAnswer {
                 throw InternalServerException(
                     message = "error",

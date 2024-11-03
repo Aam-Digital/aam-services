@@ -14,6 +14,13 @@ data class CouchDbRow<T>(
     val doc: T,
 )
 
+data class CouchDbSearchResponse(
+    @JsonProperty("total_rows")
+    val totalRows: Int,
+    val offset: Int,
+    val rows: List<CouchDbRow<ObjectNode>>
+)
+
 data class DocSuccess(
     val ok: Boolean,
     val id: String,

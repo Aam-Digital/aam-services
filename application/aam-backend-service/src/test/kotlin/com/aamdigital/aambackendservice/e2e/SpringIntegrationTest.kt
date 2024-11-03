@@ -102,9 +102,7 @@ abstract class SpringIntegrationTest {
         headers.accept = listOf(MediaType.APPLICATION_JSON)
 
         val builder = MultipartBodyBuilder()
-
-        builder
-            .part("template", file)
+        builder.part("template", file)
 
         val requestEntity = HttpEntity(builder.build(), headers)
 
