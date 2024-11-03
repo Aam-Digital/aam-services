@@ -51,7 +51,7 @@ dependencies {
     implementation("io.opentelemetry:opentelemetry-exporter-otlp")
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor") // needed in some tests
 
     runtimeOnly("org.postgresql:postgresql:42.7.4")
     runtimeOnly("com.h2database:h2")
@@ -95,7 +95,7 @@ dependencies {
 }
 
 jacoco {
-    toolVersion = "0.8.11"
+    toolVersion = "0.8.12"
 }
 
 tasks.jacocoTestReport {

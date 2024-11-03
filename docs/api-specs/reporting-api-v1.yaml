@@ -528,7 +528,7 @@ components:
       properties:
         id:
           type: string
-          example: ReportCalculation:56f22a52-5863-4d24-9da6-239a34ea83ba_data.json"
+          example: ReportCalculation:56f22a52-5863-4d24-9da6-239a34ea83ba_data.json
         report:
           type: object
           properties:
