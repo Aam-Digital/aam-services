@@ -72,23 +72,18 @@ class DefaultReportCalculationUseCase(
 
         try {
             reportCalculationStorage.storeCalculation(
-                reportCalculation = reportCalculation
-                    .setStatus(ReportCalculationStatus.RUNNING)
-                    .setStartDate(
-                        startDate = getIsoLocalDateTime()
-                    )
+                reportCalculation = reportCalculation.setStatus(ReportCalculationStatus.RUNNING).setStartDate(
+                    startDate = getIsoLocalDateTime()
+                )
             )
 
             handleSqlReport(report, reportCalculation)
             markCalculationAsSuccess(request)
         } catch (ex: Exception) {
             reportCalculationStorage.storeCalculation(
-                reportCalculation = reportCalculation
-                    .setStatus(ReportCalculationStatus.FINISHED_ERROR)
-                    .setEndDate(
-                        endDate = getIsoLocalDateTime()
-                    )
-                    .setErrorDetails(ex.localizedMessage)
+                reportCalculation = reportCalculation.setStatus(ReportCalculationStatus.FINISHED_ERROR).setEndDate(
+                    endDate = getIsoLocalDateTime()
+                ).setErrorDetails(ex.localizedMessage)
             )
 
             return handleException(ex)
@@ -103,29 +98,32 @@ class DefaultReportCalculationUseCase(
 
     @Throws(AamException::class)
     private fun handleSqlReport(
-        report: Report,
-        reportCalculation: ReportCalculation
+        report: Report, reportCalculation: ReportCalculation
     ): UseCaseOutcome<ReportCalculationData> {
 
         for ((argKey: String, transformationKeys: List<String>) in report.transformations) {
             handleTransformations(argKey, transformationKeys, reportCalculation.args)
         }
 
-        val result = reportCalculationStorage.addReportCalculationData(
-            reportCalculation = reportCalculation,
-            file = SequenceInputStream(
-                Collections.enumeration(
-                    listOf(
-                        "[".byteInputStream(),
-                        handleReportItems(
-                            queries = report.items,
-                            report = report,
-                            reportCalculation = reportCalculation
-                        ),
-                        "]".byteInputStream()
-                    )
+        val resultData = if (report.version == 1) {
+            listOf(
+                handleReportItems(
+                    queries = report.items, report = report, reportCalculation = reportCalculation
+                ),
+            )
+        } else {
+            listOf(
+                "[".byteInputStream(),
+                handleReportItems(
+                    queries = report.items, report = report, reportCalculation = reportCalculation
+                ),
+                "]".byteInputStream()
+            )
+        }
 
-                )
+        val result = reportCalculationStorage.addReportCalculationData(
+            reportCalculation = reportCalculation, file = SequenceInputStream(
+                Collections.enumeration(resultData)
             )
         )
 
