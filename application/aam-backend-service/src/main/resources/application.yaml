@@ -6,6 +6,7 @@ spring:
   jackson:
     deserialization:
       accept-empty-string-as-null-object: true
+      read-unknown-enum-values-using-default-value: true
   rabbitmq:
     listener:
       simple:
@@ -25,6 +26,10 @@ spring:
     multipart:
       max-file-size: 5MB
 
+server:
+  servlet:
+    context-path: /api
+
 management:
   endpoint:
     health:
@@ -40,14 +45,25 @@ management:
     sampling:
       probability: 1
 
+features:
+  skill-api:
+    mode: disabled
+
 # enable/disables event processing for each queue
 events:
   listener:
     report-calculation:
       enabled: true
 
+logging:
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      total-size-cap: 100MB
+      clean-history-on-start: true
 
 ---
+# <second part of the config, just active with profile "local-development">
 
 spring:
   config:
@@ -69,21 +85,23 @@ spring:
         observation-enabled: true
     username: local-spring
     password: docker
-
+  datasource:
+    url: jdbc:postgresql://localhost:5402/aam-backend-service
+    username: admin
+    password: docker
 
 server:
   error:
     include-message: always
     include-binding-errors: always
   port: 9000
-  servlet:
-    context-path: /api
 
 logging:
   level:
     #    org.springframework.amqp.rabbit: warn
     #    org.springframework.web: debug
     #    org.springframework.http: debug
+    #    org.springframework.security: debug
     com.aamdigital.aambackendservice: trace
 
 aam-render-api-client-configuration:
@@ -105,13 +123,23 @@ sqs-client-configuration:
   basic-auth-username: admin
   basic-auth-password: docker
 
+skilllab-api-client-configuration:
+  api-key: skilllab-api-key
+  project-id: dummy-project
+  base-path: http://localhost:9005/skilllab
+  response-timeout-in-seconds: 15
+
+features:
+  skill-api:
+    mode: skilllab
+
 events:
   listener:
     report-calculation:
-      enabled: true
+      enabled: false
 
 database-change-detection:
-  enabled: true
+  enabled: false
 
 sentry:
   logging:

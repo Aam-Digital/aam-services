@@ -65,6 +65,16 @@ sqs-client-configuration:
   basic-auth-username: admin
   basic-auth-password: docker
 
+skilllab-api-client-configuration:
+  api-key: skilllab-api-key
+  project-id: dummy-project
+  base-path: http://localhost:9005/skilllab # todo test container
+  response-timeout-in-seconds: 15
+
+features:
+  skill-api:
+    mode: disabled
+
 events:
   listener:
     report-calculation:
