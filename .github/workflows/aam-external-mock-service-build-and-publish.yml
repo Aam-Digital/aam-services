@@ -1,0 +1,142 @@
+name: aam-external-mock-service-build-and-publish
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/aam-external-mock-service-build-and-publish.yml'
+      - 'application/aam-external-mock-service/**'
+  push:
+    tags:
+      - "*"
+    paths:
+      - '.github/workflows/aam-external-mock-service-build-and-publish.yml'
+      - 'application/aam-external-mock-service/**'
+
+env:
+  REGISTRY_IMAGE: ghcr.io/aam-digital/aam-external-mock-service
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm64
+        os:
+          - ubuntu-latest
+          - [ self-hosted, Linux, ARM64 ]
+        exclude:
+          - platform: linux/arm64
+            os: ubuntu-latest
+          - platform: linux/amd64
+            os: [ self-hosted, Linux, ARM64 ]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository files
+        uses: actions/checkout@v4
+
+      - name: Extract tag (release)
+        if: ${{ github.event.ref  != '' }}
+        run: echo "TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: Extract tag (pull request)
+        if: ${{ github.event.ref  == '' }}
+        run: echo "TAG=pr-${{ github.event.number }}" >> $GITHUB_ENV
+
+      - name: Prepare Platform
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create export directories
+        run: |
+          mkdir -p ./tmp/build
+          mkdir -p ./tmp/build/${{ env.PLATFORM_PAIR }}
+          mkdir -p ./tmp/digests
+
+      - name: Build Image and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          platforms: ${{ matrix.platform }}
+          context: ./application/aam-external-mock-service
+          target: build
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
+        env:
+          SOURCE_DATE_EPOCH: 0
+
+      - name: Export digest
+        run: |
+          digest="${{ steps.build.outputs.digest }}"
+          touch "./tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: ./tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - build
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ./tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: ./tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)

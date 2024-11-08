@@ -9,6 +9,9 @@ on:
       - 'application/aam-backend-service/**'
   pull_request:
     types: [ opened, synchronize, reopened, ready_for_review ]
+    paths:
+      - '.github/workflows/aam-backend-service-analyse.yml'
+      - 'application/aam-backend-service/**'
 
 jobs:
   test_coverage:
