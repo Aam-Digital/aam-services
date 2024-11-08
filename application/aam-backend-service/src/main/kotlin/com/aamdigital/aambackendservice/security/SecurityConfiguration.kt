@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.security
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -16,7 +16,11 @@ import org.springframework.security.web.SecurityFilterChain
 class SecurityConfiguration {
 
     @Bean
-    fun filterChain(http: HttpSecurity): SecurityFilterChain {
+    fun filterChain(
+        http: HttpSecurity,
+        aamAuthenticationConverter: AamAuthenticationConverter,
+        objectMapper: ObjectMapper,
+    ): SecurityFilterChain {
         http {
             authorizeRequests {
                 authorize(HttpMethod.GET, "/", permitAll)
@@ -40,22 +44,20 @@ class SecurityConfiguration {
                 authenticationEntryPoint =
                     AamAuthenticationEntryPoint(
                         parentEntryPoint = BearerTokenAuthenticationEntryPoint(),
-                        objectMapper = jacksonObjectMapper()
+                        objectMapper = objectMapper
                     )
             }
             oauth2ResourceServer {
                 jwt {
+                    jwtAuthenticationConverter = aamAuthenticationConverter
                     authenticationEntryPoint =
                         AamAuthenticationEntryPoint(
                             parentEntryPoint = BearerTokenAuthenticationEntryPoint(),
-                            objectMapper = jacksonObjectMapper()
+                            objectMapper = objectMapper
                         )
                 }
             }
         }
         return http.build()
     }
-
-
 }
-
