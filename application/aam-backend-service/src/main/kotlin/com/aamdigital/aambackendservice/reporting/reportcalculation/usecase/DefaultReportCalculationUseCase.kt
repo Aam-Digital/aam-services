@@ -55,7 +55,6 @@ class DefaultReportCalculationUseCase(
 ) : ReportCalculationUseCase() {
 
     override fun apply(request: ReportCalculationRequest): UseCaseOutcome<ReportCalculationData> {
-
         val reportCalculation: ReportCalculation = try {
             reportCalculationStorage.fetchReportCalculation(
                 DomainReference(request.reportCalculationId)
@@ -100,7 +99,6 @@ class DefaultReportCalculationUseCase(
     private fun handleSqlReport(
         report: Report, reportCalculation: ReportCalculation
     ): UseCaseOutcome<ReportCalculationData> {
-
         for ((argKey: String, transformationKeys: List<String>) in report.transformations) {
             handleTransformations(argKey, transformationKeys, reportCalculation.args)
         }

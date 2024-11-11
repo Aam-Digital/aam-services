@@ -67,11 +67,19 @@ class ReportCalculationController(
         val args = mutableMapOf<String, String>()
 
         if (from != null) {
-            args["from"] = from.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
+            if (report.version == 1) {
+                args["from"] = from.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
+            } else {
+                args["startDate"] = from.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
+            }
         }
 
         if (to != null) {
-            args["to"] = to.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
+            if (report.version == 1) {
+                args["to"] = to.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
+            } else {
+                args["endDate"] = to.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
+            }
         }
 
         val createReportCalculationResponse = createReportCalculationUseCase.createReportCalculation(
