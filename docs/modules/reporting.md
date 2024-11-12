@@ -14,9 +14,16 @@ Reports and their results are available for external services through the given 
 ### Initial setup of an API integration
 
 1. Request client_id and client_secret from server administrator (--> admin has to [create new client grant in Keycloak](https://www.keycloak.org/docs/latest/server_admin/#_oidc_clients))
+  1. check "Client authentication" toggle
+  2. for "Authentication flow" only "Service accounts roles" needs to be checked
+  3. after saving the Client, go to "Clent Scopes" section and create two scopes:
+     1. `reporting_read` (Access to reporting-api GET endpoints)
+     2. `reporting_write` (Access to reporting-api POST endpoints)
+  4. in the Client section, edit the newly created client and add these two scopes in the "Client scopes" tab
+  5. from the "Credentials" tab of the client you can now copy the secret:
    ![Keycloak Client Setup](../assets/keycloak-client-setup.png)
 
-2. Get the realm of your instance (e.g. https://[your_realm].aam-digital.com). This is both the subdomain of systems hosted on aam-digital.com and the Keycloak Realm for authentication (case-sensitive!).
+6. Get the realm of your instance (e.g. https://[your_realm].aam-digital.com). This is both the subdomain of systems hosted on aam-digital.com and the Keycloak Realm for authentication (case-sensitive!).
 
 ### Access a reporting via API (after setup)
 
