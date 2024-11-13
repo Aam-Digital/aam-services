@@ -43,27 +43,90 @@ the `http://` version of an url, but Chrome will not let you:
 You can open the `http://` version directly again. 
 
 
+# Project Setup Guide
+
+This guide includes instructions for both a **full local setup with Docker** and a **minimal setup without Docker**.
+
 ---
-# initial setup with related services
-1. start the docker-compose here
-2. if necessary, switch the image in docker-compose.yml from aam-sqs-mac to aam-sqs-linux
 
-Set up Keycloak
-3. create dummy-realm in the Keycloak Admin UI (http://localhost:8080), importing the current [ndb-setup realm_config.example.json](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/realm_config.example.json)
-4. import client in [Keycloak Realm > Clients](http://localhost:8080/admin/master/console/#/dummy-realm/clients), using [ndb-setup client.json](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/client_config.json)
-5. create a user in the new realm and assign it some relevant roles
-6. copy a Config:CONFIG_ENTITY doc into the couchdb: http://localhost:5984/_utils/#database/app/_all_docs (e.g. from https://dev.aam-digital.net/db/couchdb/_utils/#database/app/Config%3ACONFIG_ENTITY)
+## Full Local Setup (with Docker)
 
-Start backend:
-7. get the public_key for the realm from http://localhost:8080/realms/dummy-realm and add it to the replication-backend .env (JWT_PUBLIC_KEY)
-8. start the replication-backend (`npm start:dev`)
+### Step 1: Start Docker Services
+1. Run the `docker-compose` file to start all related services:
+```shell
+   docker-compose up
+```
+2. If needed, switch the image in `docker-compose.yml` from `aam-sqs-mac` to `aam-sqs-linux` for compatibility.
 
-Start frontend:
-9. switch config (environment.ts or assets/config.json) to `"session_type": "synced", "demo_mode": false`
-10. start the frontend (`npm start`)
+### Step 2: Configure Keycloak
+3. Open the Keycloak Admin UI at [http://localhost:8080](http://localhost:8080).
+4. Create a new realm called **dummy-realm** by importing the [realm configuration file](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/realm_config.example.json).
+5. Under **Keycloak Realm > Clients** ([http://localhost:8080/admin/master/console/#/dummy-realm/clients](http://localhost:8080/admin/master/console/#/dummy-realm/clients)), import the client configuration using the [client config file](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/client_config.json).
+6. In the new realm, create a user and assign relevant roles.
 
-You now have a fully local environment with all relevant services:
-- App (frontend): http://localhost:4200
-- Replication backend: http://localhost:3000
-- Keycloak: http://localhost:8080
-- CouchDB: http://localhost:5984
+### Step 3: Set Up CouchDB
+7. Access CouchDB at [http://localhost:5984/_utils/#database/app/_all_docs](http://localhost:5984/_utils/#database/app/_all_docs).
+8. Add a document of type **Config:CONFIG_ENTITY** to the `app` database (e.g., from [dev.aam-digital.net CouchDB instance](https://dev.aam-digital.net/db/couchdb/_utils/#database/app/Config%3ACONFIG_ENTITY)).
+
+### Step 4: Start the Backend
+9. Retrieve the `public_key` for **dummy-realm** from [http://localhost:8080/realms/dummy-realm](http://localhost:8080/realms/dummy-realm) and add it to the `.env` file for the replication backend as `JWT_PUBLIC_KEY`.
+10. Start the replication backend:
+```shell
+    npm run start:dev
+```
+
+### Step 5: Start the Frontend
+11. Update `environment.ts` or `assets/config.json` with the following settings:
+```
+    "session_type": "synced",
+    "demo_mode": false
+```
+12. Start the frontend:
+```shell
+    npm start
+```
+
+### Accessing the Local Environment
+- Frontend App: [http://localhost:4200](http://localhost:4200)
+- Replication Backend: [http://localhost:3000](http://localhost:3000)
+- Keycloak: [http://localhost:8080](http://localhost:8080)
+- CouchDB: [http://localhost:5984](http://localhost:5984)
+
+---
+
+## Minimal Setup (Without Docker)
+
+For a basic setup without Docker, follow these steps.
+
+### Step 1: Set Up CouchDB
+1. Install CouchDB on Mac:
+```shell
+   brew install couchdb
+```
+2. Configure CouchDB:
+```shell
+   nano /opt/homebrew/etc/local.ini
+```
+3. Restart CouchDB:
+```shell
+   brew services restart couchdb
+```
+4. Access CouchDB at [http://localhost:5984/_utils/#](http://localhost:5984/_utils/#).
+
+### Step 2: Create Databases
+1. Create the following databases in CouchDB:
+- `app`
+- `app-attachments`
+- `notification-webhook`
+- `Report-calculation`
+
+3. In the `app` database, add these configuration documents:
+- **Config:CONFIG_ENTITY**
+- **Config:Permissions**
+
+**Note**: Please reach out to the tech team to get the specific details for these configuration documents.
+
+### Step 3: Set Up Replication Backend
+- Follow the project setup instructions provided in the [Backend Setup Guideline](https://github.com/Aam-Digital/replication-backend/blob/master/README.md).
+
+Once completed, you’ll have a minimal local environment without Docker.
