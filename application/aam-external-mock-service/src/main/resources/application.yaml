@@ -52,7 +52,7 @@ server:
   error:
     include-message: always
     include-binding-errors: always
-  port: 9100
+  port: 9005
 
 logging:
   level:

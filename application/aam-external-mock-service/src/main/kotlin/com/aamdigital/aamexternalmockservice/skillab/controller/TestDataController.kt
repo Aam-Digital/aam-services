@@ -18,8 +18,8 @@ import java.util.*
 import kotlin.random.Random
 
 @RestController
-@RequestMapping("/skilllab/faker")
-class FakerController(
+@RequestMapping("/skilllab/test-data")
+class TestDataController(
   val profileCrudRepository: ProfileCrudRepository,
   val skillCrudRepository: SkillCrudRepository,
 ) {
@@ -30,7 +30,6 @@ class FakerController(
     numberOfEntities: Int = 1000,
   ): ResponseEntity<Any> {
     val entities = mutableListOf<SkillEntity>()
-    val faker = Faker()
 
     for (i in 1..numberOfEntities) {
       val entity = getSkill()
