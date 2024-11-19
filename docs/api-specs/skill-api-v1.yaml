@@ -1,0 +1,99 @@
+openapi: 3.0.3
+info:
+  title: Skill API
+  description: REST API for handling skill and user profile mapping.
+  version: 1.0.0
+servers:
+  - url: /v1/skill
+
+paths:
+  /user-profile:
+    get:
+      summary: Return all UserProfile
+      description: todo
+      parameters:
+        - name: fullName
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Optional fullName filter
+        - name: email
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Optional email filter
+        - name: phone
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Optional phone filter
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserProfile'
+
+  /user-profile/{userProfileId}:
+    get:
+      summary: Return all UserProfile
+      description: todo
+      parameters:
+        - name: userProfileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: UUID
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+components:
+  schemas:
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/Skill'
+        updatedAtExternalSystem:
+          type: string
+        importedAt:
+          type: string
+        latestSyncAt:
+          type: string
+
+    Skill:
+      type: object
+      properties:
+        escoUri:
+          type: string
+        usage:
+          type: string
+          enum:
+            - ALMOST_NEVER
+            - SOMETIMES
+            - OFTEN
+            - ALMOST_ALWAYS
+            - ALWAYS
