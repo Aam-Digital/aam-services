@@ -97,7 +97,8 @@ class DefaultReportCalculationUseCase(
 
     @Throws(AamException::class)
     private fun handleSqlReport(
-        report: Report, reportCalculation: ReportCalculation
+        report: Report,
+        reportCalculation: ReportCalculation,
     ): UseCaseOutcome<ReportCalculationData> {
         for ((argKey: String, transformationKeys: List<String>) in report.transformations) {
             handleTransformations(argKey, transformationKeys, reportCalculation.args)
@@ -180,10 +181,14 @@ class DefaultReportCalculationUseCase(
     ): QueryRequest {
         return when (report.version) {
             1 -> {
-                QueryRequest(
-                    query = query.sql,
-                    args = reportCalculation.args.values.toList()
-                )
+                if (query.sql.contains("$")) {
+                    getQueryRequest(query, reportCalculation.args)
+                } else {
+                    QueryRequest(
+                        query = query.sql,
+                        args = reportCalculation.args.values.toList()
+                    )
+                }
             }
 
             2 -> {
