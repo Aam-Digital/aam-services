@@ -59,7 +59,11 @@ This guide includes instructions for both a **full local setup with Docker** and
 2. If needed, switch the image in `docker-compose.yml` from `aam-sqs-mac` to `aam-sqs-linux` for compatibility.
 
 ### Step 2: Configure Keycloak
-3. Open the Keycloak Admin UI at [http://localhost:8080](http://localhost:8080).
+3. Open the Keycloak Admin UI at [http://localhost:8080](http://localhost:8080) with the following credentials.
+```
+username - admin
+password - docker
+```
 4. Create a new realm called **dummy-realm** by importing the [realm configuration file](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/realm_config.example.json).
 5. Under **Keycloak Realm > Clients** ([http://localhost:8080/admin/master/console/#/dummy-realm/clients](http://localhost:8080/admin/master/console/#/dummy-realm/clients)), import the client configuration using the [client config file](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/client_config.json).
 6. In the new realm, create a user and assign relevant roles.
