@@ -64,13 +64,15 @@ This guide includes instructions for both a **full local setup with Docker** and
 username - admin
 password - docker
 ```
-4. Create a new realm called **dummy-realm** by importing the [realm configuration file](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/realm_config.example.json).
+4. Create a new realm called **dummy-realm** by importing the [realm base configuration file](https://github.com/Aam-Digital/ndb-setup/blob/master/baseConfigs/realm_config.example.json).
 5. Under **Keycloak Realm > Clients** ([http://localhost:8080/admin/master/console/#/dummy-realm/clients](http://localhost:8080/admin/master/console/#/dummy-realm/clients)), import the client configuration using the [client config file](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/client_config.json).
 6. In the new realm, create a user and assign relevant roles.
 
 ### Step 3: Set Up CouchDB
 7. Access CouchDB at [http://localhost:5984/_utils/#database/app/_all_docs](http://localhost:5984/_utils/#database/app/_all_docs).
-8. Add a document of type **Config:CONFIG_ENTITY** to the `app` database (e.g., from [dev.aam-digital.net CouchDB instance](https://dev.aam-digital.net/db/couchdb/_utils/#database/app/Config%3ACONFIG_ENTITY)).
+8. Create a new database name as `app`.
+9. Add a document of type **Config:CONFIG_ENTITY** to the `app` database (e.g., from [dev.aam-digital.net CouchDB instance](https://dev.aam-digital.net/db/couchdb/_utils/#database/app/Config%3ACONFIG_ENTITY)).
+#### Note: If you get an error while adding a document (eg. document update conflict warning) remove the "_rev": "value".
 
 ### Step 4: Start the Backend
 9. Retrieve the `public_key` for **dummy-realm** from [http://localhost:8080/realms/dummy-realm](http://localhost:8080/realms/dummy-realm) and add it to the `.env` file for the replication backend as `JWT_PUBLIC_KEY`.
