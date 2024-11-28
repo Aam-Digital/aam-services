@@ -30,9 +30,9 @@ class SkillController(
 
     @GetMapping("/user-profile")
     fun fetchUserProfiles(
-        fullName: String?,
-        email: String?,
-        phone: String?,
+        fullName: String = "",
+        email: String = "",
+        phone: String = "",
     ): ResponseEntity<Any> {
         val result = searchUserProfileUseCase.run(
             request = SearchUserProfileRequest(
@@ -93,7 +93,7 @@ class SkillController(
                     skills = entity.skills.map {
                         EscoSkill(
                             usage = SkillUsage.valueOf(it.usage.uppercase()),
-                            escoUri = it.externalIdentifier
+                            escoUri = it.escoUri
                         )
                     },
                     updatedAtExternalSystem = entity.updatedAt,

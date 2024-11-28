@@ -63,7 +63,7 @@ class SqlSearchUserProfileUseCase(
                         skills = it.skills.map { skill ->
                             EscoSkill(
                                 usage = SkillUsage.valueOf(skill.usage.uppercase()),
-                                escoUri = skill.externalIdentifier
+                                escoUri = skill.escoUri
                             )
                         },
                         latestSyncAt = it.latestSyncAt?.toInstant(),

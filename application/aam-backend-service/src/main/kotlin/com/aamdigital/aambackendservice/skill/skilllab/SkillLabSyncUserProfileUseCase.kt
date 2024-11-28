@@ -49,7 +49,7 @@ class SkillLabSyncUserProfileUseCase(
                     skills = allSkillsEntities.map { skill ->
                         EscoSkill(
                             usage = SkillUsage.valueOf(skill.usage.uppercase()),
-                            escoUri = skill.externalIdentifier
+                            escoUri = skill.escoUri
                         )
                     },
                     updatedAtExternalSystem = userProfileEntity.updatedAt,
