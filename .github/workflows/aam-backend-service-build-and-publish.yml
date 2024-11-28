@@ -42,11 +42,6 @@ jobs:
       - name: Checkout repository files
         uses: actions/checkout@v4
 
-      - name: Prepare Platform
-        run: |
-          platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -56,6 +51,13 @@ jobs:
           distribution: 'corretto'
           java-version: 21
           cache: 'gradle'
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PULL_SECRET }}
 
       - name: Run Tests and generate Jacoco Test Report
         env:
