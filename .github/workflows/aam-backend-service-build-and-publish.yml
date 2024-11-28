@@ -42,13 +42,13 @@ jobs:
       - name: Checkout repository files
         uses: actions/checkout@v4
 
-      #      - name: Extract tag (release)
-      #        if: ${{ github.event.ref  != '' }}
-      #        run: echo "TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-      #
-      #      - name: Extract tag (pull request)
-      #        if: ${{ github.event.ref  == '' }}
-      #        run: echo "TAG=pr-${{ github.event.number }}" >> $GITHUB_ENV
+      - name: Prepare Platform
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Java
         uses: actions/setup-java@v4
