@@ -73,7 +73,6 @@ jobs:
 
       - name: Create export directories
         run: |
-          mkdir -p ./tmp/build
           mkdir -p ./tmp/build/${{ env.PLATFORM_PAIR }}
           mkdir -p ./tmp/digests
 
@@ -140,3 +139,66 @@ jobs:
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+
+  publish:
+    name: Publish aam-external-mock-service Release
+    runs-on: ubuntu-latest
+    if: ${{ github.event.ref  != '' }} # release
+    permissions:
+      contents: write # to be able to publish a GitHub release
+      issues: write # to be able to comment on released issues
+      pull-requests: write # to be able to comment on released pull requests
+    defaults:
+      run:
+        working-directory: application/aam-external-mock-service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install Rust toolchain
+        run: rustup update --no-self-update
+
+      - name: Install conventional_commits_next_version
+        run: cargo install conventional_commits_next_version --version ^6
+
+      - name: Set current tag and version
+        run: |
+          CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'aam-external-mock-service/v*')
+          CURRENT_VERSION=$(echo $CURRENT_TAG | cut -d'/' -f2)
+          echo "CURRENT_TAG=$CURRENT_TAG" >> $GITHUB_ENV
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+
+      - name: Set from commit hash
+        run: |
+          FROM_COMMIT_HASH=$(git rev-list -n 1 ${{ env.CURRENT_TAG }})
+          echo "FROM_COMMIT_HASH=$FROM_COMMIT_HASH" >> $GITHUB_ENV
+
+      - name: Calculate next version
+        run: |
+          NEXT_VERSION=v$(conventional_commits_next_version \
+            --calculation-mode "Batch" \
+            --from-commit-hash ${{ env.FROM_COMMIT_HASH }} \
+            --from-version ${{ env.CURRENT_VERSION }} \
+            --monorepo application/aam-external-mock-service)
+          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
+
+      - name: Create Release
+        if: env.CURRENT_VERSION != env.NEXT_VERSION
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          TAG_NAME=aam-external-mock-service/${{ env.NEXT_VERSION }}
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/Aam-Digital/aam-services/releases \
+            -f "tag_name=$TAG_NAME" \
+            -f "target_commitish=main" \
+            -f "name=$TAG_NAME" \
+            -F "draft=false" \
+            -F "prerelease=false" \
+            -F "generate_release_notes=true"
