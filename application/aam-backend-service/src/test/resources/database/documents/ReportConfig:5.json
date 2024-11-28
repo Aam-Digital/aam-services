@@ -1,0 +1,11 @@
+{
+  "_id": "ReportConfig:5",
+  "title": "Version 1 with placeholder",
+  "mode": "sql",
+  "version": 1,
+  "neededArgs": [
+    "from",
+    "to"
+  ],
+  "aggregationDefinition": "SELECT s.name as name, s.privateSchool as privateSchool FROM School as s WHERE s.date BETWEEN $from AND $to AND s.date BETWEEN $from AND $to"
+}

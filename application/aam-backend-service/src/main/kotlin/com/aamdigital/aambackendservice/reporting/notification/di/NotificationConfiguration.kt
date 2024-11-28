@@ -13,6 +13,7 @@ import com.aamdigital.aambackendservice.reporting.notification.storage.DefaultNo
 import com.aamdigital.aambackendservice.reporting.notification.storage.WebhookRepository
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -43,7 +44,8 @@ class NotificationConfiguration {
         notificationStorage: NotificationStorage,
         @Qualifier("webhook-web-client") restClient: RestClient,
         uriParser: UriParser,
-    ): TriggerWebhookUseCase = DefaultTriggerWebhookUseCase(notificationStorage, restClient, uriParser)
+        objectMapper: ObjectMapper
+    ): TriggerWebhookUseCase = DefaultTriggerWebhookUseCase(notificationStorage, restClient, uriParser, objectMapper)
 
     @Bean(name = ["webhook-web-client"])
     fun webhookWebClient(): RestClient {
