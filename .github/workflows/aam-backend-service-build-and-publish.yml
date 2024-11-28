@@ -23,7 +23,7 @@ jobs:
       matrix:
         platform:
           - linux/amd64
-          - linux/arm64 # disabled until carbone/carbone-ee is available as arm64 docker image
+          # - linux/arm64 # disabled until carbone/carbone-ee is available as arm64 docker image
         os:
           - ubuntu-latest
           - [ self-hosted, Linux, ARM64 ]
