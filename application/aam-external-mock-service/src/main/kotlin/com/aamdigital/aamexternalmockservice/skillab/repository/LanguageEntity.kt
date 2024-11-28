@@ -12,9 +12,9 @@ data class LanguageEntity(
   @Column
   var proficiency: String,
 
-  @Column
+  @Column(nullable = true)
   @JsonProperty("assessment_level")
-  var assessmentLevel: String,
+  var assessmentLevel: String?,
 )
 
 enum class Proficiency {

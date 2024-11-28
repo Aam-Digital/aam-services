@@ -45,7 +45,7 @@ data class ProfileEntity(
   @Column
   @JsonProperty("arrival_in_country")
   var arrivalInCountry: String,
- 
+
   @Column
   var nationality: String,
 

@@ -1,6 +1,7 @@
 package com.aamdigital.aamexternalmockservice.skillab.repository
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
@@ -25,9 +26,9 @@ data class ExperienceEntity(
   @JsonProperty("start_date")
   var startDate: String,
 
-  @Column
+  @Column(nullable = true)
   @JsonProperty("end_date")
-  var endDate: String,
+  var endDate: String?,
 
   @Column
   var city: String,
@@ -51,7 +52,7 @@ data class ExperienceEntity(
   @JsonProperty("education_status")
   var educationStatus: String,
 
-  @ManyToMany(fetch = FetchType.EAGER)
+  @ManyToMany(fetch = FetchType.EAGER, cascade = [CascadeType.ALL])
   @JsonProperty("experiences_skills")
   var experiencesSkills: MutableList<SkillEntity>,
 )

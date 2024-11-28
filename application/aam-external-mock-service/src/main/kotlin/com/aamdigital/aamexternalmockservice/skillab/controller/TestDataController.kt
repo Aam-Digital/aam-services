@@ -5,7 +5,6 @@ import com.aamdigital.aamexternalmockservice.skillab.repository.LanguageEntity
 import com.aamdigital.aamexternalmockservice.skillab.repository.Proficiency
 import com.aamdigital.aamexternalmockservice.skillab.repository.ProfileCrudRepository
 import com.aamdigital.aamexternalmockservice.skillab.repository.ProfileEntity
-import com.aamdigital.aamexternalmockservice.skillab.repository.SkillCrudRepository
 import com.aamdigital.aamexternalmockservice.skillab.repository.SkillEntity
 import io.github.serpro69.kfaker.Faker
 import io.github.serpro69.kfaker.fakerConfig
@@ -21,24 +20,7 @@ import kotlin.random.Random
 @RequestMapping("/skilllab/test-data")
 class TestDataController(
   val profileCrudRepository: ProfileCrudRepository,
-  val skillCrudRepository: SkillCrudRepository,
 ) {
-
-  // Internal
-  @PostMapping("/skills")
-  fun addSkills(
-    numberOfEntities: Int = 1000,
-  ): ResponseEntity<Any> {
-    val entities = mutableListOf<SkillEntity>()
-
-    for (i in 1..numberOfEntities) {
-      val entity = getSkill()
-      entities.add(entity)
-    }
-
-    skillCrudRepository.saveAll(entities)
-    return ResponseEntity.ok("Added entries to database.")
-  }
 
   // Internal
   @PostMapping("/profiles")
@@ -129,7 +111,7 @@ class TestDataController(
     educationStatus = "finished",
     experiencesSkills = mutableListOf<SkillEntity>().let { list ->
       for (i in 1..Random.nextInt(1, 5)) {
-        list.add(skillCrudRepository.findRandom())
+        list.add(getSkill())
       }
       list
     }

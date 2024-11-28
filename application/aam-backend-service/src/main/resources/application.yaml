@@ -11,10 +11,7 @@ spring:
       simple:
         prefetch: 1
   datasource:
-    driver-class-name: org.h2.Driver
-    username: local
-    password: local
-    url: jdbc:h2:file:./data/dbh2;DB_CLOSE_DELAY=-1
+    driver-class-name: org.postgresql.Driver
   jpa:
     generate-ddl: true
     hibernate:
@@ -25,6 +22,10 @@ spring:
   servlet:
     multipart:
       max-file-size: 5MB
+
+server:
+  servlet:
+    context-path: /api
 
 management:
   endpoint:
@@ -46,7 +47,6 @@ events:
   listener:
     report-calculation:
       enabled: true
-
 
 ---
 
@@ -70,15 +70,16 @@ spring:
         observation-enabled: true
     username: local-spring
     password: docker
-
+  datasource:
+    url: jdbc:postgresql://localhost:5402/aam-backend-service
+    username: admin
+    password: docker
 
 server:
   error:
     include-message: always
     include-binding-errors: always
   port: 9000
-  servlet:
-    context-path: /api
 
 logging:
   level:
@@ -106,13 +107,19 @@ sqs-client-configuration:
   basic-auth-username: admin
   basic-auth-password: docker
 
+skilllab-api-client-configuration:
+  enabled: true
+  api-key: skilllab-api-key
+  base-path: http://localhost:9005/skilllab
+  response-timeout-in-seconds: 15
+
 events:
   listener:
     report-calculation:
-      enabled: true
+      enabled: false
 
 database-change-detection:
-  enabled: true
+  enabled: false
 
 sentry:
   logging:

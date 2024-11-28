@@ -3,6 +3,7 @@ package com.aamdigital.aamexternalmockservice.skillab.controller
 import com.aamdigital.aamexternalmockservice.skillab.error.SkillLabError
 import com.aamdigital.aamexternalmockservice.skillab.error.SkillLabErrorResponseDto
 import com.aamdigital.aamexternalmockservice.skillab.repository.ProfileCrudRepository
+import com.aamdigital.aamexternalmockservice.skillab.repository.ProfileEntity
 import com.aamdigital.aamexternalmockservice.skillab.repository.ProfilePagingRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.domain.Pageable
@@ -18,6 +19,11 @@ import java.util.*
 data class UserProfilesResponse(
   val pagination: PaginationDto,
   val results: List<ProfileIdDto>,
+)
+
+// SkillLab API
+data class UserProfileResponse(
+  val profile: ProfileEntity,
 )
 
 // SkillLab API
@@ -76,7 +82,19 @@ class SkillLabController(
   fun getProfile(
     @PathVariable profileId: UUID,
   ): ResponseEntity<Any> {
-    return profileCrudRepository.findById(profileId).let { ResponseEntity.ok(it) }
+    return profileCrudRepository.findById(profileId).let {
+      if (it.isPresent) {
+        ResponseEntity.ok(UserProfileResponse(profile = it.get()))
+      } else {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+          objectMapper.writeValueAsString(
+            SkillLabErrorResponseDto(
+              error = SkillLabError.NotFound()
+            )
+          )
+        )
+      }
+    }
   }
 
   @RequestMapping("/**")
