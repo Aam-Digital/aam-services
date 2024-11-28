@@ -35,6 +35,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       packages: read
+      pull-requests: write
     defaults:
       run:
         working-directory: application/aam-backend-service
