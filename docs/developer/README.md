@@ -42,13 +42,6 @@ the `http://` version of an url, but Chrome will not let you:
 
 You can open the `http://` version directly again. 
 
-
-# Project Setup Guide
-
-This guide includes instructions for both a **full local setup with Docker** and a **minimal setup without Docker**.
-
----
-
 ## Full Local Setup (with Docker)
 
 ### Step 1: Start Docker Services
@@ -99,41 +92,3 @@ password - docker
 - Keycloak: [http://localhost:8080](http://localhost:8080)
 - CouchDB: [http://localhost:5984](http://localhost:5984)
 
----
-
-## Minimal Setup (Without Docker)
-
-For a basic setup without Docker, follow these steps.
-
-### Step 1: Set Up CouchDB
-1. Install CouchDB on Mac:
-```shell
-   brew install couchdb
-```
-2. Configure CouchDB:
-```shell
-   nano /opt/homebrew/etc/local.ini
-```
-3. Restart CouchDB:
-```shell
-   brew services restart couchdb
-```
-4. Access CouchDB at [http://localhost:5984/_utils/#](http://localhost:5984/_utils/#).
-
-### Step 2: Create Databases
-1. Create the following databases in CouchDB:
-- `app`
-- `app-attachments`
-- `notification-webhook`
-- `Report-calculation`
-
-3. In the `app` database, add these configuration documents:
-- **Config:CONFIG_ENTITY**
-- **Config:Permissions**
-
-**Note**: Please reach out to the tech team to get the specific details for these configuration documents.
-
-### Step 3: Set Up Replication Backend
-- Follow the project setup instructions provided in the [Backend Setup Guideline](https://github.com/Aam-Digital/replication-backend/blob/master/README.md).
-
-Once completed, you’ll have a minimal local environment without Docker.
