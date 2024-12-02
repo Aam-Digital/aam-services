@@ -42,28 +42,53 @@ the `http://` version of an url, but Chrome will not let you:
 
 You can open the `http://` version directly again. 
 
+## Full Local Setup (with Docker)
 
----
-# initial setup with related services
-1. start the docker-compose here
-2. if necessary, switch the image in docker-compose.yml from aam-sqs-mac to aam-sqs-linux
+### Step 1: Start Docker Services
+1. Run the `docker-compose` file to start all related services:
+```shell
+   docker-compose up
+```
+2. If needed, switch the image in `docker-compose.yml` from `aam-sqs-mac` to `aam-sqs-linux` for compatibility.
 
-Set up Keycloak
-3. create dummy-realm in the Keycloak Admin UI (http://localhost:8080), importing the current [ndb-setup realm_config.example.json](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/realm_config.example.json)
-4. import client in [Keycloak Realm > Clients](http://localhost:8080/admin/master/console/#/dummy-realm/clients), using [ndb-setup client.json](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/client_config.json)
-5. create a user in the new realm and assign it some relevant roles
-6. copy a Config:CONFIG_ENTITY doc into the couchdb: http://localhost:5984/_utils/#database/app/_all_docs (e.g. from https://dev.aam-digital.net/db/couchdb/_utils/#database/app/Config%3ACONFIG_ENTITY)
+### Step 2: Configure Keycloak
+3. Open the Keycloak Admin UI at [http://localhost:8080](http://localhost:8080) with the credentials defined in the docker-compose file. Defaults are:
+```
+username - admin
+password - docker
+```
+4. Create a new realm called **dummy-realm** by importing the [realm base configuration file](https://github.com/Aam-Digital/ndb-setup/blob/master/baseConfigs/realm_config.example.json).
+5. Under **Keycloak Realm > Clients** ([http://localhost:8080/admin/master/console/#/dummy-realm/clients](http://localhost:8080/admin/master/console/#/dummy-realm/clients)), import the client configuration using the [client config file](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/client_config.json).
+6. In the new realm, create a user and assign relevant roles. (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.)
 
-Start backend:
-7. get the public_key for the realm from http://localhost:8080/realms/dummy-realm and add it to the replication-backend .env (JWT_PUBLIC_KEY)
-8. start the replication-backend (`npm start:dev`)
+### Step 3: Set Up CouchDB
+7. Access CouchDB at [http://localhost:5984/_utils/#database/app/_all_docs](http://localhost:5984/_utils/#database/app/_all_docs).
+8. Create a new database name as `app`.
+9. Add a document of type **Config:CONFIG_ENTITY** to the `app` database (e.g., from [dev.aam-digital.net CouchDB instance](https://dev.aam-digital.net/db/couchdb/_utils/#database/app/Config%3ACONFIG_ENTITY)).
+**Note: If you get an error while adding a document (eg. document update conflict warning) remove the "_rev": "value".**
 
-Start frontend:
-9. switch config (environment.ts or assets/config.json) to `"session_type": "synced", "demo_mode": false`
-10. start the frontend (`npm start`)
+### Step 4: Start the Backend
+9. Clone the [replication-backend](https://github.com/Aam-Digital/replication-backend) repository (if you do not already have it available locally) and follow the setup instructions of its README to install dependencies.
+10. Retrieve the `public_key` for **dummy-realm** from [http://localhost:8080/realms/dummy-realm](http://localhost:8080/realms/dummy-realm) and add it to the `.env` file for the replication backend as `JWT_PUBLIC_KEY`.
+10. Start the replication backend:
+```shell
+    npm run start:dev
+```
 
-You now have a fully local environment with all relevant services:
-- App (frontend): http://localhost:4200
-- Replication backend: http://localhost:3000
-- Keycloak: http://localhost:8080
-- CouchDB: http://localhost:5984
+### Step 5: Start the Frontend
+11. Update `environment.ts` or `assets/config.json` with the following settings, in order to run the app in "synced" mode using the backend services:
+```
+    "session_type": "synced",
+    "demo_mode": false
+```
+12. Start the frontend:
+```shell
+    npm start
+```
+
+### Accessing the Local Environment
+- Frontend App: [http://localhost:4200](http://localhost:4200)
+- Replication Backend: [http://localhost:3000](http://localhost:3000)
+- Keycloak: [http://localhost:8080](http://localhost:8080)
+- CouchDB: [http://localhost:5984](http://localhost:5984)
+
