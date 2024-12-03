@@ -44,7 +44,10 @@ class SkillLabSyncUserProfileUseCase(
                 result = UserProfile(
                     id = userProfileEntity.externalIdentifier,
                     fullName = userProfileEntity.fullName,
-                    phone = userProfileEntity.mobileNumber,
+                    phone = userProfileEntity.mobileNumber
+                        ?.replace(" ", "")
+                        ?.replace("-", "")
+                        ?.trim(),
                     email = userProfileEntity.email,
                     skills = allSkillsEntities.map { skill ->
                         EscoSkill(

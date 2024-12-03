@@ -9,7 +9,7 @@ import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
 import java.util.*
 
-@Entity
+@Entity(name = "couchdb_sync_entry")
 data class SyncEntry(
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)

@@ -110,6 +110,7 @@ sqs-client-configuration:
 skilllab-api-client-configuration:
   enabled: true
   api-key: skilllab-api-key
+  project-id: dummy-project
   base-path: http://localhost:9005/skilllab
   response-timeout-in-seconds: 15
 

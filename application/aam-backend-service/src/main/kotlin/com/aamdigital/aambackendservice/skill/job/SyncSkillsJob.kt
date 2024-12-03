@@ -2,13 +2,15 @@ package com.aamdigital.aambackendservice.skill.job
 
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
+import com.aamdigital.aambackendservice.skill.di.SkillLabApiClientConfiguration
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Scheduled
 
 @Configuration
 class SyncSkillsJob(
-    private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase
+    private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase,
+    private val skillLabApiClientConfiguration: SkillLabApiClientConfiguration,
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -18,7 +20,7 @@ class SyncSkillsJob(
         private var MAX_ERROR_COUNT: Int = 5
     }
 
-    @Scheduled(fixedDelay = (60000 * 10))
+    @Scheduled(fixedDelay = (60000 * 10)) // every 10 minutes
     fun checkForCouchDbChanges() {
         if (ERROR_COUNTER >= MAX_ERROR_COUNT) {
             logger.trace("${this.javaClass.name}: MAX_ERROR_COUNT reached. Not starting job again.")
@@ -28,7 +30,7 @@ class SyncSkillsJob(
         try {
             skillLabFetchUserProfileUpdatesUseCase.run(
                 request = FetchUserProfileUpdatesRequest(
-                    projectId = "343"
+                    projectId = skillLabApiClientConfiguration.projectId
                 )
             )
         } catch (ex: Exception) {

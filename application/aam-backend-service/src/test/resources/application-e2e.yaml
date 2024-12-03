@@ -66,6 +66,7 @@ sqs-client-configuration:
 skilllab-api-client-configuration:
   enabled: false
   api-key: skilllab-api-key
+  project-id: dummy-project
   base-path: http://localhost:9005/skilllab # todo test container
   response-timeout-in-seconds: 15
 

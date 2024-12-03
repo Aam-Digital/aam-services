@@ -32,9 +32,10 @@ import org.springframework.web.client.RestClient
     havingValue = "true",
     matchIfMissing = false
 )
-class AamRenderApiClientConfiguration(
+class SkillLabApiClientConfiguration(
     val basePath: String,
     val apiKey: String,
+    val projectId: String,
     val responseTimeoutInSeconds: Int = 30,
 )
 
@@ -49,7 +50,7 @@ class SkillConfiguration {
         matchIfMissing = false
     )
     fun skillLabApiClient(
-        configuration: AamRenderApiClientConfiguration
+        configuration: SkillLabApiClientConfiguration
     ): RestClient {
         val clientBuilder = RestClient.builder().baseUrl(configuration.basePath)
 
