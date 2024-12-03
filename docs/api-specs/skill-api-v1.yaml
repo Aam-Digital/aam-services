@@ -11,6 +11,8 @@ paths:
     get:
       summary: Return all UserProfile
       description: todo
+      tags:
+        - skills
       parameters:
         - name: fullName
           in: query
@@ -44,6 +46,8 @@ paths:
     get:
       summary: Return all UserProfile
       description: todo
+      tags:
+        - skills
       parameters:
         - name: userProfileId
           in: path
@@ -58,6 +62,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserProfile'
+
+  /sync:
+    get:
+      summary: Return sync status for projects
+      description: Returns a list of all configured projects and the latest sync attempt
+      tags:
+        - admin
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sync'
+
+  /sync/{projectId}:
+    post:
+      summary: Trigger project sync
+      description: Import all changes for this project from SkillProvider
+      tags:
+        - admin
+      parameters:
+        - name: syncMode
+          in: query
+          required: false
+          schema:
+            type: string
+            default: DELTA
+            enum:
+              - DELTA
+              - FULL
+        - name: updatedFrom
+          description: Define the start date for the Delta load. Just used in syncMode DELTA, uses latest sync date if not defined manually.
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "2024-12-03T11:50:00.231Z"
+            format: date-time
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Sync process started, can take some minutes until all changes are imported.
 
 components:
   schemas:
@@ -79,10 +130,22 @@ components:
             $ref: '#/components/schemas/Skill'
         updatedAtExternalSystem:
           type: string
+          format: date-time
         importedAt:
           type: string
+          format: date-time
         latestSyncAt:
           type: string
+          format: date-time
+
+    Sync:
+      type: object
+      properties:
+        project:
+          type: string
+        latestSync:
+          type: string
+          format: date-time
 
     Skill:
       type: object

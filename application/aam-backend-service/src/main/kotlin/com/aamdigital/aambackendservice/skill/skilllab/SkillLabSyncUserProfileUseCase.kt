@@ -29,8 +29,17 @@ class SkillLabSyncUserProfileUseCase(
         val allSkillsEntities = getSkillEntities(userProfile.profile)
         val userProfileEntity = fetchUserProfileEntity(userProfile.profile, allSkillsEntities)
 
+        if (!userProfileEntity.mobileNumber.isNullOrBlank()) {
+            userProfileEntity.mobileNumber = userProfileEntity.mobileNumber
+                ?.replace(" ", "")
+                ?.replace("-", "")
+                ?.trim()
+        }
+
         try {
-            skillLabUserProfileRepository.save(userProfileEntity)
+            skillLabUserProfileRepository.save(
+                userProfileEntity
+            )
         } catch (ex: Exception) {
             return UseCaseOutcome.Failure(
                 errorCode = SkillLabSyncUserProfileErrorCode.IO_ERROR,
@@ -44,10 +53,7 @@ class SkillLabSyncUserProfileUseCase(
                 result = UserProfile(
                     id = userProfileEntity.externalIdentifier,
                     fullName = userProfileEntity.fullName,
-                    phone = userProfileEntity.mobileNumber
-                        ?.replace(" ", "")
-                        ?.replace("-", "")
-                        ?.trim(),
+                    phone = userProfileEntity.mobileNumber,
                     email = userProfileEntity.email,
                     skills = allSkillsEntities.map { skill ->
                         EscoSkill(

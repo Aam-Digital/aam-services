@@ -53,6 +53,7 @@ logging:
   logback:
     rollingpolicy:
       max-file-size: 100MB
+
 ---
 
 spring:
