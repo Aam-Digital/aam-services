@@ -23,6 +23,7 @@ spring:
     multipart:
       max-file-size: 5MB
 
+
 server:
   servlet:
     context-path: /api
@@ -48,6 +49,10 @@ events:
     report-calculation:
       enabled: true
 
+logging:
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
 ---
 
 spring:
