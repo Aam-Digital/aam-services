@@ -16,7 +16,10 @@ import org.springframework.security.web.SecurityFilterChain
 class SecurityConfiguration {
 
     @Bean
-    fun filterChain(http: HttpSecurity): SecurityFilterChain {
+    fun filterChain(
+        http: HttpSecurity,
+        aamAuthenticationConverter: AamAuthenticationConverter,
+    ): SecurityFilterChain {
         http {
             authorizeRequests {
                 authorize(HttpMethod.GET, "/", permitAll)
@@ -45,6 +48,7 @@ class SecurityConfiguration {
             }
             oauth2ResourceServer {
                 jwt {
+                    jwtAuthenticationConverter = aamAuthenticationConverter
                     authenticationEntryPoint =
                         AamAuthenticationEntryPoint(
                             parentEntryPoint = BearerTokenAuthenticationEntryPoint(),
@@ -55,7 +59,4 @@ class SecurityConfiguration {
         }
         return http.build()
     }
-
-
 }
-
