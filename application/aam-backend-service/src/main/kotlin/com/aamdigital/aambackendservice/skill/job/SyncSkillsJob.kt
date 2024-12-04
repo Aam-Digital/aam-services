@@ -4,10 +4,17 @@ import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesReques
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.di.SkillLabApiClientConfiguration
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Scheduled
 
 @Configuration
+@ConditionalOnProperty(
+    prefix = "features.skill-api",
+    name = ["mode"],
+    havingValue = "skilllab",
+    matchIfMissing = false
+)
 class SyncSkillsJob(
     private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase,
     private val skillLabApiClientConfiguration: SkillLabApiClientConfiguration,

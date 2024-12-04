@@ -23,7 +23,6 @@ spring:
     multipart:
       max-file-size: 5MB
 
-
 server:
   servlet:
     context-path: /api
@@ -43,6 +42,10 @@ management:
     sampling:
       probability: 1
 
+features:
+  skill-api:
+    mode: disabled
+
 # enable/disables event processing for each queue
 events:
   listener:
@@ -53,6 +56,8 @@ logging:
   logback:
     rollingpolicy:
       max-file-size: 100MB
+      total-size-cap: 100MB
+      clean-history-on-start: true
 
 ---
 
@@ -92,6 +97,7 @@ logging:
     #    org.springframework.amqp.rabbit: warn
     #    org.springframework.web: debug
     #    org.springframework.http: debug
+    #    org.springframework.security: debug
     com.aamdigital.aambackendservice: trace
 
 aam-render-api-client-configuration:
@@ -114,11 +120,14 @@ sqs-client-configuration:
   basic-auth-password: docker
 
 skilllab-api-client-configuration:
-  enabled: true
   api-key: skilllab-api-key
   project-id: dummy-project
   base-path: http://localhost:9005/skilllab
   response-timeout-in-seconds: 15
+
+features:
+  skill-api:
+    mode: skilllab
 
 events:
   listener:

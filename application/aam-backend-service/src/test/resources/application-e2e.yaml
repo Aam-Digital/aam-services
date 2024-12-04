@@ -27,7 +27,7 @@ spring:
 
 server:
   servlet:
-    context-path: /api
+    context-path: /
   port: 9000
 
 management:
@@ -64,16 +64,19 @@ sqs-client-configuration:
   basic-auth-password: docker
 
 skilllab-api-client-configuration:
-  enabled: false
   api-key: skilllab-api-key
   project-id: dummy-project
   base-path: http://localhost:9005/skilllab # todo test container
   response-timeout-in-seconds: 15
 
+features:
+  skill-api:
+    mode: disabled
+
 events:
   listener:
     report-calculation:
-      enabled: false
+      enabled: true
 
 database-change-detection:
   enabled: false

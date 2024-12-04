@@ -92,7 +92,6 @@ class SkillLabSyncUserProfileUseCase(
         )
     }
 
-
     private fun getSkillEntities(userProfile: SkillLabProfileDto): Set<SkillReferenceEntity> = userProfile.experiences
         .flatMap { it.experiencesSkills }
         .map {

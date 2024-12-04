@@ -2,33 +2,36 @@ package com.aamdigital.aambackendservice.skill.controller
 
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.error.HttpErrorDto
-import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
-import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileRequest
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.domain.EscoSkill
 import com.aamdigital.aambackendservice.skill.domain.SkillUsage
 import com.aamdigital.aambackendservice.skill.domain.UserProfile
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository
-import com.aamdigital.aambackendservice.skill.skilllab.SkillLabFetchUserProfileUpdatesErrorCode
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/v1/skill")
+@ConditionalOnProperty(
+    prefix = "features.skill-api",
+    name = ["mode"],
+    havingValue = "skilllab",
+    matchIfMissing = false
+)
 class SkillController(
-    private val fetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase, // todo needs no-op implementation
-    private val searchUserProfileUseCase: SearchUserProfileUseCase, // todo needs no-op implementation
-    private val userProfileRepository: SkillLabUserProfileRepository
+    private val searchUserProfileUseCase: SearchUserProfileUseCase,
+    private val userProfileRepository: SkillLabUserProfileRepository,
 ) {
 
     @GetMapping("/user-profile")
+    @PreAuthorize("hasAnyAuthority('ROLE_aam_skill_reader')")
     fun fetchUserProfiles(
         fullName: String = "",
         email: String = "",
@@ -45,14 +48,6 @@ class SkillController(
         return when (result) {
             is UseCaseOutcome.Failure<*> -> {
                 when (result.errorCode) {
-//                    SkillLabFetchUserProfileUpdatesErrorCode.EXTERNAL_SYSTEM_ERROR
-//                        -> ResponseEntity.internalServerError().body(
-//                        HttpErrorDto(
-//                            errorCode = result.errorCode.toString(),
-//                            errorMessage = result.errorMessage
-//                        )
-//                    )
-
                     else -> ResponseEntity.badRequest().body(
                         ResponseEntity.internalServerError().body(
                             HttpErrorDto(
@@ -72,6 +67,7 @@ class SkillController(
     }
 
     @GetMapping("/user-profile/{id}")
+    @PreAuthorize("hasAuthority('ROLE_aam_skill_reader')")
     fun fetchUserProfile(
         @PathVariable id: String,
     ): ResponseEntity<Any> {
@@ -101,43 +97,6 @@ class SkillController(
                     latestSyncAt = entity.latestSyncAt?.toInstant(),
                 )
             )
-        }
-    }
-
-    @PostMapping
-    fun fetchUserProfileUpdates(
-        @RequestBody request: FetchUserProfileUpdatesRequest,
-    ): ResponseEntity<Any> {
-        val result = fetchUserProfileUpdatesUseCase.run(
-            request = request
-        )
-
-        return when (result) {
-            is UseCaseOutcome.Failure<*> -> {
-                when (result.errorCode) {
-                    SkillLabFetchUserProfileUpdatesErrorCode.EXTERNAL_SYSTEM_ERROR
-                        -> ResponseEntity.internalServerError().body(
-                        HttpErrorDto(
-                            errorCode = result.errorCode.toString(),
-                            errorMessage = result.errorMessage
-                        )
-                    )
-
-                    else -> ResponseEntity.badRequest().body(
-                        ResponseEntity.internalServerError().body(
-                            HttpErrorDto(
-                                errorCode = result.errorCode.toString(),
-                                errorMessage = result.errorMessage
-                            )
-                        )
-                    )
-                }
-                ResponseEntity.badRequest().body(
-                    result.errorMessage
-                )
-            }
-
-            is UseCaseOutcome.Success<*> -> ResponseEntity.ok().body(result.data)
         }
     }
 }

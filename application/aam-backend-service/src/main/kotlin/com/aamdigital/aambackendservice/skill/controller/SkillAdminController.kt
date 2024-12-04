@@ -5,7 +5,9 @@ import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesReques
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -27,6 +29,12 @@ enum class SyncModeDto {
 
 @RestController
 @RequestMapping("/v1/skill")
+@ConditionalOnProperty(
+    prefix = "features.skill-api",
+    name = ["mode"],
+    havingValue = "skilllab",
+    matchIfMissing = false
+)
 class SkillAdminController(
     private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase,
     private val skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository,
@@ -34,8 +42,8 @@ class SkillAdminController(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-
     @GetMapping("/sync")
+    @PreAuthorize("hasAuthority('ROLE_aam_skill_admin')")
     fun fetchSyncStatus(): ResponseEntity<List<SkillDto>> {
         val result = skillLabUserProfileSyncRepository.findAll().mapNotNull {
             SkillDto(
@@ -48,6 +56,7 @@ class SkillAdminController(
     }
 
     @PostMapping("/sync/{projectId}")
+    @PreAuthorize("hasAuthority('ROLE_aam_skill_admin')")
     fun triggerSync(
         @PathVariable projectId: String,
         syncMode: SyncModeDto = SyncModeDto.DELTA,
