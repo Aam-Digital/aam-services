@@ -26,8 +26,6 @@ class SqlSearchUserProfileUseCase(
 ) : SearchUserProfileUseCase() {
 
     companion object {
-        private const val MAX_RESULTS = 10;
-
         private val MATCHER_EMAIL = ExampleMatcher.matchingAny()
             .withIgnorePaths(
                 "id",
@@ -88,59 +86,54 @@ class SqlSearchUserProfileUseCase(
             importedAt = null,
         )
 
-        var searchResults: Page<SkillLabUserProfileEntity>;
+        var searchResults: Page<SkillLabUserProfileEntity>
+        val pageable = Pageable.ofSize(request.pageSize).withPage(request.page - 1)
 
         // check for exact matches for email
         if (!userProfile.email.isNullOrBlank()) {
             searchResults = userProfileRepository.findAll(
-                Example.of(userProfile, MATCHER_EMAIL), Pageable.ofSize(MAX_RESULTS)
+                Example.of(userProfile, MATCHER_EMAIL), pageable
             )
 
             if (!searchResults.isEmpty) {
-                return UseCaseOutcome.Success(
-                    data = SearchUserProfileData(
-                        result = searchResults.toList().map {
-                            toDto(it)
-                        }
-                    )
-                )
+                return asSuccessResponse(searchResults);
             }
         }
 
         // check for matches for phone
         if (!userProfile.mobileNumber.isNullOrBlank()) {
             searchResults = userProfileRepository.findAll(
-                Example.of(userProfile, MATCHER_PHONE), Pageable.ofSize(MAX_RESULTS)
+                Example.of(userProfile, MATCHER_PHONE), pageable
             )
 
             if (!searchResults.isEmpty) {
-                return UseCaseOutcome.Success(
-                    data = SearchUserProfileData(
-                        result = searchResults.toList().map {
-                            toDto(it)
-                        }
-                    )
-                )
+                return asSuccessResponse(searchResults);
             }
         }
 
         // check for name
         searchResults = if (!userProfile.fullName.isNullOrBlank()) {
             userProfileRepository.findAll(
-                Example.of(userProfile, MATCHER_NAME), Pageable.ofSize(MAX_RESULTS)
+                Example.of(userProfile, MATCHER_NAME), pageable
             )
         } else {
             Page.empty()
         }
 
-        return UseCaseOutcome.Success(
-            data = SearchUserProfileData(
-                result = searchResults.toList().map {
-                    toDto(it)
-                }
-            )
-        )
+        return asSuccessResponse(searchResults);
     }
+
+    private fun asSuccessResponse(
+        results: Page<SkillLabUserProfileEntity>,
+    ): UseCaseOutcome.Success<SearchUserProfileData> = UseCaseOutcome.Success(
+        data = SearchUserProfileData(
+            result = results.toList().map {
+                toDto(it)
+            },
+            totalElements = results.totalElements.toInt(),
+            totalPages = results.totalPages
+        )
+    )
 
     private fun toDto(it: SkillLabUserProfileEntity): UserProfile {
         return UserProfile(

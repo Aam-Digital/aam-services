@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.skill.controller
 
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.error.HttpErrorDto
+import com.aamdigital.aambackendservice.skill.core.SearchUserProfileData
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileRequest
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.domain.EscoSkill
@@ -16,6 +17,18 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+
+data class PaginationDto(
+    val currentPage: Int,
+    val pageSize: Int,
+    val totalPages: Int,
+    val totalElements: Int,
+)
+
+data class FetchUserProfilesDto(
+    val pagination: PaginationDto,
+    val results: List<UserProfile>,
+)
 
 @RestController
 @RequestMapping("/v1/skill")
@@ -36,12 +49,43 @@ class SkillController(
         fullName: String = "",
         email: String = "",
         phone: String = "",
+        page: Int = 1,
+        pageSize: Int = 10,
     ): ResponseEntity<Any> {
+        if (page < 1) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                HttpErrorDto(
+                    errorCode = "BAD_REQUEST",
+                    errorMessage = "Page must be greater than 0",
+                )
+            )
+        }
+
+        if (pageSize < 1) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                HttpErrorDto(
+                    errorCode = "BAD_REQUEST",
+                    errorMessage = "Page size must not be less than one",
+                )
+            )
+        }
+
+        if (pageSize > 100) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                HttpErrorDto(
+                    errorCode = "BAD_REQUEST",
+                    errorMessage = "Max pageSize limit is 100",
+                )
+            )
+        }
+
         val result = searchUserProfileUseCase.run(
             request = SearchUserProfileRequest(
                 fullName = fullName,
                 email = email,
                 phone = phone,
+                page = page,
+                pageSize = pageSize
             ),
         )
 
@@ -62,7 +106,17 @@ class SkillController(
                 )
             }
 
-            is UseCaseOutcome.Success<*> -> ResponseEntity.ok().body(result.data)
+            is UseCaseOutcome.Success<SearchUserProfileData> -> ResponseEntity.ok().body(
+                FetchUserProfilesDto(
+                    pagination = PaginationDto(
+                        currentPage = page,
+                        pageSize = pageSize,
+                        totalElements = result.data.totalElements,
+                        totalPages = result.data.totalPages,
+                    ),
+                    results = result.data.result
+                )
+            )
         }
     }
 
