@@ -16,6 +16,9 @@ enum class SkillLabSyncUserProfileErrorCode : AamErrorCode {
     IO_ERROR
 }
 
+/**
+ * Will load a specific UserProfile from SkillLab, store it to the database and returns the profile afterwards
+ */
 class SkillLabSyncUserProfileUseCase(
     private val skillLabClient: SkillLabClient,
     private val skillLabUserProfileRepository: SkillLabUserProfileRepository,
@@ -29,11 +32,10 @@ class SkillLabSyncUserProfileUseCase(
         val allSkillsEntities = getSkillEntities(userProfile.profile)
         val userProfileEntity = fetchUserProfileEntity(userProfile.profile, allSkillsEntities)
 
-        if (!userProfileEntity.mobileNumber.isNullOrBlank()) {
-            userProfileEntity.mobileNumber = userProfileEntity.mobileNumber
-                ?.replace(" ", "")
-                ?.replace("-", "")
-                ?.trim()
+        userProfileEntity.mobileNumber.let {
+            if (!it.isNullOrBlank()) {
+                userProfileEntity.mobileNumber = formatMobileNumber(it)
+            }
         }
 
         try {
@@ -62,17 +64,22 @@ class SkillLabSyncUserProfileUseCase(
                         )
                     },
                     updatedAtExternalSystem = userProfileEntity.updatedAt,
-                    importedAt = userProfileEntity.importedAt!!.toInstant(),
-                    latestSyncAt = userProfileEntity.latestSyncAt!!.toInstant(),
+                    importedAt = userProfileEntity.importedAt?.toInstant(),
+                    latestSyncAt = userProfileEntity.latestSyncAt?.toInstant(),
                 )
             )
         )
     }
 
+    private fun formatMobileNumber(mobileNumber: String): String = mobileNumber
+        .replace(" ", "")
+        .replace("-", "")
+        .trim()
+
     private fun fetchUserProfileEntity(
         userProfile: SkillLabProfileDto,
         allSkillsEntities: Set<SkillReferenceEntity>
-    ) = if (skillLabUserProfileRepository.existsByExternalIdentifier(userProfile.id)) {
+    ): SkillLabUserProfileEntity = if (skillLabUserProfileRepository.existsByExternalIdentifier(userProfile.id)) {
         val entity = skillLabUserProfileRepository.findByExternalIdentifier(userProfile.id)
         entity.fullName = userProfile.fullName
         entity.mobileNumber = userProfile.mobileNumber

@@ -99,7 +99,7 @@ paths:
   /sync/{projectId}:
     post:
       summary: Trigger project sync
-      description: Import all changes for this project from SkillProvider
+      description: Import all changes for this project from SkillProvider. You can choose to sync just the changes from an specific date (DELTA) or do a full import (FULL).
       tags:
         - admin
       parameters:

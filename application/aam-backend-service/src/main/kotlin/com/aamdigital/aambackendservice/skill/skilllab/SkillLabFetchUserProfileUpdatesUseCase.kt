@@ -22,7 +22,7 @@ enum class SkillLabFetchUserProfileUpdatesErrorCode : AamErrorCode {
 }
 
 /**
- * Fetch latest changes for this SkillLab tenant and store it to database.
+ * Fetch latest changes for this SkillLab tenant and create SyncUserProfileEvents for each changed UserProfile
  */
 class SkillLabFetchUserProfileUpdatesUseCase(
     private val skillLabClient: SkillLabClient,
@@ -30,17 +30,20 @@ class SkillLabFetchUserProfileUpdatesUseCase(
     private val userProfileUpdatePublisher: UserProfileUpdatePublisher,
 ) : FetchUserProfileUpdatesUseCase() {
 
+    companion object {
+        private const val PAGE_SIZE = 50
+        private const val MAX_RESULTS_LIMIT = 10_000
+    }
+
     override fun apply(request: FetchUserProfileUpdatesRequest): UseCaseOutcome<FetchUserProfileUpdatesData> {
         val results = mutableListOf<DomainReference>()
-
         var currentSync = skillLabUserProfileSyncRepository.findByProjectId(request.projectId).getOrNull()
-
         var page = 1
 
         do {
             val batch = try {
                 fetchNextBatch(
-                    pageable = Pageable.ofSize(50).withPage(page++),
+                    pageable = Pageable.ofSize(PAGE_SIZE).withPage(page++),
                     currentSync = currentSync,
                 )
             } catch (ex: AamException) {
@@ -51,7 +54,7 @@ class SkillLabFetchUserProfileUpdatesUseCase(
                 )
             }
             results.addAll(batch)
-        } while (batch.isNotEmpty())
+        } while (batch.size >= PAGE_SIZE && results.size < MAX_RESULTS_LIMIT)
 
         results.forEach {
             try {
@@ -94,8 +97,15 @@ class SkillLabFetchUserProfileUpdatesUseCase(
     private fun fetchNextBatch(
         pageable: Pageable,
         currentSync: SkillLabUserProfileSyncEntity?,
-    ): List<DomainReference> = skillLabClient.fetchUserProfiles(
-        pageable = pageable,
-        updatedFrom = currentSync?.latestSync?.toString()
-    )
+    ): List<DomainReference> = if (currentSync == null) {
+        skillLabClient.fetchUserProfiles(
+            pageable = pageable,
+            updatedFrom = null
+        )
+    } else {
+        skillLabClient.fetchUserProfiles(
+            pageable = pageable,
+            updatedFrom = currentSync.latestSync.toString()
+        )
+    }
 }

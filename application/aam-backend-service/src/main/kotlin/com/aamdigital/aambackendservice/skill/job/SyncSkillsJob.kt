@@ -8,6 +8,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Scheduled
 
+/**
+ * Configures cron job for scheduled sync all SkillLab changes
+ */
 @Configuration
 @ConditionalOnProperty(
     prefix = "features.skill-api",
@@ -28,7 +31,7 @@ class SyncSkillsJob(
     }
 
     @Scheduled(fixedDelay = (60000 * 10)) // every 10 minutes
-    fun checkForCouchDbChanges() {
+    fun checkForSkillLabChanges() {
         if (ERROR_COUNTER >= MAX_ERROR_COUNT) {
             logger.trace("${this.javaClass.name}: MAX_ERROR_COUNT reached. Not starting job again.")
             return

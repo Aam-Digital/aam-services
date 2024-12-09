@@ -39,10 +39,12 @@ data class SkillLabUserProfileEntity(
     @Column
     var updatedAt: String?,
 
+    /** latest update within our system */
     @UpdateTimestamp(source = SourceType.DB)
     @Column(updatable = true)
     var latestSyncAt: OffsetDateTime? = null,
 
+    /** original date (first latestSyncAt) when added to our system */
     @CreationTimestamp(source = SourceType.DB)
     @Column(updatable = true)
     var importedAt: OffsetDateTime? = null,

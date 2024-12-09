@@ -9,6 +9,7 @@ import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepo
 import org.springframework.data.domain.Example
 import org.springframework.data.domain.ExampleMatcher
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 
 /**
@@ -26,7 +27,7 @@ class SqlSearchUserProfileUseCase(
 ) : SearchUserProfileUseCase() {
 
     companion object {
-        private val MATCHER_EMAIL = ExampleMatcher.matchingAny()
+        val MATCHER_EMAIL = ExampleMatcher.matchingAny()
             .withIgnorePaths(
                 "id",
                 "externalIdentifier",
@@ -41,7 +42,7 @@ class SqlSearchUserProfileUseCase(
             .withIncludeNullValues()
             .withStringMatcher(ExampleMatcher.StringMatcher.EXACT)
 
-        private val MATCHER_PHONE = ExampleMatcher.matchingAny()
+        val MATCHER_PHONE = ExampleMatcher.matchingAny()
             .withIgnorePaths(
                 "id",
                 "externalIdentifier",
@@ -56,7 +57,7 @@ class SqlSearchUserProfileUseCase(
             .withIncludeNullValues()
             .withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING)
 
-        private val MATCHER_NAME = ExampleMatcher.matchingAll()
+        val MATCHER_NAME = ExampleMatcher.matchingAll()
             .withIgnorePaths(
                 "id",
                 "externalIdentifier",
@@ -73,7 +74,6 @@ class SqlSearchUserProfileUseCase(
     }
 
     override fun apply(request: SearchUserProfileRequest): UseCaseOutcome<SearchUserProfileData> {
-
         val userProfile = SkillLabUserProfileEntity(
             id = 0,
             externalIdentifier = "",
@@ -96,7 +96,7 @@ class SqlSearchUserProfileUseCase(
             )
 
             if (!searchResults.isEmpty) {
-                return asSuccessResponse(searchResults);
+                return asSuccessResponse(searchResults)
             }
         }
 
@@ -107,7 +107,7 @@ class SqlSearchUserProfileUseCase(
             )
 
             if (!searchResults.isEmpty) {
-                return asSuccessResponse(searchResults);
+                return asSuccessResponse(searchResults)
             }
         }
 
@@ -120,7 +120,34 @@ class SqlSearchUserProfileUseCase(
             Page.empty()
         }
 
-        return asSuccessResponse(searchResults);
+        // search runs with just firstName/lastName
+        if (searchResults.isEmpty && !userProfile.fullName.isNullOrBlank()) {
+            val nameParts = userProfile.fullName?.split(" ") ?: listOf()
+
+            if (nameParts.size < 2) {
+                return asSuccessResponse(searchResults)
+            }
+
+            val searchNames = listOf(nameParts.first(), nameParts.last())
+            val partNameSearchResults = mutableSetOf<SkillLabUserProfileEntity>()
+
+            searchNames.forEach { name ->
+                userProfile.fullName = name
+                partNameSearchResults.addAll(
+                    userProfileRepository.findAll(
+                        Example.of(userProfile, MATCHER_NAME), pageable
+                    ).toList()
+                )
+            }
+
+            val result = partNameSearchResults.toList().take(request.pageSize)
+
+            searchResults = PageImpl(
+                result,
+            )
+        }
+
+        return asSuccessResponse(searchResults)
     }
 
     private fun asSuccessResponse(

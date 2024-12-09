@@ -5,8 +5,8 @@ import org.springframework.data.repository.PagingAndSortingRepository
 
 
 /**
- * CrudRepository analyses the function name to create SQL queries
- * see: https://docs.spring.io/spring-data/jpa/reference/repositories/query-methods-details.html
+ * JpaRepository and PagingAndSortingRepository interfaces provide all necessary query functions
+ * Check Docs for further information: https://docs.spring.io/spring-data/jpa/reference/jpa/getting-started.html
  */
 interface SkillLabUserProfileRepository : JpaRepository<SkillLabUserProfileEntity, Long>,
     PagingAndSortingRepository<SkillLabUserProfileEntity, Long> {

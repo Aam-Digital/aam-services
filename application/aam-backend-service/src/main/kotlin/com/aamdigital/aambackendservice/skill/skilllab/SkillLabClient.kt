@@ -95,8 +95,6 @@ class SkillLabClient(
             .uri("/profiles/${externalIdentifier.id}")
             .accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
-                // todo check for 4xx response first
-
                 val response = clientResponse.bodyTo(String::class.java) ?: throw ExternalSystemException(
                     message = "Empty or invalid response from server",
                     code = SkillLabUserProfileStorageAamErrorCode.EMPTY_RESPONSE
