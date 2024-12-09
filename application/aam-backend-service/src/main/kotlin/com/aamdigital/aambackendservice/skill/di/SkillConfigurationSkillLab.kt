@@ -4,14 +4,12 @@ import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCas
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.core.SqlSearchUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.core.SyncUserProfileUseCase
-import com.aamdigital.aambackendservice.skill.core.UserProfileMatcher
 import com.aamdigital.aambackendservice.skill.core.UserProfileUpdatePublisher
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
 import com.aamdigital.aambackendservice.skill.skilllab.SkillLabClient
 import com.aamdigital.aambackendservice.skill.skilllab.SkillLabFetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.skilllab.SkillLabSyncUserProfileUseCase
-import com.aamdigital.aambackendservice.skill.skilllab.SkillLabUserProfileMatcher
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -58,13 +56,6 @@ class SkillConfigurationSkillLab {
     ): SkillLabClient = SkillLabClient(
         http = restClient,
         objectMapper = objectMapper,
-    )
-
-    @Bean
-    fun skillLabUserProfileMatcher(
-        @Qualifier("skilllab-api-client") restClient: RestClient,
-    ): UserProfileMatcher = SkillLabUserProfileMatcher(
-        http = restClient
     )
 
     @Bean
