@@ -24,8 +24,7 @@ class DefaultCouchDbClient(
 ) : CouchDbClient {
 
     private val logger = LoggerFactory.getLogger(javaClass)
-
-
+    
     enum class DefaultCouchDbClientErrorCode : AamErrorCode {
         INVALID_RESPONSE,
         PARSING_ERROR,

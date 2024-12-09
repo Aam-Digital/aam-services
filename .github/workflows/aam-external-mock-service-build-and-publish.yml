@@ -1,85 +1,21 @@
-name: aam-backend-service-build-and-publish
+name: aam-external-mock-service-build-and-publish
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/aam-backend-service-build-and-publish.yml'
-      - 'application/aam-backend-service/**'
+      - '.github/workflows/aam-external-mock-service-build-and-publish.yml'
+      - 'application/aam-external-mock-service/**'
   push:
     tags:
       - "*"
     paths:
-      - '.github/workflows/aam-backend-service-build-and-publish.yml'
-      - 'application/aam-backend-service/**'
+      - '.github/workflows/aam-external-mock-service-build-and-publish.yml'
+      - 'application/aam-external-mock-service/**'
+
 env:
-  REGISTRY_IMAGE: ghcr.io/aam-digital/aam-backend-service
+  REGISTRY_IMAGE: ghcr.io/aam-digital/aam-external-mock-service
 
 jobs:
-  test:
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - linux/amd64
-          # - linux/arm64 # disabled until carbone/carbone-ee is available as arm64 docker image
-        os:
-          - ubuntu-latest
-          - [ self-hosted, Linux, ARM64 ]
-        exclude:
-          - platform: linux/arm64
-            os: ubuntu-latest
-          - platform: linux/amd64
-            os: [ self-hosted, Linux, ARM64 ]
-    runs-on: ${{ matrix.os }}
-    permissions:
-      packages: read
-      pull-requests: write
-    defaults:
-      run:
-        working-directory: application/aam-backend-service
-    steps:
-      - name: Checkout repository files
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'corretto'
-          java-version: 21
-          cache: 'gradle'
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PULL_SECRET }}
-
-      - name: Run Tests and generate Jacoco Test Report
-        env:
-          JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
-        run: |
-          ./gradlew jacocoTestReport --no-daemon
-
-      - name: Publish code coverage to code climate
-        uses: paambaati/codeclimate-action@v9.0.0
-        env:
-          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
-          JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
-        with:
-          coverageLocations: application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml:jacoco
-
-      - name: Add code coverage to PR
-        uses: madrapps/jacoco-report@v1.7.1
-        if: ${{ github.event.ref  == '' }}
-        with:
-          paths: application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml
-          token: ${{ secrets.GITHUB_TOKEN }}
-          min-coverage-overall: 80
-          min-coverage-changed-files: 80
-          title: Code Coverage Analyse
-          update-comment: true
-
   build:
     strategy:
       fail-fast: false
@@ -145,7 +81,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           platforms: ${{ matrix.platform }}
-          context: ./application/aam-backend-service
+          context: ./application/aam-external-mock-service
+          target: build
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha
@@ -204,18 +141,16 @@ jobs:
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
 
   publish:
-    name: Publish aam-backend-service Release
+    name: Publish aam-external-mock-service Release
     runs-on: ubuntu-latest
     if: ${{ github.event.ref  != '' }} # release
-    needs:
-      - test
     permissions:
       contents: write # to be able to publish a GitHub release
       issues: write # to be able to comment on released issues
       pull-requests: write # to be able to comment on released pull requests
     defaults:
       run:
-        working-directory: application/aam-backend-service
+        working-directory: application/aam-external-mock-service
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -231,7 +166,7 @@ jobs:
 
       - name: Set current tag and version
         run: |
-          CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'aam-backend-service/v*')
+          CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'aam-external-mock-service/v*')
           CURRENT_VERSION=$(echo $CURRENT_TAG | cut -d'/' -f2)
           echo "CURRENT_TAG=$CURRENT_TAG" >> $GITHUB_ENV
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
@@ -247,7 +182,7 @@ jobs:
             --calculation-mode "Batch" \
             --from-commit-hash ${{ env.FROM_COMMIT_HASH }} \
             --from-version ${{ env.CURRENT_VERSION }} \
-            --monorepo application/aam-backend-service)
+            --monorepo application/aam-external-mock-service)
           echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
 
       - name: Create Release
@@ -255,7 +190,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          TAG_NAME=aam-backend-service/${{ env.NEXT_VERSION }}
+          TAG_NAME=aam-external-mock-service/${{ env.NEXT_VERSION }}
           gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
