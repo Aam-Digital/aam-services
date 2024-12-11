@@ -43,7 +43,7 @@ class SkillAdminController(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @GetMapping("/sync")
-    @PreAuthorize("hasAuthority('ROLE_aam_skill_admin')")
+    @PreAuthorize("hasAuthority('ROLE_skill_admin')")
     fun fetchSyncStatus(): ResponseEntity<List<SkillDto>> {
         val result = skillLabUserProfileSyncRepository.findAll().mapNotNull {
             SkillDto(
@@ -60,7 +60,7 @@ class SkillAdminController(
      * For details of parameters like syncMode, see docs/api-specs/skill-api-v1.yaml
      */
     @PostMapping("/sync/{projectId}")
-    @PreAuthorize("hasAuthority('ROLE_aam_skill_admin')")
+    @PreAuthorize("hasAuthority('ROLE_skill_admin')")
     fun triggerSync(
         @PathVariable projectId: String,
         syncMode: SyncModeDto = SyncModeDto.DELTA,
