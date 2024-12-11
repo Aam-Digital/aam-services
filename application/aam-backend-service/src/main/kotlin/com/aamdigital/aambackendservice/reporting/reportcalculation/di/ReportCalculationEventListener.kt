@@ -5,7 +5,7 @@ import com.aamdigital.aambackendservice.reporting.domain.event.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.di.ReportCalculationQueueConfiguration.Companion.REPORT_CALCULATION_EVENT_QUEUE
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.observation.Observation
 import io.micrometer.observation.ObservationRegistry
 import org.slf4j.LoggerFactory
@@ -28,7 +28,8 @@ import org.springframework.stereotype.Component
 )
 class ReportCalculationEventListener(
     val observationRegistry: ObservationRegistry,
-    val reportCalculationUseCase: DefaultReportCalculationUseCase
+    val reportCalculationUseCase: DefaultReportCalculationUseCase,
+    val objectMapper: ObjectMapper,
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -63,7 +64,7 @@ class ReportCalculationEventListener(
                     response.cause
                 )
 
-                is UseCaseOutcome.Success -> logger.trace(jacksonObjectMapper().writeValueAsString(response))
+                is UseCaseOutcome.Success -> logger.trace(objectMapper.writeValueAsString(response))
             }
 
         }

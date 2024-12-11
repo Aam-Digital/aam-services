@@ -24,6 +24,7 @@ object TestContainers {
         CONTAINER_COUCHDB.start()
         CONTAINER_SQS.start()
         CONTAINER_PDF.start()
+        CONTAINER_POSTGRES.start()
         registry.add(
             "spring.security.oauth2.resourceserver.jwt.issuer-uri"
         ) {
@@ -49,6 +50,12 @@ object TestContainers {
         ) {
             "http://localhost:${CONTAINER_KEYCLOAK.getMappedPort(8080)}" +
                     "/realms/dummy-realm/protocol/openid-connect/token"
+        }
+        registry.add(
+            "spring.datasource.url",
+        ) {
+            "jdbc:postgresql://localhost:${CONTAINER_POSTGRES.getMappedPort(5432)}" +
+                    "/aam_backend_service_test"
         }
     }
 
@@ -86,6 +93,25 @@ object TestContainers {
                 )
             )
             .withExposedPorts(5984)
+
+    @Container
+    @JvmStatic
+    val CONTAINER_POSTGRES: GenericContainer<*> =
+        GenericContainer(
+            DockerImageName
+                .parse("postgres")
+                .withTag("16.5-bookworm")
+        )
+            .withNetwork(network)
+            .withNetworkAliases("postgres")
+            .withEnv(
+                mapOf(
+                    Pair("POSTGRES_DB", "aam_backend_service_test"),
+                    Pair("POSTGRES_USER", "admin"),
+                    Pair("POSTGRES_PASSWORD", "docker"),
+                )
+            )
+            .withExposedPorts(5432)
 
     @Container
     @JvmStatic
