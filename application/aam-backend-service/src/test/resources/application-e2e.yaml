@@ -6,11 +6,15 @@ spring:
   jackson:
     deserialization:
       accept-empty-string-as-null-object: true
+      read-unknown-enum-values-using-default-value: true
+  rabbitmq:
+    listener:
+      simple:
+        prefetch: 1
   datasource:
-    driver-class-name: org.h2.Driver
-    username: local
-    password: local
-    url: jdbc:h2:file:./test-data/dbh2;DB_CLOSE_DELAY=-1
+    driver-class-name: org.postgresql.Driver
+    username: admin
+    password: docker
   jpa:
     generate-ddl: true
     hibernate:
@@ -18,15 +22,13 @@ spring:
   threads:
     virtual:
       enabled: true
-  rabbitmq:
-    virtual-host: /
-    listener:
-      direct:
-        retry:
-          enabled: true
-          max-attempts: 5
+  servlet:
+    multipart:
+      max-file-size: 5MB
 
 server:
+  servlet:
+    context-path: /
   port: 9000
 
 management:
@@ -40,6 +42,10 @@ management:
         include:
           - info
           - health
+
+  tracing:
+    sampling:
+      probability: 0
 
 aam-render-api-client-configuration:
   auth-config:
@@ -58,6 +64,11 @@ sqs-client-configuration:
   base-path: http://localhost:4984
   basic-auth-username: admin
   basic-auth-password: docker
+
+events:
+  listener:
+    report-calculation:
+      enabled: true
 
 database-change-detection:
   enabled: false
