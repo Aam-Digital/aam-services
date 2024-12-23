@@ -135,7 +135,10 @@ features:
   export-api:
     enabled: false
   skill-api:
-    mode: skilllab
+    mode: disabled
+  notification-api:
+    enabled: false
+    mode: firebase
 
 crypto-configuration:
   secret: super-duper-secret
