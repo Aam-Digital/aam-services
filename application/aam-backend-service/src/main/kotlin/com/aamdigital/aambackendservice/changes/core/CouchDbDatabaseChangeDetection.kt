@@ -1,13 +1,13 @@
-package com.aamdigital.aambackendservice.reporting.changes.core
+package com.aamdigital.aambackendservice.changes.core
 
+import com.aamdigital.aambackendservice.changes.di.ChangesQueueConfiguration.Companion.DB_CHANGES_QUEUE
+import com.aamdigital.aambackendservice.changes.domain.DatabaseChangeEvent
+import com.aamdigital.aambackendservice.changes.repository.SyncEntry
+import com.aamdigital.aambackendservice.changes.repository.SyncRepository
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
-import com.aamdigital.aambackendservice.reporting.changes.di.ChangesQueueConfiguration.Companion.DB_CHANGES_QUEUE
-import com.aamdigital.aambackendservice.reporting.changes.repository.SyncEntry
-import com.aamdigital.aambackendservice.reporting.changes.repository.SyncRepository
-import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
 import com.fasterxml.jackson.databind.node.ObjectNode
 import java.util.*
 import kotlin.jvm.optionals.getOrDefault

@@ -27,13 +27,13 @@ class ReportQueueConfiguration {
         .durable(DOCUMENT_CHANGES_REPORT_QUEUE)
         .build()
 
-    @Bean
-    fun documentChangesBinding(
+    @Bean("report-document-changes-exchange")
+    fun reportDocumentChangesBinding(
         @Qualifier("report-config-changes-queue") queue: Queue,
         @Qualifier("document-changes-exchange") exchange: FanoutExchange,
     ): Binding = BindingBuilder.bind(queue).to(exchange)
 
-    @Bean
+    @Bean("report-document-changes-consumer")
     fun reportDocumentChangeEventConsumer(
         messageParser: QueueMessageParser,
         createReportCalculationUseCase: CreateReportCalculationUseCase,

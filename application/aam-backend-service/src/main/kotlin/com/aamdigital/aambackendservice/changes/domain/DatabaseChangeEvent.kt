@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.reporting.domain.event
+package com.aamdigital.aambackendservice.changes.domain
 
 import com.aamdigital.aambackendservice.events.DomainEvent
 

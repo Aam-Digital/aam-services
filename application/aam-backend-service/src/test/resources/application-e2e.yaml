@@ -42,7 +42,6 @@ management:
         include:
           - info
           - health
-
   tracing:
     sampling:
       probability: 0
@@ -77,6 +76,9 @@ features:
   skill-api:
     mode: disabled
 
+crypto-configuration:
+  secret: super-duper-secret
+
 events:
   listener:
     report-calculation:
@@ -84,9 +86,6 @@ events:
 
 database-change-detection:
   enabled: false
-
-crypto-configuration:
-  secret: super-duper-secret
 
 sentry:
   logging:

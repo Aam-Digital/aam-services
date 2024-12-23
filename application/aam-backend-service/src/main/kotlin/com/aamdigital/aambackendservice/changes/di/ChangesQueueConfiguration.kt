@@ -1,11 +1,11 @@
-package com.aamdigital.aambackendservice.reporting.changes.di
+package com.aamdigital.aambackendservice.changes.di
 
+import com.aamdigital.aambackendservice.changes.core.ChangeEventPublisher
+import com.aamdigital.aambackendservice.changes.core.CreateDocumentChangeUseCase
+import com.aamdigital.aambackendservice.changes.core.DatabaseChangeEventConsumer
+import com.aamdigital.aambackendservice.changes.queue.DefaultChangeEventPublisher
+import com.aamdigital.aambackendservice.changes.queue.DefaultDatabaseChangeEventConsumer
 import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
-import com.aamdigital.aambackendservice.reporting.changes.core.ChangeEventPublisher
-import com.aamdigital.aambackendservice.reporting.changes.core.CreateDocumentChangeUseCase
-import com.aamdigital.aambackendservice.reporting.changes.core.DatabaseChangeEventConsumer
-import com.aamdigital.aambackendservice.reporting.changes.queue.DefaultChangeEventPublisher
-import com.aamdigital.aambackendservice.reporting.changes.queue.DefaultDatabaseChangeEventConsumer
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder

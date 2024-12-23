@@ -1,12 +1,12 @@
-package com.aamdigital.aambackendservice.reporting.changes.queue
+package com.aamdigital.aambackendservice.changes.queue
 
+import com.aamdigital.aambackendservice.changes.core.ChangeEventPublisher
+import com.aamdigital.aambackendservice.changes.domain.DatabaseChangeEvent
+import com.aamdigital.aambackendservice.changes.domain.DocumentChangeEvent
 import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.queue.core.QueueMessage
-import com.aamdigital.aambackendservice.reporting.changes.core.ChangeEventPublisher
-import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
-import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpException
