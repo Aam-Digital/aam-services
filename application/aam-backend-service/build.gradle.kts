@@ -54,7 +54,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor") // needed in some tests
 
     runtimeOnly("org.postgresql:postgresql:42.7.4")
-    runtimeOnly("com.h2database:h2")
 
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 
@@ -81,7 +80,7 @@ dependencies {
         }
     }
     testImplementation("org.testcontainers:rabbitmq:1.19.7")
-    testImplementation("com.github.dasniko:testcontainers-keycloak:3.4.0") {
+    testImplementation("com.github.dasniko:testcontainers-keycloak:3.5.1") {
         constraints {
             testImplementation("org.apache.james:apache-mime4j-core:0.8.11") {
                 because("previous versions have security issues")
@@ -92,6 +91,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.springframework.security:spring-security-test")
+    testImplementation(kotlin("test"))
 }
 
 jacoco {
