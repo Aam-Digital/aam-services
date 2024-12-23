@@ -50,7 +50,7 @@ class SkillController(
     }
 
     @GetMapping("/user-profile")
-    @PreAuthorize("hasAnyAuthority('ROLE_aam_skill_reader')")
+    @PreAuthorize("hasAnyAuthority('ROLE_skill_reader')")
     fun fetchUserProfiles(
         fullName: String = "",
         email: String = "",
@@ -112,7 +112,7 @@ class SkillController(
     }
 
     @GetMapping("/user-profile/{id}")
-    @PreAuthorize("hasAuthority('ROLE_aam_skill_reader')")
+    @PreAuthorize("hasAuthority('ROLE_skill_reader')")
     fun fetchUserProfile(
         @PathVariable id: String,
     ): ResponseEntity<Any> {
