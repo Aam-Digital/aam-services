@@ -31,7 +31,7 @@ aam.localhost:80, aam.localhost:443 {
     }
 
     handle_path /api* {
-      # reverse_proxy http://host.docker.internal:9000 # local running app
+        # reverse_proxy http://host.docker.internal:9000 # local running app
         reverse_proxy aam-backend-service:8080 # docker container
     }
 

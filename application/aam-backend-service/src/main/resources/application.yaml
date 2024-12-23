@@ -13,8 +13,6 @@ spring:
         prefetch: 1
   datasource:
     driver-class-name: org.postgresql.Driver
-    username: admin
-    password: docker
   jpa:
     generate-ddl: true
     hibernate:
@@ -144,6 +142,9 @@ features:
     enabled: false
   skill-api:
     mode: disabled
+  notification-api:
+    enabled: false
+    mode: firebase
 
 crypto-configuration:
   secret: super-duper-secret

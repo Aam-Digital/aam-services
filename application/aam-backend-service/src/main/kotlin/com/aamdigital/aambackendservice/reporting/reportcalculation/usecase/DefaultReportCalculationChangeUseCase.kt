@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.usecase
 
+import com.aamdigital.aambackendservice.changes.domain.DocumentChangeEvent
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
-import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
 import com.aamdigital.aambackendservice.reporting.notification.core.NotificationService
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
