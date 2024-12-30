@@ -102,7 +102,7 @@ class SkillLabClient(
 
                 if (clientResponse.statusCode.is2xxSuccessful) {
                     val skillLabResponse =
-                        objectMapper.readValue(response, SkillLabProfileResponseDto::class.java) // todo try catch
+                        objectMapper.readValue(response, SkillLabProfileResponseDto::class.java)
 
                     skillLabResponse
                 } else {
