@@ -27,7 +27,6 @@ class AamAuthenticationConverter : Converter<Jwt, AbstractAuthenticationToken> {
         }
 
         return roles
-            .filter { it.startsWith("aam_") }
             .map {
                 SimpleGrantedAuthority("ROLE_$it")
             }
