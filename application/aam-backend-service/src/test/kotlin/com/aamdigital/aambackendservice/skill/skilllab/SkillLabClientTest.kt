@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.data.domain.Pageable
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -48,7 +49,7 @@ class SkillLabClientTest {
     }
 
     @Test
-    fun `should throw ExternalSystemException when external api returns invalid response`() {
+    fun `fetchUserProfile() should throw ExternalSystemException when external api returns invalid response`() {
         // given
         mockWebServer.enqueue(
             MockResponse()
@@ -66,7 +67,7 @@ class SkillLabClientTest {
     }
 
     @Test
-    fun `should parse valid 2xx response to SkillLabProfileResponseDto`() {
+    fun `fetchUserProfile() should parse valid 2xx response to SkillLabProfileResponseDto`() {
         // given
         mockWebServer.enqueue(
             MockResponse().setBody(
@@ -139,7 +140,7 @@ class SkillLabClientTest {
     }
 
     @Test
-    fun `should parse 4xx response to SkillLabErrorResponseDto`() {
+    fun `fetchUserProfile() should parse 4xx response to SkillLabErrorResponseDto`() {
         // given
         mockWebServer.enqueue(
             MockResponse().setResponseCode(400).setBody(
@@ -163,6 +164,91 @@ class SkillLabClientTest {
             block = {
                 // when
                 service.fetchUserProfile(DomainReference("user-profile-1"))
+            }
+        )
+    }
+
+    @Test
+    fun `fetchUserProfiles() should throw ExternalSystemException when external api returns invalid response`() {
+        // given
+        mockWebServer.enqueue(
+            MockResponse()
+        )
+
+        // then
+        assertFailsWith(
+            exceptionClass = ExternalSystemException::class,
+            message = "Empty or invalid response from server",
+            block = {
+                // when
+                service.fetchUserProfiles(pageable = Pageable.ofSize(10), updatedFrom = null)
+            }
+        )
+    }
+
+    @Test
+    fun `fetchUserProfiles() should parse valid 2xx response to SkillLabProfilesResponseDto`() {
+        // given
+        mockWebServer.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "pagination": {
+                    "currentPage": 1,
+                    "pageSize": 10,
+                    "totalPages": 1,
+                    "totalElements": 2
+                  },
+                  "results": [
+                    {
+                      "id": "00000000-0000-0000-0000-000000001230"
+                    },
+                    {
+                      "id": "00000000-0000-0000-0000-000000004560"
+                    }
+                  ]
+                }
+                """.trimIndent()
+            )
+        )
+
+        // when
+        val response = service.fetchUserProfiles(
+            pageable = Pageable.ofSize(10),
+            updatedFrom = " "
+        )
+
+        // then
+        assertThat(response).isInstanceOf(List::class.java)
+        assertEquals("00000000-0000-0000-0000-000000001230", response.first().id)
+        assertEquals("00000000-0000-0000-0000-000000004560", response.last().id)
+    }
+
+    @Test
+    fun `fetchUserProfiles() should parse 4xx response to SkillLabErrorResponseDto`() {
+        // given
+        mockWebServer.enqueue(
+            MockResponse().setResponseCode(400).setBody(
+                """
+                {
+                  "error": {
+                    "code": 400,
+                    "title": "example-exception-title",
+                    "message": "example-exception-message",
+                    "detail": "example-exception-detail"
+                  }
+                }
+                """.trimIndent()
+            )
+        )
+
+        // then
+        assertFailsWith(
+            exceptionClass = ExternalSystemException::class,
+            message = "example-exception-message",
+            block = {
+                // when
+                service.fetchUserProfiles(pageable = Pageable.ofSize(10), updatedFrom = "2024-09-26T18:58:50.271Z")
             }
         )
     }
