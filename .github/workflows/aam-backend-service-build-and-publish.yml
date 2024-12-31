@@ -7,7 +7,7 @@ on:
       - 'application/aam-backend-service/**'
   push:
     tags:
-      - "aam-backend-service/*"
+      - 'aam-backend-service/**'
     branches:
       - main
     paths:
@@ -270,7 +270,7 @@ jobs:
       - name: Create Release
         if: env.CURRENT_VERSION != env.NEXT_VERSION
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           TAG_NAME=aam-backend-service/${{ env.NEXT_VERSION }}
           gh api \
