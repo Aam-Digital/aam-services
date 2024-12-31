@@ -7,7 +7,7 @@ and import certain properties from matched external records into our entities vi
 
 ## Architecture
 
-TODO: diagram of use cases and services
+![Skill Module Overview](../assets/skill-module-overview.png)
 
 ## Setup
 
