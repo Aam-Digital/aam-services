@@ -1,15 +1,13 @@
 name: aam-backend-service-build-and-publish
 
 on:
-  release:
-    types: [ released ]
   pull_request:
     paths:
       - '.github/workflows/aam-backend-service-build-and-publish.yml'
       - 'application/aam-backend-service/**'
   push:
     tags:
-      - "*"
+      - "aam-backend-service/*"
     branches:
       - main
     paths:
@@ -126,7 +124,7 @@ jobs:
         with:
           tags: |
             type=ref,enable=true,event=pr
-            type=semver,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=branch
+            type=ref,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=branch
             type=semver,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=tag
           images: ${{ env.REGISTRY_IMAGE }}
 
@@ -207,7 +205,7 @@ jobs:
         with:
           tags: |
             type=ref,enable=true,event=pr
-            type=semver,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=branch
+            type=ref,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=branch
             type=semver,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=tag
           images: ${{ env.REGISTRY_IMAGE }}
 
