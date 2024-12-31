@@ -19,13 +19,14 @@ class SecurityConfiguration {
     fun filterChain(
         http: HttpSecurity,
         aamAuthenticationConverter: AamAuthenticationConverter,
+        aamAccessDeniedHandler: AamAccessDeniedHandler,
         objectMapper: ObjectMapper,
     ): SecurityFilterChain {
         http {
             authorizeRequests {
                 authorize(HttpMethod.GET, "/", permitAll)
-                authorize(HttpMethod.GET, "/actuator", permitAll)
-                authorize(HttpMethod.GET, "/actuator/**", permitAll)
+                authorize(HttpMethod.GET, "/actuator/health/liveness", permitAll)
+                authorize(HttpMethod.GET, "/actuator/health/readiness", permitAll)
                 authorize(anyRequest, authenticated)
             }
             httpBasic {
@@ -41,6 +42,7 @@ class SecurityConfiguration {
                 sessionCreationPolicy = SessionCreationPolicy.STATELESS
             }
             exceptionHandling {
+                accessDeniedHandler = aamAccessDeniedHandler
                 authenticationEntryPoint =
                     AamAuthenticationEntryPoint(
                         parentEntryPoint = BearerTokenAuthenticationEntryPoint(),
