@@ -77,7 +77,6 @@ data class SkillLabProfileDto(
     var experiences: List<SkillLabExperienceDto> = emptyList(),
     @JsonProperty("updated_at")
     var updatedAt: String?,
-//    var languages: List<LanguageEntity>,
 )
 
 enum class SkillLabUserProfileStorageAamErrorCode : AamErrorCode {
