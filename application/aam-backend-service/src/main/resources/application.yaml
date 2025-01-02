@@ -13,8 +13,6 @@ spring:
         prefetch: 1
   datasource:
     driver-class-name: org.postgresql.Driver
-    username: admin
-    password: docker
   jpa:
     generate-ddl: true
     hibernate:

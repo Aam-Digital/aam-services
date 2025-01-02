@@ -1,0 +1,38 @@
+name: aam-backend-service-notification-api
+services:
+  couchdb:
+    image: couchdb:3
+    container_name: database
+    ports:
+      - "5984:5984"
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: docker
+    restart: unless-stopped
+
+  aam-backend-service:
+    image: ghcr.io/aam-digital/aam-backend-service:pr-58
+    container_name: aam-backend-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - aam-backend-service-db
+      - rabbitmq
+    env_file:
+      - ./application.env
+      - ./secrets.env
+    restart: unless-stopped
+
+  aam-backend-service-db:
+    image: postgres:16.6-bookworm
+    container_name: aam-backend-service-db
+    environment:
+      POSTGRES_DB: aam-backend-service
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: docker
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
