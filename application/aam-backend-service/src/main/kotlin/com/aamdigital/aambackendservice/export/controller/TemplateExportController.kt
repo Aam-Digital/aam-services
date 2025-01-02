@@ -16,6 +16,7 @@ import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -73,6 +74,12 @@ sealed interface TemplateExportControllerResponse {
  */
 @RestController
 @RequestMapping("/v1/export")
+@ConditionalOnProperty(
+    prefix = "features.export-api",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 @Validated
 class TemplateExportController(
     private val createTemplateUseCase: CreateTemplateUseCase,

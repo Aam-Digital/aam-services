@@ -46,6 +46,8 @@ management:
       probability: 1
 
 features:
+  export-api:
+    enabled: false
   skill-api:
     mode: disabled
 
@@ -58,8 +60,8 @@ events:
 logging:
   logback:
     rollingpolicy:
-      max-file-size: 100MB
-      total-size-cap: 100MB
+      max-file-size: 50MB
+      total-size-cap: 50MB
       clean-history-on-start: true
 
 ---
@@ -130,8 +132,13 @@ skilllab-api-client-configuration:
   response-timeout-in-seconds: 15
 
 features:
+  export-api:
+    enabled: false
   skill-api:
     mode: skilllab
+
+crypto-configuration:
+  secret: super-duper-secret
 
 events:
   listener:
@@ -144,6 +151,10 @@ database-change-detection:
 sentry:
   logging:
     enabled: false
+
+# sentry version
+application:
+  version: local-dev-build
 
 management:
   otlp:
