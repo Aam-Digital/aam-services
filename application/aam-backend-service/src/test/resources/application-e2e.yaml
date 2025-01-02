@@ -72,6 +72,8 @@ skilllab-api-client-configuration:
   response-timeout-in-seconds: 15
 
 features:
+  export-api:
+    enabled: true
   skill-api:
     mode: disabled
 
@@ -90,6 +92,10 @@ sentry:
   logging:
     enabled: false
 
+# sentry version
+application:
+  version: application-e2e-test-build
+
 logging:
   level:
-    com.aamdigital.aambackendservice: trace
+    com.aamdigital.aambackendservice: warn

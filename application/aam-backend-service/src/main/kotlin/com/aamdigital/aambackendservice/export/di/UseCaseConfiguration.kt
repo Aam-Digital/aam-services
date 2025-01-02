@@ -11,11 +11,18 @@ import com.aamdigital.aambackendservice.export.usecase.DefaultFetchTemplateUseCa
 import com.aamdigital.aambackendservice.export.usecase.DefaultRenderTemplateUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.client.RestClient
 
 @Configuration
+@ConditionalOnProperty(
+    prefix = "features.export-api",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 class UseCaseConfiguration {
     @Bean(name = ["default-template-storage"])
     fun defaultTemplateStorage(
