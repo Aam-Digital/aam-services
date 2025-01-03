@@ -44,7 +44,7 @@ paths:
           description: Device registration was removed
 
   /message/device-test:
-    delete:
+    post:
       summary: Send a hello-world notification to all registered devices of the current user
       tags:
         - message
