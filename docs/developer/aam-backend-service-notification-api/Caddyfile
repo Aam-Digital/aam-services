@@ -1,0 +1,12 @@
+:80 {
+    handle_path /auth* {
+        reverse_proxy keycloak:8080 {
+            header_up Host {host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle {
+        respond "Hello. This is Caddy." 200
+    }
+}
