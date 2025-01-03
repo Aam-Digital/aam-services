@@ -76,6 +76,8 @@ services:
     command: "start --proxy-headers forwarded"
     volumes:
       - ~/docker-volumes/aam-digital/aam-services/keycloak/data:/opt/keycloak/data
+      - ~/docker-volumes/aam-digital/aam-services/keycloak/themes:/opt/keycloak/themes
+      -
     environment:
       KC_HTTP_ENABLED: true
       KC_HOSTNAME: http://localhost/auth
