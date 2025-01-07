@@ -73,9 +73,9 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8080/realms/dummy-realm
+          issuer-uri: https://localhost/auth/realms/dummy-realm
   rabbitmq:
-    virtual-host: local
+    #    virtual-host: local
     listener:
       direct:
         retry:
@@ -83,14 +83,16 @@ spring:
           max-attempts: 5
       simple:
         observation-enabled: true
-    username: local-spring
-    password: docker
+  #    username: local-spring
+  #    password: docker
   datasource:
     url: jdbc:postgresql://localhost:5402/aam-backend-service
     username: admin
     password: docker
 
 server:
+  servlet:
+    context-path: /
   error:
     include-message: always
     include-binding-errors: always
@@ -114,19 +116,19 @@ aam-render-api-client-configuration:
 #   scope: <needs-environment-configuration>
 
 couch-db-client-configuration:
-  base-path: http://localhost:5984
+  base-path: https://localhost/db/couchdb
   basic-auth-username: admin
   basic-auth-password: docker
 
 sqs-client-configuration:
-  base-path: http://localhost:4984
+  base-path: https://localhost/sqs
   basic-auth-username: admin
   basic-auth-password: docker
 
 skilllab-api-client-configuration:
   api-key: skilllab-api-key
   project-id: dummy-project
-  base-path: http://localhost:9005/skilllab
+  base-path: https://localhost/skilllab
   response-timeout-in-seconds: 15
 
 features:
@@ -135,7 +137,7 @@ features:
   skill-api:
     mode: disabled
   notification-api:
-    enabled: false
+    enabled: true
     mode: firebase
 
 crypto-configuration:
@@ -157,7 +159,7 @@ sentry:
 application:
   version: local-dev-build
 
-management:
-  otlp:
-    tracing:
-      endpoint: http://localhost:4318/v1/traces
+#management:
+#  otlp:
+#    tracing:
+#      endpoint: http://localhost:4318/v1/traces
