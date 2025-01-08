@@ -73,7 +73,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: https://localhost/auth/realms/dummy-realm
+          issuer-uri: https://aam.local/auth/realms/dummy-realm
   rabbitmq:
     #    virtual-host: local
     listener:
@@ -116,19 +116,19 @@ aam-render-api-client-configuration:
 #   scope: <needs-environment-configuration>
 
 couch-db-client-configuration:
-  base-path: https://localhost/db/couchdb
+  base-path: https://aam.local/db/couchdb
   basic-auth-username: admin
   basic-auth-password: docker
 
 sqs-client-configuration:
-  base-path: https://localhost/sqs
+  base-path: https://aam.local/sqs
   basic-auth-username: admin
   basic-auth-password: docker
 
 skilllab-api-client-configuration:
   api-key: skilllab-api-key
   project-id: dummy-project
-  base-path: https://localhost/skilllab
+  base-path: https://aam.local/skilllab
   response-timeout-in-seconds: 15
 
 features:
