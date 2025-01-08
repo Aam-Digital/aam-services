@@ -20,7 +20,6 @@ class SecurityConfiguration {
         http: HttpSecurity,
         aamAuthenticationConverter: AamAuthenticationConverter,
         aamAccessDeniedHandler: AamAccessDeniedHandler,
-        localDevelopmentJwtDecoder: LocalDevelopmentJwtDecoder,
         objectMapper: ObjectMapper,
     ): SecurityFilterChain {
         http {
@@ -53,7 +52,6 @@ class SecurityConfiguration {
             }
             oauth2ResourceServer {
                 jwt {
-                    jwtDecoder = localDevelopmentJwtDecoder
                     jwtAuthenticationConverter = aamAuthenticationConverter
                     authenticationEntryPoint =
                         AamAuthenticationEntryPoint(
