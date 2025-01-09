@@ -187,8 +187,9 @@ docker compose down && docker compose up -d
 - Update `environment.ts` or `assets/config.json` with the following settings, in order to run the app in "synced" mode using the backend services:
 
 ```
-"session_type": "synced",
-"demo_mode": false
+session_type: "synced",
+demo_mode: false,
+account_url: "https://aam.localhost/accounts-backend"
 ```
 
 - Update `keycloak.json` with the following settings

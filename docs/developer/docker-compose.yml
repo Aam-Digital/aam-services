@@ -74,6 +74,29 @@ services:
       - "15672:15672"
 
   # ***************************************************************
+  # accounts-backend
+  # ***************************************************************
+
+  accounts-backend:
+    image: aamdigital/account-ms:latest
+    depends_on:
+      - keycloak
+    external_links:
+      - reverse-proxy:aam.localhost
+    platform: linux/amd64
+    environment:
+      CORS: "*"
+      SENTRY_DSN: ""
+      SENTRY_ENABLED: false
+      SENTRY_INSTANCE_NAME: ""
+      SENTRY_ENVIRONMENT: ""
+      KEYCLOAK_URL: https://aam.localhost/auth
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_PASSWORD: docker
+      NODE_TLS_REJECT_UNAUTHORIZED: 0 # never use this in production
+    restart: unless-stopped
+
+  # ***************************************************************
   # replication-backend
   # ***************************************************************
 
