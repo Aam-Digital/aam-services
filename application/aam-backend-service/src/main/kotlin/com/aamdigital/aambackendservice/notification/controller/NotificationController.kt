@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -44,7 +45,7 @@ class NotificationController(
     @Validated
     fun registerDevice(
         @RequestBody deviceRegistrationDto: DeviceRegistrationDto,
-        authentication: Authentication,
+        authentication: JwtAuthenticationToken,
     ): ResponseEntity<Any> {
 
         if (userDeviceRepository.existsByDeviceToken(deviceRegistrationDto.deviceToken)) {
@@ -58,7 +59,7 @@ class NotificationController(
 
         userDeviceRepository.save(
             UserDeviceEntity(
-                userIdentifier = authentication.name,
+                userIdentifier = authentication.name ?: authentication.tokenAttributes["username"].toString(),
                 deviceToken = deviceRegistrationDto.deviceToken,
                 deviceName = deviceRegistrationDto.deviceName,
             )
@@ -84,7 +85,7 @@ class NotificationController(
                 )
             )
         }
-        
+
         try {
             userDeviceRepository.deleteByDeviceToken(id)
         } catch (ex: IOException) {
