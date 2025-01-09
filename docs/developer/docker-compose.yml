@@ -38,8 +38,8 @@ services:
     command: "start --proxy-headers forwarded"
     environment:
       KC_HTTP_ENABLED: true
-      KC_HOSTNAME: https://aam.local/auth
-      KC_FRONTEND_URL: https://aam.local/auth
+      KC_HOSTNAME: https://aam.localhost/auth
+      KC_FRONTEND_URL: https://aam.localhost/auth
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://db-keycloak:5432/postgres
       KC_DB_SCHEMA: public
@@ -103,7 +103,7 @@ services:
     image: ghcr.io/aam-digital/aam-backend-service:${AAM_BACKEND_SERVICE_VERSION:-latest}
     container_name: aam-backend-service
     external_links:
-      - reverse-proxy:aam.local
+      - reverse-proxy:aam.localhost
     depends_on:
       - aam-backend-service-db
       - rabbitmq

@@ -1,8 +1,9 @@
 {
-	local_certs
+  local_certs
+  auto_https disable_redirects
 }
 
-aam.local:80, aam.local:443 {
+aam.localhost:80, aam.localhost:443 {
 	handle_path /auth* {
 		reverse_proxy keycloak:8080 {
 			header_up Host {host}
