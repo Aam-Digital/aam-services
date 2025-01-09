@@ -39,7 +39,7 @@ class DevelopmentNimbusJwtDecoder {
         HttpsURLConnection.setDefaultSSLSocketFactory(sc.socketFactory)
 
         return NimbusJwtDecoder
-            .withJwkSetUri(
+            .withIssuerLocation(
                 "https://aam.localhost/auth/realms/dummy-realm"
             )
             .restOperations(RestTemplate())
