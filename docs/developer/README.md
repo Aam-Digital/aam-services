@@ -47,8 +47,21 @@ All container will communicate directly over the docker network.
 
 ### reverse-proxy
 
-The stack includes a caddy reverse-proxy that runs on https://localhost - SSL is enabled by default. However, this certificate is self-signed
+The stack includes a caddy reverse-proxy that runs on https://aam.localhost/ - SSL is enabled by default. However, this certificate is self-signed
 and must be added manually as trustworthy.
+
+You also need to adapt your `/etc/hosts` file and add an entry for `aam.localhost` to `127.0.0.1`:
+
+```bash
+sudo nano /etc/hosts
+```
+
+Add another line for `aam.localhsot`:
+
+```
+127.0.0.1       localhost
+127.0.0.1       aam.localhost
+```
 
 #### add self-signed certificate
 
@@ -84,24 +97,24 @@ docker compose up -d
 - Attention: sqs is a private repository for internal use only. If you don't have permissions,
   reach out to us or disable this block in the `docker-compose.yml` file
 
-You can test the running proxy by open [https://localhost/hello](https://localhost/hello) - You should see a welcome message.
+You can test the running proxy by open [https://aam.localhost/hello](https://aam.localhost/hello) - You should see a welcome message.
 When you see a SSL warning, follow the steps in `add self-signed certificate`
 
 ### Step 2: Configure Keycloak
 
-- Open the Keycloak Admin UI at [https://localhost/auth](https://localhost/auth) with the credentials defined in the docker-compose file.
+- Open the Keycloak Admin UI at [https://aam.localhost/auth](https://aam.localhost/auth) with the credentials defined in the docker-compose file.
 
   - username: `admin`
   - password: `docker`
 
 - Create a new realm called **dummy-realm** by importing the [realm configuration file](example-data/realm_config.dummy-realm.json).
-- Under **Keycloak Realm > Clients** ([https://localhost/auth/admin/master/console/#/dummy-realm/clients](https://localhost/auth/admin/master/console/#/dummy-realm/clients)),
+- Under **Keycloak Realm > Clients** ([https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients](https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients)),
   import the client configuration using [client_app_configuration](example-data/client_app.json).
 - In the new realm, create a user and assign relevant roles. (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.)
 
 ### Step 3: Set Up CouchDB (todo: improve this by automatic script)
 
-- Access CouchDB at [https://localhost/db/couchdb/_utils/#database/app/_all_docs](https://localhost/db/couchdb/_utils/#database/app/_all_docs).
+- Access CouchDB at [https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs](https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs).
 - Create some new databases:
   - `_users`
   - `app`
@@ -153,11 +166,11 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
 cp .env.example .env
 ```
 
-- Retrieve the `public_key` for **dummy-realm** from [https://localhost/auth/realms/dummy-realm](https://localhost/auth/realms/dummy-realm) and add it to the `.env` file as `REPLICATION_BACKEND_PUBLIC_KEY`.
+- Retrieve the `public_key` for **dummy-realm** from [https://aam.localhost/auth/realms/dummy-realm](https://aam.localhost/auth/realms/dummy-realm) and add it to the `.env` file as `REPLICATION_BACKEND_PUBLIC_KEY`.
 
 ```
 # from
-REPLICATION_BACKEND_PUBLIC_KEY=<the-content-of-"public_key"-from-here-https://localhost/auth/realms/dummy-realm>
+REPLICATION_BACKEND_PUBLIC_KEY=<the-content-of-"public_key"-from-here-https://aam.localhost/auth/realms/dummy-realm>
 
 # to
 REPLICATION_BACKEND_PUBLIC_KEY=MIIBI....
@@ -183,7 +196,7 @@ docker compose down && docker compose up -d
 ```
 {
   "realm": "dummy-realm",
-  "auth-server-url": "https://localhost/auth",
+  "auth-server-url": "https://aam.localhost/auth",
   "ssl-required": "external",
   "resource": "app",
   "public-client": true,
@@ -236,15 +249,15 @@ If you use the default `npm start` command, make sure to update the start comman
 
 ### Accessing the Local Environment
 
-- ndb-core (frontend): [https://localhost/](https://localhost/)
-- replication-backend: [https://localhost/replication-backend](https://localhost/replication-backend)
-  - additional proxy for ndb-core: [https://localhost/db](https://localhost/db)
-- aam-backend-service: [https://localhost/api](https://localhost/api)
-- maildev (smtp-trap): [https://localhost/maildev/](https://localhost/maildev/)
-- Keycloak: [https://localhost/auth](https://localhost/auth)
-- CouchDB: [https://localhost/db/couchdb](https://localhost/db/couchdb)
-- CouchDB Admin: [https://localhost/db/couchdb/_utils/](https://localhost/db/couchdb/_utils/) (the last "/" is important!)
-- RabbitMQ: [https://localhost/rabbitmq/](https://localhost/rabbitmq/) (the last "/" is important!)
+- ndb-core (frontend): [https://aam.localhost/](https://aam.localhost/)
+- replication-backend: [https://aam.localhost/replication-backend](https://aam.localhost/replication-backend)
+  - additional proxy for ndb-core: [https://aam.localhost/db](https://aam.localhost/db)
+- aam-backend-service: [https://aam.localhost/api](https://aam.localhost/api)
+- maildev (smtp-trap): [https://aam.localhost/maildev/](https://aam.localhost/maildev/)
+- Keycloak: [https://aam.localhost/auth](https://aam.localhost/auth)
+- CouchDB: [https://aam.localhost/db/couchdb](https://aam.localhost/db/couchdb)
+- CouchDB Admin: [https://aam.localhost/db/couchdb/_utils/](https://aam.localhost/db/couchdb/_utils/) (the last "/" is important!)
+- RabbitMQ: [https://aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/) (the last "/" is important!)
 
 ### developer credentials
 
