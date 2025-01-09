@@ -1,0 +1,54 @@
+{
+  local_certs
+  auto_https disable_redirects
+}
+
+aam.localhost:80, aam.localhost:443 {
+	handle_path /auth* {
+		reverse_proxy keycloak:8080 {
+			header_up Host {host}
+		}
+	}
+
+	handle_path /db/couchdb* {
+		reverse_proxy db-couch:5984
+	}
+
+	handle_path /db* {
+		reverse_proxy replication-backend:5984
+	}
+
+	handle_path /accounts-backend* {
+	  # reverse_proxy http://host.docker.internal:3000 # local running app
+		reverse_proxy accounts-backend:3000 # docker container
+	}
+
+	handle_path /replication-backend* {
+		reverse_proxy replication-backend:5984
+	}
+
+	handle_path /api* {
+	  # reverse_proxy http://host.docker.internal:9000 # local running app
+		reverse_proxy aam-backend-service:8080 # docker container
+	}
+
+	handle_path /sqs* {
+		reverse_proxy sqs:4984
+	}
+
+	handle_path /rabbitmq/* {
+		reverse_proxy rabbitmq:15672
+	}
+
+	handle_path /maildev/* {
+		reverse_proxy maildev:1080
+	}
+
+	handle_path /hello {
+		respond "Hello. This is aam-digital-reverse-proxy." 200
+	}
+
+	handle_path /* {
+		reverse_proxy http://host.docker.internal:4200
+	}
+}

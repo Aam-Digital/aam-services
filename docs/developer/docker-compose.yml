@@ -1,104 +1,185 @@
-# ***************************************************************
-# start local development environment (without application)
-# ***************************************************************
-name: aam-services
+name: aam-digital-developer-stack
 services:
-  maildev:
-    image: maildev/maildev
+  # ***************************************************************
+  # dev tools
+  # ***************************************************************
+  reverse-proxy:
+    image: caddy:2.9-alpine
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./container-data/caddy-authorities:/data/caddy/pki/authorities/local
     ports:
-      - "1025:1025"
-      - "1080:1080"
+      - "80:80"
+      - "443:443"
+      - "2019:2019"
+
+  maildev:
+    image: maildev/maildev:2.2.1
+
+  # ***************************************************************
+  # couchdb
+  # ***************************************************************
 
   db-couch:
-    image: couchdb:3.3
+    image: couchdb:3.4.2
     volumes:
-      - ~/docker-volumes/aam-digital/aam-services/db-couch/document-data:/opt/couchdb/data
-      - ~/docker-volumes/aam-digital/aam-services/db-couch/document-etc-locald:/opt/couchdb/etc/local.d
-      - ~/docker-volumes/aam-digital/aam-services/db-couch/document-log:/opt/couchdb/log
+      - ./container-data/db-couch/data:/opt/couchdb/data
+      - ./container-data/db-couch/local.d:/opt/couchdb/etc/local.d
     environment:
       COUCHDB_USER: admin
       COUCHDB_PASSWORD: docker
-      COUCHDB_SECRET: docker
-    ports:
-      - "5984:5984"
+
+  # ***************************************************************
+  # keycloak
+  # ***************************************************************
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7-0
+    command: "start --proxy-headers forwarded"
+    environment:
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME: https://aam.localhost/auth
+      KC_FRONTEND_URL: https://aam.localhost/auth
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db-keycloak:5432/postgres
+      KC_DB_SCHEMA: public
+      KC_DB_USERNAME: admin
+      KC_DB_PASSWORD: docker
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: docker
+    depends_on:
+      - db-keycloak
 
   db-keycloak:
     image: postgres:16
     volumes:
-      - ~/docker-volumes/aam-digital/aam-services/db-keycloak/postgresql-data:/var/lib/postgresql/data
+      - ./container-data/db-keycloak/data:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: keycloak
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: docker
     ports:
       - "5401:5432"
 
-  db-backend:
-    image: postgres:16.5-bookworm
+  # ***************************************************************
+  # rabbitmq
+  # ***************************************************************
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
     volumes:
-      - ~/docker-volumes/aam-digital/aam-services/db-backend/postgresql-data:/var/lib/postgresql/data
+      - ./container-data/rabbitmq/data:/var/lib/rabbitmq/
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  # ***************************************************************
+  # accounts-backend
+  # ***************************************************************
+
+  accounts-backend:
+    image: aamdigital/account-ms:latest
+    depends_on:
+      - keycloak
+    external_links:
+      - reverse-proxy:aam.localhost
+    platform: linux/amd64
+    environment:
+      CORS: "*"
+      SENTRY_DSN: ""
+      SENTRY_ENABLED: false
+      SENTRY_INSTANCE_NAME: ""
+      SENTRY_ENVIRONMENT: ""
+      KEYCLOAK_URL: https://aam.localhost/auth
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_PASSWORD: docker
+      NODE_TLS_REJECT_UNAUTHORIZED: 0 # never use this in production
+    restart: unless-stopped
+
+  # ***************************************************************
+  # replication-backend
+  # ***************************************************************
+
+  replication-backend:
+    image: ghcr.io/aam-digital/replication-backend:latest
+    depends_on:
+      - db-couch
+    environment:
+      DATABASE_URL: http://db-couch:5984
+      DATABASE_NAME: app
+      DATABASE_USER: admin
+      DATABASE_PASSWORD: docker
+      JWT_SECRET: someJwtSecret
+      JWT_PUBLIC_KEY: "-----BEGIN PUBLIC KEY-----\n${REPLICATION_BACKEND_PUBLIC_KEY:?REPLICATION_BACKEND_PUBLIC_KEY is not set}\n-----END PUBLIC KEY-----"
+      SENTRY_DSN: ""
+      SENTRY_ENABLED: false
+      SENTRY_INSTANCE_NAME: ""
+      SENTRY_ENVIRONMENT: ""
+      PORT: 5984
+    restart: unless-stopped
+
+  # ***************************************************************
+  # aam-backend-service
+  # ***************************************************************
+
+  aam-backend-service:
+    image: ghcr.io/aam-digital/aam-backend-service:${AAM_BACKEND_SERVICE_VERSION:-latest}
+    container_name: aam-backend-service
+    external_links:
+      - reverse-proxy:aam.localhost
+    depends_on:
+      - aam-backend-service-db
+      - rabbitmq
+    env_file:
+      - application.env
+      - secrets.env
+    restart: unless-stopped
+
+  aam-backend-service-db:
+    image: postgres:16.6-bookworm
+    container_name: aam-backend-service-db
     environment:
       POSTGRES_DB: aam-backend-service
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: docker
     ports:
       - "5402:5432"
+    restart: unless-stopped
 
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    volumes:
-      - ~/docker-volumes/aam-digital/aam-services/rabbitmq/data:/var/lib/rabbitmq/
-      - ~/docker-volumes/aam-digital/aam-services/rabbitmq/log:/var/log/rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+  # ***************************************************************
+  # aam-backend-service feature dependencies (todo)
+  # ***************************************************************
 
-  sqs:
-    image: ghcr.io/aam-digital/aam-sqs-mac:latest
-    platform: linux/amd64
-    depends_on:
-      - db-couch
-    ports:
-      - "4984:4984"
-    volumes:
-      - ~/docker-volumes/aam-digital/aam-services/sqs/data:/data
-    environment:
-      SQS_COUCHDB_URL: http://db-couch:5984
+  #  sqs:
+  #    image: ghcr.io/aam-digital/aam-sqs-mac:latest
+  #    platform: linux/amd64
+  #    depends_on:
+  #      - db-couch
+  #    ports:
+  #      - "4984:4984"
+  #    volumes:
+  #      - ~/docker-volumes/aam-digital/aam-services/sqs/data:/data
+  #    environment:
+  #      SQS_COUCHDB_URL: http://db-couch:5984
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0
-    volumes:
-      - ~/docker-volumes/aam-digital/aam-services/keycloak/data:/opt/keycloak/data
-      - ~/docker-volumes/aam-digital/aam-services/keycloak/themes:/opt/keycloak/themes
-    ports:
-      - "8080:8080"
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://db-keycloak:5432/postgres
-      KC_DB_SCHEMA: public
-      KC_DB_USERNAME: postgres
-      KC_DB_PASSWORD: keycloak
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: docker
-    depends_on:
-      - db-keycloak
-    command:
-      - start-dev
+  #  carbone-io:
+  #    image: carbone/carbone-ee
+  #    platform: linux/amd64
+  #    volumes:
+  #      - ~/docker-volumes/aam-digital/aam-services/carbone-io/template:/app/template
+  #      - ~/docker-volumes/aam-digital/aam-services/carbone-io/render:/app/render
+  #    ports:
+  #      - "4000:4000"
 
-  carbone-io:
-    image: carbone/carbone-ee
-    platform: linux/amd64
-    volumes:
-      - ~/docker-volumes/aam-digital/aam-services/carbone-io/template:/app/template
-      - ~/docker-volumes/aam-digital/aam-services/carbone-io/render:/app/render
-    ports:
-      - "4000:4000"
+  # ***************************************************************
+  # tracing and monitoring (todo)
+  # ***************************************************************
 
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    ports:
-      - "16686:16686" # the jaeger UI
-      - "4317:4317" # the OpenTelemetry collector grpc
-      - "4318:4318" # the OpenTelemetry collector http
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
+  #  jaeger:
+  #    image: jaegertracing/all-in-one:latest
+  #    ports:
+  #      - "16686:16686" # the jaeger UI
+  #      - "4317:4317" # the OpenTelemetry collector grpc
+  #      - "4318:4318" # the OpenTelemetry collector http
+  #    environment:
+  #      - COLLECTOR_OTLP_ENABLED=true
