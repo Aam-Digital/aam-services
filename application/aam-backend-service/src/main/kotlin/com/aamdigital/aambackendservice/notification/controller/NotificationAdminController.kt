@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.notification.controller
 import com.aamdigital.aambackendservice.notification.repositiory.UserDeviceRepository
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.MulticastMessage
+import com.google.firebase.messaging.Notification
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity
@@ -50,7 +51,7 @@ class NotificationAdminController(
 
         val message = MulticastMessage.builder()
             .addAllTokens(userDevices)
-            .putData("body", "Hello World")
+            .setNotification(Notification.builder().setTitle("Aam Digital Test").setBody("Hello World").build())
             .build()
 
         val response = firebaseMessaging.sendEachForMulticast(message)
