@@ -6,7 +6,7 @@ import com.google.firebase.messaging.MulticastMessage
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity
-import org.springframework.security.core.Authentication
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -30,12 +30,14 @@ class NotificationAdminController(
 
     @PostMapping("/message/device-test")
     fun sendTestMessageToDevice(
-        authentication: Authentication,
+        authentication: JwtAuthenticationToken,
     ): ResponseEntity<TestMessageResponse> {
         val userDevices =
-            userDeviceRepository.findByUserIdentifier(authentication.name, Pageable.unpaged())
+            userDeviceRepository.findByUserIdentifier(
+                authentication.name ?: authentication.tokenAttributes["username"].toString(), Pageable.unpaged()
+            )
                 .map {
-                    it.userIdentifier
+                    it.deviceToken
                 }.toList()
 
         if (userDevices.isEmpty()) {

@@ -47,6 +47,7 @@ services:
       KC_DB_PASSWORD: docker
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: docker
+      JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
     depends_on:
       - db-keycloak
 
@@ -133,6 +134,8 @@ services:
     env_file:
       - application.env
       - secrets.env
+    environment:
+      JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
     restart: unless-stopped
 
   aam-backend-service-db:

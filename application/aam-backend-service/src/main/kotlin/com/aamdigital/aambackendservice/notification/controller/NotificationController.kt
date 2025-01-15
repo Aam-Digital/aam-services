@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.validation.annotation.Validated
@@ -72,12 +71,14 @@ class NotificationController(
     @DeleteMapping("/device/{id}")
     fun unregisterDevice(
         @PathVariable id: String,
-        authentication: Authentication,
+        authentication: JwtAuthenticationToken,
     ): ResponseEntity<Any> {
         val userDevice =
             userDeviceRepository.findByDeviceToken(id).getOrNull() ?: return ResponseEntity.notFound().build()
 
-        if (userDevice.userIdentifier != authentication.name) {
+        if (userDevice.userIdentifier != (authentication.name
+                ?: authentication.tokenAttributes["username"].toString())
+        ) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                 HttpErrorDto(
                     errorCode = "Forbidden",
