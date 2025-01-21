@@ -50,7 +50,7 @@ class CouchDbTestingService(
     fun createDocument(database: String, documentName: String, documentContent: String) {
         val response = restTemplate
             .exchange(
-                "/$database/$documentName",
+                "/$database/${documentName.replaceFirst("_", ":")}",
                 HttpMethod.PUT,
                 HttpEntity(documentContent),
                 ObjectNode::class.java,
@@ -61,7 +61,12 @@ class CouchDbTestingService(
     fun addAttachment(database: String, documentName: String, attachmentName: String, documentContent: String) {
         val responseDocument = restTemplate
             .headForHeaders(
-                "/$database/$documentName",
+                "/$database/${
+                    documentName.replaceFirst(
+                        "_",
+                        ":"
+                    )
+                }",
             )
 
         val etag = responseDocument.eTag?.replace("\"", "")
@@ -71,7 +76,12 @@ class CouchDbTestingService(
 
         val response = restTemplate
             .exchange(
-                "/$database/$documentName/$attachmentName",
+                "/$database/${
+                    documentName.replaceFirst(
+                        "_",
+                        ":"
+                    )
+                }/$attachmentName",
                 HttpMethod.PUT,
                 HttpEntity(documentContent, headers),
                 ObjectNode::class.java,
