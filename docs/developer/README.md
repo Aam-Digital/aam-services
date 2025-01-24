@@ -56,7 +56,7 @@ You also need to adapt your `/etc/hosts` file and add an entry for `aam.localhos
 sudo nano /etc/hosts
 ```
 
-Add another line for `aam.localhsot`:
+Add another line for `aam.localhost`:
 
 ```
 127.0.0.1       localhost
@@ -72,7 +72,7 @@ You can add import the auto generated caddy certificate after the aam-stack is s
 1. Open Keychain Access (`Cmd` + `Space` and search for it)
 2. Switch to System `Keychains` -> `System` -> `Certificates`
    ![Keychain Access](../assets/keychain-access-1.png)
-3. Drag and Drop the `./caddy-authorities/root.crt` into Keychain Access
+3. Drag and Drop the `./container-data/caddy-authorities/root.crt` into Keychain Access
 4. Open certificate details by double-click the certificate
 5. Trust the certificate for SSL by setting `Trust` -> `Secure Sockets Layer (SSL)` to `Always Trust`  
    ![Keychain Access](../assets/keychain-access-2.png)
@@ -81,14 +81,19 @@ You can add import the auto generated caddy certificate after the aam-stack is s
 
 ### Step 1: start the local development stack
 
-You can start all services needed for the local development with docker-compose:
+Create a `.env` and `secrets.env` file by copying the examples:
+```shell
+# /aam-services/docs/developer
+cp .env.example .env
+cp secrets.env.example secrects.env
+```
 
+You can start all services needed for the local development with docker-compose:
 ```shell
 docker compose -f docker-compose.yml up -d
 ```
 
 or in the same directory just
-
 ```shell
 docker compose up -d
 ```
@@ -107,23 +112,28 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
   - username: `admin`
   - password: `docker`
 
-- Create a new realm called **dummy-realm** by importing the [realm configuration file](example-data/realm_config.dummy-realm.json).
+- Create a new realm called **dummy-realm** by importing the [realm configuration file here](example-data/realm_config.dummy-realm.json).
 - Under **Keycloak Realm > Clients** ([https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients](https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients)),
-  import the client configuration using [client_app_configuration](example-data/client_app.json).
-- In the new realm, create a user and assign relevant roles. (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.)
+  import the client configuration using [client_app_configuration here](example-data/client_app.json).
+- In the new realm, create a user and assign relevant roles.
+(Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.
+If the roles are not visible in "Assign roles" dialog, you may need to change the "Filter by realm roles".)
 
 ### Step 3: Set Up CouchDB (todo: improve this by automatic script)
 
 - Access CouchDB at [https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs](https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs).
+  - username: `admin`
+  - password: `docker`
 - Create some new databases:
   - `_users`
   - `app`
   - `app-attachmets`
   - `notification-webhook`
   - `report-calculation`
-- Add a document of type **Config:CONFIG_ENTITY** to the `app` database (e.g., from [dev.aam-digital.net CouchDB instance](https://dev.aam-digital.net/db/couchdb/_utils/#database/app/Config%3ACONFIG_ENTITY)).
+- Add a document of type **Config:CONFIG_ENTITY** to the `app` database 
+  - e.g., from [dev.aam-digital.net CouchDB instance](https://dev.aam-digital.net/db/couchdb/_utils/#database/app/Config%3ACONFIG_ENTITY).
   **Note: If you get an error while adding a document (e.g. document update conflict warning) remove the "_rev": "value".**
-
+  - or in a demo system with generated data, navigate to "Admin > Admin Overview" and click "Download configuration". (the downloaded json needs to be copied into a new CouchDb Document `{ "_id": "Config:CONFIG_ENTITY", "data": <downloaded config> }`)
 - Add a document of type **Config:Permissions** to the `app` database:
 
 ```
@@ -159,15 +169,7 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
 
 ### Step 4: Configure the replication-backend
 
-- If not already done, copy the `.env.example` to `.env`
-
-```shell
-# /aam-services/developer
-cp .env.example .env
-```
-
-- Retrieve the `public_key` for **dummy-realm** from [https://aam.localhost/auth/realms/dummy-realm](https://aam.localhost/auth/realms/dummy-realm) and add it to the `.env` file as `REPLICATION_BACKEND_PUBLIC_KEY`.
-
+Retrieve the `public_key` for **dummy-realm** from [https://aam.localhost/auth/realms/dummy-realm](https://aam.localhost/auth/realms/dummy-realm) and add it to the `.env` file as `REPLICATION_BACKEND_PUBLIC_KEY`:
 ```
 # from
 REPLICATION_BACKEND_PUBLIC_KEY=<the-content-of-"public_key"-from-here-https://aam.localhost/auth/realms/dummy-realm>
@@ -176,8 +178,7 @@ REPLICATION_BACKEND_PUBLIC_KEY=<the-content-of-"public_key"-from-here-https://aa
 REPLICATION_BACKEND_PUBLIC_KEY=MIIBI....
 ```
 
-- Restart the deployment
-
+Restart the deployment to use the updated settings: 
 ```shell
 docker compose down && docker compose up -d
 ```
@@ -192,7 +193,7 @@ demo_mode: false,
 account_url: "https://aam.localhost/accounts-backend"
 ```
 
-- Update `keycloak.json` with the following settings
+- Update `assets/keycloak.json` with the following settings
 
 ```
 {
