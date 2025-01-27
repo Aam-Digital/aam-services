@@ -59,8 +59,9 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: https://aam.localhost/auth/realms/dummy-realm
+          issuer-uri: http://localhost:8888/realms/third-party-integration
   datasource:
+    driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://localhost:5403/aam-integration
     username: admin
     password: docker
@@ -82,6 +83,12 @@ logging:
 features:
   third-party-authentication:
     enabled: true
+
+aam-keycloak-config:
+  realm: master
+  client-id: aam-integration
+  client-secret: 1234
+  server-url: http://localhost:8888
 
 #management:
 #  otlp:

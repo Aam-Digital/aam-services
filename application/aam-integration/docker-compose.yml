@@ -1,0 +1,13 @@
+services:
+  aam-integration-db:
+    image: postgres:16.5-bookworm
+    container_name: aam-integration-db-local
+    volumes:
+      - ./data/aam-integration-db/postgresql-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: aam-integration
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: docker
+    restart: unless-stopped
+    ports:
+      - "5403:5432"
