@@ -3,7 +3,7 @@ package com.aamdigital.aambackendservice.reporting.notification.core
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.domain.event.NotificationEvent
-import com.aamdigital.aambackendservice.reporting.notification.di.NotificationQueueConfiguration.Companion.NOTIFICATION_QUEUE
+import com.aamdigital.aambackendservice.reporting.notification.di.ReportingNotificationQueueConfiguration.Companion.NOTIFICATION_QUEUE
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
