@@ -19,7 +19,7 @@ Feature: the export endpoint handles template creation
     Scenario: client makes call to GET /export/template/TemplateExport:2 and receives an docx
         Given database app is created
         Given template docx-test-file-1.docx is stored in template engine
-        Given document TemplateExport:2 is stored in database app
+        Given document TemplateExport_2 is stored in database app
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls GET /v1/export/template/TemplateExport:2
         Then the client receives status code of 200
@@ -39,30 +39,30 @@ Feature: the export endpoint handles template creation
 
     Scenario: client makes call to POST /export/render/TemplateExport:1 and receives an template id
         Given database app is created
-        Given document TemplateExport:1 is stored in database app
+        Given document TemplateExport_1 is stored in database app
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
-        When the client calls POST /v1/export/render/TemplateExport:1 with body RenderRequest:1
+        When the client calls POST /v1/export/render/TemplateExport:1 with body RenderRequest_1
         Then the client receives status code of 200
         Then the client receives value application/pdf for header Content-Type
 
     Scenario: client makes call to POST /export/render/TemplateExport:2 and receives an template id
         Given database app is created
-        Given document TemplateExport:2 is stored in database app
+        Given document TemplateExport_2 is stored in database app
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
-        When the client calls POST /v1/export/render/TemplateExport:2 with body RenderRequest:1
+        When the client calls POST /v1/export/render/TemplateExport:2 with body RenderRequest_1
         Then the client receives status code of 200
         Then the client receives value application/pdf for header Content-Type
 
     Scenario: client makes call to POST /export/render/TemplateExport:2 and receives an docx
         Given database app is created
-        Given document TemplateExport:2 is stored in database app
+        Given document TemplateExport_2 is stored in database app
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
-        When the client calls POST /v1/export/render/TemplateExport:2 with body RenderRequest:2
+        When the client calls POST /v1/export/render/TemplateExport:2 with body RenderRequest_2
         Then the client receives status code of 200
         Then the client receives value application/vnd.openxmlformats-officedocument.wordprocessingml.document for header Content-Type
 
     Scenario: client makes call to POST /export/render/TemplateExport:not-existing and receives an 404
         Given database app is created
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
-        When the client calls POST /v1/export/render/TemplateExport:not-existing with body RenderRequest:2
+        When the client calls POST /v1/export/render/TemplateExport:not-existing with body RenderRequest_2
         Then the client receives status code of 404
