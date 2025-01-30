@@ -74,6 +74,12 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: https://aam.localhost/auth/realms/dummy-realm
+  ssl:
+    bundle:
+      pem:
+        local-development:
+          truststore:
+            certificate: "classpath:reverse-proxy.crt"
   rabbitmq:
     #    virtual-host: local
     listener:
@@ -128,7 +134,7 @@ sqs-client-configuration:
 skilllab-api-client-configuration:
   api-key: skilllab-api-key
   project-id: dummy-project
-  base-path: htts://aam.localhost/skilllab
+  base-path: https://aam.localhost/skilllab
   response-timeout-in-seconds: 15
 
 features:

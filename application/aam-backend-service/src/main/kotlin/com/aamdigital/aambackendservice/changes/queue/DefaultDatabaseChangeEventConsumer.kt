@@ -1,24 +1,26 @@
-package com.aamdigital.aambackendservice.reporting.notification.core
+package com.aamdigital.aambackendservice.changes.queue
 
+import com.aamdigital.aambackendservice.changes.core.CreateDocumentChangeUseCase
+import com.aamdigital.aambackendservice.changes.core.DatabaseChangeEventConsumer
+import com.aamdigital.aambackendservice.changes.di.ChangesQueueConfiguration.Companion.DB_CHANGES_QUEUE
+import com.aamdigital.aambackendservice.changes.domain.DatabaseChangeEvent
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
-import com.aamdigital.aambackendservice.reporting.domain.event.NotificationEvent
-import com.aamdigital.aambackendservice.reporting.notification.di.ReportingNotificationQueueConfiguration.Companion.NOTIFICATION_QUEUE
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.core.Message
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 
-class DefaultNotificationEventConsumer(
+class DefaultDatabaseChangeEventConsumer(
     private val messageParser: QueueMessageParser,
-    private val useCase: TriggerWebhookUseCase,
-) : NotificationEventConsumer {
+    private val useCase: CreateDocumentChangeUseCase,
+) : DatabaseChangeEventConsumer {
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @RabbitListener(
-        queues = [NOTIFICATION_QUEUE],
+        queues = [DB_CHANGES_QUEUE],
     )
     override fun consume(rawMessage: String, message: Message, channel: Channel) {
         val type = try {
@@ -28,25 +30,17 @@ class DefaultNotificationEventConsumer(
         }
 
         when (type.qualifiedName) {
-            NotificationEvent::class.qualifiedName -> {
+            DatabaseChangeEvent::class.qualifiedName -> {
                 val payload = messageParser.getPayload(
                     body = rawMessage.toByteArray(),
-                    kClass = NotificationEvent::class
+                    kClass = DatabaseChangeEvent::class
                 )
-                try {
-                    useCase.trigger(payload)
-                } catch (ex: Exception) {
-                    throw AmqpRejectAndDontRequeueException(
-                        "[USECASE_ERROR] ${ex.localizedMessage}",
-                        ex
-                    )
-                }
-                return
+                return useCase.createEvent(payload)
             }
 
             else -> {
                 logger.warn(
-                    "[DefaultNotificationEventConsumer] Could not find any use case for this EventType: {}",
+                    "[DefaultDocumentChangeEventProcessor] Could not find any use case for this EventType: {}",
                     type.qualifiedName,
                 )
 

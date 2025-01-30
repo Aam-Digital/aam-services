@@ -19,12 +19,10 @@ import org.springframework.web.bind.annotation.RestController
 import java.io.IOException
 import kotlin.jvm.optionals.getOrNull
 
-
 data class DeviceRegistrationDto(
     val deviceName: String? = null,
     val deviceToken: String,
 )
-
 
 @RestController
 @RequestMapping("/v1/notification")
@@ -56,9 +54,18 @@ class NotificationController(
             )
         }
 
+        if (authentication.name == null) {
+            return ResponseEntity.badRequest().body(
+                HttpErrorDto(
+                    errorCode = "Bad Request",
+                    errorMessage = "No subject found in the token."
+                )
+            )
+        }
+
         userDeviceRepository.save(
             UserDeviceEntity(
-                userIdentifier = authentication.name ?: authentication.tokenAttributes["username"].toString(),
+                userIdentifier = authentication.name,
                 deviceToken = deviceRegistrationDto.deviceToken,
                 deviceName = deviceRegistrationDto.deviceName,
             )
