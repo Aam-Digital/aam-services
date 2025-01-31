@@ -8,6 +8,7 @@ import com.aamdigital.aamintegration.authentication.di.AamKeycloakConfig
 import com.aamdigital.aamintegration.domain.UseCaseOutcome
 import com.aamdigital.aamintegration.error.HttpErrorDto
 import jakarta.validation.constraints.Email
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -55,6 +56,7 @@ class ThirdPartyAuthenticationController(
     private val verifySessionUseCase: VerifySessionUseCase,
     private val aamKeycloakConfig: AamKeycloakConfig,
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     @PostMapping("/session")
     @PreAuthorize("hasAuthority('ROLE_third-party-authentication-provider')")
@@ -81,7 +83,7 @@ class ThirdPartyAuthenticationController(
                     aamKeycloakConfig.serverUrl +
                             "/realms/${userSessionRequest.realmId}/protocol/openid-connect/auth" +
                             "?client_id=app" +
-                            "&redirect_uri=http%3A%2F%2Flocalhost1" + // todo
+                            "&redirect_uri=https%3A%2F%2F${userSessionRequest.realmId}.aam-digital.com" + // todo
                             "&scope=openid" +
                             "&response_type=code" +
                             "&tpa_session_id=${response.data.sessionId}" +
@@ -98,6 +100,7 @@ class ThirdPartyAuthenticationController(
             }
 
             is UseCaseOutcome.Failure -> {
+                logger.warn(response.errorMessage, response.errorCode, response.cause)
                 ResponseEntity.badRequest().body(
                     HttpErrorDto(
                         errorMessage = response.errorMessage,
