@@ -1,11 +1,15 @@
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-!.vscode/*.code-snippets
-.history/
-*.vsix
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+.project
+.classpath
 .idea/**/workspace.xml
 .idea/**/tasks.xml
 .idea/**/usage.statistics.xml
@@ -41,15 +45,6 @@ fabric.properties
 .directory
 .Trash-*
 .nfs*
-.gradle
-**/build/
-!src/**/build/
-gradle-app.setting
-!gradle-wrapper.jar
-!gradle-wrapper.properties
-.gradletasknamecache
-.project
-.classpath
 Thumbs.db
 Thumbs.db:encryptable
 ehthumbs.db
@@ -80,16 +75,3 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-*.class
-*.log
-*.ctxt
-.mtj.tmp/
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-hs_err_pid*
-replay_pid*
