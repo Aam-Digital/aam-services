@@ -3,6 +3,7 @@ package com.aamdigital.aamintegration.authentication.core
 import com.aamdigital.aamintegration.authentication.repository.AuthenticationSessionEntity
 import com.aamdigital.aamintegration.authentication.repository.AuthenticationSessionRepository
 import com.aamdigital.aamintegration.domain.UseCaseOutcome
+import com.aamdigital.aamintegration.error.AamException
 import org.springframework.security.crypto.password.PasswordEncoder
 import java.time.OffsetDateTime
 import java.util.*
@@ -13,7 +14,15 @@ class DefaultCreateSessionUseCase(
     private val authenticationProvider: AuthenticationProvider,
 ) : CreateSessionUseCase() {
     override fun apply(request: CreateSessionUseCaseRequest): UseCaseOutcome<CreateSessionUseCaseData> {
-        val user: UserModel = findOrCreateUser(request)
+        val user: UserModel = try {
+            findOrCreateUser(request)
+        } catch (ex: AamException) {
+            return UseCaseOutcome.Failure(
+                errorMessage = ex.localizedMessage,
+                errorCode = ex.code,
+                cause = ex
+            )
+        }
 
         val sessionToken = UUID.randomUUID().toString().replace("-", "")
         val sessionId = UUID.randomUUID().toString()
