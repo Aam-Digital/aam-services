@@ -5,12 +5,15 @@ import com.aamdigital.aamintegration.error.InternalServerException
 import org.keycloak.admin.client.CreatedResponseUtil
 import org.keycloak.admin.client.Keycloak
 import org.keycloak.representations.idm.UserRepresentation
+import org.slf4j.LoggerFactory
 import java.util.*
 
 
 class AamKeycloakAuthenticationProvider(
     private val keycloak: Keycloak
 ) : AuthenticationProvider {
+
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     enum class AamKeycloakAuthenticationProviderError : AamErrorCode {
         USER_CREATION_ERROR,
@@ -59,7 +62,13 @@ class AamKeycloakAuthenticationProvider(
         realmId: String,
         externalUserId: String,
     ): Optional<UserModel> {
-        val users = keycloak.realm(realmId).users().search("external_$externalUserId")
+        val users = try {
+            keycloak.realm(realmId).users().search("external_$externalUserId")
+        } catch (ex: Exception) {
+            logger.warn("KeycloakError: {}, {}", realmId, externalUserId)
+            logger.warn(ex.localizedMessage, ex)
+            return Optional.empty()
+        }
 
         if (users.isEmpty()) {
             return Optional.empty()

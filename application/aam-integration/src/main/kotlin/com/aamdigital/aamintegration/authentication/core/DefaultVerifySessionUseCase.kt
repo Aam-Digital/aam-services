@@ -21,7 +21,6 @@ class DefaultVerifySessionUseCase(
     }
 
     override fun apply(request: VerifySessionUseCaseRequest): UseCaseOutcome<VerifySessionUseCaseData> {
-
         val session = authenticationSessionRepository.findByExternalIdentifier(request.sessionId).getOrNull()
             ?: return UseCaseOutcome.Failure(
                 errorCode = DefaultVerifySessionUseCaseError.INVALID_SESSION,
