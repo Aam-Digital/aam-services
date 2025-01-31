@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: aam-integration
+  main:
+    banner-mode: off
+  jackson:
+    deserialization:
+      accept-empty-string-as-null-object: true
+      read-unknown-enum-values-using-default-value: true
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    username: admin
+    password: docker
+  jpa:
+    generate-ddl: true
+    hibernate:
+      ddl-auto: update
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  servlet:
+    context-path: /
+  port: 9000
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+          - info
+          - health
+  tracing:
+    sampling:
+      probability: 0
+
+features:
+  third-party-authentication:
+    enabled: false
