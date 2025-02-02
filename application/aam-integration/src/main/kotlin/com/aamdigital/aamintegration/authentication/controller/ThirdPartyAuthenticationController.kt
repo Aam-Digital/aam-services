@@ -112,6 +112,7 @@ class ThirdPartyAuthenticationController(
     }
 
     @GetMapping("/session/{sessionId}")
+    @PreAuthorize("permitAll()")
     fun getSession(
         @PathVariable sessionId: String,
         @RequestParam("sessionToken", required = true) sessionToken: String,
