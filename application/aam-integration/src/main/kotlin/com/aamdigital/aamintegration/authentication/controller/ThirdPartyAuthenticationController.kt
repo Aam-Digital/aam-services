@@ -115,7 +115,7 @@ class ThirdPartyAuthenticationController(
     @PreAuthorize("permitAll()")
     fun getSession(
         @PathVariable sessionId: String,
-        @RequestParam("sessionToken", required = true) sessionToken: String,
+        @RequestParam("session_token", required = true) sessionToken: String,
     ): ResponseEntity<Any> {
 
         val response = verifySessionUseCase.run(
