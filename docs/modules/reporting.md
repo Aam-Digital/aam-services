@@ -9,7 +9,7 @@ In particular, this service allows users with limited permissions to see reports
 ## Setup
 1. Create additional databases in CouchDB: `report-calculation` and `notification-webhook` (used to store details)
 2. Set up necessary environment variables (e.g. using an `application.env` file for docker compose under "config/aam-backend-service/application.env" from the root folder where the "docker-compose.yml" exists):
-- see [example .env](./docs/examples/application.env)
+- see [example .env](/docs/examples/application.env)
 - CRYPTO_CONFIGURATION_SECRET: _a random secret used to encrypt data_
 - (re-up the docker compose and confirm the new containers and environment are running)
 3. Create a "client" in Keycloak for login credentials:
