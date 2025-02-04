@@ -17,25 +17,35 @@ import java.io.IOException;
 import java.util.HashMap;
 
 public class AamThirdPartyAuthenticator implements Authenticator {
-
-    private static final String QUERY_PARAM_SESSION_ID = "tpa_session_id";
-    private static final String QUERY_PARAM_SESSION_TOKEN = "tpa_session_token";
+    private static final String QUERY_PARAM_IDP_HINT = "kc_idp_hint";
 
     private static final TypeReference<HashMap<String, String>> typeRef = new TypeReference<>() {
     };
 
-    private String getSessionUser(AuthenticationFlowContext ctx, String sessionId, String sessionToken) {
-        HttpClient httpClient = ctx.getSession().getProvider(HttpClientProvider.class).getHttpClient();
+    private static HttpGet checkCredentialsRequest(String tpaSession) {
+        var sessionCredentials = tpaSession.split(":");
+        String clientId = null;
+        String clientToken = null;
 
-        var httpGet = new HttpGet(
+        if (sessionCredentials.length == 3 && sessionCredentials[0].equals("tpa_session")) {
+            clientId = sessionCredentials[1];
+            clientToken = sessionCredentials[2];
+        }
+
+        return new HttpGet(
                 String.format(
                         "https://api.aam-digital.dev/v1/authentication/session/%s?session_token=%s",
-                        sessionId,
-                        sessionToken
+                        clientId,
+                        clientToken
                 )
         );
+    }
 
+    private String getSessionUser(AuthenticationFlowContext ctx, String tpaSession) {
         try {
+            var httpGet = checkCredentialsRequest(tpaSession);
+
+            HttpClient httpClient = ctx.getSession().getProvider(HttpClientProvider.class).getHttpClient();
             var response = httpClient.execute(httpGet);
 
             var entity = response.getEntity();
@@ -54,15 +64,14 @@ public class AamThirdPartyAuthenticator implements Authenticator {
 
     @Override
     public void authenticate(AuthenticationFlowContext ctx) {
-        var sessionId = ctx.getHttpRequest().getUri().getQueryParameters().getFirst(QUERY_PARAM_SESSION_ID);
-        var sessionToken = ctx.getHttpRequest().getUri().getQueryParameters().getFirst(QUERY_PARAM_SESSION_TOKEN);
+        var tpaSession = ctx.getHttpRequest().getUri().getQueryParameters().getFirst(QUERY_PARAM_IDP_HINT);
 
-        if (sessionId == null || sessionToken == null) {
+        if (tpaSession == null) {
             ctx.attempted();
             return;
         }
 
-        var userId = getSessionUser(ctx, sessionId, sessionToken);
+        var userId = getSessionUser(ctx, tpaSession);
 
         if (userId == null) {
             ctx.failure(AuthenticationFlowError.INVALID_CREDENTIALS);
