@@ -13,6 +13,11 @@ class DefaultCreateSessionUseCase(
     private val passwordEncoder: PasswordEncoder,
     private val authenticationProvider: AuthenticationProvider,
 ) : CreateSessionUseCase() {
+
+    companion object {
+        private const val SESSION_VALID_IN_MINUTES = 5L
+    }
+
     override fun apply(request: CreateSessionUseCaseRequest): UseCaseOutcome<CreateSessionUseCaseData> {
         val user: UserModel = try {
             findOrCreateUser(request)
@@ -26,7 +31,7 @@ class DefaultCreateSessionUseCase(
 
         val sessionToken = UUID.randomUUID().toString().replace("-", "")
         val sessionId = UUID.randomUUID().toString()
-        val validUntil = OffsetDateTime.now().plusMinutes(1)
+        val validUntil = OffsetDateTime.now().plusMinutes(SESSION_VALID_IN_MINUTES)
 
         val session = AuthenticationSessionEntity(
             externalIdentifier = sessionId,
