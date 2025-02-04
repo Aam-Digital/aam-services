@@ -80,14 +80,8 @@ class ThirdPartyAuthenticationController(
         return when (response) {
             is UseCaseOutcome.Success -> {
                 val entryPointUrl =
-                    aamKeycloakConfig.serverUrl +
-                            "/realms/${userSessionRequest.realmId}/protocol/openid-connect/auth" +
-                            "?client_id=app" +
-                            "&redirect_uri=https%3A%2F%2F${userSessionRequest.realmId}.aam-digital.com" + // todo
-                            "&scope=openid" +
-                            "&response_type=code" +
-                            "&tpa_session_id=${response.data.sessionId}" +
-                            "&tpa_session_token=${response.data.sessionToken}"
+                    "https://${userSessionRequest.realmId}.aam-digital.net/login" +
+                            "?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
 
                 ResponseEntity.ok(
                     UserSessionDto(
