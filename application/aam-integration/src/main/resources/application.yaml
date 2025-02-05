@@ -89,6 +89,7 @@ aam-keycloak-config:
   client-id: aam-integration
   client-secret: 1234
   server-url: http://localhost:8888
+  application-url: aam.localhost
 
 #management:
 #  otlp:

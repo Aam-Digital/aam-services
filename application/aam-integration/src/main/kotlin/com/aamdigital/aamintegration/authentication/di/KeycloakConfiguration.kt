@@ -14,6 +14,7 @@ class AamKeycloakConfig(
     val realm: String,
     val clientId: String,
     val clientSecret: String,
+    val applicationUrl: String,
 )
 
 @Configuration

@@ -80,7 +80,7 @@ class ThirdPartyAuthenticationController(
         return when (response) {
             is UseCaseOutcome.Success -> {
                 val entryPointUrl =
-                    "https://${userSessionRequest.realmId}.aam-digital.net/login" +
+                    "https://${userSessionRequest.realmId}.${aamKeycloakConfig.applicationUrl}/login" +
                             "?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
 
                 ResponseEntity.ok(
