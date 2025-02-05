@@ -6,6 +6,24 @@ This service allows to run SQL queries on the database.
 In particular, this service allows users with limited permissions to see reports of aggregated statistics across all data (e.g. a supervisor could analyse reports without having access to possibly confidential details of participants or notes).
 
 -----
+## Setup
+1. Create additional databases in CouchDB: `report-calculation` and `notification-webhook` (used to store details)
+2. Set up necessary environment variables (e.g. using an `application.env` file for docker compose under `config/aam-backend-service/application.env` from the root folder where the "docker-compose.yml" exists):
+    - see [example .env](/docs/examples/application.env)
+    - CRYPTO_CONFIGURATION_SECRET: _a random secret used to encrypt data_
+    - (re-up the docker compose and confirm the new containers and environment are running)
+3. Create a "client" in Keycloak for login credentials:
+    - Log into Keycloak and open the "Clients" section of the realm
+    - Create a new client (type: OpenID Connect; Client authentication: On)
+    - In the "Credentials" tab of the new client, copy the client secret
+4. For integration with TolaData:
+    - In TolaData, navigate to Data Tables or User Profile and add Aam Digital credentials (customer_id: the realm / url prefix of the Aam Digital system; client id/secret: from Keycloak)
+    - also see [Support Guide: Integration with TolaData](https://chatwoot.help/hc/aam-digital/articles/1726341005-integration-with-tola_data)
+5. Create `ReportConfig:` entities
+    - the API / backend reports only support the `"mode": "sql"`
+    - for details on report definitions, see https://aam-digital.github.io/ndb-core/documentation/additional-documentation/how-to-guides/create-a-report.html
+
+
 
 ## API access to reports
 
