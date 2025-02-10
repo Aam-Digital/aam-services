@@ -69,6 +69,7 @@ class AamKeycloakAuthenticationProvider(
         realmId: String,
         externalUserId: String,
     ): Optional<UserModel> {
+        logger.debug("Find user by external ID {}", externalUserId)
         val users = try {
             keycloak.realm(realmId).users().search("external_$externalUserId")
         } catch (ex: Exception) {
@@ -78,10 +79,15 @@ class AamKeycloakAuthenticationProvider(
         }
 
         if (users.isEmpty()) {
+            logger.debug("No user found for external ID {}", externalUserId)
             return Optional.empty()
         }
 
+
+        logger.debug("Users found: {}", users.size)
+
         return users.first().let {
+            logger.debug("User found {}", it)
             Optional.of(
                 UserModel(
                     userId = it.id,
