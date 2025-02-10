@@ -35,8 +35,15 @@ class AamKeycloakAuthenticationProvider(
         newUser.isEnabled = true
         newUser.isEmailVerified = true
 
-        val userResource = keycloak.realm(realmId).users()
-        val response = userResource.create(newUser)
+        val response = try {
+            keycloak.realm(realmId).users().create(newUser)
+        } catch (ex: Exception) {
+            logger.warn("KeycloakError: {}, {}", realmId, newUser, ex)
+            throw InternalServerException(
+                code = AamKeycloakAuthenticationProviderError.USER_CREATION_ERROR,
+                message = "Could not create externalUser"
+            )
+        }
 
         if (response.status != 201) {
             throw InternalServerException(
