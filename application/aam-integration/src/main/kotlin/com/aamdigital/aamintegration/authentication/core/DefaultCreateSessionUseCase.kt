@@ -54,9 +54,9 @@ class DefaultCreateSessionUseCase(
     }
 
     private fun findOrCreateUser(request: CreateSessionUseCaseRequest): UserModel {
-        val existingUser = authenticationProvider.findByExternalId(
+        val existingUser = authenticationProvider.findByEmail(
             realmId = request.realmId,
-            externalUserId = request.userId,
+            email = request.email,
         )
 
         return if (existingUser.isEmpty) {

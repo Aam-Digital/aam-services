@@ -19,8 +19,8 @@ interface AuthenticationProvider {
         externalUserId: String,
     ): UserModel
 
-    fun findByExternalId(
+    fun findByEmail(
         realmId: String,
-        externalUserId: String
+        email: String
     ): Optional<UserModel>
 }

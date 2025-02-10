@@ -65,24 +65,22 @@ class AamKeycloakAuthenticationProvider(
         }
     }
 
-    override fun findByExternalId(
+    override fun findByEmail(
         realmId: String,
-        externalUserId: String,
+        email: String,
     ): Optional<UserModel> {
-        logger.debug("Find user by external ID {}", externalUserId)
         val users = try {
-            keycloak.realm(realmId).users().search("external_$externalUserId")
+            keycloak.realm(realmId).users().searchByEmail("external_$email", true)
         } catch (ex: Exception) {
-            logger.warn("KeycloakError: {}, {}", realmId, externalUserId)
+            logger.warn("KeycloakError: {}, {}", realmId, email)
             logger.warn(ex.localizedMessage, ex)
             return Optional.empty()
         }
 
         if (users.isEmpty()) {
-            logger.debug("No user found for external ID {}", externalUserId)
+            logger.debug("No user found for with email {}", email)
             return Optional.empty()
         }
-
 
         logger.debug("Users found: {}", users.size)
 
