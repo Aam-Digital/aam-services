@@ -86,12 +86,13 @@ class AamKeycloakAuthenticationProvider(
 
         return users.first().let {
             logger.debug("User found {}", it)
+
             Optional.of(
                 UserModel(
                     userId = it.id,
                     userName = it.username,
-                    firstName = it.firstName,
-                    lastName = it.lastName,
+                    firstName = it.firstName ?: "",
+                    lastName = it.lastName ?: "",
                     email = it.email,
                 )
             )
