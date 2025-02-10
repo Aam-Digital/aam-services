@@ -70,7 +70,7 @@ class AamKeycloakAuthenticationProvider(
         email: String,
     ): Optional<UserModel> {
         val users = try {
-            keycloak.realm(realmId).users().searchByEmail("external_$email", true)
+            keycloak.realm(realmId).users().searchByEmail(email, true)
         } catch (ex: Exception) {
             logger.warn("KeycloakError: {}, {}", realmId, email)
             logger.warn(ex.localizedMessage, ex)
