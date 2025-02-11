@@ -36,10 +36,7 @@ Reports and their results are available for external services through the given 
    4. in the Client section, edit the newly created client and add these two scopes in the "Client scopes" tab
    5. from the "Credentials" tab of the client you can now copy the secret:
    ![Keycloak Client Setup](../assets/keycloak-client-setup.png)
-2. Copy the credentials:
-   - Get the client_id and client_secret (from the "Credentials" tab of the client created in Keycloak)
-   - Get the realm of your instance (e.g. https://[your_realm].aam-digital.com). This is both the subdomain of systems hosted on aam-digital.com and the Keycloak Realm for authentication (case-sensitive!).
-3. For integration with TolaData:
+2. For integration with TolaData:
    - In TolaData, navigate to Data Tables or User Profile and add Aam Digital credentials
    - Get the client_id and client_secret (from the "Credentials" tab of the client created in Keycloak)
    - also see [Support Guide: Integration with TolaData](https://chatwoot.help/hc/aam-digital/articles/1726341005-integration-with-tola_data) for details of the required URLs
