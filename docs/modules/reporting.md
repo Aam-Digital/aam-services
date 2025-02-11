@@ -7,22 +7,18 @@ In particular, this service allows users with limited permissions to see reports
 
 -----
 ## Setup
+_(the following steps are automatically handled by the interactive setup script ([ndb-setup](https://github.com/Aam-Digital/ndb-setup)) also)_
 1. Create additional databases in CouchDB: `report-calculation` and `notification-webhook` (used to store details)
 2. Set up necessary environment variables (e.g. using an `application.env` file for docker compose under `config/aam-backend-service/application.env` from the root folder where the "docker-compose.yml" exists):
     - see [example .env](/docs/examples/application.env)
     - CRYPTO_CONFIGURATION_SECRET: _a random secret used to encrypt data_
-    - (re-up the docker compose and confirm the new containers and environment are running)
-3. Create a "client" in Keycloak for login credentials:
-    - Log into Keycloak and open the "Clients" section of the realm
-    - Create a new client (type: OpenID Connect; Client authentication: On)
-    - In the "Credentials" tab of the new client, copy the client secret
-4. For integration with TolaData:
-    - In TolaData, navigate to Data Tables or User Profile and add Aam Digital credentials (customer_id: the realm / url prefix of the Aam Digital system; client id/secret: from Keycloak)
-    - also see [Support Guide: Integration with TolaData](https://chatwoot.help/hc/aam-digital/articles/1726341005-integration-with-tola_data)
-5. Create `ReportConfig:` entities
+3. Enable the backend in the overall docker compose setup as described in the ndb-setup README [here](https://github.com/Aam-Digital/ndb-setup?tab=readme-ov-file#set-up-api-integration)
+    - or, if it was already enabled, re-up the docker compose and confirm the new containers and environment are running
+4. Create `ReportConfig:` entities to define specific reports
     - the API / backend reports only support the `"mode": "sql"`
     - for details on report definitions, see https://aam-digital.github.io/ndb-core/documentation/additional-documentation/how-to-guides/create-a-report.html
-
+5. Make sure the users who are supposed to access the reports in the frontend have permission to view `ReportConfig` entities
+6. Within the app, users can now execute sql-based reports and see calculated results (configuration for the view in Config:CONFIG_ENTITY `"view:report": {"component": "Reporting"}`)
 
 
 ## API access to reports
@@ -31,19 +27,26 @@ Reports and their results are available for external services through the given 
 
 ### Initial setup of an API integration
 
-1. Request client_id and client_secret from server administrator (--> admin has to [create new client grant in Keycloak](https://www.keycloak.org/docs/latest/server_admin/#_oidc_clients))
-  1. check "Client authentication" toggle
-  2. for "Authentication flow" only "Service accounts roles" needs to be checked
-  3. after saving the Client, go to "Clent Scopes" section and create two scopes:
-     1. `reporting_read` (Access to reporting-api GET endpoints)
-     2. `reporting_write` (Access to reporting-api POST endpoints)
-  4. in the Client section, edit the newly created client and add these two scopes in the "Client scopes" tab
-  5. from the "Credentials" tab of the client you can now copy the secret:
+1. Create a Keycloak "Client" (--> admin has to [create new client grant in Keycloak](https://www.keycloak.org/docs/latest/server_admin/#_oidc_clients))
+   1. check "Client authentication" toggle
+   2. for "Authentication flow" only "Service accounts roles" needs to be checked
+   3. after saving the Client, go to "Client Scopes" section and create two scopes:
+       1. `reporting_read` (Access to reporting-api GET endpoints)
+       2. `reporting_write` (Access to reporting-api POST endpoints)
+   4. in the Client section, edit the newly created client and add these two scopes in the "Client scopes" tab
+   5. from the "Credentials" tab of the client you can now copy the secret:
    ![Keycloak Client Setup](../assets/keycloak-client-setup.png)
+2. Copy the credentials:
+   - Get the client_id and client_secret (from the "Credentials" tab of the client created in Keycloak)
+   - Get the realm of your instance (e.g. https://[your_realm].aam-digital.com). This is both the subdomain of systems hosted on aam-digital.com and the Keycloak Realm for authentication (case-sensitive!).
+3. For integration with TolaData:
+   - In TolaData, navigate to Data Tables or User Profile and add Aam Digital credentials (customer_id: the realm / url prefix of the Aam Digital system; client id/secret: from Keycloak)
+   - also see [Support Guide: Integration with TolaData](https://chatwoot.help/hc/aam-digital/articles/1726341005-integration-with-tola_data)
 
-6. Get the realm of your instance (e.g. https://[your_realm].aam-digital.com). This is both the subdomain of systems hosted on aam-digital.com and the Keycloak Realm for authentication (case-sensitive!).
 
-### Access a reporting via API (after setup)
+----
+
+## Access a reporting via API (after setup)
 
 1. Get valid access token using your client secret:
 
