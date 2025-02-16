@@ -5,16 +5,23 @@ services:
   # ***************************************************************
   reverse-proxy:
     image: caddy:2.9-alpine
+    networks:
+      - aam-digital
+    # (linux only) support for accessing processes on host machine (needs testing)
+    #    extra_hosts:
+    #      - "host.docker.internal:host-gateway"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./container-data/caddy-authorities:/data/caddy/pki/authorities/local
     ports:
-      - "80:80"
-      - "443:443"
-      - "2019:2019"
+      - "80:80" # http
+      - "443:443" # https
+      - "2019:2019" # caddy api
 
   maildev:
     image: maildev/maildev:2.2.1
+    networks:
+      - aam-digital
 
   # ***************************************************************
   # couchdb
@@ -22,6 +29,8 @@ services:
 
   db-couch:
     image: couchdb:3.4.2
+    networks:
+      - aam-digital
     volumes:
       - ./container-data/db-couch/data:/opt/couchdb/data
       - ./container-data/db-couch/local.d:/opt/couchdb/etc/local.d
@@ -35,6 +44,10 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0.7-0
+    depends_on:
+      - db-keycloak
+    networks:
+      - aam-digital
     command: "start --proxy-headers forwarded"
     environment:
       KC_HTTP_ENABLED: true
@@ -47,11 +60,12 @@ services:
       KC_DB_PASSWORD: docker
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: docker
-    depends_on:
-      - db-keycloak
+      JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
 
   db-keycloak:
     image: postgres:16
+    networks:
+      - aam-digital
     volumes:
       - ./container-data/db-keycloak/data:/var/lib/postgresql/data
     environment:
@@ -67,6 +81,8 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
+    networks:
+      - aam-digital
     volumes:
       - ./container-data/rabbitmq/data:/var/lib/rabbitmq/
     ports:
@@ -81,9 +97,11 @@ services:
     image: aamdigital/account-ms:latest
     depends_on:
       - keycloak
+    networks:
+      - aam-digital
     external_links:
       - reverse-proxy:aam.localhost
-    platform: linux/amd64
+    platform: linux/amd64 # todo: publish account-backend as multi architecture
     environment:
       CORS: "*"
       SENTRY_DSN: ""
@@ -94,7 +112,6 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_PASSWORD: docker
       NODE_TLS_REJECT_UNAUTHORIZED: 0 # never use this in production
-    restart: unless-stopped
 
   # ***************************************************************
   # replication-backend
@@ -104,6 +121,8 @@ services:
     image: ghcr.io/aam-digital/replication-backend:latest
     depends_on:
       - db-couch
+    networks:
+      - aam-digital
     environment:
       DATABASE_URL: http://db-couch:5984
       DATABASE_NAME: app
@@ -116,7 +135,6 @@ services:
       SENTRY_INSTANCE_NAME: ""
       SENTRY_ENVIRONMENT: ""
       PORT: 5984
-    restart: unless-stopped
 
   # ***************************************************************
   # aam-backend-service
@@ -124,7 +142,8 @@ services:
 
   aam-backend-service:
     image: ghcr.io/aam-digital/aam-backend-service:${AAM_BACKEND_SERVICE_VERSION:-latest}
-    container_name: aam-backend-service
+    networks:
+      - aam-digital
     external_links:
       - reverse-proxy:aam.localhost
     depends_on:
@@ -133,18 +152,19 @@ services:
     env_file:
       - application.env
       - secrets.env
-    restart: unless-stopped
+    environment:
+      JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
 
   aam-backend-service-db:
     image: postgres:16.6-bookworm
-    container_name: aam-backend-service-db
+    networks:
+      - aam-digital
     environment:
       POSTGRES_DB: aam-backend-service
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: docker
     ports:
       - "5402:5432"
-    restart: unless-stopped
 
   # ***************************************************************
   # aam-backend-service feature dependencies (todo)
@@ -183,3 +203,7 @@ services:
   #      - "4318:4318" # the OpenTelemetry collector http
   #    environment:
   #      - COLLECTOR_OTLP_ENABLED=true
+
+networks:
+  aam-digital:
+    external: true

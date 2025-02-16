@@ -19,8 +19,11 @@ aam.localhost:80, aam.localhost:443 {
 	}
 
 	handle_path /accounts-backend* {
-	  # reverse_proxy http://host.docker.internal:3000 # local running app
-		reverse_proxy accounts-backend:3000 # docker container
+	    # activate this line instead of the existing if your account-backend is running locally
+	    # reverse_proxy http://host.docker.internal:3000
+
+	    # activate this line when account-backend is running as docker container (default)
+		reverse_proxy accounts-backend:3000
 	}
 
 	handle_path /replication-backend* {
@@ -48,6 +51,8 @@ aam.localhost:80, aam.localhost:443 {
 		respond "Hello. This is aam-digital-reverse-proxy." 200
 	}
 
+    # redirect all other traffic to the locally running angular app (on host machine)
+    # on linux this may need some additional configuration. See README.md
 	handle_path /* {
 		reverse_proxy http://host.docker.internal:4200
 	}
