@@ -54,7 +54,22 @@ Accessible for aam-digital internals and contributors only.
 - [maildev](https://github.com/maildev/maildev): Local SMTP server with web interface for testing during development.
 - [caddy](https://github.com/caddyserver/caddy): Multi-platform HTTP/1-2-3 web server with automatic HTTPS.
 
-## Getting started
+-----
+
+## Running a full system locally
+
+After completing the setup steps below once
+you can simply use the docker compose file in this directory:
+
+```shell
+docker compose up -d
+```
+
+Also see the "Tips and tricks" section at the end of this file for possible adjustments.
+
+-----
+
+## Setup of development environment
 
 To make development as simple as possible, we provide all services as docker containers. You can start them with the
 docker-compose file provided [here in this folder](./docker-compose.yml)  
@@ -336,7 +351,9 @@ If you use the default `npm start` command, make sure to update the start comman
     docker compose up -d
     ```
 
-## tips and tricks
+-----
+
+## Tips and tricks
 
 ### Accessing the Local Environment
 
@@ -378,7 +395,7 @@ the `http://` version of an url, but Chrome will not let you:
 You can open the `http://` version directly again.
 
 
-# Running services locally instead of docker images
+### Running services locally instead of docker images
 This setup provides all services, including Aam Digital platform backends, through their docker images.
 You can adjust this to run with a local version of a service
 (e.g. to test a development version of accounts or replication-backend in this integrated environment).
