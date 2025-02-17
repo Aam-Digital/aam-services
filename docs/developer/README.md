@@ -107,7 +107,7 @@ Add another line for `aam.localhost`:
 
 You can add import the auto generated caddy certificate after the aam-stack is started.
 
-#### link certificate to aam-backend-service
+##### link certificate to aam-backend-service
 
 To be able to verify https connections, the `aam-backend-service` need the generated caddy certificate.  
 You can copy the certificate to the resources directory of the `aam-backend-service`:
@@ -117,7 +117,7 @@ You can copy the certificate to the resources directory of the `aam-backend-serv
 cp docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
 ```
 
-##### macos
+##### MacOS
 
 1. Open Keychain Access (`Cmd` + `Space` and search for it)
 2. Switch to System `Keychains` -> `System` -> `Certificates`  
@@ -127,11 +127,23 @@ cp docs/developer/container-data/caddy-authorities/root.crt application/aam-back
 5. Trust the certificate for SSL by setting `Trust` -> `Secure Sockets Layer (SSL)` to `Always Trust`  
    ![Keychain Access](../assets/keychain-access-2.png)
 
-##### linux (debian/ubuntu)
+##### Linux (debian/ubuntu)
 
-    todo
+Install the locally generated root CA certificate from `docs/developer/container-data/caddy-authorities/root.crt`
+as [described here](https://documentation.ubuntu.com/server/how-to/security/install-a-root-ca-certificate-in-the-trust-store).
 
-##### windows
+If your browser still does not recognize the certificates of aam.localhost connections you can add it manually in your browser:
+1. Copy the root certificate
+2. Make it for non-root users
+```shell
+sudo cp container-data/caddy-authorities/root.crt aam.localhost.crt
+sudo chown $USER:$USER aam.localhost.crt
+```
+3. In Chrome / Chromium: Open Settings > Privacy and security > Security > Manage certificates
+4. In the "Authorities" tab, Import the certificate
+![Chromium Import Certificate](../assets/certificate-import_linux-chromium.png)
+
+##### Windows
 
     todo
 
