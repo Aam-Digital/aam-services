@@ -43,6 +43,10 @@ aam.localhost:80, aam.localhost:443 {
 		reverse_proxy rabbitmq:15672
 	}
 
+	handle_path /nominatim/* {
+	    reverse_proxy https://nominatim.openstreetmap.org
+    }
+
 	handle_path /maildev/* {
 		reverse_proxy maildev:1080
 	}

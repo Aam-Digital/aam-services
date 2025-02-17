@@ -65,6 +65,9 @@ you can simply use the docker compose file in this directory:
 docker compose up -d
 ```
 
+(!) Make sure to access the frontend at [http://aam.localhost/](http://aam.localhost/)
+instead of "localhost:4200". Otherwise, the connections to backend services like sync will not work.
+
 Also see the "Tips and tricks" section at the end of this file for possible adjustments.
 
 -----
@@ -203,8 +206,7 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
 
 - Create a new realm called **dummy-realm** by importing
   the [realm configuration file here](example-data/realm_config.dummy-realm.json).
-- Under **Keycloak Realm > Clients
-  ** ([https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients](https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients)),
+- Under **Keycloak Realm > Clients** ([https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients](https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients)),
   import the client configuration using [client_app_configuration here](example-data/client_app.json).
 - In the new realm, create a user and assign relevant roles.
   (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.  

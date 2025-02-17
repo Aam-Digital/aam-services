@@ -61,7 +61,7 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: docker
       # (macOS only) disable on linux
-      JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
+#      JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
 
   db-keycloak:
     image: postgres:16
@@ -153,9 +153,9 @@ services:
     env_file:
       - application.env
       - secrets.env
-    environment:
+#    environment:
       # (macOS only) disable on linux
-      JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
+#      JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
 
   aam-backend-service-db:
     image: postgres:16.6-bookworm
