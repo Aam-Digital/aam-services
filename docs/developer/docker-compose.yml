@@ -167,29 +167,33 @@ services:
       - "5402:5432"
 
   # ***************************************************************
-  # aam-backend-service feature dependencies (todo)
+  # aam-backend-service feature dependencies (todo: os specific platform and images)
   # ***************************************************************
 
-  #  sqs:
-  #    image: ghcr.io/aam-digital/aam-sqs-mac:latest
-  #    platform: linux/amd64
-  #    depends_on:
-  #      - db-couch
-  #    ports:
-  #      - "4984:4984"
-  #    volumes:
-  #      - ~/docker-volumes/aam-digital/aam-services/sqs/data:/data
-  #    environment:
-  #      SQS_COUCHDB_URL: http://db-couch:5984
+  sqs:
+    image: ghcr.io/aam-digital/aam-sqs-mac:latest
+    platform: linux/amd64
+    networks:
+      - aam-digital
+    depends_on:
+      - db-couch
+    ports:
+      - "4984:4984"
+    volumes:
+      - ./container-data/sqs/data:/data
+    environment:
+      SQS_COUCHDB_URL: http://db-couch:5984
 
-  #  carbone-io:
-  #    image: carbone/carbone-ee
-  #    platform: linux/amd64
-  #    volumes:
-  #      - ~/docker-volumes/aam-digital/aam-services/carbone-io/template:/app/template
-  #      - ~/docker-volumes/aam-digital/aam-services/carbone-io/render:/app/render
-  #    ports:
-  #      - "4000:4000"
+  carbone-io:
+    image: carbone/carbone-ee
+    platform: linux/amd64
+    networks:
+      - aam-digital
+    volumes:
+      - ./container-data/carbone-io/template:/app/template
+      - ./container-data/carbone-io/render:/app/render
+    ports:
+      - "4000:4000"
 
   # ***************************************************************
   # tracing and monitoring (todo)

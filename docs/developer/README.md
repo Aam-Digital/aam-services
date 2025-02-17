@@ -90,6 +90,16 @@ Add another line for `aam.localhost`:
 
 You can add import the auto generated caddy certificate after the aam-stack is started.
 
+#### link certificate to aam-backend-service
+
+To be able to verify https connections, the `aam-backend-service` need the generated caddy certificate.  
+You can simply link the certificate to the resources directory of the `aam-backend-service`
+
+```shell
+# /aam-services
+ln -s docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
+```
+
 ##### macos
 
 1. Open Keychain Access (`Cmd` + `Space` and search for it)
@@ -123,12 +133,14 @@ cp secrets.env.example secrects.env
 You can start all services needed for the local development with docker-compose:
 
 ```shell
+# /aam-services/docs/developer
 docker compose -f docker-compose.yml up -d
 ```
 
 or in the same directory just
 
 ```shell
+# /aam-services/docs/developer
 docker compose up -d
 ```
 

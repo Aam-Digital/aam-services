@@ -75,7 +75,13 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8080/realms/dummy-realm
+          issuer-uri: https://aam.localhost/auth/realms/dummy-realm
+  ssl:
+    bundle:
+      pem:
+        local-development:
+          truststore:
+            certificate: "classpath:reverse-proxy.crt" # this is the certificate of the local running caddy proxy
   rabbitmq:
     virtual-host: local
     listener:
@@ -93,6 +99,8 @@ spring:
     password: docker
 
 server:
+  servlet:
+    context-path: /
   error:
     include-message: always
     include-binding-errors: always
@@ -116,26 +124,26 @@ aam-render-api-client-configuration:
 #   scope: <needs-environment-configuration>
 
 couch-db-client-configuration:
-  base-path: http://localhost:5984
+  base-path: https://aam.localhost/db/couchdb
   basic-auth-username: admin
   basic-auth-password: docker
 
 sqs-client-configuration:
-  base-path: http://localhost:4984
+  base-path: https://aam.localhost/sqs
   basic-auth-username: admin
   basic-auth-password: docker
 
 skilllab-api-client-configuration:
   api-key: skilllab-api-key
   project-id: dummy-project
-  base-path: http://localhost:9005/skilllab
+  base-path: https://aam.localhost/skilllab
   response-timeout-in-seconds: 15
 
 features:
   export-api:
     enabled: false
   skill-api:
-    mode: skilllab
+    mode: disabled
 
 crypto-configuration:
   secret: super-duper-secret
@@ -156,7 +164,7 @@ sentry:
 application:
   version: local-dev-build
 
-management:
-  otlp:
-    tracing:
-      endpoint: http://localhost:4318/v1/traces
+#management:
+#  otlp:
+#    tracing:
+#      endpoint: http://localhost:4318/v1/traces
