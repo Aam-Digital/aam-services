@@ -276,6 +276,7 @@ account_url: "https://aam.localhost/accounts-backend"
 3. Start the frontend:
 
 ```shell
+# https://github.com/Aam-Digital/ndb-core
 ng serve --host 0.0.0.0
 ```
 
