@@ -325,9 +325,9 @@ If you use the default `npm start` command, make sure to update the start comman
 - maildev (smtp-trap): [https://aam.localhost/maildev/](https://aam.localhost/maildev/)
 - Keycloak: [https://aam.localhost/auth](https://aam.localhost/auth)
 - CouchDB: [https://aam.localhost/db/couchdb](https://aam.localhost/db/couchdb)
-- CouchDB Admin: [https://aam.localhost/db/couchdb/_utils/](https://aam.localhost/db/couchdb/_utils/) (the last "/" is
+- CouchDB Admin: [https://aam.localhost/db/couchdb/_utils/](https://aam.localhost/db/couchdb/_utils/) (the final "/" is
   important!)
-- RabbitMQ: [https://aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/) (the last "/" is important!)
+- RabbitMQ: [https://aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/) (the final "/" is important!)
 
 ### developer credentials
 
