@@ -84,21 +84,14 @@ You need to create the docker network initial:
 docker network create aam-digital
 ```
 
-##### linux (debian/ubuntu) only:
+##### (bugfix) macOS with M4:
 
-Enable support for accessing host processes from inside a docker container. This is necessary to run the `ndb-core`
-Angular Frontend on your local machine through the reverse proxy.
+Fix bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85:
 
-Uncomment the line in the docker-compose.yml:
+Add this to your .env file:
 
-```yaml
-    reverse-proxy:
-        image: caddy:2.9-alpine
-        networks:
-            - aam-digital
-        # (linux only) support for accessing processes on host machine (needs testing)
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
+```env
+JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
 ```
 
 ---
@@ -150,16 +143,20 @@ cp docs/developer/container-data/caddy-authorities/root.crt application/aam-back
 Install the locally generated root CA certificate from `docs/developer/container-data/caddy-authorities/root.crt`
 as [described here](https://documentation.ubuntu.com/server/how-to/security/install-a-root-ca-certificate-in-the-trust-store).
 
-If your browser still does not recognize the certificates of aam.localhost connections you can add it manually in your browser:
+If your browser still does not recognize the certificates of aam.localhost connections you can add it manually in your
+browser:
+
 1. Copy the root certificate
 2. Make it for non-root users
+
 ```shell
 sudo cp container-data/caddy-authorities/root.crt aam.localhost.crt
 sudo chown $USER:$USER aam.localhost.crt
 ```
+
 3. In Chrome / Chromium: Open Settings > Privacy and security > Security > Manage certificates
 4. In the "Authorities" tab, Import the certificate
-![Chromium Import Certificate](../assets/certificate-import_linux-chromium.png)
+   ![Chromium Import Certificate](../assets/certificate-import_linux-chromium.png)
 
 ##### Windows
 
@@ -206,7 +203,8 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
 
 - Create a new realm called **dummy-realm** by importing
   the [realm configuration file here](example-data/realm_config.dummy-realm.json).
-- Under **Keycloak Realm > Clients** ([https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients](https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients)),
+- Under **Keycloak Realm > Clients
+  ** ([https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients](https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients)),
   import the client configuration using [client_app_configuration here](example-data/client_app.json).
 - In the new realm, create a user and assign relevant roles.
   (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.  
@@ -396,8 +394,8 @@ the `http://` version of an url, but Chrome will not let you:
 
 You can open the `http://` version directly again.
 
-
 ### Running services locally instead of docker images
+
 This setup provides all services, including Aam Digital platform backends, through their docker images.
 You can adjust this to run with a local version of a service
 (e.g. to test a development version of accounts or replication-backend in this integrated environment).

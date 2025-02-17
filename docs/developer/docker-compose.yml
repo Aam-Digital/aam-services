@@ -7,9 +7,8 @@ services:
     image: caddy:2.9-alpine
     networks:
       - aam-digital
-    # (linux only) support for accessing processes on host machine (needs testing)
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway" # (linux only) support for accessing processes on host machine
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./container-data/caddy-authorities:/data/caddy/pki/authorities/local
@@ -60,8 +59,7 @@ services:
       KC_DB_PASSWORD: docker
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: docker
-      # (macOS only) disable on linux
-#      JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-} # (macOS only) bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
 
   db-keycloak:
     image: postgres:16
@@ -153,9 +151,8 @@ services:
     env_file:
       - application.env
       - secrets.env
-#    environment:
-      # (macOS only) disable on linux
-#      JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
+    environment:
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-} # (macOS only) bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
 
   aam-backend-service-db:
     image: postgres:16.6-bookworm
@@ -173,7 +170,6 @@ services:
   # ***************************************************************
 
   sqs:
-    # (macOS) switch to "aam-sqs-linux" for linux
     image: ghcr.io/aam-digital/aam-sqs-linux:latest
     platform: linux/amd64
     networks:
