@@ -12,6 +12,13 @@ For some features, we also use third party solutions that are maintained from th
 - *aam-backend-services*: main backend spring boot application, modulith
   architecture [GitHub](https://github.com/Aam-Digital/aam-services/tree/main/application/aam-backend-service)
 
+additionally, as multi-tenant services:
+
+- *account-backend*: simple backend service to handle user account related tasks for the frontend in
+  Keycloak [GitHub](https://github.com/Aam-Digital/account-backend)
+- *ndb-admin*: API for general admin functionality like statistics and config migrations on
+  databases [GitHub](https://github.com/Aam-Digital/ndb-admin)
+
 ### managed by aam-digital (private)
 
 Accessible for aam-digital internals and contributors only.
@@ -50,7 +57,7 @@ Accessible for aam-digital internals and contributors only.
 ## Getting started
 
 To make development as simple as possible, we provide all services as docker containers. You can start them with the
-docker-compose file provided.  
+docker-compose file provided [here in this folder](./docker-compose.yml)  
 All container will communicate directly over a separate docker network: `aam-digital`
 
 You need to create the docker network initial:
@@ -240,6 +247,8 @@ docker compose down && docker compose up -d
 ```
 
 ### Step 5: Start the Frontend
+
+In your local repository of [ndb-core](https://github.com/Aam-Digital/ndb-core):
 
 1. Update `environment.ts` or `assets/config.json` with the following settings, in order to run the app in "synced" mode
    using the backend services:
