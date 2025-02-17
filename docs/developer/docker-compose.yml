@@ -8,8 +8,8 @@ services:
     networks:
       - aam-digital
     # (linux only) support for accessing processes on host machine (needs testing)
-    #    extra_hosts:
-    #      - "host.docker.internal:host-gateway"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./container-data/caddy-authorities:/data/caddy/pki/authorities/local
@@ -60,6 +60,7 @@ services:
       KC_DB_PASSWORD: docker
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: docker
+      # (macOS only) disable on linux
       JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
 
   db-keycloak:
@@ -153,6 +154,7 @@ services:
       - application.env
       - secrets.env
     environment:
+      # (macOS only) disable on linux
       JAVA_TOOL_OPTIONS: -XX:UseSVE=0 # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
 
   aam-backend-service-db:
@@ -171,7 +173,8 @@ services:
   # ***************************************************************
 
   sqs:
-    image: ghcr.io/aam-digital/aam-sqs-mac:latest
+    # (macOS) switch to "aam-sqs-linux" for linux
+    image: ghcr.io/aam-digital/aam-sqs-linux:latest
     platform: linux/amd64
     networks:
       - aam-digital

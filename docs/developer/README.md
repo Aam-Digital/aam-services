@@ -71,7 +71,17 @@ docker network create aam-digital
 Enable support for accessing host processes from inside a docker container. This is necessary to run the `ndb-core`
 Angular Frontend on your local machine through the reverse proxy.
 
-    host.docker.internal
+Uncomment the line in the docker-compose.yml:
+
+```yaml
+    reverse-proxy:
+        image: caddy:2.9-alpine
+        networks:
+            - aam-digital
+        # (linux only) support for accessing processes on host machine (needs testing)
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+```
 
 ---
 
@@ -354,3 +364,12 @@ the `http://` version of an url, but Chrome will not let you:
 - press `delete`
 
 You can open the `http://` version directly again.
+
+
+# Running services locally instead of docker images
+This setup provides all services, including Aam Digital platform backends, through their docker images.
+You can adjust this to run with a local version of a service
+(e.g. to test a development version of accounts or replication-backend in this integrated environment).
+For this, edit the [Caddyfile](Caddyfile) and replace the relevant line of the reverse-proxy
+to use an address through `host.docker.internal` to point to your local machine
+(see comments in Caddyfile).
