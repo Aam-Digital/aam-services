@@ -100,11 +100,11 @@ You can add import the auto generated caddy certificate after the aam-stack is s
 #### link certificate to aam-backend-service
 
 To be able to verify https connections, the `aam-backend-service` need the generated caddy certificate.  
-You can simply link the certificate to the resources directory of the `aam-backend-service`
+You can copy the certificate to the resources directory of the `aam-backend-service`:
 
 ```shell
 # /aam-services
-ln -s docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
+cp docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
 ```
 
 ##### macos
