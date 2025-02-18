@@ -44,7 +44,7 @@ aam.localhost:80, aam.localhost:443 {
 	}
 
 	handle_path /nominatim/* {
-	    reverse_proxy https://nominatim.openstreetmap.org
+        reverse_proxy https://nominatim.openstreetmap.org
     }
 
 	handle_path /maildev/* {
