@@ -16,3 +16,6 @@ The individual modules like "Reporting" require some setup and environment varia
 
 - **[Reporting](./docs/modules/reporting.md)**: Calculate aggregated reports and run queries on all data, accessible for external services for API integrations of systems
 - **[Export](./docs/modules/export.md)**: Template based file export API. Uses [carbone.io](https://carbone.io) as templating engine.
+
+## Development
+The developer README provides detailed instructions how to set up a local testing environment: [docs/developer/README.md](docs/developer/README.md)
