@@ -31,7 +31,7 @@ These allow you to run required additional services like databases and queues on
 
 -----
 # Development
-To run the system locally including required additional services like databases refer to the [docs/developer/README.md](docs/developer/README.md).
+The developer README provides detailed instructions how to set up a local testing environment: [docs/developer/README.md](docs/developer/README.md)
 
 This backend is developed as independent modules that share some common services (e.g. for database access).
 
