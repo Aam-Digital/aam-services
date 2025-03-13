@@ -62,10 +62,7 @@ object TestContainers {
     @Container
     @JvmStatic
     val CONTAINER_KEYCLOAK: KeycloakContainer = KeycloakContainer()
-//        .withEnv(
-//            "JAVA_TOOL_OPTIONS",
-//            "-XX:UseSVE=0"
-//        ) // # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
+//        .withEnv("JAVA_TOOL_OPTIONS", "-XX:UseSVE=0") # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
         .withRealmImportFile("/e2e-keycloak-realm.json")
         .withAdminUsername("admin")
         .withAdminPassword("docker")
