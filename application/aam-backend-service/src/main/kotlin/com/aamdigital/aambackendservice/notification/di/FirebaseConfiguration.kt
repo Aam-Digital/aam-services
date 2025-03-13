@@ -11,6 +11,12 @@ import org.springframework.context.annotation.Configuration
 import java.util.*
 
 @ConfigurationProperties("notification-firebase-configuration")
+@ConditionalOnProperty(
+    prefix = "features.notification-api",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 class NotificationFirebaseClientConfiguration(
     val credentialFileBase64: String,
 )
