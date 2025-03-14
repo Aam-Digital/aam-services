@@ -1,11 +1,12 @@
 package com.aamdigital.aambackendservice.notification.controller
 
-import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
-import com.google.firebase.messaging.FirebaseMessaging
-import com.google.firebase.messaging.MulticastMessage
-import com.google.firebase.messaging.Notification
+import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
+import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
+import com.aamdigital.aambackendservice.notification.core.create.push.PushCreateNotificationHandler
+import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
+import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
+import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.web.bind.annotation.PostMapping
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 data class TestMessageResponse(
-    val receiverIds: List<String>,
+    val outcome: CreateNotificationData,
 )
 
 @RestController
@@ -25,43 +26,29 @@ data class TestMessageResponse(
     matchIfMissing = false
 )
 class NotificationAdminController(
-    private val firebaseMessaging: FirebaseMessaging,
-    private val userDeviceRepository: UserDeviceRepository,
+    private val pushCreateNotificationHandler: PushCreateNotificationHandler,
 ) {
 
     @PostMapping("/message/device-test")
     fun sendTestMessageToDevice(
         authentication: JwtAuthenticationToken,
     ): ResponseEntity<TestMessageResponse> {
-        val userDevices =
-            userDeviceRepository.findByUserIdentifier(
-                authentication.name ?: authentication.tokenAttributes["username"].toString(), Pageable.unpaged()
+
+        val testEvent = CreateUserNotificationEvent(
+            userIdentifier = authentication.name ?: authentication.tokenAttributes["username"].toString(),
+            notificationChannelType = NotificationChannelType.PUSH,
+            notificationRule = "test",
+            details = NotificationDetails(
+                title = "Test Notification",
+                body = "Hello World",
+                notificationType = NotificationType.UNKNOWN,
             )
-                .map {
-                    it.deviceToken
-                }.toList()
+        )
 
-        if (userDevices.isEmpty()) {
-            return ResponseEntity.ok(
-                TestMessageResponse(
-                    receiverIds = emptyList()
-                )
-            )
-        }
-
-        val message = MulticastMessage.builder()
-            .addAllTokens(userDevices)
-            .setNotification(Notification.builder().setTitle("Aam Digital Test").setBody("Hello World").build())
-            .build()
-
-        val response = firebaseMessaging.sendEachForMulticast(message)
-
-        val ids = response.responses.map { it.messageId }.toList()
+        val outcome = pushCreateNotificationHandler.createMessage(testEvent)
 
         return ResponseEntity.ok().body(
-            TestMessageResponse(
-                receiverIds = ids
-            )
+            TestMessageResponse(outcome)
         )
     }
 }

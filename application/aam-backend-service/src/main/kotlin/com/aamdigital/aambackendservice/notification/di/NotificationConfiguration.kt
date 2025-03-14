@@ -1,15 +1,15 @@
 package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.notification.core.create.app.AppCreateNotificationHandler
-import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.core.config.CouchDbSyncNotificationConfigUseCase
+import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigUseCase
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationUseCase
-import com.aamdigital.aambackendservice.notification.core.trigger.DefaultApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.core.create.DefaultCreateNotificationUseCase
+import com.aamdigital.aambackendservice.notification.core.create.app.AppCreateNotificationHandler
 import com.aamdigital.aambackendservice.notification.core.create.push.PushCreateNotificationHandler
-import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigUseCase
+import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
+import com.aamdigital.aambackendservice.notification.core.trigger.DefaultApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
@@ -55,20 +55,16 @@ class NotificationConfiguration {
     @Bean("push-create-notification-handler")
     fun pushCreateNotificationHandler(
         firebaseMessaging: FirebaseMessaging,
-        userDeviceRepository: UserDeviceRepository,
-        notificationConfigRepository: NotificationConfigRepository,
+        userDeviceRepository: UserDeviceRepository
     ): CreateNotificationHandler = PushCreateNotificationHandler(
         firebaseMessaging = firebaseMessaging,
-        userDeviceRepository = userDeviceRepository,
-        notificationConfigRepository = notificationConfigRepository,
+        userDeviceRepository = userDeviceRepository
     )
 
     @Bean("app-create-notification-handler")
     fun appCreateNotificationHandler(
-        couchDbClient: CouchDbClient,
-        notificationConfigRepository: NotificationConfigRepository,
+        couchDbClient: CouchDbClient
     ): CreateNotificationHandler = AppCreateNotificationHandler(
-        couchDbClient = couchDbClient,
-        notificationConfigRepository = notificationConfigRepository
+        couchDbClient = couchDbClient
     )
 }

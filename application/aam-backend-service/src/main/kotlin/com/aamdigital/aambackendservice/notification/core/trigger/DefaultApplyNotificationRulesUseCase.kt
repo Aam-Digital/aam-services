@@ -4,7 +4,9 @@ import com.aamdigital.aambackendservice.changes.domain.DocumentChangeEvent
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
+import com.aamdigital.aambackendservice.notification.domain.EntityNotificationContext
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
+import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.repository.NotificationConditionEntity
 import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
@@ -92,12 +94,24 @@ class DefaultApplyNotificationRulesUseCase(
                 }
             }
 
+            val notificationDetails = NotificationDetails(
+                title = rule.label,
+                // body = "name and details of the entity ...", // we load this only in the frontend currently. Add here later if needed for other channels like email
+                // TODO: add actionUrl for better linking
+                context = EntityNotificationContext(
+                    entityType = rule.entityType,
+                    entityId = documentChangeEvent.documentId
+                ),
+                notificationType = rule.notificationType,
+            )
+
             userNotificationPublisher.publish(
                 channel = USER_NOTIFICATION_QUEUE,
                 event = CreateUserNotificationEvent(
                     userIdentifier = userIdentifier,
                     notificationChannelType = NotificationChannelType.APP,
-                    notificationRule = rule.externalIdentifier
+                    notificationRule = rule.externalIdentifier,
+                    details = notificationDetails,
                 )
             )
 
@@ -107,7 +121,8 @@ class DefaultApplyNotificationRulesUseCase(
                     event = CreateUserNotificationEvent(
                         userIdentifier = userIdentifier,
                         notificationChannelType = NotificationChannelType.PUSH,
-                        notificationRule = rule.externalIdentifier
+                        notificationRule = rule.externalIdentifier,
+                        details = notificationDetails,
                     )
                 )
             }
@@ -118,7 +133,8 @@ class DefaultApplyNotificationRulesUseCase(
                     event = CreateUserNotificationEvent(
                         userIdentifier = userIdentifier,
                         notificationChannelType = NotificationChannelType.EMAIL,
-                        notificationRule = rule.externalIdentifier
+                        notificationRule = rule.externalIdentifier,
+                        details = notificationDetails,
                     )
                 )
             }
