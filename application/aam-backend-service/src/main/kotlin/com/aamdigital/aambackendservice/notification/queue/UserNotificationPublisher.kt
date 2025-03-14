@@ -1,6 +1,6 @@
-package com.aamdigital.aambackendservice.notification.core
+package com.aamdigital.aambackendservice.notification.queue
 
-import com.aamdigital.aambackendservice.notification.core.event.CreateUserNotificationEvent
+import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.queue.core.QueueMessage
 
 interface UserNotificationPublisher {

@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.notification.core
+package com.aamdigital.aambackendservice.notification.core.create
 
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.error.AamErrorCode

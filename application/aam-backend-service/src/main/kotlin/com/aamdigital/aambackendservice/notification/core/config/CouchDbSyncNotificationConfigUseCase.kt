@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.notification.core
+package com.aamdigital.aambackendservice.notification.core.config
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
@@ -6,10 +6,10 @@ import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
-import com.aamdigital.aambackendservice.notification.repositiory.NotificationConditionEntity
-import com.aamdigital.aambackendservice.notification.repositiory.NotificationConfigEntity
-import com.aamdigital.aambackendservice.notification.repositiory.NotificationConfigRepository
-import com.aamdigital.aambackendservice.notification.repositiory.NotificationRuleEntity
+import com.aamdigital.aambackendservice.notification.repository.NotificationConditionEntity
+import com.aamdigital.aambackendservice.notification.repository.NotificationConfigEntity
+import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
+import com.aamdigital.aambackendservice.notification.repository.NotificationRuleEntity
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.util.LinkedMultiValueMap
 import java.util.*

@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.notification.repositiory
+package com.aamdigital.aambackendservice.notification.repository
 
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable

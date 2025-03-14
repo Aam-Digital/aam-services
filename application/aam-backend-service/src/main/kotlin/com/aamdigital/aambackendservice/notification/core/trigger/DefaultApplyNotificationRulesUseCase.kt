@@ -1,13 +1,14 @@
-package com.aamdigital.aambackendservice.notification.core
+package com.aamdigital.aambackendservice.notification.core.trigger
 
 import com.aamdigital.aambackendservice.changes.domain.DocumentChangeEvent
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.notification.core.event.CreateUserNotificationEvent
+import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
-import com.aamdigital.aambackendservice.notification.repositiory.NotificationConditionEntity
-import com.aamdigital.aambackendservice.notification.repositiory.NotificationConfigRepository
-import com.aamdigital.aambackendservice.notification.repositiory.NotificationRuleEntity
+import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
+import com.aamdigital.aambackendservice.notification.repository.NotificationConditionEntity
+import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
+import com.aamdigital.aambackendservice.notification.repository.NotificationRuleEntity
 import org.apache.commons.lang3.StringUtils
 import kotlin.jvm.optionals.getOrNull
 

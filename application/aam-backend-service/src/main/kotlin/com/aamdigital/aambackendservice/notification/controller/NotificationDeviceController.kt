@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.notification.controller
 
 import com.aamdigital.aambackendservice.error.HttpErrorDto
-import com.aamdigital.aambackendservice.notification.repositiory.UserDeviceEntity
-import com.aamdigital.aambackendservice.notification.repositiory.UserDeviceRepository
+import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
+import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus

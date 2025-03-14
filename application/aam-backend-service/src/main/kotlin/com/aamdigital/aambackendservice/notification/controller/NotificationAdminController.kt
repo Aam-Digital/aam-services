@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.notification.controller
 
-import com.aamdigital.aambackendservice.notification.repositiory.UserDeviceRepository
+import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.MulticastMessage
 import com.google.firebase.messaging.Notification

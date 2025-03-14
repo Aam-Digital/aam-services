@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.notification.core
+package com.aamdigital.aambackendservice.notification.core.config
 
 import com.aamdigital.aambackendservice.domain.DomainUseCase
 import com.aamdigital.aambackendservice.domain.UseCaseData

@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.notification.repositiory
+package com.aamdigital.aambackendservice.notification.repository
 
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column

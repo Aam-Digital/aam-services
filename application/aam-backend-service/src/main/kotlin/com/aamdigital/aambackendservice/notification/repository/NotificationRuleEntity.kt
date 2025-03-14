@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.notification.repositiory
+package com.aamdigital.aambackendservice.notification.repository
 
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import jakarta.persistence.Column

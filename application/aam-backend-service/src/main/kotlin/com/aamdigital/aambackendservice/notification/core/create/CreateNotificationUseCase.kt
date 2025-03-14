@@ -1,9 +1,9 @@
-package com.aamdigital.aambackendservice.notification.core
+package com.aamdigital.aambackendservice.notification.core.create
 
 import com.aamdigital.aambackendservice.domain.DomainUseCase
 import com.aamdigital.aambackendservice.domain.UseCaseData
 import com.aamdigital.aambackendservice.domain.UseCaseRequest
-import com.aamdigital.aambackendservice.notification.core.event.CreateUserNotificationEvent
+import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 
 data class CreateNotificationRequest(
     val createUserNotificationEvent: CreateUserNotificationEvent,

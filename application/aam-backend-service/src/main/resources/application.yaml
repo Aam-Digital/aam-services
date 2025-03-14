@@ -48,6 +48,8 @@ features:
     enabled: false
   skill-api:
     mode: disabled
+  notification-api:
+    enabled: false
 
 # enable/disables event processing for each queue
 events:

@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.notification.core.event
+package com.aamdigital.aambackendservice.notification.core
 
 import com.aamdigital.aambackendservice.events.DomainEvent
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType

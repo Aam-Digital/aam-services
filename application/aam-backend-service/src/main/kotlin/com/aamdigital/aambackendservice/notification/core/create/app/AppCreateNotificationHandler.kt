@@ -1,10 +1,12 @@
-package com.aamdigital.aambackendservice.notification.core
+package com.aamdigital.aambackendservice.notification.core.create.app
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.notification.core.event.CreateUserNotificationEvent
+import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
+import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
+import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
-import com.aamdigital.aambackendservice.notification.repositiory.NotificationConfigRepository
+import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
 import com.fasterxml.jackson.annotation.JsonProperty
 import java.util.*
 import kotlin.jvm.optionals.getOrNull

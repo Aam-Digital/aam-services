@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.notification.core
+package com.aamdigital.aambackendservice.notification.core.trigger
 
 import com.aamdigital.aambackendservice.changes.domain.DocumentChangeEvent
 import com.aamdigital.aambackendservice.domain.DomainUseCase

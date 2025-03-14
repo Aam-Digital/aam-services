@@ -1,6 +1,8 @@
 package com.aamdigital.aambackendservice.notification.core
 
-import com.aamdigital.aambackendservice.notification.repositiory.NotificationConfigRepository
+import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
+import com.aamdigital.aambackendservice.notification.core.trigger.DefaultApplyNotificationRulesUseCase
+import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock

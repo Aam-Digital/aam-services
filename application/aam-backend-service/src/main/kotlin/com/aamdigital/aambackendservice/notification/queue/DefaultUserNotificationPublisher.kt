@@ -1,8 +1,8 @@
-package com.aamdigital.aambackendservice.notification.core
+package com.aamdigital.aambackendservice.notification.queue
 
 import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.InternalServerException
-import com.aamdigital.aambackendservice.notification.core.event.CreateUserNotificationEvent
+import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.queue.core.QueueMessage
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
