@@ -1,10 +1,13 @@
 # Aam Digital - Notification API
-_for details about the internal implementation [see README in module code folder](../../application/aam-backend-service/src/main/kotlin/com/aamdigital/aambackendservice/notification/README.md)_
+
+_for details about the internal
+implementation [see README in module code folder](../../application/aam-backend-service/src/main/kotlin/com/aamdigital/aambackendservice/notification/README.md)_
 
 ## Overview
 
 The Notification Module is watching for events that are configured to trigger (push) notifications to users.
-This module watches for database changes and creates notifications through Firebase and also as documents in the database.
+This module watches for database changes and creates notifications through Firebase and also as documents in the
+database.
 
 ### Dependencies
 
@@ -15,11 +18,35 @@ Push Notifications are sent through Firebase Cloud Messaging (FCM).
 [notification-api-v1.yaml](../api-specs/notification-api-v1.yaml)
 
 ## Setup
+
 The following environment variables are required:
+
 ```dotenv
 FEATURES_NOTIFICATIONAPI_ENABLED=true
 DATABASECHANGEDETECTION_ENABLED=true
 
 # Firebase Configuration: Confidential (!)
 NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64=<base-64-encoded-firebase-credential-file>
+```
+
+### Config:Permissions
+
+Users need to have certain Entity Permissions in the frontend to be able to access and configure Notifications:
+
+In
+the [User Permissions doc](https://aam-digital.github.io/ndb-core/documentation/additional-documentation/concepts/user-roles-and-permissions.html)
+`Config:Permissions` in the CouchDB, make sure the following rules are present:
+
+```json
+{
+  "default": [
+    {
+      "subject": [
+        "NotificationConfig",
+        "NotificationEvent"
+      ],
+      "action": "manage"
+    }
+  ]
+}
 ```

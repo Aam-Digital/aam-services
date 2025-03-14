@@ -46,9 +46,13 @@ class AppCreateNotificationHandler(
             ),
         )
 
+        val userNotificationDb = "notifications_${createUserNotificationEvent.userIdentifier}"
+
+        ensureUserNotificationDatabaseExists(userNotificationDb)
+
         couchDbClient
             .putDatabaseDocument(
-                database = "notifications_${createUserNotificationEvent.userIdentifier}",
+                database = userNotificationDb,
                 documentId = event.id,
                 body = event,
             )
@@ -58,5 +62,12 @@ class AppCreateNotificationHandler(
             messageCreated = false,
             messageReference = null
         )
+    }
+
+    private fun ensureUserNotificationDatabaseExists(databaseName: String) {
+        val databases = couchDbClient.allDatabases()
+        if (!databases.contains(databaseName)) {
+            couchDbClient.createDatabase(databaseName)
+        }
     }
 }
