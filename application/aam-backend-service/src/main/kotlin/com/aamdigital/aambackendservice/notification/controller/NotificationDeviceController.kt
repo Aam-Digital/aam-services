@@ -24,8 +24,11 @@ data class DeviceRegistrationDto(
     val deviceToken: String,
 )
 
+/**
+ * Controller for registering and unregistering devices of a user for push notifications.
+ */
 @RestController
-@RequestMapping("/v1/notification")
+@RequestMapping("/v1/notification/device")
 @ConditionalOnProperty(
     prefix = "features.notification-api",
     name = ["enabled"],
@@ -33,32 +36,32 @@ data class DeviceRegistrationDto(
     matchIfMissing = false
 )
 @Transactional
-class NotificationController(
+class NotificationDeviceController(
     private val userDeviceRepository: UserDeviceRepository,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    @PostMapping("/device")
+    @PostMapping()
     @Validated
     fun registerDevice(
         @RequestBody deviceRegistrationDto: DeviceRegistrationDto,
         authentication: JwtAuthenticationToken,
     ): ResponseEntity<Any> {
 
-        if (userDeviceRepository.existsByDeviceToken(deviceRegistrationDto.deviceToken)) {
-            return ResponseEntity.badRequest().body(
-                HttpErrorDto(
-                    errorCode = "Bad Request",
-                    errorMessage = "The device is already registered."
-                )
-            )
-        }
-
         if (authentication.name == null) {
             return ResponseEntity.badRequest().body(
                 HttpErrorDto(
                     errorCode = "Bad Request",
                     errorMessage = "No subject found in the token."
+                )
+            )
+        }
+
+        if (userDeviceRepository.existsByDeviceToken(deviceRegistrationDto.deviceToken)) {
+            return ResponseEntity.badRequest().body(
+                HttpErrorDto(
+                    errorCode = "Bad Request",
+                    errorMessage = "The device is already registered."
                 )
             )
         }
@@ -75,7 +78,7 @@ class NotificationController(
         return ResponseEntity.noContent().build()
     }
 
-    @DeleteMapping("/device/{id}")
+    @DeleteMapping("/{id}")
     fun unregisterDevice(
         @PathVariable id: String,
         authentication: JwtAuthenticationToken,
