@@ -30,6 +30,13 @@ data class NotificationRuleEntity(
     @Column
     var entityType: String,
 
+    /**
+     * The kind of change of a document that should trigger a notification.
+     * e.g. "created", "updated", "deleted"
+     *
+     * Note that the NotificationConfigEntity type in the backend is mapping one rule that has multiple changeTypes
+     * to multiple rules, so this is always a single value.
+     */
     @Column
     var changeType: String,
 
