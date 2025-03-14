@@ -12,7 +12,7 @@ A modularize Spring Boot application that contains API modules for [Aam Digital'
 - **[Export](./docs/modules/export.md)**: Template based file export API. Uses [carbone.io](https://carbone.io) as templating engine.
 - **[Skill](./docs/modules/skill.md)**: Integration with external system (SkillLab) to link and pull data into Aam Digital.
 
-_Modules have to be enabled via a feature flag in the environment config and may need additional environment variables (see module READMEs)._
+_Modules have to be enabled via a feature flag in the environment config and may need additional environment variables as described in their module docs._
 
 
 -----
@@ -35,11 +35,21 @@ The developer README provides detailed instructions how to set up a local testin
 
 This backend is developed as independent modules that share some common services (e.g. for database access).
 
-## Configuration through environment variables
-Environment variables can be defined in an .env file using "snake case" variable names (see [examples/application.env](/docs/examples/application.env)).
-These are transformed automatically to be available in the code as nested properties
+## Frameworks & Tools
+- Spring + Kotlin
+- Spring Boot ([see intro](https://docs.spring.io/spring-boot/reference/using/index.html))
+- Gradle ([see intro](https://docs.gradle.org/current/userguide/getting_started_eng.html))
 
-For example, `FEATURES_EXPORTAPI_ENABLED=true` in .env can toggle the feature flag
+## Configuration through environment variables
+Using Spring Boot's  system
+our configurable values are represented in the [application.yaml](application/aam-backend-service/src/main/resources/application.yaml).
+
+We define environment variables to set / overwrite the configuration to real values for production or testing.
+Variables in the yaml hierarchy can be set in env variables using "snake case" variable names
+(refer to the documentation of Spring Boot's [Externalized Configuration](https://docs.spring.io/spring-boot/reference/features/external-config.html) docs).
+
+### Feature Flags
+Modules (usually) have to be explicitly enabled through a feature flag configuration. For example, `FEATURES_EXPORTAPI_ENABLED=true` in .env can toggle the feature flag
 ```
 @ConditionalOnProperty(
     prefix = "features.export-api",
