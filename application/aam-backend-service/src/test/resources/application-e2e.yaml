@@ -85,9 +85,6 @@ features:
 crypto-configuration:
   secret: super-duper-secret
 
-crypto-configuration:
-  secret: super-duper-secret
-
 events:
   listener:
     report-calculation:
