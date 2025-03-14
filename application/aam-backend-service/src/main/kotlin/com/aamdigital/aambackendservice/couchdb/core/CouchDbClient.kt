@@ -51,4 +51,6 @@ interface CouchDbClient {
         rev: String,
         kClass: KClass<T>,
     ): Optional<T>
+
+    fun createDatabase(databaseName: String)
 }
