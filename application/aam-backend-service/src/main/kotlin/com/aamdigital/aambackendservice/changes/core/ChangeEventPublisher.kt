@@ -1,8 +1,8 @@
-package com.aamdigital.aambackendservice.reporting.changes.core
+package com.aamdigital.aambackendservice.changes.core
 
+import com.aamdigital.aambackendservice.changes.domain.DatabaseChangeEvent
+import com.aamdigital.aambackendservice.changes.domain.DocumentChangeEvent
 import com.aamdigital.aambackendservice.queue.core.QueueMessage
-import com.aamdigital.aambackendservice.reporting.domain.event.DatabaseChangeEvent
-import com.aamdigital.aambackendservice.reporting.domain.event.DocumentChangeEvent
 
 interface ChangeEventPublisher {
     fun publish(channel: String, event: DatabaseChangeEvent): QueueMessage
