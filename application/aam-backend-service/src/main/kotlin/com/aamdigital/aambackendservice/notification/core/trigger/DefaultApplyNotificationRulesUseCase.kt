@@ -25,7 +25,6 @@ class DefaultApplyNotificationRulesUseCase(
 
         val notificationConfigurations = notificationConfigRepository.findAll() // todo database access optimization
 
-
         val triggeredEvents = prefilterRules(notificationConfigurations, changedEntity, changeType)
             .filter { (notificationConfig, rule) ->
                 logger.trace("{} -> {}", notificationConfig.userIdentifier, rule)
@@ -38,7 +37,6 @@ class DefaultApplyNotificationRulesUseCase(
                     request.documentChangeEvent
                 )
             }
-
 
         return UseCaseOutcome.Success(
             ApplyNotificationRulesData(
@@ -154,7 +152,7 @@ class DefaultApplyNotificationRulesUseCase(
             "\$eq" -> {
                 return when (currentValue) {
                     is String -> currentValue == conditionValue
-                    is ArrayList<*> ->
+                    is List<*> ->
                         currentValue.size == 1 && currentValue.first() == conditionValue
 
                     else -> false
@@ -164,7 +162,7 @@ class DefaultApplyNotificationRulesUseCase(
             "\$nq" -> {
                 return when (currentValue) {
                     is String -> currentValue != conditionValue
-                    is ArrayList<*> ->
+                    is List<*> ->
                         currentValue.size == 1 && currentValue.first() != conditionValue
 
                     else -> false
@@ -174,40 +172,12 @@ class DefaultApplyNotificationRulesUseCase(
             "\$elemMatch" -> {
                 return when (currentValue) {
                     is String -> currentValue == conditionValue
-                    is ArrayList<*> -> currentValue.contains(conditionValue)
+                    is List<*> -> currentValue.contains(conditionValue)
                     else -> false
                 }
             }
 
             "\$gt" -> {
-                return when (currentValue) {
-                    is Number -> {
-                        if (!StringUtils.isNumeric(conditionValue)) {
-                            return false
-                        } else {
-                            currentValue.toFloat() > conditionValue.toFloat()
-                        }
-                    }
-
-                    else -> false
-                }
-            }
-
-            "\$gte" -> {
-                return when (currentValue) {
-                    is Number -> {
-                        if (!StringUtils.isNumeric(conditionValue)) {
-                            return false
-                        } else {
-                            currentValue.toFloat() >= conditionValue.toFloat()
-                        }
-                    }
-
-                    else -> false
-                }
-            }
-
-            "\$lt" -> {
                 return when (currentValue) {
                     is Number -> {
                         if (!StringUtils.isNumeric(conditionValue)) {
@@ -221,13 +191,41 @@ class DefaultApplyNotificationRulesUseCase(
                 }
             }
 
-            "\$lte" -> {
+            "\$gte" -> {
                 return when (currentValue) {
                     is Number -> {
                         if (!StringUtils.isNumeric(conditionValue)) {
                             return false
                         } else {
                             currentValue.toFloat() <= conditionValue.toFloat()
+                        }
+                    }
+
+                    else -> false
+                }
+            }
+
+            "\$lt" -> {
+                return when (currentValue) {
+                    is Number -> {
+                        if (!StringUtils.isNumeric(conditionValue)) {
+                            return false
+                        } else {
+                            currentValue.toFloat() > conditionValue.toFloat()
+                        }
+                    }
+
+                    else -> false
+                }
+            }
+
+            "\$lte" -> {
+                return when (currentValue) {
+                    is Number -> {
+                        if (!StringUtils.isNumeric(conditionValue)) {
+                            return false
+                        } else {
+                            currentValue.toFloat() >= conditionValue.toFloat()
                         }
                     }
 
