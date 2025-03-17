@@ -332,36 +332,21 @@ If you use the default `npm start` command, make sure to update the start comman
 ### Further Steps (optional):
 
 #### Set up RabbitMQ (needed for some modules)
+
 To use the queue, you have to create a user and virutal host in the RabbitMQ admin interface:
+
 1. Open [aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/#/users)
 2. Login with the default credentials (guest:guest)
 3. Navigate to the "Admin" section
-4. Create a new virtual host (local) to fit the [application.yaml settings](/application/aam-backend-service/src/main/resources/application.yaml)
+4. Create a new virtual host (local) to fit
+   the [application.yaml settings](/application/aam-backend-service/src/main/resources/application.yaml)
 5. Create a new user (local-spring:docker)
 6. Edit that user and assign permissions to the "local" virtual host
 
+#### Configure modules
 
-#### Configure the notification module of aam-backend-services
+Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific modules like Notification:
 
-1. Download the `firebase-credentials.json` from the firebase interface ([as described here](https://firebase.google.com/docs/admin/setup#initialize_the_sdk_in_non-google_environments)).
-2. Encode it as base64
-   run this to print the encoded file to the console:
-    ```bash
-    base64 -i firebase-credentials.json
-    ```
-3. Copy the output (remove line breaks to make it a single line of encoded text)
-4. Create a new file, based on the `secrets.env.example`
-    ```bash
-    cp secrets.env.example secrets.env
-    ```
-5. Edit `secrets.env` with an editor of your choice and replace the placeholder with the base-64 output you just copied
-    ```
-    NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64=<base-64-encoded-firebase-credential-file>
-    ``` 
-6. Apply config by restart the containers
-    ```bash
-    docker compose up -d
-    ```
 
 -----
 
