@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.notification.controller
 import com.aamdigital.aambackendservice.error.HttpErrorDto
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
+import com.google.firebase.FirebaseApp
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
@@ -11,6 +12,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -38,10 +40,11 @@ data class DeviceRegistrationDto(
 @Transactional
 class NotificationDeviceController(
     private val userDeviceRepository: UserDeviceRepository,
+    private val firebaseMessaging: FirebaseApp,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    @PostMapping()
+    @PostMapping
     @Validated
     fun registerDevice(
         @RequestBody deviceRegistrationDto: DeviceRegistrationDto,
@@ -76,6 +79,33 @@ class NotificationDeviceController(
 
 
         return ResponseEntity.noContent().build()
+    }
+
+    @GetMapping("/{id}")
+    fun getDeviceRegistration(
+        @PathVariable id: String,
+        authentication: JwtAuthenticationToken,
+    ): ResponseEntity<Any> {
+        val userDevice =
+            userDeviceRepository.findByDeviceToken(id).getOrNull() ?: return ResponseEntity.notFound().build()
+
+        if (userDevice.userIdentifier != (authentication.name
+                ?: authentication.tokenAttributes["username"].toString())
+        ) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                HttpErrorDto(
+                    errorCode = "Forbidden",
+                    errorMessage = "Token does not belong to User",
+                )
+            )
+        }
+
+        return ResponseEntity.ok(
+            DeviceRegistrationDto(
+                deviceToken = userDevice.deviceToken,
+                deviceName = userDevice.deviceName,
+            )
+        )
     }
 
     @DeleteMapping("/{id}")
