@@ -9,10 +9,17 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.MulticastMessage
 import com.google.firebase.messaging.Notification
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 
 @Service
+@ConditionalOnProperty(
+    prefix = "features.notification-api",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 class PushCreateNotificationHandler(
     private val firebaseMessaging: FirebaseMessaging,
     private val userDeviceRepository: UserDeviceRepository,

@@ -39,6 +39,7 @@ management:
         include:
           - info
           - health
+          - features
   tracing:
     sampling:
       probability: 1

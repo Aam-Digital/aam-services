@@ -28,6 +28,7 @@ class SecurityConfiguration {
                 authorize(HttpMethod.GET, "/actuator/health", permitAll)
                 authorize(HttpMethod.GET, "/actuator/health/liveness", permitAll)
                 authorize(HttpMethod.GET, "/actuator/health/readiness", permitAll)
+                authorize(HttpMethod.GET, "/actuator/features", permitAll)
                 authorize(anyRequest, authenticated)
             }
             httpBasic {
