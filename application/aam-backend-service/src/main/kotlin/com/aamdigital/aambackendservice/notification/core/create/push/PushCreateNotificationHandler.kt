@@ -55,10 +55,9 @@ class PushCreateNotificationHandler(
                 WebpushConfig.builder()
                     .setNotification(
                         WebpushNotification.builder()
-                            .setData(
-                                mapOf(Pair("click_action", notificationFirebaseClientConfiguration.linkBaseUrl))
+                            .putCustomData(
+                                "url", notificationFirebaseClientConfiguration.linkBaseUrl
                             )
-                            .addAction(WebpushNotification.Action("open", "Open in App"))
                             .setTitle("Update from Aam Digital")
                             .setBody(createUserNotificationEvent.details.title)
                             .build()
