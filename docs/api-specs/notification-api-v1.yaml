@@ -25,6 +25,27 @@ paths:
           description: The device is already registered
 
   /device/{deviceId}:
+    get:
+      summary: Check if the device is correctly registered for push notifications
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            type: string
+          required: true
+      tags:
+        - device
+      responses:
+        403:
+          description: Device does not belong to user
+        404:
+          description: Device registration does not exist
+        200:
+          description: Device registration exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRegistrationCheckResponse'
     delete:
       summary: Delete an existing device registration.
       parameters:
@@ -75,3 +96,11 @@ components:
           type: array
           items:
             type: string
+    
+    DeviceRegistrationCheckResponse:
+      type: object
+      properties:
+        deviceToken:
+          type: string
+        deviceName:
+          type: string
