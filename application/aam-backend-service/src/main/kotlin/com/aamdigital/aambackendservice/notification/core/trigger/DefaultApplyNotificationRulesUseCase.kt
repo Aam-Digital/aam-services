@@ -111,17 +111,18 @@ class DefaultApplyNotificationRulesUseCase(
             )
         )
 
-        if (notificationConfig.channelPush) {
-            userNotificationPublisher.publish(
-                channel = USER_NOTIFICATION_QUEUE,
-                event = CreateUserNotificationEvent(
-                    userIdentifier = notificationConfig.userIdentifier,
-                    notificationChannelType = NotificationChannelType.PUSH,
-                    notificationRule = rule.externalIdentifier,
-                    details = notificationDetails,
-                )
+//        todo refactor channelPush settings here
+//        if (notificationConfig.channelPush) {
+        userNotificationPublisher.publish(
+            channel = USER_NOTIFICATION_QUEUE,
+            event = CreateUserNotificationEvent(
+                userIdentifier = notificationConfig.userIdentifier,
+                notificationChannelType = NotificationChannelType.PUSH,
+                notificationRule = rule.externalIdentifier,
+                details = notificationDetails,
             )
-        }
+        )
+//        }
 
         if (notificationConfig.channelEmail) {
             userNotificationPublisher.publish(
