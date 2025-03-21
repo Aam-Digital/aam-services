@@ -24,13 +24,14 @@ class DefaultCouchDbClient(
 ) : CouchDbClient {
 
     private val logger = LoggerFactory.getLogger(javaClass)
-    
+
     enum class DefaultCouchDbClientErrorCode : AamErrorCode {
         INVALID_RESPONSE,
         PARSING_ERROR,
         EMPTY_RESPONSE,
         NOT_FOUND,
         CLIENT_ERROR,
+        OTHER_COUCHDB_ERROR
     }
 
     companion object {
@@ -295,5 +296,31 @@ class DefaultCouchDbClient(
                 code = DefaultCouchDbClientErrorCode.PARSING_ERROR
             )
         }
+    }
+
+    override fun createDatabase(databaseName: String) {
+        return httpClient.put()
+            .uri {
+                it.path("/$databaseName")
+                it.build()
+            }
+            .body("")
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange { _, clientResponse ->
+                if (!clientResponse.statusCode.is2xxSuccessful) {
+                    logger.error(
+                        "Failed to create CouchDB $databaseName with status code ${clientResponse.statusCode} (${
+                            clientResponse.bodyTo(
+                                String::class.java
+                            )
+                        })"
+                    )
+
+                    throw ExternalSystemException(
+                        message = "Could not create database $databaseName",
+                        code = DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR
+                    )
+                }
+            }
     }
 }

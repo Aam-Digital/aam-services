@@ -70,11 +70,17 @@ skilllab-api-client-configuration:
   base-path: http://localhost:9005/skilllab # todo test container
   response-timeout-in-seconds: 15
 
+notification-firebase-configuration:
+  credential-file-base64: ""
+
 features:
   export-api:
     enabled: true
   skill-api:
     mode: disabled
+  notification-api:
+    enabled: false
+    mode: firebase
 
 crypto-configuration:
   secret: super-duper-secret

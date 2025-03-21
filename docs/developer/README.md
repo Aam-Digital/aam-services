@@ -329,27 +329,24 @@ If you use the default `npm start` command, make sure to update the start comman
 }
 ```
 
-### Step 6: (optional)  Configure the notification module of aam-backend-services
+### Further Steps (optional):
 
-1. Download the `firebase-credentials.json` from the firebase interface.
-2. Encode it as base64
-   run this to print the encoded file to the console:
-    ```bash
-    base64 -i firebase-credentials.json
-    ```
-3. Copy the output
-4. Create a new file, based on the `secrets.env.example`
-    ```bash
-    cp secrets.env.example secrets.env
-    ```
-5. Edit `secrets.env` with an editor of your choice and replace the placeholder with the base-64 output you just copied
-    ```
-    NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64=<base-64-encoded-firebase-credential-file>
-    ``` 
-6. Apply config by restart the containers
-    ```bash
-    docker compose up -d
-    ```
+#### Set up RabbitMQ (needed for some modules)
+
+To use the queue, you have to create a user and virutal host in the RabbitMQ admin interface:
+
+1. Open [aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/#/users)
+2. Login with the default credentials (guest:guest)
+3. Navigate to the "Admin" section
+4. Create a new virtual host (local) to fit
+   the [application.yaml settings](/application/aam-backend-service/src/main/resources/application.yaml)
+5. Create a new user (local-spring:docker)
+6. Edit that user and assign permissions to the "local" virtual host
+
+#### Configure modules
+
+Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific modules like Notification:
+
 
 -----
 
@@ -396,9 +393,12 @@ You can open the `http://` version directly again.
 
 ### Running services locally instead of docker images
 
-This setup provides all services, including Aam Digital platform backends, through their docker images.
-You can adjust this to run with a local version of a service
+This setup provides all services, including the aam-services backend in this repository, through their docker images.
+To test backend code locally, you can adjust the reverse-proxy to point to a local version of a service
 (e.g. to test a development version of accounts or replication-backend in this integrated environment).
 For this, edit the [Caddyfile](Caddyfile) and replace the relevant line of the reverse-proxy
 to use an address through `host.docker.internal` to point to your local machine
 (see comments in Caddyfile).
+
+Please note that the .env files here in this directory are not automatically used as environment variables
+in a locally started service like this code base.

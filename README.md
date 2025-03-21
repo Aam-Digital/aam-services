@@ -11,6 +11,7 @@ A modularize Spring Boot application that contains API modules for [Aam Digital'
 - **[Reporting](./docs/modules/reporting.md)**: Calculate aggregated reports and run queries on all data, accessible for external services for API integrations of systems
 - **[Export](./docs/modules/export.md)**: Template based file export API. Uses [carbone.io](https://carbone.io) as templating engine.
 - **[Skill](./docs/modules/skill.md)**: Integration with external system (SkillLab) to link and pull data into Aam Digital.
+- **[Notification](./docs/modules/notification.md)**: Push Notification system, triggering events based on custom rules for each user.
 
 _Modules have to be enabled via a feature flag in the environment config and may need additional environment variables as described in their module docs._
 
