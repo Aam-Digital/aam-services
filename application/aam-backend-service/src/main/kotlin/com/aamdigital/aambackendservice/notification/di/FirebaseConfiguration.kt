@@ -19,6 +19,7 @@ import java.util.*
 )
 class NotificationFirebaseClientConfiguration(
     val credentialFileBase64: String,
+    val linkBaseUrl: String,
 )
 
 @Configuration

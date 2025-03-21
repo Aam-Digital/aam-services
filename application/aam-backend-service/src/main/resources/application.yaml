@@ -146,8 +146,11 @@ features:
   skill-api:
     mode: disabled
   notification-api:
-    enabled: false
+    enabled: true
     mode: firebase
+
+notification-firebase-configuration:
+  link-base-url: https://aam.localhost
 
 crypto-configuration:
   secret: super-duper-secret

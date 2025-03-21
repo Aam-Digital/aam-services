@@ -55,10 +55,12 @@ class NotificationConfiguration {
     @Bean("push-create-notification-handler")
     fun pushCreateNotificationHandler(
         firebaseMessaging: FirebaseMessaging,
-        userDeviceRepository: UserDeviceRepository
+        userDeviceRepository: UserDeviceRepository,
+        notificationFirebaseClientConfiguration: NotificationFirebaseClientConfiguration,
     ): CreateNotificationHandler = PushCreateNotificationHandler(
         firebaseMessaging = firebaseMessaging,
-        userDeviceRepository = userDeviceRepository
+        userDeviceRepository = userDeviceRepository,
+        notificationFirebaseClientConfiguration = notificationFirebaseClientConfiguration
     )
 
     @Bean("app-create-notification-handler")

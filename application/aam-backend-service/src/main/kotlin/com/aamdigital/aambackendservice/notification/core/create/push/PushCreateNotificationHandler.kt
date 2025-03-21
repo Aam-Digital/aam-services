@@ -3,11 +3,14 @@ package com.aamdigital.aambackendservice.notification.core.create.push
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
+import com.aamdigital.aambackendservice.notification.di.NotificationFirebaseClientConfiguration
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.MulticastMessage
-import com.google.firebase.messaging.Notification
+import com.google.firebase.messaging.WebpushConfig
+import com.google.firebase.messaging.WebpushFcmOptions
+import com.google.firebase.messaging.WebpushNotification
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.data.domain.Pageable
@@ -23,6 +26,7 @@ import org.springframework.stereotype.Service
 class PushCreateNotificationHandler(
     private val firebaseMessaging: FirebaseMessaging,
     private val userDeviceRepository: UserDeviceRepository,
+    private val notificationFirebaseClientConfiguration: NotificationFirebaseClientConfiguration,
 ) : CreateNotificationHandler {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -46,12 +50,25 @@ class PushCreateNotificationHandler(
         }
 
         val message = MulticastMessage.builder().addAllTokens(userDevices)
-            .setNotification(
-                Notification.builder()
-                    .setTitle("Update from Aam Digital")
-                    .setBody(createUserNotificationEvent.details.title)
+            .setWebpushConfig(
+                WebpushConfig.builder()
+                    .setNotification(
+                        WebpushNotification.builder()
+                            .setTitle("Update from Aam Digital")
+                            .setBody(createUserNotificationEvent.details.title)
+                            .build()
+
+                    )
+                    .setFcmOptions(
+                        WebpushFcmOptions
+                            .builder()
+                            .setLink(
+                                notificationFirebaseClientConfiguration.linkBaseUrl + "/foobar"
+                            ).build()
+                    )
                     .build()
-            ).build()
+            )
+            .build()
 
         val response = firebaseMessaging.sendEachForMulticast(message)
 
