@@ -49,11 +49,16 @@ class PushCreateNotificationHandler(
             )
         }
 
-        val message = MulticastMessage.builder().addAllTokens(userDevices)
+        val message = MulticastMessage.builder()
+            .addAllTokens(userDevices)
             .setWebpushConfig(
                 WebpushConfig.builder()
                     .setNotification(
                         WebpushNotification.builder()
+                            .setData(
+                                mapOf(Pair("click_action", notificationFirebaseClientConfiguration.linkBaseUrl))
+                            )
+                            .addAction(WebpushNotification.Action("open", "Open in App"))
                             .setTitle("Update from Aam Digital")
                             .setBody(createUserNotificationEvent.details.title)
                             .build()
@@ -63,7 +68,7 @@ class PushCreateNotificationHandler(
                         WebpushFcmOptions
                             .builder()
                             .setLink(
-                                notificationFirebaseClientConfiguration.linkBaseUrl + "/foobar"
+                                notificationFirebaseClientConfiguration.linkBaseUrl
                             ).build()
                     )
                     .build()
