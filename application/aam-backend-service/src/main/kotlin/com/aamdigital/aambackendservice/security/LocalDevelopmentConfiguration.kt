@@ -5,9 +5,14 @@ import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
+import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
+import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestTemplate
+import java.net.HttpURLConnection
+import javax.net.ssl.HttpsURLConnection
+
 
 @Configuration
 class LocalDevelopmentConfiguration {
@@ -15,6 +20,28 @@ class LocalDevelopmentConfiguration {
     @Profile("local-development")
     fun restTemplate(restTemplateBuilder: RestTemplateBuilder, sslBundles: SslBundles): RestTemplate {
         return restTemplateBuilder.setSslBundle(sslBundles.getBundle("local-development")).build()
+    }
+
+    @Bean
+    @Profile("local-development")
+    fun restClientBuilder(
+        sslBundles: SslBundles
+    ): RestClient.Builder {
+        return RestClient.builder()
+            .requestFactory(object : SimpleClientHttpRequestFactory() {
+                override fun prepareConnection(connection: HttpURLConnection, httpMethod: String) {
+                    if (connection is HttpsURLConnection) {
+                        try {
+                            val context = sslBundles.getBundle("local-development").createSslContext()
+                            connection.sslSocketFactory = context.socketFactory
+                        } catch (ex: Exception) {
+                            // nothing
+                        }
+                    }
+
+                    super.prepareConnection(connection, httpMethod)
+                }
+            })
     }
 
     @Bean

@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.di
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.domain.FileStorage
 import com.aamdigital.aambackendservice.reporting.domain.DataTransformation
 import com.aamdigital.aambackendservice.reporting.notification.core.NotificationService
@@ -19,6 +20,9 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class ReportCalculationConfiguration {
+
+    @Bean("report-calculation-database-request")
+    fun reportCalculationDatabaseRequest(): DatabaseRequest = DatabaseRequest("report-calculation")
 
     @Bean
     fun defaultReportCalculationStorage(
