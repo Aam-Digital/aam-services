@@ -32,6 +32,7 @@ DATABASECHANGEDETECTION_ENABLED=true
 
 # Firebase Configuration: Confidential (!)
 NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64=<base-64-encoded-firebase-credential-file>
+NOTIFICATIONFIREBASECONFIGURATION_LINKBASEURL=https://<your-instance>.aam-digital.com
 ```
 
 ### Firebase Configuration (for Push Notifications)
