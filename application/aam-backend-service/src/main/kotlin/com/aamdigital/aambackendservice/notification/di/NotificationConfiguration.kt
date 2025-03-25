@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.couchdb.core.CouchDbInitializer
 import com.aamdigital.aambackendservice.notification.core.config.CouchDbSyncNotificationConfigUseCase
 import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigUseCase
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
@@ -64,8 +65,10 @@ class NotificationConfiguration {
 
     @Bean("app-create-notification-handler")
     fun appCreateNotificationHandler(
-        couchDbClient: CouchDbClient
+        couchDbClient: CouchDbClient,
+        couchDbInitializer: CouchDbInitializer,
     ): CreateNotificationHandler = AppCreateNotificationHandler(
-        couchDbClient = couchDbClient
+        couchDbClient = couchDbClient,
+        couchDbInitializer = couchDbInitializer,
     )
 }
