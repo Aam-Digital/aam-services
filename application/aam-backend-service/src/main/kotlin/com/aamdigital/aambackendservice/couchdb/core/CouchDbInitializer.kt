@@ -30,7 +30,7 @@ class CouchDbInitializer(
 
     companion object {
         private val DEFAULT_DATABASES = listOf(
-            DatabaseRequest("_user"),
+            DatabaseRequest("_users"),
             DatabaseRequest("app"),
             DatabaseRequest("app-attachments"),
         )
