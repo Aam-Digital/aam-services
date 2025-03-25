@@ -1,7 +1,6 @@
 package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.notification.core.config.CouchDbSyncNotificationConfigUseCase
 import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigUseCase
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
@@ -27,10 +26,6 @@ import org.springframework.context.annotation.Configuration
     matchIfMissing = false
 )
 class NotificationConfiguration {
-
-    @Bean("notification-webhook-database-request")
-    fun notificationWebhookDatabaseRequest(): DatabaseRequest = DatabaseRequest("notification-webhook")
-
     @Bean
     fun defaultSyncNotificationConfigUseCase(
         couchDbClient: CouchDbClient,

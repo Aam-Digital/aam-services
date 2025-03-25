@@ -23,6 +23,9 @@ class ReportCalculationConfiguration {
 
     @Bean("report-calculation-database-request")
     fun reportCalculationDatabaseRequest(): DatabaseRequest = DatabaseRequest("report-calculation")
+    
+    @Bean("notification-webhook-database-request")
+    fun notificationWebhookDatabaseRequest(): DatabaseRequest = DatabaseRequest("notification-webhook")
 
     @Bean
     fun defaultReportCalculationStorage(
