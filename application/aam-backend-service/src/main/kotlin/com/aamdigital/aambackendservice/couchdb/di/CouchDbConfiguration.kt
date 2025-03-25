@@ -2,6 +2,8 @@ package com.aamdigital.aambackendservice.couchdb.di
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbFileStorage
+import com.aamdigital.aambackendservice.couchdb.core.CouchDbInitializer
+import com.aamdigital.aambackendservice.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.couchdb.core.DefaultCouchDbClient
 import com.aamdigital.aambackendservice.domain.FileStorage
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -26,9 +28,19 @@ class CouchDbConfiguration {
         objectMapper: ObjectMapper,
     ): CouchDbClient = DefaultCouchDbClient(restClient, objectMapper)
 
+    @Bean
+    fun couchDbInitializer(
+        couchDbClient: CouchDbClient,
+        databaseRequests: List<DatabaseRequest>,
+    ): CouchDbInitializer =
+        CouchDbInitializer(couchDbClient = couchDbClient, databaseRequests = databaseRequests)
+
     @Bean(name = ["couch-db-client"])
-    fun couchDbWebClient(configuration: CouchDbClientConfiguration): RestClient {
-        val clientBuilder = RestClient.builder()
+    fun couchDbWebClient(
+        restTemplateBuilder: RestClient.Builder = RestClient.builder(),
+        configuration: CouchDbClientConfiguration
+    ): RestClient {
+        val clientBuilder = restTemplateBuilder
             .baseUrl(configuration.basePath)
             .defaultHeaders {
                 it.setBasicAuth(

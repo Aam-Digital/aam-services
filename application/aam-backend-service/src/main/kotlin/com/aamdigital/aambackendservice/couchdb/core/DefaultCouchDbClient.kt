@@ -323,4 +323,15 @@ class DefaultCouchDbClient(
                 }
             }
     }
+
+    override fun databaseExists(name: String): Boolean {
+        return httpClient.get()
+            .uri {
+                it.path("/$name")
+                it.build()
+            }
+            .exchange { _, clientResponse ->
+                return@exchange clientResponse.statusCode.is2xxSuccessful
+            }
+    }
 }

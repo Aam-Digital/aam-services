@@ -1,6 +1,8 @@
 package com.aamdigital.aambackendservice.notification.core.create.app
 
 import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.couchdb.core.CouchDbInitializer
+import com.aamdigital.aambackendservice.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.domain.UpdateMetadata
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
@@ -26,6 +28,7 @@ data class NotificationEventDto(
 
 class AppCreateNotificationHandler(
     private val couchDbClient: CouchDbClient,
+    private val couchDbInitializer: CouchDbInitializer,
 ) : CreateNotificationHandler {
 
     override fun canHandle(notificationChannelType: NotificationChannelType): Boolean =
@@ -48,7 +51,11 @@ class AppCreateNotificationHandler(
 
         val userNotificationDb = "notifications_${createUserNotificationEvent.userIdentifier}"
 
-        ensureUserNotificationDatabaseExists(userNotificationDb)
+        couchDbInitializer.createDatabase(
+            DatabaseRequest(
+                name = userNotificationDb
+            )
+        )
 
         couchDbClient
             .putDatabaseDocument(
@@ -62,12 +69,5 @@ class AppCreateNotificationHandler(
             messageCreated = false,
             messageReference = null
         )
-    }
-
-    private fun ensureUserNotificationDatabaseExists(databaseName: String) {
-        val databases = couchDbClient.allDatabases()
-        if (!databases.contains(databaseName)) {
-            couchDbClient.createDatabase(databaseName)
-        }
     }
 }
