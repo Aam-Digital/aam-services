@@ -13,7 +13,12 @@ import org.springframework.web.client.RestTemplate
 import java.net.HttpURLConnection
 import javax.net.ssl.HttpsURLConnection
 
-
+/**
+ * This Configuration will configure the self-signed ssl certificate from the caddy reverse proxy as trusted,
+ * when the local-development profile is active.
+ *
+ * Do not enable this in production!
+ */
 @Configuration
 class LocalDevelopmentConfiguration {
     @Bean

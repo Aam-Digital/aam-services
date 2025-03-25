@@ -18,6 +18,9 @@ open class DatabaseRequest(
  *
  * No databases are deleted by disabling features.
  *
+ * This class is extending the InitializingBean and overrides the afterPropertiesSet() function
+ * to run the init on startup.
+ *
  */
 class CouchDbInitializer(
     private val couchDbClient: CouchDbClient,
@@ -27,6 +30,7 @@ class CouchDbInitializer(
 
     companion object {
         private val DEFAULT_DATABASES = listOf(
+            DatabaseRequest("_user"),
             DatabaseRequest("app"),
             DatabaseRequest("app-attachments"),
         )
@@ -42,7 +46,7 @@ class CouchDbInitializer(
         }
     }
 
-    private fun createDatabase(databaseRequest: DatabaseRequest) {
+    fun createDatabase(databaseRequest: DatabaseRequest) {
         val dbExists = try {
             couchDbClient.databaseExists(databaseRequest.name)
         } catch (e: Exception) {
