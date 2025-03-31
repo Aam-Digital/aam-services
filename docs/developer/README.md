@@ -216,12 +216,6 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
   at [https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs](https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs).
     - username: `admin`
     - password: `docker`
-- Create some new databases:
-    - `_users`
-    - `app`
-    - `app-attachmets`
-    - `notification-webhook`
-    - `report-calculation`
 - Add a document of type **Config:CONFIG_ENTITY** to the `app` database
     - e.g.,
       from [dev.aam-digital.net CouchDB instance](https://dev.aam-digital.net/db/couchdb/_utils/#database/app/Config%3ACONFIG_ENTITY).
