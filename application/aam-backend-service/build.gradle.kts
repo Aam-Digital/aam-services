@@ -53,7 +53,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor") // needed in some tests
 
-    implementation("com.google.firebase:firebase-admin:9.4.2")
+    implementation("com.google.firebase:firebase-admin:9.4.3")
 
     runtimeOnly("org.postgresql:postgresql:42.7.4")
 
