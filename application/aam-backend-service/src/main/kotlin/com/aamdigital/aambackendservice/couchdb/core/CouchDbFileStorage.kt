@@ -95,6 +95,13 @@ class CouchDbFileStorage(
             )
         }
 
+        if (!response.exists() || !response.isReadable) {
+            throw ExternalSystemException(
+                message = "Resource is not readable or does not exist.",
+                code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
+            )
+        }
+
         return response.inputStream
     }
 
