@@ -5,7 +5,7 @@
 
 aam.localhost:80, aam.localhost:443 {
     handle_path /auth* {
-        reverse_proxy keycloak:8080 {
+        reverse_proxy keycloak_23:8080 {
             header_up Host {host}
         }
     }
@@ -15,24 +15,24 @@ aam.localhost:80, aam.localhost:443 {
     }
 
     handle_path /db* {
-        reverse_proxy replication-backend:5984
+        # activate this line instead if your replication-backend is running locally
+        # reverse_proxy http://host.docker.internal:3000 # local running app
+
+        reverse_proxy replication-backend:5984 # official release docker container
     }
 
     handle_path /accounts-backend* {
         # activate this line instead of the existing if your account-backend is running locally
-        # reverse_proxy http://host.docker.internal:3000
+        reverse_proxy http://host.docker.internal:3000
 
-        # activate this line when account-backend is running as docker container (default)
-        reverse_proxy accounts-backend:3000
-    }
-
-    handle_path /replication-backend* {
-        reverse_proxy replication-backend:5984
+        #reverse_proxy accounts-backend:3000  # official release docker container
     }
 
     handle_path /api* {
-      # reverse_proxy http://host.docker.internal:9000 # local running app
-        reverse_proxy aam-backend-service:8080 # docker container
+        # activate this line instead if your aam-services backend is running locally
+        # reverse_proxy http://host.docker.internal:9000 # local running app
+
+        reverse_proxy aam-backend-service:8080  # official release docker container
     }
 
     handle_path /sqs* {

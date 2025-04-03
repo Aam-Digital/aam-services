@@ -349,8 +349,7 @@ Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific 
 ### Accessing the Local Environment
 
 - ndb-core (frontend): [https://aam.localhost/](https://aam.localhost/)
-- replication-backend: [https://aam.localhost/replication-backend](https://aam.localhost/replication-backend)
-    - additional proxy for ndb-core: [https://aam.localhost/db](https://aam.localhost/db)
+- replication-backend: [https://aam.localhost/db](https://aam.localhost/db)
 - aam-backend-service: [https://aam.localhost/api](https://aam.localhost/api)
 - maildev (smtp-trap): [https://aam.localhost/maildev/](https://aam.localhost/maildev/)
 - Keycloak: [https://aam.localhost/auth](https://aam.localhost/auth)
