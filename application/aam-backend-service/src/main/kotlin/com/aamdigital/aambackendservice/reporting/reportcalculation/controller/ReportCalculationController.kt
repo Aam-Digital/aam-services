@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
+import java.io.InputStream
 import java.io.OutputStream
 import java.io.SequenceInputStream
 import java.time.ZoneOffset
@@ -131,11 +132,23 @@ class ReportCalculationController(
 
     @GetMapping("/{calculationId}/data", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun fetchReportCalculationData(
-        @PathVariable calculationId: String
+        @PathVariable("calculationId") calculationIdRaw: String
     ): ResponseEntity<StreamingResponseBody> {
         // TODO Auth check (https://github.com/Aam-Digital/aam-services/issues/10)
 
-        val file = try {
+        if (calculationIdRaw.isBlank() || calculationIdRaw.trim().isEmpty()) {
+            return ResponseEntity(
+                getErrorStreamingBody(errorCode = "INVALID_DATA", "Invalid calculationId."),
+                HttpHeaders().apply {
+                    set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                },
+                HttpStatus.NOT_FOUND,
+            )
+        }
+
+        val calculationId = calculationIdRaw.trim()
+
+        val file: InputStream = try {
             fileStorage.fetchFile(
                 path = "report-calculation/$calculationId",
                 fileName = "data.json"
@@ -229,7 +242,7 @@ class ReportCalculationController(
     }
 
     /*
-     * Needed so be able to return "ResponseEntity<StreamingResponseBody>" without the need to write a converter.
+     * Needed to be able to return "ResponseEntity<StreamingResponseBody>" without the need to write a converter.
      */
     private fun getErrorStreamingBody(errorCode: String, errorMessage: String, byteArrayBufferLength: Int = 4096) =
         StreamingResponseBody { outputStream: OutputStream ->
@@ -244,7 +257,9 @@ class ReportCalculationController(
             ).byteInputStream()
 
             while ((bodyStream.read(buffer).also { bytesRead = it }) != -1) {
-                outputStream.write(buffer, 0, bytesRead)
+                if (bytesRead > 0) {
+                    outputStream.write(buffer, 0, bytesRead)
+                }
             }
         }
 
