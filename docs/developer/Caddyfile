@@ -5,7 +5,7 @@
 
 aam.localhost:80, aam.localhost:443 {
     handle_path /auth* {
-        reverse_proxy keycloak_23:8080 {
+        reverse_proxy keycloak:8080 {
             header_up Host {host}
         }
     }
