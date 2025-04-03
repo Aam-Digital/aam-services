@@ -22,10 +22,10 @@ aam.localhost:80, aam.localhost:443 {
     }
 
     handle_path /accounts-backend* {
-        # activate this line instead of the existing if your account-backend is running locally
-        reverse_proxy http://host.docker.internal:3000
+        # activate this line instead if your account-backend is running locally
+        # reverse_proxy http://host.docker.internal:3000
 
-        #reverse_proxy accounts-backend:3000  # official release docker container
+        reverse_proxy accounts-backend:3000  # official release docker container
     }
 
     handle_path /api* {
