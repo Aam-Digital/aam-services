@@ -20,15 +20,14 @@ import javax.net.ssl.HttpsURLConnection
  * Do not enable this in production!
  */
 @Configuration
+@Profile("local-development")
 class LocalDevelopmentConfiguration {
     @Bean
-    @Profile("local-development")
     fun restTemplate(restTemplateBuilder: RestTemplateBuilder, sslBundles: SslBundles): RestTemplate {
         return restTemplateBuilder.setSslBundle(sslBundles.getBundle("local-development")).build()
     }
 
     @Bean
-    @Profile("local-development")
     fun restClientBuilder(
         sslBundles: SslBundles
     ): RestClient.Builder {
