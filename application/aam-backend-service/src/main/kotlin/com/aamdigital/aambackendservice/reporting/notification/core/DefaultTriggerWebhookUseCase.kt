@@ -35,14 +35,11 @@ class DefaultTriggerWebhookUseCase(
             )
         )
 
+        logger.info("[DefaultTriggerWebhookUseCase] Triggering Webhook: {}, URI: {}", webhook, uri)
+
         val response = httpClient
             .method(HttpMethod.valueOf(webhook.target.method))
-            .uri {
-                it.scheme(uri.scheme)
-                it.host(uri.host)
-                it.path(uri.path)
-                it.build()
-            }
+            .uri(uri)
             .headers {
                 it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
             }
