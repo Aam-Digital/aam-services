@@ -1,0 +1,105 @@
+openapi: 3.1.0
+info:
+  title: Third-Party Authentication API
+  description: User Authentication by external authentication provider
+  version: 1.0.0
+servers:
+  - url: https://api.aam-digital.dev/v1/authentication
+    description: Development
+  - url: https://api.aam-digital.app/v1/authentication
+    description: Production
+paths:
+  /session:
+    post:
+      summary: Start a aam-digital sign-in flow for an externally authenticated user.
+      tags:
+        - third-party-authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSessionRequest'
+      responses:
+        200:
+          description: User Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSession'
+        404:
+          description: Realm not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: No Authentication provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: No permissions to authenticate users on this realm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    UserSessionRequest:
+      type: object
+      properties:
+        realmId:
+          type: string
+          required: true
+        userId:
+          type: string
+          required: true
+          format: uuid
+        firstName:
+          type: string
+          required: true
+        lastName:
+          type: string
+          required: true
+        email:
+          type: string
+          required: true
+          format: email
+        additionalData:
+          type: object
+          required: false
+          additionalProperties: true
+    UserSession:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          required: true
+          format: uuid
+        sessionToken:
+          type: string
+          required: true
+        entryPointUrl:
+          type: string
+          required: true
+          format: uri
+        validUntil:
+          type: string
+          required: true
+          format: date-time
+    Error:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          items:
+            enum:
+              - NOT_FOUND
+              - UNAUTHORIZED
+              - FORBIDDEN
+              - INTERNAL_SERVER_ERROR
+        errorMessage:
+          type: string
