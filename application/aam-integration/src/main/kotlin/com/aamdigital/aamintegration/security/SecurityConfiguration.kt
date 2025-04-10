@@ -2,7 +2,6 @@ package com.aamdigital.aamintegration.security
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.nimbusds.jwt.SignedJWT
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -23,11 +22,11 @@ import org.springframework.security.web.SecurityFilterChain
 @EnableWebSecurity
 class SecurityConfiguration {
 
-    @Value("\${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
-    private lateinit var issuerUri: String
-
-    @Value("\${spring.security.oauth2.resourceserver.jwt.issuer-uri-application:}")
-    private lateinit var issuerUriApplication: String
+    private val allowedOrigins = listOf(
+        "https://keycloak.aam-digital.net",
+        "https://keycloak.aam-digital.app",
+        "https://auth.aam-digital.dev"
+    )
 
     @Bean
     fun filterChain(
@@ -87,8 +86,8 @@ class SecurityConfiguration {
             } catch (e: Exception) {
                 throw BadCredentialsException("Could not parse issuer.", e)
             }
-
-            if (listOf(issuerUri, issuerUriApplication).contains(issuer).not()) {
+            
+            if (allowedOrigins.any { issuer.startsWith(it) }.not()) {
                 throw BadCredentialsException("Untrusted issuer: $issuer")
             }
 
