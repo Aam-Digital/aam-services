@@ -1,7 +1,6 @@
 package com.aamdigital.aamintegration.security
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.nimbusds.jwt.SignedJWT
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -81,13 +80,7 @@ class SecurityConfiguration {
     fun authenticationManagerResolver(
         aamAuthenticationConverter: AamAuthenticationConverter
     ): JwtIssuerAuthenticationManagerResolver {
-        return JwtIssuerAuthenticationManagerResolver { token ->
-            val issuer = try {
-                SignedJWT.parse(token).jwtClaimsSet.issuer
-            } catch (e: Exception) {
-                throw BadCredentialsException("Could not parse issuer.", e)
-            }
-
+        return JwtIssuerAuthenticationManagerResolver { issuer ->
             if (allowedOrigins.any { issuer.startsWith(it) }.not()) {
                 throw BadCredentialsException("Untrusted issuer: $issuer")
             }
