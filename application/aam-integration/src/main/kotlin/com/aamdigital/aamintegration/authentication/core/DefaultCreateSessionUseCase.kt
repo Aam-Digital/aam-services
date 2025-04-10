@@ -38,6 +38,8 @@ class DefaultCreateSessionUseCase(
             sessionToken = passwordEncoder.encode(sessionToken),
             externalUserId = request.userId,
             userId = user.userId,
+            // todo: tola specific, needs update on tola site:
+            redirectUrl = request.additionalData["tola_frontend_url"],
             validUntil = validUntil,
         )
 

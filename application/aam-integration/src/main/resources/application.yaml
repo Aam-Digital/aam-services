@@ -90,8 +90,3 @@ aam-keycloak-config:
   client-secret: 1234
   server-url: http://localhost:8888
   application-url: aam.localhost
-
-#management:
-#  otlp:
-#    tracing:
-#      endpoint: http://localhost:4318/v1/traces

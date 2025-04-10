@@ -47,9 +47,9 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
-    implementation("io.micrometer:micrometer-tracing-bridge-otel")
-    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
-    runtimeOnly("io.micrometer:micrometer-registry-otlp")
+//    implementation("io.micrometer:micrometer-tracing-bridge-otel")
+//    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
+//    runtimeOnly("io.micrometer:micrometer-registry-otlp")
 
     runtimeOnly("org.postgresql:postgresql:42.7.4")
 

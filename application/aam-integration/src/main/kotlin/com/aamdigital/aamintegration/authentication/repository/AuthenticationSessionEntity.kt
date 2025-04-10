@@ -28,8 +28,8 @@ data class AuthenticationSessionEntity(
     @Column
     var sessionToken: String,
 
-//    @Column
-//    var redirectUrl: String,
+    @Column
+    var redirectUrl: String? = null,
 
     @Column
     var validUntil: OffsetDateTime,

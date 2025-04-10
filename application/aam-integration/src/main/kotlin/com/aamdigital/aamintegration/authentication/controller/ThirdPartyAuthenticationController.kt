@@ -2,6 +2,8 @@ package com.aamdigital.aamintegration.authentication.controller
 
 import com.aamdigital.aamintegration.authentication.core.CreateSessionUseCase
 import com.aamdigital.aamintegration.authentication.core.CreateSessionUseCaseRequest
+import com.aamdigital.aamintegration.authentication.core.SessionRedirectUseCase
+import com.aamdigital.aamintegration.authentication.core.SessionRedirectUseCaseRequest
 import com.aamdigital.aamintegration.authentication.core.VerifySessionUseCase
 import com.aamdigital.aamintegration.authentication.core.VerifySessionUseCaseRequest
 import com.aamdigital.aamintegration.authentication.di.AamKeycloakConfig
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.security.Principal
 
 data class UserSessionRequest(
     val realmId: String,
@@ -54,6 +57,7 @@ data class UserSessionDataDto(
 class ThirdPartyAuthenticationController(
     private val createSessionUseCase: CreateSessionUseCase,
     private val verifySessionUseCase: VerifySessionUseCase,
+    private val sessionRedirectUseCase: SessionRedirectUseCase,
     private val aamKeycloakConfig: AamKeycloakConfig,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -63,9 +67,6 @@ class ThirdPartyAuthenticationController(
     fun startSession(
         @RequestBody userSessionRequest: UserSessionRequest
     ): ResponseEntity<Any> {
-
-        // todo check realm permissions
-
         val response = createSessionUseCase.run(
             CreateSessionUseCaseRequest(
                 realmId = userSessionRequest.realmId,
@@ -111,11 +112,41 @@ class ThirdPartyAuthenticationController(
         @PathVariable sessionId: String,
         @RequestParam("session_token", required = true) sessionToken: String,
     ): ResponseEntity<Any> {
-
         val response = verifySessionUseCase.run(
             VerifySessionUseCaseRequest(
                 sessionId = sessionId,
-                sessionToken = sessionToken
+                sessionToken = sessionToken,
+            )
+        )
+        return when (response) {
+            is UseCaseOutcome.Success -> {
+                ResponseEntity.ok(
+                    UserSessionDataDto(
+                        userId = response.data.userId,
+                    )
+                )
+            }
+
+            is UseCaseOutcome.Failure -> {
+                ResponseEntity.badRequest().body(
+                    HttpErrorDto(
+                        errorMessage = response.errorMessage,
+                        errorCode = response.errorCode.toString()
+                    )
+                )
+            }
+        }
+    }
+
+    @GetMapping("/session/{sessionId}/redirect")
+    fun getSessionRedirect(
+        @PathVariable sessionId: String,
+        principal: Principal,
+    ): ResponseEntity<Any> {
+        val response = sessionRedirectUseCase.run(
+            SessionRedirectUseCaseRequest(
+                sessionId = sessionId,
+                userId = principal.name
             )
         )
 
@@ -123,7 +154,7 @@ class ThirdPartyAuthenticationController(
             is UseCaseOutcome.Success -> {
                 ResponseEntity.ok(
                     UserSessionDataDto(
-                        userId = response.data.userId,
+                        userId = response.data.redirectUrl,
                     )
                 )
             }

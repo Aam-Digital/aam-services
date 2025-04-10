@@ -3,7 +3,9 @@ package com.aamdigital.aamintegration.authentication.di
 import com.aamdigital.aamintegration.authentication.core.AuthenticationProvider
 import com.aamdigital.aamintegration.authentication.core.CreateSessionUseCase
 import com.aamdigital.aamintegration.authentication.core.DefaultCreateSessionUseCase
+import com.aamdigital.aamintegration.authentication.core.DefaultSessionRedirectUseCase
 import com.aamdigital.aamintegration.authentication.core.DefaultVerifySessionUseCase
+import com.aamdigital.aamintegration.authentication.core.SessionRedirectUseCase
 import com.aamdigital.aamintegration.authentication.core.VerifySessionUseCase
 import com.aamdigital.aamintegration.authentication.repository.AuthenticationSessionRepository
 import org.springframework.context.annotation.Bean
@@ -26,6 +28,13 @@ class AuthenticationConfiguration {
         authenticationSessionRepository = authenticationSessionRepository,
         passwordEncoder = passwordEncoder,
         authenticationProvider = authenticationProvider,
+    )
+
+    @Bean
+    fun defaultSessionRedirectUseCase(
+        authenticationSessionRepository: AuthenticationSessionRepository
+    ): SessionRedirectUseCase = DefaultSessionRedirectUseCase(
+        authenticationSessionRepository = authenticationSessionRepository,
     )
 
     @Bean
