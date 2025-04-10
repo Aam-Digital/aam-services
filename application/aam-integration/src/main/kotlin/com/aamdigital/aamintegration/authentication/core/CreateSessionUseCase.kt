@@ -10,6 +10,7 @@ data class CreateSessionUseCaseRequest(
     val userId: String,
     val firstName: String,
     val lastName: String,
+    val redirectUrl: String? = null,
     val email: String,
     val additionalData: Map<String, String>,
 ) : UseCaseRequest

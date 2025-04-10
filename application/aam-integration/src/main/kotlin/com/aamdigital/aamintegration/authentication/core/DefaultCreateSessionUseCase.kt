@@ -33,13 +33,19 @@ class DefaultCreateSessionUseCase(
         val sessionId = UUID.randomUUID().toString()
         val validUntil = OffsetDateTime.now().plusMinutes(SESSION_VALID_IN_MINUTES)
 
+        val redirectUrl = if (request.redirectUrl.isNullOrBlank()) {
+            // todo: tola specific, needs update on tola site to use the redirectUrl parameter directly
+            request.additionalData["tola_frontend_url"]
+        } else {
+            request.redirectUrl
+        }
+
         val session = AuthenticationSessionEntity(
             externalIdentifier = sessionId,
             sessionToken = passwordEncoder.encode(sessionToken),
             externalUserId = request.userId,
             userId = user.userId,
-            // todo: tola specific, needs update on tola site:
-            redirectUrl = request.additionalData["tola_frontend_url"],
+            redirectUrl = redirectUrl,
             validUntil = validUntil,
         )
 

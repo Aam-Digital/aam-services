@@ -46,7 +46,90 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /session/{sessionId}:
+    get:
+      summary: Validate a session. This only works once.
+      tags:
+        - third-party-authentication
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+        - $ref: '#/components/parameters/sessionToken'
+      responses:
+        200:
+          description: User Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSessionDataDto'
+        404:
+          description: Realm not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: No Authentication provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: No permissions to authenticate users on this realm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /session/{sessionId}/redirect:
+    get:
+      summary: Get the redirectUrl for a session. This needs a user based authentication.
+      tags:
+        - third-party-authentication
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        200:
+          description: User Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSessionRedirectDto'
+        404:
+          description: Realm not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: No Authentication provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: No permissions to authenticate users on this realm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
+  parameters:
+    sessionId:
+      in: path
+      name: "sessionId"
+      description: "Unique identifier of the session"
+      schema:
+        type: string
+      required: true
+    sessionToken:
+      in: query
+      name: "sessionToken"
+      description: "Secret for session. Belongs to the session"
+      schema:
+        type: string
+      required: true
+
   schemas:
     UserSessionRequest:
       type: object
@@ -62,6 +145,9 @@ components:
           type: string
           required: true
         lastName:
+          type: string
+          required: true
+        redirectUrl:
           type: string
           required: true
         email:
@@ -90,6 +176,20 @@ components:
           type: string
           required: true
           format: date-time
+    UserSessionDataDto:
+      type: object
+      properties:
+        userId:
+          type: string
+          required: true
+          format: uuid
+    UserSessionRedirectDto:
+      type: object
+      properties:
+        redirectUrl:
+          type: string
+          required: true
+          format: uri
     Error:
       type: object
       properties:

@@ -29,6 +29,7 @@ data class UserSessionRequest(
     val userId: String,
     val firstName: String,
     val lastName: String,
+    val redirectUrl: String? = null,
     @Email
     val email: String,
     val additionalData: Map<String, String> = emptyMap()
@@ -43,6 +44,10 @@ data class UserSessionDto(
 
 data class UserSessionDataDto(
     val userId: String,
+)
+
+data class UserSessionRedirectDto(
+    val redirectUrl: String,
 )
 
 @RestController
@@ -73,6 +78,7 @@ class ThirdPartyAuthenticationController(
                 userId = userSessionRequest.userId,
                 firstName = userSessionRequest.firstName,
                 lastName = userSessionRequest.lastName,
+                redirectUrl = userSessionRequest.redirectUrl,
                 email = userSessionRequest.email,
                 additionalData = userSessionRequest.additionalData
             )
@@ -153,8 +159,8 @@ class ThirdPartyAuthenticationController(
         return when (response) {
             is UseCaseOutcome.Success -> {
                 ResponseEntity.ok(
-                    UserSessionDataDto(
-                        userId = response.data.redirectUrl,
+                    UserSessionRedirectDto(
+                        redirectUrl = response.data.redirectUrl,
                     )
                 )
             }
