@@ -24,7 +24,8 @@ class SecurityConfiguration {
 
     private val allowedOrigins = listOf(
         "https://keycloak.aam-digital.net",
-        "https://keycloak.aam-digital.app",
+        "https://keycloak.aam-digital.com",
+        "https://auth.aam-digital.app",
         "https://auth.aam-digital.dev"
     )
 
@@ -86,7 +87,7 @@ class SecurityConfiguration {
             } catch (e: Exception) {
                 throw BadCredentialsException("Could not parse issuer.", e)
             }
-            
+
             if (allowedOrigins.any { issuer.startsWith(it) }.not()) {
                 throw BadCredentialsException("Untrusted issuer: $issuer")
             }
