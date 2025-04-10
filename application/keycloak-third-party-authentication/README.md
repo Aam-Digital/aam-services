@@ -17,18 +17,6 @@ The User U1 is forwarded to the System A with a valid session identifier as payl
 System A is validating the session information and automatically creates the User U1 in the user database and sign-in
 the user U1.
 
-## Involved systems
-
-### Your Application
-
-### Your Keycloak System
-
-### Your Third-Party-API instance
-
-### Third Party Application
-
-This is your Keycloak instance with your users in your realms.
-
 ## Development
 
 As development setup, you can use the provided [docker-compose.yml](./docker-compose.yml).
@@ -64,6 +52,3 @@ Now create a Remote JVM Debug configuration in your IntelliJ:
 **Attention**: sometimes, you need to start the debug configuration twice.
 
 Done. Breakpoints should work as usual now.
-
-### Using the Third-Party-Api
-
