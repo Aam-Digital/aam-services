@@ -1,4 +1,4 @@
-# keycloak-third-party-authentication
+# Keycloak Provider (Extension): keycloak-third-party-authentication
 
 This provider extension for Keycloak is alternative sign-in flow to enable third party authentication.
 
