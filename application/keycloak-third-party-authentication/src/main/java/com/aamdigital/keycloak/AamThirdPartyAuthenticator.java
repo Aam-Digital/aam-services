@@ -42,33 +42,6 @@ public class AamThirdPartyAuthenticator implements Authenticator {
         );
     }
 
-    private String getSessionUser(AuthenticationFlowContext ctx, String tpaSession) {
-        try {
-            var apiBaseUrl = ctx.getAuthenticatorConfig().getConfig().get("third-party-api-base-url");
-
-            if (apiBaseUrl == null) {
-                return null;
-            }
-
-            var httpGet = checkCredentialsRequest(apiBaseUrl, tpaSession);
-
-            HttpClient httpClient = ctx.getSession().getProvider(HttpClientProvider.class).getHttpClient();
-            var response = httpClient.execute(httpGet);
-
-            var entity = response.getEntity();
-            if (entity == null) {
-                return null;
-            }
-
-            var mapper = new ObjectMapper();
-            var mappedResponse = mapper.readValue(EntityUtils.toString(entity), typeRef);
-
-            return mappedResponse.get("userId");
-        } catch (IOException e) {
-            return null;
-        }
-    }
-
     @Override
     public void authenticate(AuthenticationFlowContext ctx) {
         var tpaSession = ctx.getHttpRequest().getUri().getQueryParameters().getFirst(QUERY_PARAM_IDP_HINT);
@@ -98,6 +71,33 @@ public class AamThirdPartyAuthenticator implements Authenticator {
         ctx.setUser(sessionUser);
 
         ctx.success();
+    }
+
+    private String getSessionUser(AuthenticationFlowContext ctx, String tpaSession) {
+        try {
+            var apiBaseUrl = ctx.getAuthenticatorConfig().getConfig().get("third-party-api-base-url");
+
+            if (apiBaseUrl == null) {
+                return null;
+            }
+
+            var httpGet = checkCredentialsRequest(apiBaseUrl, tpaSession);
+
+            HttpClient httpClient = ctx.getSession().getProvider(HttpClientProvider.class).getHttpClient();
+            var response = httpClient.execute(httpGet);
+
+            var entity = response.getEntity();
+            if (entity == null) {
+                return null;
+            }
+
+            var mapper = new ObjectMapper();
+            var mappedResponse = mapper.readValue(EntityUtils.toString(entity), typeRef);
+
+            return mappedResponse.get("userId");
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     @Override
