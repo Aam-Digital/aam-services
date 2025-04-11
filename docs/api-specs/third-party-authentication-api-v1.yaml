@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Third-Party Authentication API
+  title: Aam Digital Third-Party Authentication API
   description: User Authentication by external authentication provider
   version: 1.0.0
 servers:
