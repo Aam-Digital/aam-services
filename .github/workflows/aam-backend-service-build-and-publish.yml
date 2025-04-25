@@ -155,8 +155,8 @@ jobs:
           provenance: false
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha
-          cache-to: type=gha,mode=min
+          cache-from: type=gha,url=${{ runner.env.ACTIONS_CACHE_URL }},token=${{ runner.env.ACTIONS_RUNTIME_TOKEN }}
+          cache-to: type=gha,mode=min,url=${{ runner.env.ACTIONS_CACHE_URL }},token=${{ runner.env.ACTIONS_RUNTIME_TOKEN }}
         env:
           SOURCE_DATE_EPOCH: 0
 
