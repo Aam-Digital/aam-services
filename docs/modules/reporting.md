@@ -15,21 +15,20 @@ notes).
 _(the following steps are automatically handled by the interactive setup
 script ([ndb-setup](https://github.com/Aam-Digital/ndb-setup)) also)_
 
-1. Create additional databases in CouchDB: `report-calculation` and `notification-webhook` (used to store details)
-2. Set up necessary environment variables (e.g. using an `application.env` file for docker compose under
+1. Set up necessary environment variables (e.g. using an `application.env` file for docker compose under
    `config/aam-backend-service/application.env` from the root folder where the "docker-compose.yml" exists):
     - see [example .env](/templates/aam-backend-service/application.template.env)
     - CRYPTO_CONFIGURATION_SECRET: _a random secret used to encrypt data_
-3. Enable the backend in the overall docker compose setup as described in the ndb-setup
+2. Enable the backend in the overall docker compose setup as described in the ndb-setup
    README [here](https://github.com/Aam-Digital/ndb-setup?tab=readme-ov-file#set-up-api-integration)
     - or, if it was already enabled, re-up the docker compose and confirm the new containers and environment are running
-4. Create `ReportConfig:` entities to define specific reports
+3. Create `ReportConfig:` entities to define specific reports
     - the API / backend reports only support the `"mode": "sql"`
     - for details on report definitions,
       see https://aam-digital.github.io/ndb-core/documentation/additional-documentation/how-to-guides/create-a-report.html
-5. Make sure the users who are supposed to access the reports in the frontend have permission to view `ReportConfig`
+4. Make sure the users who are supposed to access the reports in the frontend have permission to view `ReportConfig`
    entities
-6. Within the app, users can now execute sql-based reports and see calculated results (configuration for the view in
+5. Within the app, users can now execute sql-based reports and see calculated results (configuration for the view in
    Config:CONFIG_ENTITY `"view:report": {"component": "Reporting"}`)
 
 ## API access to reports
@@ -44,11 +43,8 @@ can be fetched via OAuth2 client credential flow.
    to [create new client grant in Keycloak](https://www.keycloak.org/docs/latest/server_admin/#_oidc_clients))
     1. check "Client authentication" toggle
     2. for "Authentication flow" only "Service accounts roles" needs to be checked
-    3. after saving the Client, go to "Client Scopes" section and create two scopes:
-        1. `reporting_read` (Access to reporting-api GET endpoints)
-        2. `reporting_write` (Access to reporting-api POST endpoints)
-    4. in the Client section, edit the newly created client and add these two scopes in the "Client scopes" tab
-    5. from the "Credentials" tab of the client you can now copy the secret:
+    3. in the Client section, edit the newly created client and add the reporting_read and reporting_write scopes in the "Client scopes" tab (these should be created by the default realm, otherwise manually create these two in the "Client scopes" section)
+    4. from the "Credentials" tab of the client you can now copy the secret:
        ![Keycloak Client Setup](../assets/keycloak-client-setup.png)
 2. For integration with TolaData:
     - In TolaData, navigate to Data Tables or User Profile and add Aam Digital credentials
