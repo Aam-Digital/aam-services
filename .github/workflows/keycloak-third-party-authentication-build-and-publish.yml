@@ -1,0 +1,138 @@
+name: keycloak-third-party-authentication-build-and-publish
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/keycloak-third-party-authentication-build-and-publish.yml'
+      - 'application/keycloak-third-party-authentication/**'
+  push:
+    tags:
+      - 'keycloak-third-party-authentication/**'
+    branches:
+      - main
+    paths:
+      - '.github/workflows/keycloak-third-party-authentication-build-and-publish.yml'
+      - 'application/keycloak-third-party-authentication/**'
+env:
+  REGISTRY_IMAGE: ghcr.io/aam-digital/keycloak-third-party-authentication
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository files
+        uses: actions/checkout@v4
+
+      - name: Extract tag (release)
+        if: ${{ github.event.ref  != '' }}
+        run: echo "TAG=${GITHUB_REF#refs/tags/keycloak-third-party-authentication/}" >> $GITHUB_ENV
+
+      - name: Extract tag (pull request)
+        if: ${{ github.event.ref  == '' }}
+        run: echo "TAG=pr-${{ github.event.number }}" >> $GITHUB_ENV
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          tags: |
+            type=ref,enable=true,event=pr
+            type=ref,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=branch
+            type=semver,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=tag
+          images: ${{ env.REGISTRY_IMAGE }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Image and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          platforms: ${{ matrix.platform }}
+          context: ./application/keycloak-third-party-authentication
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=local,dest=./build
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
+        env:
+          SOURCE_DATE_EPOCH: 0
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: keycloak-third-party-authentication.jar
+          if-no-files-found: 'error'
+          path: ./build/keycloak-third-party-authentication.jar
+
+  publish:
+    name: Publish keycloak-third-party-authentication Release
+    runs-on: ubuntu-latest
+    if: ${{ github.event.ref  != '' }} # release
+    needs:
+      - build
+    permissions:
+      contents: write # to be able to publish a GitHub release
+    defaults:
+      run:
+        working-directory: application/keycloak-third-party-authentication
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: application/keycloak-third-party-authentication
+          name: keycloak-third-party-authentication.jar
+
+      - name: Install Rust toolchain
+        run: rustup update --no-self-update
+
+      - name: Install conventional_commits_next_version
+        run: cargo install conventional_commits_next_version --version ^6
+
+      - name: Set current tag and version
+        run: |
+          CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'keycloak-third-party-authentication/v*')
+          CURRENT_VERSION=$(echo $CURRENT_TAG | cut -d'/' -f2)
+          echo "CURRENT_TAG=$CURRENT_TAG" >> $GITHUB_ENV
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+
+      - name: Set from commit hash
+        run: |
+          FROM_COMMIT_HASH=$(git rev-list -n 1 ${{ env.CURRENT_TAG }})
+          echo "FROM_COMMIT_HASH=$FROM_COMMIT_HASH" >> $GITHUB_ENV
+
+      - name: Calculate next version
+        run: |
+          NEXT_VERSION=v$(conventional_commits_next_version \
+            --calculation-mode "Batch" \
+            --from-commit-hash ${{ env.FROM_COMMIT_HASH }} \
+            --from-version ${{ env.CURRENT_VERSION }} \
+            --monorepo application/keycloak-third-party-authentication)
+          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
+          echo $NEXT_VERSION
+
+      - name: Create Release
+        if: env.CURRENT_VERSION != env.NEXT_VERSION
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          TAG_NAME=keycloak-third-party-authentication/${{ env.NEXT_VERSION }}
+          gh release create "$TAG_NAME" --generate-notes
+          gh release upload "$TAG_NAME" keycloak-third-party-authentication.jar 
