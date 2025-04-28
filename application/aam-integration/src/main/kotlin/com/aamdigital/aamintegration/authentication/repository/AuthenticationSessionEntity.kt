@@ -5,6 +5,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.validation.constraints.Size
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.SourceType
 import org.hibernate.annotations.UpdateTimestamp
@@ -29,6 +30,7 @@ data class AuthenticationSessionEntity(
     var sessionToken: String,
 
     @Column
+    @Size(max = 1000)
     var redirectUrl: String? = null,
 
     @Column
