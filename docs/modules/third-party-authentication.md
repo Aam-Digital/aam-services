@@ -1,4 +1,4 @@
-# Aam Digital - "Single-Sign-On" Integration
+# Aam Digital - Third-Party Authentication / "Single-Sign-On" Integration
 Allow another platform's users to log into Aam Digital with their (external) user accounts.
 This enables a deeper integration with other systems like TolaData, as users only have to maintain one account.
 
