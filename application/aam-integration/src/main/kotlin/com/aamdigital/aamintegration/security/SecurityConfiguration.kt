@@ -25,7 +25,9 @@ class SecurityConfiguration {
         "https://keycloak.aam-digital.net",
         "https://keycloak.aam-digital.com",
         "https://auth.aam-digital.app",
-        "https://auth.aam-digital.dev"
+        "https://auth.aam-digital.dev",
+        "https://id.aam-digital.app",
+        "https://id.aam-digital.dev"
     )
 
     @Bean

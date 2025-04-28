@@ -6,6 +6,7 @@ import org.keycloak.admin.client.CreatedResponseUtil
 import org.keycloak.admin.client.Keycloak
 import org.keycloak.representations.idm.UserRepresentation
 import org.slf4j.LoggerFactory
+import java.io.InputStream
 import java.util.*
 
 
@@ -46,6 +47,8 @@ class AamKeycloakAuthenticationProvider(
         }
 
         if (response.status != 201) {
+            val responseLines = (response.entity as InputStream).bufferedReader().readLines()
+            logger.debug("Response: {}", responseLines.toString())
             throw InternalServerException(
                 code = AamKeycloakAuthenticationProviderError.USER_CREATION_ERROR,
                 message = "Could not create externalUser"
