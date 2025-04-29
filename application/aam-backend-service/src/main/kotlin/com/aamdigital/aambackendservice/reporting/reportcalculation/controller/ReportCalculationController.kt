@@ -15,6 +15,7 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.dto.ReportCa
 import com.aamdigital.aambackendservice.reporting.reportcalculation.dto.ReportCalculationDto
 import com.aamdigital.aambackendservice.stream.handleInputStreamToOutputStream
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
+import java.io.InputStream
 import java.io.OutputStream
 import java.io.SequenceInputStream
 import java.time.ZoneOffset
@@ -45,6 +47,7 @@ class ReportCalculationController(
     private val createReportCalculationUseCase: CreateReportCalculationUseCase,
     private val objectMapper: ObjectMapper,
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     @PostMapping("/report/{reportId}")
     fun startCalculation(
@@ -88,6 +91,7 @@ class ReportCalculationController(
             )
         )
 
+        logger.trace("[POST /report/{reportId}]: Returning response: $createReportCalculationResponse")
         return when (createReportCalculationResponse) {
             is CreateReportCalculationResult.Failure -> {
                 return ResponseEntity.internalServerError().build()
@@ -105,6 +109,7 @@ class ReportCalculationController(
     ): List<ReportCalculationDto> {
         val reportCalculations = reportCalculationStorage.fetchReportCalculations(DomainReference(id = reportId))
 
+        logger.trace("[GET /report/{reportId}]: Returning $reportId")
         return reportCalculations.map { toDto(it) }
     }
 
@@ -115,6 +120,7 @@ class ReportCalculationController(
         val reportCalculation = try {
             reportCalculationStorage.fetchReportCalculation(DomainReference(id = calculationId))
         } catch (ex: NotFoundException) {
+            logger.trace("[GET /{calculationId}]: Requested calculationId $calculationId not found")
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(
                     HttpErrorDto(
@@ -126,21 +132,36 @@ class ReportCalculationController(
 
         // TODO Auth check (https://github.com/Aam-Digital/aam-services/issues/10)
 
+        logger.trace("[GET /{calculationId}]: Returning $calculationId")
         return ResponseEntity.ok(toDto(reportCalculation))
     }
 
     @GetMapping("/{calculationId}/data", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun fetchReportCalculationData(
-        @PathVariable calculationId: String
+        @PathVariable("calculationId") calculationIdRaw: String
     ): ResponseEntity<StreamingResponseBody> {
         // TODO Auth check (https://github.com/Aam-Digital/aam-services/issues/10)
 
-        val file = try {
+        if (calculationIdRaw.isBlank() || calculationIdRaw.trim().isEmpty()) {
+            logger.debug("[GET /{calculationId}/data]: Invalid calculationId $calculationIdRaw")
+            return ResponseEntity(
+                getErrorStreamingBody(errorCode = "INVALID_DATA", "Invalid calculationId."),
+                HttpHeaders().apply {
+                    set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                },
+                HttpStatus.NOT_FOUND,
+            )
+        }
+
+        val calculationId = calculationIdRaw.trim()
+
+        val file: InputStream = try {
             fileStorage.fetchFile(
                 path = "report-calculation/$calculationId",
                 fileName = "data.json"
             )
         } catch (ex: NotFoundException) {
+            logger.trace("[GET /{calculationId}/data]: Requested calculationId $calculationId file not found")
             return ResponseEntity(
                 getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
                 HttpHeaders().apply {
@@ -153,6 +174,7 @@ class ReportCalculationController(
         val reportCalculation = try {
             reportCalculationStorage.fetchReportCalculation(DomainReference(id = calculationId))
         } catch (ex: NotFoundException) {
+            logger.trace("[GET /{calculationId}/data]: Requested calculationId $calculationId not found")
             return ResponseEntity(
                 getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
                 HttpHeaders().apply {
@@ -181,6 +203,7 @@ class ReportCalculationController(
             )
         }
 
+        logger.trace("[GET /{calculationId}/data]: Returning stream for calculationId $calculationId with ${reportCalculation.attachments["data.json"]?.digest}")
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=$calculationId-data.json")
             .contentType(MediaType.APPLICATION_JSON)
@@ -197,6 +220,7 @@ class ReportCalculationController(
                 fileName = "data.json"
             )
         } catch (ex: NotFoundException) {
+            logger.trace("[GET /{calculationId}/data-stream]: Requested calculationId $calculationId file not found")
             return ResponseEntity(
                 getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
                 HttpHeaders().apply {
@@ -209,6 +233,7 @@ class ReportCalculationController(
         val reportCalculation = try {
             reportCalculationStorage.fetchReportCalculation(DomainReference(id = calculationId))
         } catch (ex: NotFoundException) {
+            logger.trace("[GET /{calculationId}/data-stream]: Requested calculationId $calculationId not found")
             return ResponseEntity(
                 getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
                 HttpHeaders().apply {
@@ -222,6 +247,7 @@ class ReportCalculationController(
             handleInputStreamToOutputStream(outputStream, file)
         }
 
+        logger.trace("[GET /{calculationId}/data-stream]: Returning stream for calculationId $calculationId")
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=calculation-data.json")
             .contentType(MediaType.APPLICATION_JSON)
@@ -229,7 +255,7 @@ class ReportCalculationController(
     }
 
     /*
-     * Needed so be able to return "ResponseEntity<StreamingResponseBody>" without the need to write a converter.
+     * Needed to be able to return "ResponseEntity<StreamingResponseBody>" without the need to write a converter.
      */
     private fun getErrorStreamingBody(errorCode: String, errorMessage: String, byteArrayBufferLength: Int = 4096) =
         StreamingResponseBody { outputStream: OutputStream ->
@@ -244,7 +270,9 @@ class ReportCalculationController(
             ).byteInputStream()
 
             while ((bodyStream.read(buffer).also { bytesRead = it }) != -1) {
-                outputStream.write(buffer, 0, bytesRead)
+                if (bytesRead > 0) {
+                    outputStream.write(buffer, 0, bytesRead)
+                }
             }
         }
 

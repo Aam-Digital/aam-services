@@ -16,7 +16,9 @@ fun handleInputStreamToOutputStream(
         val buffer = ByteArray(byteArrayBufferLength)
         var bytesRead: Int
         while ((inputStream.read(buffer).also { bytesRead = it }) != -1) {
-            writer.write(String(buffer, 0, bytesRead, Charsets.UTF_8))
+            if (bytesRead > 0) {
+                writer.write(String(buffer, 0, bytesRead, Charsets.UTF_8))
+            }
         }
     }
 }

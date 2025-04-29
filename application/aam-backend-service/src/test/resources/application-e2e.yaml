@@ -42,7 +42,6 @@ management:
         include:
           - info
           - health
-
   tracing:
     sampling:
       probability: 0
@@ -71,11 +70,20 @@ skilllab-api-client-configuration:
   base-path: http://localhost:9005/skilllab # todo test container
   response-timeout-in-seconds: 15
 
+notification-firebase-configuration:
+  credential-file-base64: ""
+
 features:
   export-api:
     enabled: true
   skill-api:
     mode: disabled
+  notification-api:
+    enabled: false
+    mode: firebase
+
+crypto-configuration:
+  secret: super-duper-secret
 
 events:
   listener:
@@ -84,9 +92,6 @@ events:
 
 database-change-detection:
   enabled: false
-
-crypto-configuration:
-  secret: super-duper-secret
 
 sentry:
   logging:

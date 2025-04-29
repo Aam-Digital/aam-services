@@ -1,0 +1,34 @@
+name: keycloak-third-party-authentication
+services:
+  db-keycloak:
+    image: postgres:16
+    volumes:
+      - ./data/db-keycloak/postgresql-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: keycloak
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.7
+    volumes:
+      - ./data/keycloak/data:/opt/keycloak/data
+      - ./data/keycloak/themes:/opt/keycloak/themes
+      - ./data/keycloak/providers:/opt/keycloak/providers
+    ports:
+      - "8888:8080"
+      - "5005:5005"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db-keycloak:5432/postgres
+      KC_DB_SCHEMA: public
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: keycloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: docker
+    #      DEBUG: 'true'
+    #      DEBUG_SUSPEND: 'y'
+    #      DEBUG_PORT: '*:5005'
+    depends_on:
+      - db-keycloak
+    command:
+      - start-dev

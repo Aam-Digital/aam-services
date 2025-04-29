@@ -1,0 +1,63 @@
+{
+  local_certs
+  auto_https disable_redirects
+}
+
+aam.localhost:80, aam.localhost:443 {
+    handle_path /auth* {
+        reverse_proxy keycloak:8080 {
+            header_up Host {host}
+        }
+    }
+
+    handle_path /db/couchdb* {
+        reverse_proxy db-couch:5984
+    }
+
+    handle_path /db* {
+        # activate this line instead if your replication-backend is running locally
+        # reverse_proxy http://host.docker.internal:3000 # local running app
+
+        reverse_proxy replication-backend:5984 # official release docker container
+    }
+
+    handle_path /accounts-backend* {
+        # activate this line instead if your account-backend is running locally
+        # reverse_proxy http://host.docker.internal:3000
+
+        reverse_proxy accounts-backend:3000  # official release docker container
+    }
+
+    handle_path /api* {
+        # activate this line instead if your aam-services backend is running locally
+        # reverse_proxy http://host.docker.internal:9000 # local running app
+
+        reverse_proxy aam-backend-service:8080  # official release docker container
+    }
+
+    handle_path /sqs* {
+        reverse_proxy sqs:4984
+    }
+
+    handle_path /rabbitmq/* {
+        reverse_proxy rabbitmq:15672
+    }
+
+    handle_path /nominatim/* {
+        reverse_proxy https://nominatim.openstreetmap.org
+    }
+
+    handle_path /maildev/* {
+        reverse_proxy maildev:1080
+    }
+
+    handle_path /hello {
+        respond "Hello. This is aam-digital-reverse-proxy." 200
+    }
+
+    # redirect all other traffic to the locally running angular app (on host machine)
+    # on linux this may need some additional configuration. See README.md
+    handle_path /* {
+        reverse_proxy http://host.docker.internal:4200
+    }
+}

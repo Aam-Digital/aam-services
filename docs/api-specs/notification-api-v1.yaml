@@ -1,0 +1,106 @@
+openapi: 3.0.3
+info:
+  title: Notification API
+  description: Provide (push) notification functionality to users and devices.
+  version: 1.0.0
+servers:
+  - url: /v1/notification
+
+paths:
+  /device:
+    post:
+      summary: Register a new device to receive notifications.
+      tags:
+        - device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegistration'
+      responses:
+        204:
+          description: Device registration successful
+        400:
+          description: The device is already registered
+
+  /device/{deviceId}:
+    get:
+      summary: Check if the device is correctly registered for push notifications
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            type: string
+          required: true
+      tags:
+        - device
+      responses:
+        403:
+          description: Device does not belong to user
+        404:
+          description: Device registration does not exist
+        200:
+          description: Device registration exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRegistrationCheckResponse'
+    delete:
+      summary: Delete an existing device registration.
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            type: string
+          required: true
+      tags:
+        - device
+      responses:
+        403:
+          description: Device does not belong to user
+        404:
+          description: Device registration does not exist
+        204:
+          description: Device registration was removed
+
+  /message/device-test:
+    post:
+      summary: Send a hello-world notification to all registered devices of the current user
+      tags:
+        - message
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestMessageResponse'
+
+components:
+  schemas:
+    DeviceRegistration:
+      type: object
+      properties:
+        deviceName:
+          type: string
+          required: false
+        deviceToken:
+          type: string
+          required: true
+
+    TestMessageResponse:
+      type: object
+      properties:
+        receiverIds:
+          type: array
+          items:
+            type: string
+    
+    DeviceRegistrationCheckResponse:
+      type: object
+      properties:
+        deviceToken:
+          type: string
+        deviceName:
+          type: string

@@ -215,7 +215,7 @@ class DefaultReportCalculationUseCaseTest {
             version = 1,
             items = listOf(
                 ReportItem.ReportQuery(
-                    sql = "SELECT * FROM foo WHERE time BETWEEN \$from and \$to",
+                    sql = "SELECT *, json_extract(foo.children, '$[0]') FROM foo WHERE time BETWEEN \$from and \$to",
                 )
             ),
             transformations = mapOf(
@@ -269,7 +269,7 @@ class DefaultReportCalculationUseCaseTest {
         verify(queryStorage).executeQuery(
             eq(
                 QueryRequest(
-                    query = "SELECT * FROM foo WHERE time BETWEEN ? and ?",
+                    query = "SELECT *, json_extract(foo.children, '\$[0]') FROM foo WHERE time BETWEEN ? and ?",
                     args = listOf(
                         "2010-01-15", "2010-01-16T23:59:59.999Z"
                     )

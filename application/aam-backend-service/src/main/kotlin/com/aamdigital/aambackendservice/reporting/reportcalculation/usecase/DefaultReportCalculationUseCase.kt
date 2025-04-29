@@ -228,6 +228,11 @@ class DefaultReportCalculationUseCase(
         val queryArgs = mutableListOf<String>()
 
         for (placeholder in placeholders) {
+            if (!args.containsKey(placeholder)) {
+                // skip potential placeholders that are not in args, these may be sqlite-related tokens (e.g. for json_extract)
+                continue
+            }
+
             val placeholderValue = args.getValue(placeholder)
             queryArgs.add(placeholderValue)
             sqlQuery = sqlQuery.replace("$$placeholder", "?")

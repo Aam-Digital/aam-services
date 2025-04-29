@@ -2,7 +2,7 @@ package com.aamdigital.aambackendservice.reporting.notification.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.domain.event.NotificationEvent
-import com.aamdigital.aambackendservice.reporting.notification.di.NotificationQueueConfiguration
+import com.aamdigital.aambackendservice.reporting.notification.di.ReportingNotificationQueueConfiguration
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
@@ -29,7 +29,7 @@ class NotificationService(
     fun sendNotifications(report: DomainReference, reportCalculation: DomainReference) {
         logger.debug("[NotificationService]: Trigger all affected webhooks for ${report.id}")
         val affectedWebhooks = getAffectedWebhooks(report)
-        
+
         affectedWebhooks.map { webhook ->
             triggerWebhook(
                 report = report,
@@ -42,7 +42,7 @@ class NotificationService(
     fun triggerWebhook(report: DomainReference, reportCalculation: DomainReference, webhook: DomainReference) {
         logger.debug("[NotificationService]: Trigger NotificationEvent for ${webhook.id} and ${report.id}")
         notificationEventPublisher.publish(
-            NotificationQueueConfiguration.NOTIFICATION_QUEUE,
+            ReportingNotificationQueueConfiguration.NOTIFICATION_QUEUE,
             NotificationEvent(
                 webhookId = webhook.id,
                 reportId = report.id,

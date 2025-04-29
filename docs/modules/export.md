@@ -21,6 +21,8 @@ REST controller responsible for handling export operations related to templates.
 [export-api-v1.yaml](../api-specs/export-api-v1.yaml)
 
 ## Setup
+This module has to be enabled through a feature flag in the environment:
+in .env file: `FEATURES_EXPORTAPI_ENABLED=true`
 
 Configure a compatible render api in the environment. You can use the default, aam-internal implementation,
 but make sure, that the authentication is configured:

@@ -1,42 +1,164 @@
-# ***************************************************************
-# start local development environment (without application)
-# ***************************************************************
-name: aam-services
+name: aam-digital-developer-stack
 services:
-  maildev:
-    image: maildev/maildev
+  # ***************************************************************
+  # dev tools
+  # ***************************************************************
+  reverse-proxy:
+    image: caddy:2.9-alpine
+    networks:
+      - aam-digital
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # (linux only) support for accessing processes on host machine
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./container-data/caddy-authorities:/data/caddy/pki/authorities/local
     ports:
-      - "1025:1025"
-      - "1080:1080"
+      - "80:80" # http
+      - "443:443" # https
+      - "2019:2019" # caddy api
+
+  maildev:
+    image: maildev/maildev:2.2.1
+    networks:
+      - aam-digital
+
+  # ***************************************************************
+  # couchdb
+  # ***************************************************************
 
   db-couch:
-    image: couchdb:3.3
+    image: couchdb:3.4.2
+    networks:
+      - aam-digital
     volumes:
-      - ~/docker-volumes/aam-digital/aam-services/db-couch/document-data:/opt/couchdb/data
-      - ~/docker-volumes/aam-digital/aam-services/db-couch/document-etc-locald:/opt/couchdb/etc/local.d
-      - ~/docker-volumes/aam-digital/aam-services/db-couch/document-log:/opt/couchdb/log
+      - ./container-data/db-couch/data:/opt/couchdb/data
+      - ./container-data/db-couch/local.d:/opt/couchdb/etc/local.d
     environment:
       COUCHDB_USER: admin
       COUCHDB_PASSWORD: docker
-      COUCHDB_SECRET: docker
-    ports:
-      - "5984:5984"
+
+  # ***************************************************************
+  # keycloak
+  # ***************************************************************
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7-0
+    depends_on:
+      - db-keycloak
+    networks:
+      - aam-digital
+    command: "start --proxy-headers forwarded"
+    environment:
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME: https://aam.localhost/auth
+      KC_FRONTEND_URL: https://aam.localhost/auth
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db-keycloak:5432/postgres
+      KC_DB_SCHEMA: public
+      KC_DB_USERNAME: admin
+      KC_DB_PASSWORD: docker
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: docker
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-} # (macOS only) bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
 
   db-keycloak:
     image: postgres:16
+    networks:
+      - aam-digital
     volumes:
-      - ~/docker-volumes/aam-digital/aam-services/db-keycloak/postgresql-data:/var/lib/postgresql/data
+      - ./container-data/db-keycloak/data:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: keycloak
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: docker
     ports:
       - "5401:5432"
 
-  db-backend:
-    image: postgres:16.5-bookworm
+  # ***************************************************************
+  # rabbitmq
+  # ***************************************************************
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    hostname: rabbitmq
+    networks:
+      - aam-digital
     volumes:
-      - ~/docker-volumes/aam-digital/aam-services/db-backend/postgresql-data:/var/lib/postgresql/data
+      - ./container-data/rabbitmq/data:/var/lib/rabbitmq/
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  # ***************************************************************
+  # accounts-backend
+  # ***************************************************************
+
+  accounts-backend:
+    image: aamdigital/account-ms:latest
+    depends_on:
+      - keycloak
+    networks:
+      - aam-digital
+    external_links:
+      - reverse-proxy:aam.localhost
+    platform: linux/amd64 # todo: publish account-backend as multi architecture
+    environment:
+      CORS: "*"
+      SENTRY_DSN: ""
+      SENTRY_ENABLED: false
+      SENTRY_INSTANCE_NAME: ""
+      SENTRY_ENVIRONMENT: ""
+      KEYCLOAK_URL: https://aam.localhost/auth
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_PASSWORD: docker
+      NODE_TLS_REJECT_UNAUTHORIZED: 0 # never use this in production
+
+  # ***************************************************************
+  # replication-backend
+  # ***************************************************************
+
+  replication-backend:
+    image: ghcr.io/aam-digital/replication-backend:latest
+    depends_on:
+      - db-couch
+    networks:
+      - aam-digital
+    environment:
+      DATABASE_URL: http://db-couch:5984
+      DATABASE_NAME: app
+      DATABASE_USER: admin
+      DATABASE_PASSWORD: docker
+      JWT_SECRET: someJwtSecret
+      JWT_PUBLIC_KEY: "-----BEGIN PUBLIC KEY-----\n${REPLICATION_BACKEND_PUBLIC_KEY:?REPLICATION_BACKEND_PUBLIC_KEY is not set}\n-----END PUBLIC KEY-----"
+      SENTRY_DSN: ""
+      SENTRY_ENABLED: false
+      SENTRY_INSTANCE_NAME: ""
+      SENTRY_ENVIRONMENT: ""
+      PORT: 5984
+
+  # ***************************************************************
+  # aam-backend-service
+  # ***************************************************************
+
+  aam-backend-service:
+    image: ghcr.io/aam-digital/aam-backend-service:${AAM_BACKEND_SERVICE_VERSION:-latest}
+    networks:
+      - aam-digital
+    external_links:
+      - reverse-proxy:aam.localhost
+    depends_on:
+      - aam-backend-service-db
+      - rabbitmq
+    env_file:
+      - ../../templates/aam-backend-service/application.localdev.env
+      - secrets.env
+    environment:
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-} # (macOS only) bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
+
+  aam-backend-service-db:
+    image: postgres:16.6-bookworm
+    networks:
+      - aam-digital
     environment:
       POSTGRES_DB: aam-backend-service
       POSTGRES_USER: admin
@@ -44,61 +166,48 @@ services:
     ports:
       - "5402:5432"
 
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    volumes:
-      - ~/docker-volumes/aam-digital/aam-services/rabbitmq/data:/var/lib/rabbitmq/
-      - ~/docker-volumes/aam-digital/aam-services/rabbitmq/log:/var/log/rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+  # ***************************************************************
+  # aam-backend-service feature dependencies (todo: os specific platform and images)
+  # ***************************************************************
 
   sqs:
-    image: ghcr.io/aam-digital/aam-sqs-mac:latest
+    image: ghcr.io/aam-digital/aam-sqs-linux:latest
     platform: linux/amd64
+    networks:
+      - aam-digital
     depends_on:
       - db-couch
     ports:
       - "4984:4984"
     volumes:
-      - ~/docker-volumes/aam-digital/aam-services/sqs/data:/data
+      - ./container-data/sqs/data:/data
     environment:
       SQS_COUCHDB_URL: http://db-couch:5984
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0
-    volumes:
-      - ~/docker-volumes/aam-digital/aam-services/keycloak/data:/opt/keycloak/data
-      - ~/docker-volumes/aam-digital/aam-services/keycloak/themes:/opt/keycloak/themes
-    ports:
-      - "8080:8080"
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://db-keycloak:5432/postgres
-      KC_DB_SCHEMA: public
-      KC_DB_USERNAME: postgres
-      KC_DB_PASSWORD: keycloak
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: docker
-    depends_on:
-      - db-keycloak
-    command:
-      - start-dev
 
   carbone-io:
     image: carbone/carbone-ee
     platform: linux/amd64
+    networks:
+      - aam-digital
     volumes:
-      - ~/docker-volumes/aam-digital/aam-services/carbone-io/template:/app/template
-      - ~/docker-volumes/aam-digital/aam-services/carbone-io/render:/app/render
+      - ./container-data/carbone-io/template:/app/template
+      - ./container-data/carbone-io/render:/app/render
     ports:
       - "4000:4000"
 
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    ports:
-      - "16686:16686" # the jaeger UI
-      - "4317:4317" # the OpenTelemetry collector grpc
-      - "4318:4318" # the OpenTelemetry collector http
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
+  # ***************************************************************
+  # tracing and monitoring (todo)
+  # ***************************************************************
+
+  #  jaeger:
+  #    image: jaegertracing/all-in-one:latest
+  #    ports:
+  #      - "16686:16686" # the jaeger UI
+  #      - "4317:4317" # the OpenTelemetry collector grpc
+  #      - "4318:4318" # the OpenTelemetry collector http
+  #    environment:
+  #      - COLLECTOR_OTLP_ENABLED=true
+
+networks:
+  aam-digital:
+    external: true
