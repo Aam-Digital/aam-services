@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.rest
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.error.ExternalSystemException
 import com.aamdigital.aambackendservice.error.ForbiddenAccessException
+import com.aamdigital.aambackendservice.error.IOException
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.error.NetworkException
@@ -69,6 +70,7 @@ class AamErrorAttributes : DefaultErrorAttributes() {
 
     private fun getStatus(error: AamException) = when (error) {
         is InternalServerException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
+        is IOException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
         is ExternalSystemException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
         is NetworkException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
         is InvalidArgumentException -> HttpStatus.BAD_REQUEST.value()

@@ -2,9 +2,9 @@
 
 This provider extension for Keycloak is alternative sign-in flow to enable third party authentication.
 
-For an explanation of the feature overall, please refer to the [Module's README](/docs/modules/aam-integration.md).
+For an explanation of the feature overall, please refer to the [Module's README](../../docs/modules/third-party-authentication.md).
 
-This is required as a counterpart to our API's [aam-integration module](./application/aam-integration/README.md).
+This is required as a counterpart to our API's [third-party-integration module](../aam-backend-service/src/main/kotlin/com/aamdigital/aambackendservice/thirdpartyauthentication/README.md).
 It interacts with our API to authenticate a Keycloak user based on the session tokens managed by the aam-integration API.
 
 

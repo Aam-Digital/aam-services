@@ -51,6 +51,8 @@ features:
     mode: disabled
   notification-api:
     enabled: false
+  third-party-authentication:
+    enabled: false
 
 # enable/disables event processing for each queue
 events:
@@ -148,6 +150,15 @@ features:
   notification-api:
     enabled: true
     mode: firebase
+  third-party-authentication:
+    enabled: true
+
+aam-keycloak-config:
+  realm: master
+  client-id: aam-integration
+  client-secret: 1234
+  server-url: http://localhost:8888
+  application-url: aam.localhost
 
 notification-firebase-configuration:
   link-base-url: https://aam.localhost
