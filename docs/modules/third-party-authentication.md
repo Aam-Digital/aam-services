@@ -16,14 +16,44 @@ For example:
 5. If necessary, System A automatically creates a new User U1 in the user database
 6. System A signs in the user U1. The user does not have to enter a password on System A.
 
+### Dependencies
+The Keycloak server requires a special Authenticator: [see keycloak-third-party-authentication](/application/keycloak-third-party-authentication/README.md)
 
-## API Specification
-
-TODO
+### API Specification
+_see [api-specs/third-party-authentication-api](../api-specs/third-party-authentication-api-v1.yaml)_
 
 
 ## Setup
-TODO
+The following environment variables are required to enable this module in the backend system:
+```dotenv
+FEATURES_THIRDPARTYAUTHENTICATION_ENABLED=true
+```
 
-### Dependencies
-The Keycloak server requires a special Authenticator: [see keycloak-third-party-authentication](/application/keycloak-third-party-authentication/README.md)
+### Keycloak configuration
+You need to configure your Keycloak Realm to support the third-party-api.
+Check out the provider: [application/keycloak-third-party-authentication](../application/keycloak-third-party-authentication/)_
+
+#### Enable the third-party-authentication provider in Keycloak
+
+This is already done in the default aam-keycloak image.
+
+#### Create an Authentication Flow
+
+1. Go to the `Authentication` settings in your Realm and copy the default `browser` flow and name it `browser-sso`.
+![dev-2.png](../assets/third-party-authentication/dev-2.png)
+
+2. Click on `Add step` and select `Aam Digital - Third Party Authenticator`. It will be placed at the end of the list.
+![dev-3.png](../assets/third-party-authentication/dev-3.png)
+
+3. Now move the `Aam Digital - Third Party Authenticator` block between `Cookie` and `Kerberos`.
+4. Set the `Requirement` to `Alternative`
+5. Click on the settings icon on the right to configure:
+   - **Alias** to any name of the API / system
+   - **API-Base Url** to the API module URL of the aam-services backend, e.g. `https://my-realm.aam.digital.app/api/v1`
+![dev-4.png](../assets/third-party-authentication/dev-4.png)
+
+6. Switch to: `Clients` -> `app` -> `Advanced` and scroll down to `Authentication flow overrides`
+   - Select the `browser-sso` flow here:
+![dev-5.png](../assets/third-party-authentication/dev-5.png)
+
+Done. The Third-Party-Authentication from an external system should now be usable.
