@@ -154,10 +154,10 @@ features:
     enabled: true
 
 aam-keycloak-config:
-  realm: master
-  client-id: aam-integration
+  realm: dummy-realm
+  client-id: aam-api
   client-secret: 1234
-  server-url: http://localhost:8888
+  server-url: https://aam.localhost/auth
   application-url: aam.localhost
 
 notification-firebase-configuration:

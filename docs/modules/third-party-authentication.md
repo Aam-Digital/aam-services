@@ -24,9 +24,15 @@ _see [api-specs/third-party-authentication-api](../api-specs/third-party-authent
 
 
 ## Setup
-The following environment variables are required to enable this module in the backend system:
+The backend module requires environment variables to access the Keycloak server:
 ```dotenv
 FEATURES_THIRDPARTYAUTHENTICATION_ENABLED=true
+
+AAMKEYCLOAKCONFIG_REALM=master
+AAMKEYCLOAKCONFIG_CLIENTID=aam-integration
+AAMKEYCLOAKCONFIG_CLIENTSECRET=1234
+AAMKEYCLOAKCONFIG_SERVERURL=http://localhost:8888
+AAMKEYCLOAKCONFIG_APPLICATIONURL=aam.localhost
 ```
 
 ### Keycloak configuration
@@ -34,8 +40,12 @@ You need to configure your Keycloak Realm to support the third-party-api.
 Check out the provider: [application/keycloak-third-party-authentication](../application/keycloak-third-party-authentication/)_
 
 #### Enable the third-party-authentication provider in Keycloak
+The custom Keycloak Provider is already enabled in the default aam-keycloak image.
 
-This is already done in the default aam-keycloak image.
+You should create a Keycloak Client in the Realm that is used by the external system to authenticate itself against our API.
+
+Additionally, a Keycloak User Role "third-party-authentication-provider" is required.
+This has to be assigned to the Keycloak Client as a "Service Account Role".
 
 #### Create an Authentication Flow
 
