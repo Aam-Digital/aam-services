@@ -56,7 +56,7 @@ class LocalDevelopmentConfiguration {
     ): JwtDecoder {
         return NimbusJwtDecoder
             .withIssuerLocation(
-                "https://aam.localhost/auth/realms/dummy-realm"
+                "http://localhost:8080/realms/dummy-realm"
             )
             .restOperations(restTemplate)
             .build()

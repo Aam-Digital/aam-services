@@ -1,11 +1,24 @@
 # Keycloak Provider (Extension): keycloak-third-party-authentication
 
 This provider extension for Keycloak is alternative sign-in flow to enable third party authentication.
+To some extent this is based on [this guide](https://www.n-k.de/2023/03/keycloak-magic-login-link-passwordless.html). 
 
 For an explanation of the feature overall, please refer to the [Module's README](../../docs/modules/third-party-authentication.md).
 
 This is required as a counterpart to our API's [third-party-integration module](../aam-backend-service/src/main/kotlin/com/aamdigital/aambackendservice/thirdpartyauthentication/README.md).
 It interacts with our API to authenticate a Keycloak user based on the session tokens managed by the aam-integration API.
+
+
+## Build
+The provider is built automatically by the CI (see `.github/workflows/`)
+and published on GitHub.
+
+You can also manually build the provider simply with docker using the following command:
+```bash
+docker build --output type=local,dest=./build .
+## if needed in developer setup for testing, copy it:
+sudo cp build/keycloak-third-party-authentication.jar ../../docs/developer/container-data/keycloak/providers/keycloak-third-party-authentication.jar
+```
 
 
 ## Setup
@@ -31,9 +44,8 @@ services:
       DEBUG_PORT: '*:5005'
 ```
 
-After that, you can start the containers `docker compose up -d`. You will see, that the keycloak container is waiting
-for a
-debugger to attach:
+After that, you can start the containers `docker compose up -d`.
+You will see, that the keycloak container is waiting for a debugger to attach:
 
 ![docs-debug-1.png](assets/docs-debug-1.png)
 

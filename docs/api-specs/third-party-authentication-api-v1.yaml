@@ -124,7 +124,7 @@ components:
       required: true
     sessionToken:
       in: query
-      name: "sessionToken"
+      name: "session_token"
       description: "Secret for session. Belongs to the session"
       schema:
         type: string
