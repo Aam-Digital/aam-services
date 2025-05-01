@@ -197,6 +197,13 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
 
 ### Step 2: Configure Keycloak
 
+> WARNING! We currently use Keycloak 23 in production. For local development the latest Keycloak 26 is also supported.
+> The docker-compose offers both options. Enable one with code comments or profiles
+> 
+> Keycloak 23 does not work with the proxy, access this under http://localhost:8080 directly.
+> You also have to change the keycloak.json in the frontend to use either http://localhost:8080 or https://aam.localhost/auth
+> Note that switching between the two Keycloak containers means the realm setup is different and the public key (`REPLICATION_BACKEND_PUBLIC_KEY`) has to be updated in .env
+
 - Open the Keycloak Admin UI at [https://aam.localhost/auth](https://aam.localhost/auth) with the credentials defined in
   the docker-compose file.
 
@@ -208,6 +215,14 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
 - In the new realm, create a user and assign relevant roles.
   (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.  
   If the roles are not visible in "Assign roles" dialog, you may need to change the "Filter by realm roles".)
+- Add additional providers (plugins):
+```bash
+cd ./container-data/keycloak/providers # (create folder if necessary)
+sudo wget https://github.com/aerogear/keycloak-metrics-spi/releases/download/6.0.0/keycloak-metrics-spi-6.0.0.jar && \
+sudo wget https://github.com/wouterh-dev/keycloak-spi-trusted-device/releases/download/v0.0.1-22/keycloak-spi-trusted-device-0.0.1-22.jar && \
+sudo wget https://static.aam-digital.net/keycloak-2fa-email-authenticator-1.0-SNAPSHOT.jar && \
+sudo wget https://github.com/Aam-Digital/aam-services/releases/download/keycloak-third-party-authentication/v0.1.0/keycloak-third-party-authentication.jar
+```
 
 ### Step 3: Set Up CouchDB (todo: improve this by automatic script)
 

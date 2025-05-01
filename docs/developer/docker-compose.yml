@@ -41,10 +41,13 @@ services:
   # keycloak
   # ***************************************************************
 
-  keycloak:
+  keycloak_26:
     image: quay.io/keycloak/keycloak:26.0.7-0
+    container_name: keycloak
     depends_on:
       - db-keycloak
+    ports:
+      - "8080:8080"
     networks:
       - aam-digital
     command: "start --proxy-headers forwarded"
@@ -60,6 +63,11 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: docker
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-} # (macOS only) bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
+    volumes:
+      - ./container-data/keycloak/providers:/opt/keycloak/providers
+    # - ./container-data/keycloak/themes:/opt/keycloak/themes
+    profiles:
+      - keycloak_latest
 
   db-keycloak:
     image: postgres:16
@@ -73,6 +81,40 @@ services:
       POSTGRES_PASSWORD: docker
     ports:
       - "5401:5432"
+
+# Currently Keycloak 23 is used in production:
+  keycloak_23:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: keycloak
+    volumes:
+      - ./container-data/keycloak/providers:/opt/keycloak/providers
+    # - ./container-data/keycloak/themes:/opt/keycloak/themes
+    ports:
+      - "8080:8080"
+    networks:
+      - aam-digital
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db-keycloak_23:5432/postgres
+      KC_DB_SCHEMA: public
+      KC_DB_USERNAME: admin
+      KC_DB_PASSWORD: docker
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: docker
+    depends_on:
+      - db-keycloak_23
+    command:
+      - start-dev
+  db-keycloak_23:
+    image: postgres:16
+    volumes:
+      - ./container-data/db-keycloak23/postgresql-data:/var/lib/postgresql/data
+    networks:
+      - aam-digital
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: docker
 
   # ***************************************************************
   # rabbitmq
@@ -88,30 +130,6 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
-
-  # ***************************************************************
-  # accounts-backend
-  # ***************************************************************
-
-  accounts-backend:
-    image: aamdigital/account-ms:latest
-    depends_on:
-      - keycloak
-    networks:
-      - aam-digital
-    external_links:
-      - reverse-proxy:aam.localhost
-    platform: linux/amd64 # todo: publish account-backend as multi architecture
-    environment:
-      CORS: "*"
-      SENTRY_DSN: ""
-      SENTRY_ENABLED: false
-      SENTRY_INSTANCE_NAME: ""
-      SENTRY_ENVIRONMENT: ""
-      KEYCLOAK_URL: https://aam.localhost/auth
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_PASSWORD: docker
-      NODE_TLS_REJECT_UNAUTHORIZED: 0 # never use this in production
 
   # ***************************************************************
   # replication-backend
