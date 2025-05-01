@@ -2,12 +2,12 @@ package com.aamdigital.aambackendservice.thirdpartyauthentication.controller
 
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.error.HttpErrorDto
-import com.aamdigital.aambackendservice.thirdpartyauthentication.core.CreateSessionUseCase
-import com.aamdigital.aambackendservice.thirdpartyauthentication.core.CreateSessionUseCaseRequest
-import com.aamdigital.aambackendservice.thirdpartyauthentication.core.SessionRedirectUseCase
-import com.aamdigital.aambackendservice.thirdpartyauthentication.core.SessionRedirectUseCaseRequest
-import com.aamdigital.aambackendservice.thirdpartyauthentication.core.VerifySessionUseCase
-import com.aamdigital.aambackendservice.thirdpartyauthentication.core.VerifySessionUseCaseRequest
+import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
+import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCaseRequest
+import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
+import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCaseRequest
+import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
+import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCaseRequest
 import com.aamdigital.aambackendservice.thirdpartyauthentication.di.AamKeycloakConfig
 import jakarta.validation.constraints.Email
 import org.slf4j.LoggerFactory
@@ -51,7 +51,7 @@ data class UserSessionRedirectDto(
 )
 
 @RestController
-@RequestMapping("/v1/authentication")
+@RequestMapping("/v1/third-party-authentication")
 @ConditionalOnProperty(
     prefix = "features.third-party-authentication",
     name = ["enabled"],

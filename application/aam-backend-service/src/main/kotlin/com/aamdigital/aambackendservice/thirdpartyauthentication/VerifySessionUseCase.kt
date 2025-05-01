@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.thirdpartyauthentication.core
+package com.aamdigital.aambackendservice.thirdpartyauthentication
 
 import com.aamdigital.aambackendservice.domain.DomainUseCase
 import com.aamdigital.aambackendservice.domain.UseCaseData

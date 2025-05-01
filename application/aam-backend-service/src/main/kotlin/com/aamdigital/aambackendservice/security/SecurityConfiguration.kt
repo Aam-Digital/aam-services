@@ -35,6 +35,7 @@ class SecurityConfiguration {
                 authorize(HttpMethod.GET, "/actuator/health/liveness", permitAll)
                 authorize(HttpMethod.GET, "/actuator/health/readiness", permitAll)
                 authorize(HttpMethod.GET, "/actuator/features", permitAll)
+                authorize(HttpMethod.GET, "/v1/third-party-authentication/session/*", permitAll)
                 authorize(anyRequest, authenticated)
             }
             httpBasic {
@@ -77,6 +78,7 @@ class SecurityConfiguration {
         "https://auth.aam-digital.app",
         "https://auth.aam-digital.dev",
         "https://id.aam-digital.app",
+        "https://id.aam-digital.dev",
         "https://id.aam-digital.dev"
     )
 
