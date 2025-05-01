@@ -15,8 +15,11 @@ import org.keycloak.models.UserModel;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.logging.Logger;
 
 public class AamThirdPartyAuthenticator implements Authenticator {
+    private static final Logger log = Logger.getLogger(AamThirdPartyAuthenticator.class.getName());
+
     private static final String QUERY_PARAM_IDP_HINT = "kc_idp_hint";
 
     private static final TypeReference<HashMap<String, String>> typeRef = new TypeReference<>() {
@@ -32,9 +35,14 @@ public class AamThirdPartyAuthenticator implements Authenticator {
             clientToken = sessionCredentials[2];
         }
 
+        // ensure no trailing slash
+        if (apiBaseUrl.endsWith("/")) {
+            apiBaseUrl = apiBaseUrl.substring(0, apiBaseUrl.length() - 1);
+        }
+
         return new HttpGet(
                 String.format(
-                        "%s/v1/authentication/session/%s?session_token=%s",
+                        "%s/v1/third-party-authentication/session/%s?session_token=%s",
                         apiBaseUrl,
                         clientId,
                         clientToken
@@ -51,9 +59,13 @@ public class AamThirdPartyAuthenticator implements Authenticator {
             return;
         }
 
+        log.info("[Aam SSO] authenticate with session: " + tpaSession);
+
         var userId = getSessionUser(ctx, tpaSession);
+        log.info("[Aam SSO] validated userId: " + userId);
 
         if (userId == null) {
+            log.info("[Aam SSO] no valid session found");
             ctx.failure(AuthenticationFlowError.INVALID_CREDENTIALS);
             return;
         }
@@ -64,11 +76,13 @@ public class AamThirdPartyAuthenticator implements Authenticator {
                 );
 
         if (sessionUser == null) {
+            log.info("[Aam SSO] unknown user " + userId);
             ctx.failure(AuthenticationFlowError.UNKNOWN_USER);
             return;
         }
 
         ctx.setUser(sessionUser);
+        log.fine("[Aam SSO] set user");
 
         ctx.success();
     }
@@ -82,11 +96,13 @@ public class AamThirdPartyAuthenticator implements Authenticator {
             }
 
             var httpGet = checkCredentialsRequest(apiBaseUrl, tpaSession);
+            log.info("[Aam SSO] checking credentials at " + httpGet);
 
             HttpClient httpClient = ctx.getSession().getProvider(HttpClientProvider.class).getHttpClient();
             var response = httpClient.execute(httpGet);
 
             var entity = response.getEntity();
+            log.info("[Aam SSO] response checking session: " + entity);
             if (entity == null) {
                 return null;
             }
@@ -96,6 +112,7 @@ public class AamThirdPartyAuthenticator implements Authenticator {
 
             return mappedResponse.get("userId");
         } catch (IOException e) {
+            log.warning("[Aam SSO] error checking session with API: " + e.getMessage());
             return null;
         }
     }
