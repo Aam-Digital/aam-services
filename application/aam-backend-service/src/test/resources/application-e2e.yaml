@@ -93,6 +93,13 @@ events:
 database-change-detection:
   enabled: false
 
+aam-keycloak-config:
+  realm: dummy-realm
+  client-id: aam-backend
+  client-secret: 1234
+  server-url: http://localhost:8080
+  application-url: aam.localhost
+
 sentry:
   logging:
     enabled: false
