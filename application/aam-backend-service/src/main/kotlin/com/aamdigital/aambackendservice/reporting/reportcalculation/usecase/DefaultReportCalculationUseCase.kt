@@ -21,6 +21,8 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportC
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationUseCase
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import org.springframework.stereotype.Component
 import java.io.InputStream
 import java.io.SequenceInputStream
@@ -69,15 +71,21 @@ class DefaultReportCalculationUseCase(
             return handleException(ex, ReportCalculationError.REPORT_NOT_FOUND)
         }
 
+        var updatedReportCalculation: ReportCalculation
         try {
-            reportCalculationStorage.storeCalculation(
-                reportCalculation = reportCalculation.setStatus(ReportCalculationStatus.RUNNING).setStartDate(
-                    startDate = getIsoLocalDateTime()
-                )
+            updatedReportCalculation = reportCalculationStorage.storeCalculation(
+                reportCalculation = reportCalculation
+                    .setStatus(ReportCalculationStatus.RUNNING)
+                    .setStartDate(startDate = getIsoLocalDateTime())
             )
 
-            handleSqlReport(report, reportCalculation)
-            markCalculationAsSuccess(request)
+            updatedReportCalculation = handleSqlReport(report, updatedReportCalculation)
+
+            updatedReportCalculation = reportCalculationStorage.storeCalculation(
+                reportCalculation = updatedReportCalculation
+                    .setStatus(ReportCalculationStatus.FINISHED_SUCCESS)
+                    .setEndDate(endDate = getIsoLocalDateTime())
+            )
         } catch (ex: Exception) {
             reportCalculationStorage.storeCalculation(
                 reportCalculation = reportCalculation.setStatus(ReportCalculationStatus.FINISHED_ERROR).setEndDate(
@@ -88,9 +96,17 @@ class DefaultReportCalculationUseCase(
             return handleException(ex)
         }
 
+        // Troubleshooting for sometimes empty report calculation results:
+        val resultLength = updatedReportCalculation.attachments["data.json"]?.length
+        if (resultLength != null && resultLength < 10) {
+            val msg = "REPORTING_DEBUG: possible empty report calculation result " + reportCalculation.id
+            logger.debug(msg)
+            Sentry.captureMessage(msg, SentryLevel.WARNING)
+        }
+
         return UseCaseOutcome.Success(
             data = ReportCalculationData(
-                reportCalculation = reportCalculation,
+                reportCalculation = updatedReportCalculation,
             )
         )
     }
@@ -99,7 +115,7 @@ class DefaultReportCalculationUseCase(
     private fun handleSqlReport(
         report: Report,
         reportCalculation: ReportCalculation,
-    ): UseCaseOutcome<ReportCalculationData> {
+    ): ReportCalculation {
         for ((argKey: String, transformationKeys: List<String>) in report.transformations) {
             handleTransformations(argKey, transformationKeys, reportCalculation.args)
         }
@@ -126,12 +142,7 @@ class DefaultReportCalculationUseCase(
             )
         )
 
-        return UseCaseOutcome.Success(
-            data = ReportCalculationData(
-                reportCalculation = result
-            )
-        )
-
+        return result
     }
 
     private fun handleReportItems(
@@ -201,19 +212,6 @@ class DefaultReportCalculationUseCase(
                     code = ReportCalculationError.UNSUPPORTED_REPORT_VERSION
                 )
         }
-    }
-
-    private fun markCalculationAsSuccess(request: ReportCalculationRequest) {
-        reportCalculationStorage.storeCalculation(
-            reportCalculation = reportCalculationStorage
-                .fetchReportCalculation(
-                    DomainReference(request.reportCalculationId)
-                )
-                .setStatus(ReportCalculationStatus.FINISHED_SUCCESS)
-                .setEndDate(
-                    endDate = getIsoLocalDateTime()
-                )
-        )
     }
 
     private fun getQueryRequest(query: ReportItem.ReportQuery, args: MutableMap<String, String>): QueryRequest {

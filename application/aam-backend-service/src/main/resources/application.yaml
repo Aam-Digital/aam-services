@@ -146,7 +146,7 @@ features:
   skill-api:
     mode: disabled
   notification-api:
-    enabled: true
+    enabled: false
     mode: firebase
 
 notification-firebase-configuration:

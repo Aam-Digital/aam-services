@@ -40,6 +40,7 @@ This backend is developed as independent modules that share some common services
 - Spring + Kotlin
 - Spring Boot ([see intro](https://docs.spring.io/spring-boot/reference/using/index.html))
 - Gradle ([see intro](https://docs.gradle.org/current/userguide/getting_started_eng.html))
+- RabbitMQ (AMQP) for message queues ([see Tutorial](https://www.rabbitmq.com/tutorials/tutorial-three-spring-amqp#))
 
 ## Configuration through environment variables
 Using Spring Boot's  system
@@ -59,3 +60,7 @@ Modules (usually) have to be explicitly enabled through a feature flag configura
     matchIfMissing = false
 )
 ```
+
+## Message Queues
+Most modules use RabbitMQ to decouple processing and allow for asynchronous processing of tasks.
+Refer to the official documentation (the tutorials are quite good) if you are not familiar with the concept or the framework specifically.

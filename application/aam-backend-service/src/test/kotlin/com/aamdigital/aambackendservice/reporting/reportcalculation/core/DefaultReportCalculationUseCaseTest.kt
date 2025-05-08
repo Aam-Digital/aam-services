@@ -176,8 +176,11 @@ class DefaultReportCalculationUseCaseTest {
 
         whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
 
+        whenever(reportCalculationStorage.storeCalculation(any()))
+            .thenAnswer { i -> i.arguments[0] }
+
         whenever(reportCalculationStorage.addReportCalculationData(any(), any()))
-            .thenReturn(reportCalculation)
+            .thenAnswer { i -> i.arguments[0] }
 
         // when
         val response = service.run(
@@ -248,8 +251,11 @@ class DefaultReportCalculationUseCaseTest {
 
         whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
 
+        whenever(reportCalculationStorage.storeCalculation(any()))
+            .thenAnswer { i -> i.arguments[0] }
+
         whenever(reportCalculationStorage.addReportCalculationData(any(), any()))
-            .thenReturn(reportCalculation)
+            .thenAnswer { i -> i.arguments[0] }
 
         // when
         val response = service.run(
@@ -320,8 +326,11 @@ class DefaultReportCalculationUseCaseTest {
 
         whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
 
+        whenever(reportCalculationStorage.storeCalculation(any()))
+            .thenAnswer { i -> i.arguments[0] }
+
         whenever(reportCalculationStorage.addReportCalculationData(any(), any()))
-            .thenReturn(reportCalculation)
+            .thenAnswer { i -> i.arguments[0] }
 
         // when
         val response = service.run(
@@ -395,8 +404,11 @@ class DefaultReportCalculationUseCaseTest {
 
         whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
 
+        whenever(reportCalculationStorage.storeCalculation(any()))
+            .thenAnswer { i -> i.arguments[0] }
+
         whenever(reportCalculationStorage.addReportCalculationData(any(), any()))
-            .thenReturn(reportCalculation)
+            .thenAnswer { i -> i.arguments[0] }
 
         // when
         val response = service.run(
@@ -465,6 +477,9 @@ class DefaultReportCalculationUseCaseTest {
             )
         ).thenReturn(report)
 
+        whenever(reportCalculationStorage.storeCalculation(any()))
+            .thenAnswer { i -> i.arguments[0] }
+
         // when
         val response = service.run(
             ReportCalculationRequest(
@@ -520,8 +535,11 @@ class DefaultReportCalculationUseCaseTest {
 
         whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
 
+        whenever(reportCalculationStorage.storeCalculation(any()))
+            .thenAnswer { i -> i.arguments[0] }
+
         whenever(reportCalculationStorage.addReportCalculationData(any(), any()))
-            .thenReturn(reportCalculation)
+            .thenAnswer { i -> i.arguments[0] }
 
         // when
         val response = service.run(
