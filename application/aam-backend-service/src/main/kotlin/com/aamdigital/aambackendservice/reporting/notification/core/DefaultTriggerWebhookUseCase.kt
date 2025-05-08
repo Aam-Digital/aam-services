@@ -35,6 +35,13 @@ class DefaultTriggerWebhookUseCase(
             )
         )
 
+        logger.debug(
+            "[DefaultTriggerWebhookUseCase] Trying to trigger Webhook" +
+                    " {} to {} Calculation: {} ",
+            notificationEvent.webhookId,
+            uri.toString(),
+            notificationEvent.calculationId,
+        )
         val response = httpClient
             .method(HttpMethod.valueOf(webhook.target.method))
             .uri {
