@@ -8,7 +8,7 @@ plugins {
     id("org.springframework.boot") version "3.3.4"
     id("io.spring.dependency-management") version "1.1.6"
     id("org.jetbrains.kotlin.kapt") version "1.9.25"
-    id("io.sentry.jvm.gradle") version "4.11.0"
+    id("io.sentry.jvm.gradle") version "5.5.0"
 }
 
 group = "com.aam-digital"
