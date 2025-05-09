@@ -103,7 +103,7 @@ class DefaultReportCalculationStorage(
     ): ReportCalculation {
         try {
             fileStorage.storeFile(
-                path = "/report-calculation/${reportCalculation.id}",
+                path = "report-calculation/${reportCalculation.id}",
                 fileName = "data.json",
                 file = file,
             )
