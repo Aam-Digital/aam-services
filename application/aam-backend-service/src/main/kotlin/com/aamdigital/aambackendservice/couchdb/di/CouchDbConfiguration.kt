@@ -40,8 +40,13 @@ class CouchDbConfiguration {
         restTemplateBuilder: RestClient.Builder = RestClient.builder(),
         configuration: CouchDbClientConfiguration
     ): RestClient {
+        var basePath = configuration.basePath
+        if (!basePath.endsWith("/")) {
+            basePath = "$basePath/"
+        }
+
         val clientBuilder = restTemplateBuilder
-            .baseUrl(configuration.basePath)
+            .baseUrl(basePath)
             .defaultHeaders {
                 it.setBasicAuth(
                     configuration.basicAuthUsername,
