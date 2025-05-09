@@ -166,12 +166,11 @@ sudo chown $USER:$USER aam.localhost.crt
 
 ### Step 1: start the local development stack
 
-Create a `.env` and `secrets.env` file by copying the examples:
+Create a `.env` file by copying the example:
 
 ```shell
 # /aam-services/docs/developer
 cp .env.example .env
-cp secrets.env.example secrects.env
 ```
 
 You can start all services needed for the local development with docker-compose:
