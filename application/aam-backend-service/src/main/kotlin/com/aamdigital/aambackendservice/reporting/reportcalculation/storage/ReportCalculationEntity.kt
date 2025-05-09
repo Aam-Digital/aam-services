@@ -2,7 +2,7 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.storage
 
 import com.aamdigital.aambackendservice.couchdb.dto.AttachmentMetaData
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import com.fasterxml.jackson.annotation.JsonProperty
 
 data class ReportCalculationEntity(

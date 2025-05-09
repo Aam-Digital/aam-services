@@ -3,7 +3,7 @@ package com.aamdigital.aambackendservice.reporting.report.core
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.AamException
-import com.aamdigital.aambackendservice.reporting.domain.Report
+import com.aamdigital.aambackendservice.reporting.report.Report
 
 enum class ReportStorageErrorCode : AamErrorCode {
     INVALID_REPORT_CONFIG,

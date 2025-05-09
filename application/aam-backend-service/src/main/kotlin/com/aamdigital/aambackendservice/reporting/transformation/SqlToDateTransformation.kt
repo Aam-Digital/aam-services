@@ -1,7 +1,5 @@
 package com.aamdigital.aambackendservice.reporting.transformation
 
-import com.aamdigital.aambackendservice.reporting.domain.DataTransformation
-
 /**
  * Will set 'to' date to DEFAULT_TO_DATE if empty
  * Will set 'to' date to last minute of the day
