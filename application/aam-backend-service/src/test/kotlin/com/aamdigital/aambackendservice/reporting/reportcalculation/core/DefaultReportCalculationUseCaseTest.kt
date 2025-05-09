@@ -4,13 +4,13 @@ import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.domain.TestErrorCode
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.error.NotFoundException
-import com.aamdigital.aambackendservice.reporting.domain.Report
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
-import com.aamdigital.aambackendservice.reporting.domain.ReportItem
+import com.aamdigital.aambackendservice.reporting.report.Report
+import com.aamdigital.aambackendservice.reporting.report.ReportItem
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.report.sqs.QueryRequest
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.transformation.SqlFromDateTransformation
 import com.aamdigital.aambackendservice.reporting.transformation.SqlFromDateTransformation.Companion.DEFAULT_FROM_DATE

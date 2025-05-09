@@ -1,9 +1,9 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.usecase
 
 import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculationStatus
-import com.aamdigital.aambackendservice.reporting.domain.event.ReportCalculationEvent
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationResult
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase

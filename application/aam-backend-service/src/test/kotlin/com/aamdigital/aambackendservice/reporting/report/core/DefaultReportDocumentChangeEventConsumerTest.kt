@@ -3,6 +3,8 @@ package com.aamdigital.aambackendservice.reporting.report.core
 import com.aamdigital.aambackendservice.domain.TestErrorCode
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.reporting.report.queue.DefaultReportDocumentChangeEventConsumer
+import com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.rabbitmq.client.Channel

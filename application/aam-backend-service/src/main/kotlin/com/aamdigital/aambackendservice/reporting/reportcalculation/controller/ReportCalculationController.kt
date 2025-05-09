@@ -5,14 +5,12 @@ import com.aamdigital.aambackendservice.domain.FileStorage
 import com.aamdigital.aambackendservice.error.HttpErrorDto
 import com.aamdigital.aambackendservice.error.NotFoundException
 import com.aamdigital.aambackendservice.export.controller.TemplateExportControllerResponse
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationResult
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
-import com.aamdigital.aambackendservice.reporting.reportcalculation.dto.ReportCalculationData
-import com.aamdigital.aambackendservice.reporting.reportcalculation.dto.ReportCalculationDto
 import com.aamdigital.aambackendservice.stream.handleInputStreamToOutputStream
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory

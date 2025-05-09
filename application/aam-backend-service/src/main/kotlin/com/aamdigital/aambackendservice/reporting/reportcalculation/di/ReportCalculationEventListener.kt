@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.di
 
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.reporting.domain.event.ReportCalculationEvent
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.di.ReportCalculationQueueConfiguration.Companion.REPORT_CALCULATION_EVENT_QUEUE
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
