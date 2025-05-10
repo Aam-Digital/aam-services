@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.report.core
 
-import com.aamdigital.aambackendservice.reporting.domain.Report
-import com.aamdigital.aambackendservice.reporting.domain.ReportItem
+import com.aamdigital.aambackendservice.reporting.report.Report
+import com.aamdigital.aambackendservice.reporting.report.ReportItem
 import java.util.regex.Pattern
 
 class SimpleReportQueryAnalyser : ReportQueryAnalyser {

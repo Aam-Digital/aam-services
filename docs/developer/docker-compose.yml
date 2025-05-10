@@ -46,6 +46,8 @@ services:
     container_name: keycloak
     depends_on:
       - db-keycloak
+    ports:
+      - "8080:8080"
     networks:
       - aam-digital
     command: "start --proxy-headers forwarded"
@@ -167,7 +169,7 @@ services:
       - rabbitmq
     env_file:
       - ../../templates/aam-backend-service/application.localdev.env
-      - secrets.env
+      - .env
     environment:
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-} # (macOS only) bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
 

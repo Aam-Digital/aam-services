@@ -6,7 +6,7 @@ import com.aamdigital.aambackendservice.error.HttpErrorDto
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.error.NetworkException
 import com.aamdigital.aambackendservice.error.NotFoundException
-import com.aamdigital.aambackendservice.reporting.domain.ReportSchema
+import com.aamdigital.aambackendservice.reporting.report.ReportSchema
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity

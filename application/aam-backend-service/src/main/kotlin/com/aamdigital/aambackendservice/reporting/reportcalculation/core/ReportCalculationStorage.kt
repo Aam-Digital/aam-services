@@ -2,7 +2,7 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.domain.DomainReference
 import com.aamdigital.aambackendservice.error.AamException
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import java.io.InputStream
 
 interface ReportCalculationStorage {

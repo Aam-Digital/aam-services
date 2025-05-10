@@ -10,7 +10,7 @@ import com.aamdigital.aambackendservice.error.ExternalSystemException
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.error.NetworkException
 import com.aamdigital.aambackendservice.error.NotFoundException
-import com.aamdigital.aambackendservice.reporting.domain.ReportCalculation
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.util.LinkedMultiValueMap
@@ -103,7 +103,7 @@ class DefaultReportCalculationStorage(
     ): ReportCalculation {
         try {
             fileStorage.storeFile(
-                path = "/report-calculation/${reportCalculation.id}",
+                path = "report-calculation/${reportCalculation.id}",
                 fileName = "data.json",
                 file = file,
             )

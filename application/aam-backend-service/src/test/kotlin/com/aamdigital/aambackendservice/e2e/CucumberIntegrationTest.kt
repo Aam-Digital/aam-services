@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.e2e
 
 import com.aamdigital.aambackendservice.container.TestContainers
-import com.aamdigital.aambackendservice.reporting.domain.event.ReportCalculationEvent
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
 import io.cucumber.java.After
 import io.cucumber.java.en.Given

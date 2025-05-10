@@ -148,7 +148,7 @@ features:
   skill-api:
     mode: disabled
   notification-api:
-    enabled: true
+    enabled: false
     mode: firebase
   third-party-authentication:
     enabled: true

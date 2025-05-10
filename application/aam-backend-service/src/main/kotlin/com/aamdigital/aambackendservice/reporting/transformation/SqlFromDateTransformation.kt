@@ -1,7 +1,5 @@
 package com.aamdigital.aambackendservice.reporting.transformation
 
-import com.aamdigital.aambackendservice.reporting.domain.DataTransformation
-
 /**
  * Will cut the 'from' date always to '2022-04-25'
  * If data is empty, will return the DEFAULT_FROM_DATE
