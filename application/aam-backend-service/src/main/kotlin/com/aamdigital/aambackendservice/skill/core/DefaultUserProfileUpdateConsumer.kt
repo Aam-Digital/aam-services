@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.skill.core
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.error.AamException
-import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.error.AamException
+import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.skill.core.event.UserProfileUpdateEvent
 import com.aamdigital.aambackendservice.skill.di.UserProfileUpdateEventQueueConfiguration.Companion.USER_PROFILE_UPDATE_QUEUE
 import com.rabbitmq.client.Channel

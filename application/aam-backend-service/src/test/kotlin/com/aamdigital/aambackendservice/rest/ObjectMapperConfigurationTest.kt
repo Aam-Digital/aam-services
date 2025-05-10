@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.rest
+package com.aamdigital.aambackendservice.common.rest
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper

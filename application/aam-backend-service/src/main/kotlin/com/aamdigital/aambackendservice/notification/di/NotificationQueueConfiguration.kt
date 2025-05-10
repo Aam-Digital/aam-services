@@ -1,15 +1,15 @@
 package com.aamdigital.aambackendservice.notification.di
 
-import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
+import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigUseCase
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationUseCase
+import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.queue.DefaultNotificationDocumentChangeConsumer
 import com.aamdigital.aambackendservice.notification.queue.DefaultUserNotificationConsumer
 import com.aamdigital.aambackendservice.notification.queue.DefaultUserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.queue.NotificationDocumentChangeConsumer
-import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigUseCase
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationConsumer
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
-import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder

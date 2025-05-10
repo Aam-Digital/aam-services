@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.reporting.webhook.controller
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.error.HttpErrorDto
-import com.aamdigital.aambackendservice.error.NotFoundException
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.webhook.Webhook
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthenticationType
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookTarget

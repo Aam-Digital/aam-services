@@ -1,11 +1,11 @@
 package com.aamdigital.aambackendservice.reporting.webhook.storage
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.couchdb.core.getQueryParamsAllDocs
-import com.aamdigital.aambackendservice.couchdb.dto.DocSuccess
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.error.AamErrorCode
-import com.aamdigital.aambackendservice.error.InternalServerException
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.InternalServerException
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.getQueryParamsAllDocs
+import com.aamdigital.aambackendservice.common.couchdb.dto.DocSuccess
+import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.springframework.stereotype.Service

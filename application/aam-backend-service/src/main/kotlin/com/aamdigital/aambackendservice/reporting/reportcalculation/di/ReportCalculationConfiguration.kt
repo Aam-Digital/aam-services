@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.di
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.couchdb.core.DatabaseRequest
-import com.aamdigital.aambackendservice.domain.FileStorage
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
+import com.aamdigital.aambackendservice.common.domain.FileStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher

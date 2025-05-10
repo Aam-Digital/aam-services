@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.skill.core
 
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.skill.core.SqlSearchUserProfileUseCase.Companion.MATCHER_EMAIL
 import com.aamdigital.aambackendservice.skill.core.SqlSearchUserProfileUseCase.Companion.MATCHER_NAME
 import com.aamdigital.aambackendservice.skill.core.SqlSearchUserProfileUseCase.Companion.MATCHER_PHONE

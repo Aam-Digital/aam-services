@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.skill.skilllab
 
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.skill.core.SyncUserProfileData
 import com.aamdigital.aambackendservice.skill.core.SyncUserProfileRequest
 import com.aamdigital.aambackendservice.skill.core.SyncUserProfileUseCase

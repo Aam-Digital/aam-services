@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.skill.skilllab
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.skill.core.SyncUserProfileRequest
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileEntity
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository

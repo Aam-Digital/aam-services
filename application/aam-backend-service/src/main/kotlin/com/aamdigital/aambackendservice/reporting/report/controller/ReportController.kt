@@ -1,11 +1,11 @@
 package com.aamdigital.aambackendservice.reporting.report.controller
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.error.AamException
-import com.aamdigital.aambackendservice.error.HttpErrorDto
-import com.aamdigital.aambackendservice.error.InvalidArgumentException
-import com.aamdigital.aambackendservice.error.NetworkException
-import com.aamdigital.aambackendservice.error.NotFoundException
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.error.AamException
+import com.aamdigital.aambackendservice.common.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.common.error.NetworkException
+import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.report.ReportSchema
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import org.springframework.http.HttpStatus

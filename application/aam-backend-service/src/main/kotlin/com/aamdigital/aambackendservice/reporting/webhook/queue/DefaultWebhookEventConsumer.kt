@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.webhook.queue
 
-import com.aamdigital.aambackendservice.error.AamException
-import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.common.error.AamException
+import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookEvent
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.di.ReportingNotificationQueueConfiguration.Companion.NOTIFICATION_QUEUE

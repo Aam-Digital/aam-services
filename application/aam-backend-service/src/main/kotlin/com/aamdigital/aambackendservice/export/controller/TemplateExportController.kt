@@ -1,9 +1,9 @@
 package com.aamdigital.aambackendservice.export.controller
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome.Failure
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome.Success
-import com.aamdigital.aambackendservice.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome.Failure
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome.Success
+import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.export.core.CreateTemplateError
 import com.aamdigital.aambackendservice.export.core.CreateTemplateRequest
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase

@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.queue
 
-import com.aamdigital.aambackendservice.error.AamErrorCode
-import com.aamdigital.aambackendservice.error.AamException
-import com.aamdigital.aambackendservice.error.InternalServerException
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.AamException
+import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory

@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.reporting.webhook.storage
 
-import com.aamdigital.aambackendservice.crypto.core.CryptoService
-import com.aamdigital.aambackendservice.crypto.core.EncryptedData
-import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.common.crypto.core.CryptoService
+import com.aamdigital.aambackendservice.common.crypto.core.EncryptedData
+import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.webhook.Webhook
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthentication
 import java.util.*

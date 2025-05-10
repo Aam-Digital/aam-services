@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
-import com.aamdigital.aambackendservice.domain.DomainUseCase
-import com.aamdigital.aambackendservice.domain.UseCaseData
-import com.aamdigital.aambackendservice.domain.UseCaseRequest
+import com.aamdigital.aambackendservice.common.domain.DomainUseCase
+import com.aamdigital.aambackendservice.common.domain.UseCaseData
+import com.aamdigital.aambackendservice.common.domain.UseCaseRequest
 
 data class SyncNotificationConfigRequest(
     val notificationConfigDatabase: String,

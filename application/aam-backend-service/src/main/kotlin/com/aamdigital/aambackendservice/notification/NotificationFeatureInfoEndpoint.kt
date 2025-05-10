@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.notification
 
-import com.aamdigital.aambackendservice.actuator.FeaturesEndpoint
-import com.aamdigital.aambackendservice.actuator.FeaturesInfoDto
+import com.aamdigital.aambackendservice.common.actuator.FeaturesEndpoint
+import com.aamdigital.aambackendservice.common.actuator.FeaturesInfoDto
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
 import org.springframework.boot.actuate.endpoint.web.WebEndpointResponse
 import org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension

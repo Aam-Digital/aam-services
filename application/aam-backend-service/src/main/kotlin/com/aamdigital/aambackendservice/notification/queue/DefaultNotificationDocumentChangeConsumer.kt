@@ -1,13 +1,13 @@
 package com.aamdigital.aambackendservice.notification.queue
 
-import com.aamdigital.aambackendservice.changes.domain.DocumentChangeEvent
-import com.aamdigital.aambackendservice.error.AamException
+import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEvent
+import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigRequest
 import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigUseCase
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesRequest
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.DOCUMENT_CHANGES_NOTIFICATION_QUEUE
-import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException

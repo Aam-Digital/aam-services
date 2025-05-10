@@ -1,9 +1,9 @@
 package com.aamdigital.aambackendservice.reporting.report.queue
 
-import com.aamdigital.aambackendservice.changes.domain.DocumentChangeEvent
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.error.AamException
-import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEvent
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.error.AamException
+import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.di.ReportQueueConfiguration
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest

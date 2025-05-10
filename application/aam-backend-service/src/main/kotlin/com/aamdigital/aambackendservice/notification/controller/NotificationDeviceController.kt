@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.notification.controller
 
-import com.aamdigital.aambackendservice.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import org.slf4j.LoggerFactory

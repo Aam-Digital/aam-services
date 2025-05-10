@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.export.usecase
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.export.core.CreateTemplateData
 import com.aamdigital.aambackendservice.export.core.CreateTemplateError.CREATE_TEMPLATE_REQUEST_FAILED_ERROR
 import com.aamdigital.aambackendservice.export.core.CreateTemplateError.PARSE_RESPONSE_ERROR

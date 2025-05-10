@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.export.di
 
-import com.aamdigital.aambackendservice.auth.core.AuthConfig
-import com.aamdigital.aambackendservice.auth.core.AuthProvider
+import com.aamdigital.aambackendservice.common.auth.core.AuthConfig
+import com.aamdigital.aambackendservice.common.auth.core.AuthProvider
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties

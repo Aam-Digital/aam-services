@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.report.di
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.core.ReportQueryAnalyser
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage

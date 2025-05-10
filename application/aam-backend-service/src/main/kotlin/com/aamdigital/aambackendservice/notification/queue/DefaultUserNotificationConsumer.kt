@@ -1,11 +1,11 @@
 package com.aamdigital.aambackendservice.notification.queue
 
-import com.aamdigital.aambackendservice.error.AamException
+import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationRequest
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationUseCase
 import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
-import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException

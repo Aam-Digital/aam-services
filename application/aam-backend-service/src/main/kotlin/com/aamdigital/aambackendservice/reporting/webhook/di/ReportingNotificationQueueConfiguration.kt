@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.webhook.di
 
-import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.queue.DefaultWebhookEventConsumer
 import com.aamdigital.aambackendservice.reporting.webhook.queue.DefaultWebhookEventPublisher

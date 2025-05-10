@@ -1,7 +1,11 @@
-package com.aamdigital.aambackendservice.domain
+package com.aamdigital.aambackendservice.common.domain
 
-import com.aamdigital.aambackendservice.error.AamErrorCode
-import com.aamdigital.aambackendservice.error.InternalServerException
+import com.aamdigital.aambackendservice.common.domain.DomainUseCase
+import com.aamdigital.aambackendservice.common.domain.UseCaseData
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.domain.UseCaseRequest
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.InternalServerException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith

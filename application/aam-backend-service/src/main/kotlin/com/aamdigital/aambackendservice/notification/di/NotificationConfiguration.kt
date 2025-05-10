@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.notification.di
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbInitializer
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
 import com.aamdigital.aambackendservice.notification.core.config.CouchDbSyncNotificationConfigUseCase
 import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigUseCase
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler

@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.report.sqs
 
-import com.aamdigital.aambackendservice.error.AamErrorCode
-import com.aamdigital.aambackendservice.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.io.Resource

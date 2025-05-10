@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.skill.core
 
-import com.aamdigital.aambackendservice.domain.DomainUseCase
-import com.aamdigital.aambackendservice.domain.UseCaseData
-import com.aamdigital.aambackendservice.domain.UseCaseRequest
+import com.aamdigital.aambackendservice.common.domain.DomainUseCase
+import com.aamdigital.aambackendservice.common.domain.UseCaseData
+import com.aamdigital.aambackendservice.common.domain.UseCaseRequest
 import com.aamdigital.aambackendservice.skill.domain.UserProfile
 
 data class SearchUserProfileRequest(

@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.report.di
 
-import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.queue.DefaultReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer
