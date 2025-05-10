@@ -12,6 +12,7 @@ A modularize Spring Boot application that contains API modules for [Aam Digital'
 - **[Export](./docs/modules/export.md)**: Template based file export API. Uses [carbone.io](https://carbone.io) as templating engine.
 - **[Skill](./docs/modules/skill.md)**: Integration with external system (SkillLab) to link and pull data into Aam Digital.
 - **[Notification](./docs/modules/notification.md)**: Push Notification system, triggering events based on custom rules for each user.
+- **[Third-Party-Authentication](./docs/modules/third-party-authentication.md)**: "Single-Sign-On" integration with other platforms.
 
 _Modules have to be enabled via a feature flag in the environment config and may need additional environment variables as described in their module docs._
 

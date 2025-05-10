@@ -32,6 +32,9 @@ DATABASECHANGEDETECTION_ENABLED=true
 
 # Firebase Configuration: Confidential (!)
 NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64=<base-64-encoded-firebase-credential-file>
+
+APPLICATION_BASEURL=<your-instance>.aam-digital.com
+# if necessary, you can also override the linkBaseUrl (prefer to use the shared APPLICATION_BASEURL however)
 NOTIFICATIONFIREBASECONFIGURATION_LINKBASEURL=https://<your-instance>.aam-digital.com
 ```
 

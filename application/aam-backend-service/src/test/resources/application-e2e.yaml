@@ -93,12 +93,19 @@ events:
 database-change-detection:
   enabled: false
 
+keycloak:
+  realm: dummy-realm
+  client-id: aam-backend
+  client-secret: 1234
+  server-url: https://keycloak.localhost
+
 sentry:
   logging:
     enabled: false
 
 # sentry version
 application:
+  base-url: https://aam.localhost
   version: application-e2e-test-build
 
 logging:

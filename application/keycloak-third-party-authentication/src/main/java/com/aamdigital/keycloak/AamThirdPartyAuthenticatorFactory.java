@@ -17,6 +17,10 @@ public class AamThirdPartyAuthenticatorFactory implements AuthenticatorFactory {
     public static final String PROVIDER_ID = "third-party-authenticator";
     private static final Authenticator SINGLETON = new AamThirdPartyAuthenticator();
 
+    public static final String THIRD_PARTY_API_BASE_URL = "third-party-api-base-url";
+    public static final String THIRD_PARTY_EXTERNAL_LOGIN_URL = "third-party-external-login-url";
+    public static final String ONLY_EXTERNAL_LOGIN = "only-external-login";
+
     @Override
     public Authenticator create(KeycloakSession session) {
         return SINGLETON;
@@ -57,10 +61,28 @@ public class AamThirdPartyAuthenticatorFactory implements AuthenticatorFactory {
         var list = new LinkedList<ProviderConfigProperty>();
 
         list.add(new ProviderConfigProperty(
-                "third-party-api-base-url",
+                AamThirdPartyAuthenticatorFactory.THIRD_PARTY_API_BASE_URL,
                 "API Base URL",
                 "The API endpoint of the third-party-auth provider",
                 ProviderConfigProperty.STRING_TYPE,
+                "",
+                false
+        ));
+
+        list.add(new ProviderConfigProperty(
+                AamThirdPartyAuthenticatorFactory.THIRD_PARTY_EXTERNAL_LOGIN_URL,
+                "External System Login Page",
+                "The URL to the external system's login page, to which the user will be redirected if no valid token is passed.",
+                ProviderConfigProperty.STRING_TYPE,
+                "",
+                false
+        ));
+
+        list.add(new ProviderConfigProperty(
+                AamThirdPartyAuthenticatorFactory.ONLY_EXTERNAL_LOGIN,
+                "Force only external login",
+                "Check this if users should always be redirected to the external system's login page and cannot enter username and password directly.",
+                ProviderConfigProperty.BOOLEAN_TYPE,
                 "",
                 false
         ));

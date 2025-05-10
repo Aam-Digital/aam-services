@@ -14,18 +14,30 @@ class InternalServerException(
     code: AamErrorCode,
 ) : AamException(message, cause, code)
 
-// TODO merge with network exception and rename to IOException
-// (https://github.com/Aam-Digital/aam-services/issues/44)
+/**
+ * @deprecated
+ * TODO merge with network exception and rename to IOException
+ * (https://github.com/Aam-Digital/aam-services/issues/44)
+ */
 class ExternalSystemException(
     message: String = "Unspecific ExternalSystemException",
     cause: Throwable? = null,
     code: AamErrorCode,
 ) : AamException(message, cause, code)
 
-// TODO merge with network exception and rename to IOException
-// (https://github.com/Aam-Digital/aam-services/issues/44)
+/**
+ * @deprecated
+ * TODO merge with network exception and rename to IOException
+ * (https://github.com/Aam-Digital/aam-services/issues/44)
+ */
 class NetworkException(
     message: String = "Unspecific NetworkException",
+    cause: Throwable? = null,
+    code: AamErrorCode,
+) : AamException(message, cause, code)
+
+class IOException(
+    message: String = "Unspecific IOException",
     cause: Throwable? = null,
     code: AamErrorCode,
 ) : AamException(message, cause, code)

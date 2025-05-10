@@ -52,6 +52,8 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor") // needed in some tests
 
+    implementation("org.keycloak:keycloak-admin-client:23.0.7")
+
     implementation("com.google.firebase:firebase-admin:9.4.3")
 
     runtimeOnly("org.postgresql:postgresql:42.7.4")

@@ -51,6 +51,8 @@ features:
     mode: disabled
   notification-api:
     enabled: false
+  third-party-authentication:
+    enabled: false
 
 # enable/disables event processing for each queue
 events:
@@ -58,12 +60,18 @@ events:
     report-calculation:
       enabled: true
 
+notification-firebase-configuration:
+  link-base-url: ${application.base-url}
+
 logging:
   logback:
     rollingpolicy:
       max-file-size: 50MB
       total-size-cap: 50MB
       clean-history-on-start: true
+
+application:
+  base-url: "" # default for backwards compatibility - this should be set in env however!
 
 ---
 # <second part of the config, just active with profile "local-development">
@@ -148,9 +156,15 @@ features:
   notification-api:
     enabled: false
     mode: firebase
+  third-party-authentication:
+    enabled: true
 
-notification-firebase-configuration:
-  link-base-url: https://aam.localhost
+keycloak:
+  realm: dummy-realm
+  client-id: aam-backend
+  client-secret: 1234
+  server-url: https://keycloak.localhost
+  application-url: aam.localhost
 
 crypto-configuration:
   secret: super-duper-secret
@@ -167,8 +181,9 @@ sentry:
   logging:
     enabled: false
 
-# sentry version
 application:
+  base-url: https://aam.localhost
+  # sentry version
   version: local-dev-build
 
 #management:

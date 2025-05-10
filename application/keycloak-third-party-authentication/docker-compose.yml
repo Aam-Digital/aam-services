@@ -25,9 +25,9 @@ services:
       KC_DB_PASSWORD: keycloak
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: docker
-    #      DEBUG: 'true'
-    #      DEBUG_SUSPEND: 'y'
-    #      DEBUG_PORT: '*:5005'
+      DEBUG: 'true'
+      DEBUG_SUSPEND: 'y'
+      DEBUG_PORT: '*:5005'
     depends_on:
       - db-keycloak
     command:
