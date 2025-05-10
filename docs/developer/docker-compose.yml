@@ -53,8 +53,8 @@ services:
     command: "start --proxy-headers forwarded"
     environment:
       KC_HTTP_ENABLED: true
-      KC_HOSTNAME: https://aam.localhost/auth
-      KC_FRONTEND_URL: https://aam.localhost/auth
+      KC_HOSTNAME: https://keycloak.localhost
+      KC_FRONTEND_URL: https://keycloak.localhost
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://db-keycloak:5432/postgres
       KC_DB_SCHEMA: public
@@ -84,15 +84,12 @@ services:
 
 # Currently Keycloak 23 is used in production:
   keycloak_23:
-    image: quay.io/keycloak/keycloak:23.0
+    image: ghcr.io/aam-digital/aam-keycloak:23.0.7
     container_name: keycloak
-    volumes:
-      - ./container-data/keycloak/providers:/opt/keycloak/providers
-    # - ./container-data/keycloak/themes:/opt/keycloak/themes
-    ports:
-      - "8080:8080"
     networks:
       - aam-digital
+    ports:
+      - "8080:8080"
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://db-keycloak_23:5432/postgres
@@ -101,10 +98,16 @@ services:
       KC_DB_PASSWORD: docker
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: docker
+      KC_HOSTNAME: keycloak.localhost
+      KC_PROXY: edge
     depends_on:
       - db-keycloak_23
-    command:
-      - start-dev
+    command: --verbose start --optimized --spi-theme-login-theme=aam-theme
+    # for debugging, use command: start-dev
+    #volumes:
+    #  - ./container-data/keycloak/providers:/opt/keycloak/providers
+    #  - ./container-data/keycloak/themes:/opt/keycloak/themes
+
   db-keycloak_23:
     image: postgres:16
     volumes:

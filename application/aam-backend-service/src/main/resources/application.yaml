@@ -76,7 +76,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: https://aam.localhost/auth/realms/dummy-realm
+          issuer-uri: https://keycloak.localhost/realms/dummy-realm
   ssl:
     bundle:
       pem:
