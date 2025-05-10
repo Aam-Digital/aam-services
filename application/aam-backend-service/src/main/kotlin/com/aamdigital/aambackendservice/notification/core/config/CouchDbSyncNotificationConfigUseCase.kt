@@ -1,10 +1,10 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.AamErrorCode
-import com.aamdigital.aambackendservice.error.AamException
-import com.aamdigital.aambackendservice.error.NotFoundException
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.AamException
+import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.aamdigital.aambackendservice.notification.repository.NotificationConditionEntity
 import com.aamdigital.aambackendservice.notification.repository.NotificationConfigEntity

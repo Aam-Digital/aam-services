@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.thirdpartyauthentication.controller
 
-import com.aamdigital.aambackendservice.domain.ApplicationConfig
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.thirdpartyauthentication.*
 import jakarta.validation.constraints.Email
 import org.slf4j.LoggerFactory

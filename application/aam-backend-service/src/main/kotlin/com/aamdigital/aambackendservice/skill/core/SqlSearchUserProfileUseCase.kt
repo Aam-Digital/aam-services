@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.skill.core
 
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.skill.domain.EscoSkill
 import com.aamdigital.aambackendservice.skill.domain.SkillUsage
 import com.aamdigital.aambackendservice.skill.domain.UserProfile

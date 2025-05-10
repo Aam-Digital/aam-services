@@ -1,11 +1,11 @@
 package com.aamdigital.aambackendservice.export.usecase
 
 import com.aamdigital.aambackendservice.common.WebClientTestBase
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.TestErrorCode
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.ExternalSystemException
-import com.aamdigital.aambackendservice.error.InternalServerException
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.InternalServerException
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.TestErrorCode
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.export.core.FetchTemplateError
 import com.aamdigital.aambackendservice.export.core.FetchTemplateRequest
 import com.aamdigital.aambackendservice.export.core.FetchTemplateUseCase

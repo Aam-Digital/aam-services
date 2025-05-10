@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.skill.skilllab
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.error.ExternalSystemException
-import com.aamdigital.aambackendservice.rest.ObjectMapperConfiguration
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.rest.ObjectMapperConfiguration
 import com.aamdigital.aambackendservice.skill.di.SkillConfigurationSkillLab
 import com.aamdigital.aambackendservice.skill.di.SkillLabApiClientConfiguration
 import com.fasterxml.jackson.databind.ObjectMapper

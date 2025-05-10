@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.notification.core.trigger
 
-import com.aamdigital.aambackendservice.changes.domain.DocumentChangeEvent
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEvent
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.repository.NotificationConditionEntity

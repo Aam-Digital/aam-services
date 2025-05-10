@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.thirdpartyauthentication.core
 
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCaseData
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCaseRequest

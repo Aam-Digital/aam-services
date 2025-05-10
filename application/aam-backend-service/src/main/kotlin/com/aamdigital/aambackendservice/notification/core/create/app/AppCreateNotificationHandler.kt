@@ -1,9 +1,9 @@
 package com.aamdigital.aambackendservice.notification.core.create.app
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbInitializer
-import com.aamdigital.aambackendservice.couchdb.core.DatabaseRequest
-import com.aamdigital.aambackendservice.domain.UpdateMetadata
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
+import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
+import com.aamdigital.aambackendservice.common.domain.UpdateMetadata
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler

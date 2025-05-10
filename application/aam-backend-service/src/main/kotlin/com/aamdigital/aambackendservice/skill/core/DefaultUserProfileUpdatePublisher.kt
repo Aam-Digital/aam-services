@@ -1,9 +1,9 @@
 package com.aamdigital.aambackendservice.skill.core
 
-import com.aamdigital.aambackendservice.error.AamErrorCode
-import com.aamdigital.aambackendservice.error.AamException
-import com.aamdigital.aambackendservice.error.InternalServerException
-import com.aamdigital.aambackendservice.queue.core.QueueMessage
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.AamException
+import com.aamdigital.aambackendservice.common.error.InternalServerException
+import com.aamdigital.aambackendservice.common.queue.core.QueueMessage
 import com.aamdigital.aambackendservice.skill.core.event.UserProfileUpdateEvent
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory

@@ -1,9 +1,9 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.TestErrorCode
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.NotFoundException
+import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.TestErrorCode
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.reporting.report.Report
 import com.aamdigital.aambackendservice.reporting.report.ReportItem
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage

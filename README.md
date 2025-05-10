@@ -43,6 +43,12 @@ This backend is developed as independent modules that share some common services
 - Gradle ([see intro](https://docs.gradle.org/current/userguide/getting_started_eng.html))
 - RabbitMQ (AMQP) for message queues ([see Tutorial](https://www.rabbitmq.com/tutorials/tutorial-three-spring-amqp#))
 
+## Folder structure
+Each feature module is separated into its own package.
+Additionally, there is a `common` package that contains shared code.
+This includes services to work with the CouchDB, get a feed of DB changes and other common functionality.
+The "common" package also holds base functionality for authentication and security.
+
 ## Configuration through environment variables
 Using Spring Boot's  system
 our configurable values are represented in the [application.yaml](application/aam-backend-service/src/main/resources/application.yaml).

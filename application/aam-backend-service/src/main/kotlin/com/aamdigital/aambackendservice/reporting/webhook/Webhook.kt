@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.webhook
 
-import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookOwner
 
 data class Webhook(

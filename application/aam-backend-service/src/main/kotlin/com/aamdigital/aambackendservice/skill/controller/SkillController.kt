@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.skill.controller
 
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileData
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileRequest
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileUseCase

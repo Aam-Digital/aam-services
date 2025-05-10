@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation
 
-import com.aamdigital.aambackendservice.events.DomainEvent
+import com.aamdigital.aambackendservice.common.events.DomainEvent
 
 /**
  * Starts the processing of a ReportCalculation

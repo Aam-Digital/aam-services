@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.skill.controller
 
-import com.aamdigital.aambackendservice.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository

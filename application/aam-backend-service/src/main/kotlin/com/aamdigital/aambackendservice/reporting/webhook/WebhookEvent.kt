@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.webhook
 
-import com.aamdigital.aambackendservice.events.DomainEvent
+import com.aamdigital.aambackendservice.common.events.DomainEvent
 
 data class WebhookEvent(
     val webhookId: String,

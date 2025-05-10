@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.controller
 
-import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 
 /**

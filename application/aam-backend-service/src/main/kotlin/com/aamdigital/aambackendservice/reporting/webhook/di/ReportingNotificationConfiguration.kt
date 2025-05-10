@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.webhook.di
 
-import com.aamdigital.aambackendservice.crypto.core.CryptoService
+import com.aamdigital.aambackendservice.common.crypto.core.CryptoService
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.webhook.core.AddWebhookSubscriptionUseCase

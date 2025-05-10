@@ -1,10 +1,10 @@
 package com.aamdigital.aambackendservice.skill.skilllab
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.TestErrorCode
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.InternalServerException
-import com.aamdigital.aambackendservice.queue.core.QueueMessage
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.TestErrorCode
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.InternalServerException
+import com.aamdigital.aambackendservice.common.queue.core.QueueMessage
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.UserProfileUpdatePublisher
 import com.aamdigital.aambackendservice.skill.core.event.UserProfileUpdateEvent

@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation
 
-import com.aamdigital.aambackendservice.couchdb.dto.AttachmentMetaData
-import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.common.couchdb.dto.AttachmentMetaData
+import com.aamdigital.aambackendservice.common.domain.DomainReference
 
 // todo remove connection to couchdb.* from domain model
 data class ReportCalculation(

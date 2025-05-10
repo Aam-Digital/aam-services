@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.skill.skilllab
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.error.AamErrorCode
-import com.aamdigital.aambackendservice.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.domain.Pageable

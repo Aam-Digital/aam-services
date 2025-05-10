@@ -1,9 +1,9 @@
 package com.aamdigital.aambackendservice.skill.skilllab
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.AamErrorCode
-import com.aamdigital.aambackendservice.error.AamException
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesData
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase

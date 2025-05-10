@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.skill.domain
 
-import com.aamdigital.aambackendservice.rest.ObjectMapperConfiguration
+import com.aamdigital.aambackendservice.common.rest.ObjectMapperConfiguration
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import junit.framework.TestCase.assertEquals

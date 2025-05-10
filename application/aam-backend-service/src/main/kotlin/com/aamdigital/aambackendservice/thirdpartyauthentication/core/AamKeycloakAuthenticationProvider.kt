@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.thirdpartyauthentication.core
 
-import com.aamdigital.aambackendservice.error.AamErrorCode
-import com.aamdigital.aambackendservice.error.InternalServerException
-import com.aamdigital.aambackendservice.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.InternalServerException
+import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.thirdpartyauthentication.di.AamKeycloakConfig
 import org.keycloak.admin.client.CreatedResponseUtil
 import org.keycloak.admin.client.Keycloak

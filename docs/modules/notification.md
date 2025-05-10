@@ -20,6 +20,9 @@ Push Notifications are sent through Firebase Cloud Messaging (FCM).
 
 [notification-api-v1.yaml](../api-specs/notification-api-v1.yaml)
 
+## Usage
+![notifications.drawio.png](../assets/notifications.drawio.png)
+
 -----
 
 ## Setup

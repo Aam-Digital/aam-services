@@ -1,11 +1,11 @@
 package com.aamdigital.aambackendservice.export.usecase
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome.Success
-import com.aamdigital.aambackendservice.error.ExternalSystemException
-import com.aamdigital.aambackendservice.error.NetworkException
-import com.aamdigital.aambackendservice.error.NotFoundException
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome.Success
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.NetworkException
+import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.FetchTemplateData
 import com.aamdigital.aambackendservice.export.core.FetchTemplateError
 import com.aamdigital.aambackendservice.export.core.FetchTemplateRequest

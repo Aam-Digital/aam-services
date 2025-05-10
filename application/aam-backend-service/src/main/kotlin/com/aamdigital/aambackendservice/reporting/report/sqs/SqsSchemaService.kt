@@ -1,10 +1,10 @@
 package com.aamdigital.aambackendservice.reporting.report.sqs
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.domain.EntityAttribute
-import com.aamdigital.aambackendservice.domain.EntityAttributeType
-import com.aamdigital.aambackendservice.domain.EntityConfig
-import com.aamdigital.aambackendservice.domain.EntityType
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.domain.EntityAttribute
+import com.aamdigital.aambackendservice.common.domain.EntityAttributeType
+import com.aamdigital.aambackendservice.common.domain.EntityConfig
+import com.aamdigital.aambackendservice.common.domain.EntityType
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.slf4j.LoggerFactory

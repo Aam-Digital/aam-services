@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.reporting.report.core
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.error.AamErrorCode
-import com.aamdigital.aambackendservice.error.AamException
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.reporting.report.Report
 
 enum class ReportStorageErrorCode : AamErrorCode {

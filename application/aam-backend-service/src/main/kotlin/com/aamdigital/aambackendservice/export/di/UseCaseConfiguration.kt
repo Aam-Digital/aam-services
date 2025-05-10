@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.export.di
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.FetchTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase

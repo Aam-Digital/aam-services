@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.notification.domain
 
-import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.DomainReference
 import java.time.Instant
 
 /**

@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.webhook.core
 
-import com.aamdigital.aambackendservice.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookEvent
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import com.fasterxml.jackson.databind.ObjectMapper

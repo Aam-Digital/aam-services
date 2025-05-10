@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.export.usecase
 
 import com.aamdigital.aambackendservice.common.WebClientTestBase
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.export.core.CreateTemplateError
 import com.aamdigital.aambackendservice.export.core.CreateTemplateRequest
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase

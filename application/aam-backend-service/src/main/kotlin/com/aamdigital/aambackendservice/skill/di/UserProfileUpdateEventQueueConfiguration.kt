@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.skill.di
 
-import com.aamdigital.aambackendservice.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.skill.core.DefaultUserProfileUpdateConsumer
 import com.aamdigital.aambackendservice.skill.core.DefaultUserProfileUpdatePublisher
 import com.aamdigital.aambackendservice.skill.core.SyncUserProfileUseCase

@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.common
 
-import com.aamdigital.aambackendservice.auth.core.AuthConfig
-import com.aamdigital.aambackendservice.auth.core.AuthProvider
-import com.aamdigital.aambackendservice.auth.core.TokenResponse
+import com.aamdigital.aambackendservice.common.auth.core.AuthConfig
+import com.aamdigital.aambackendservice.common.auth.core.AuthProvider
+import com.aamdigital.aambackendservice.common.auth.core.TokenResponse
 import com.aamdigital.aambackendservice.export.di.AamRenderApiClientConfiguration
 import com.aamdigital.aambackendservice.export.di.AamRenderApiConfiguration
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper

@@ -1,9 +1,10 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.controller
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.FileStorage
-import com.aamdigital.aambackendservice.error.HttpErrorDto
-import com.aamdigital.aambackendservice.error.NotFoundException
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.FileStorage
+import com.aamdigital.aambackendservice.common.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.stream.handleInputStreamToOutputStream
 import com.aamdigital.aambackendservice.export.controller.TemplateExportControllerResponse
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
@@ -11,7 +12,6 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateR
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationResult
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
-import com.aamdigital.aambackendservice.stream.handleInputStreamToOutputStream
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat

@@ -1,13 +1,13 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.usecase
 
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.AamException
-import com.aamdigital.aambackendservice.error.ExternalSystemException
-import com.aamdigital.aambackendservice.error.InternalServerException
-import com.aamdigital.aambackendservice.error.InvalidArgumentException
-import com.aamdigital.aambackendservice.error.NetworkException
-import com.aamdigital.aambackendservice.error.NotFoundException
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.AamException
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.InternalServerException
+import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.common.error.NetworkException
+import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.report.Report
 import com.aamdigital.aambackendservice.reporting.report.ReportItem
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage

@@ -1,15 +1,15 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.storage
 
-import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.couchdb.core.getQueryParamsAllDocs
-import com.aamdigital.aambackendservice.couchdb.dto.CouchDbRow
-import com.aamdigital.aambackendservice.domain.DomainReference
-import com.aamdigital.aambackendservice.domain.FileStorage
-import com.aamdigital.aambackendservice.error.AamErrorCode
-import com.aamdigital.aambackendservice.error.ExternalSystemException
-import com.aamdigital.aambackendservice.error.InternalServerException
-import com.aamdigital.aambackendservice.error.NetworkException
-import com.aamdigital.aambackendservice.error.NotFoundException
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.InternalServerException
+import com.aamdigital.aambackendservice.common.error.NetworkException
+import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.getQueryParamsAllDocs
+import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbRow
+import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.FileStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.fasterxml.jackson.annotation.JsonProperty

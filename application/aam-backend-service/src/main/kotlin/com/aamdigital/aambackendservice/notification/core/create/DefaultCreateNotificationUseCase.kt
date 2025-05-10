@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.notification.core.create
 
-import com.aamdigital.aambackendservice.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
 
 class DefaultCreateNotificationUseCase(
     private val createNotificationHandler: List<CreateNotificationHandler>
