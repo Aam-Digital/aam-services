@@ -55,8 +55,17 @@ public class AamThirdPartyAuthenticator implements Authenticator {
         var tpaSession = ctx.getHttpRequest().getUri().getQueryParameters().getFirst(QUERY_PARAM_IDP_HINT);
 
         if (tpaSession == null) {
-            ctx.attempted();
-            return;
+            var forceExternalLogin = ctx.getAuthenticatorConfig()
+                    .getConfig()
+                    .get(AamThirdPartyAuthenticatorFactory.ONLY_EXTERNAL_LOGIN);
+            if (forceExternalLogin != null && forceExternalLogin.equals("true")) {
+                // no session found but forcing external login -> redirect
+                failAuthentication(ctx, AuthenticationFlowError.CREDENTIAL_SETUP_REQUIRED);
+                return;
+            } else {
+                ctx.attempted();
+                return;
+            }
         }
 
         log.info("[Aam SSO] authenticate with session: " + tpaSession);
@@ -66,7 +75,7 @@ public class AamThirdPartyAuthenticator implements Authenticator {
 
         if (userId == null) {
             log.info("[Aam SSO] no valid session found");
-            ctx.failure(AuthenticationFlowError.INVALID_CREDENTIALS);
+            failAuthentication(ctx, AuthenticationFlowError.INVALID_CREDENTIALS);
             return;
         }
 
@@ -77,7 +86,7 @@ public class AamThirdPartyAuthenticator implements Authenticator {
 
         if (sessionUser == null) {
             log.info("[Aam SSO] unknown user " + userId);
-            ctx.failure(AuthenticationFlowError.UNKNOWN_USER);
+            failAuthentication(ctx, AuthenticationFlowError.UNKNOWN_USER);
             return;
         }
 
@@ -87,9 +96,25 @@ public class AamThirdPartyAuthenticator implements Authenticator {
         ctx.success();
     }
 
+    private void failAuthentication(AuthenticationFlowContext ctx, AuthenticationFlowError error) {
+        var externalLoginUrl = ctx.getAuthenticatorConfig().getConfig().get(
+            AamThirdPartyAuthenticatorFactory.THIRD_PARTY_EXTERNAL_LOGIN_URL
+        );
+
+        ctx.failureChallenge(
+            error,
+            ctx.form()
+                .setError(error.toString())
+                .setAttribute("externalLoginUrl", externalLoginUrl)
+                .createForm("aam-third-party-login-result.ftl")
+        );
+    }
+
     private String getSessionUser(AuthenticationFlowContext ctx, String tpaSession) {
         try {
-            var apiBaseUrl = ctx.getAuthenticatorConfig().getConfig().get("third-party-api-base-url");
+            var apiBaseUrl = ctx.getAuthenticatorConfig().getConfig().get(
+                AamThirdPartyAuthenticatorFactory.THIRD_PARTY_API_BASE_URL
+            );
 
             if (apiBaseUrl == null) {
                 return null;

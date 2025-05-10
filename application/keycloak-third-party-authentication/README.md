@@ -32,6 +32,8 @@ As development setup, you can use the provided [docker-compose.yml](./docker-com
 > WARNING: connecting to a localhost API may fail with `Connection refused` error
 > This problem will not occur on server deployments with valid certificates.
 
+For general guidance refer to the Keycloak "Server Development" documentation: [Authentication SPI walk through](https://www.keycloak.org/docs/latest/server_development/index.html#_auth_spi_walkthrough).
+
 ### Enable debugging
 To debug into the keycloak JVM, you need to enable the debug options in the [docker-compose.yml](./docker-compose.yml):
 
