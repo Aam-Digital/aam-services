@@ -79,7 +79,6 @@ class SecurityConfiguration {
         "https://auth.aam-digital.dev",
         "https://id.aam-digital.app",
         "https://id.aam-digital.dev",
-        "https://id.aam-digital.dev"
     )
 
     @Bean
