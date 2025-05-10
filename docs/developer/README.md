@@ -200,17 +200,15 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
 > WARNING! We currently use Keycloak 23 in production. For local development the latest Keycloak 26 is also supported.
 > The docker-compose offers both options. Enable one with code comments or profiles
 > 
-> Keycloak 23 does not work with the proxy, access this under http://localhost:8080 directly.
-> You also have to change the keycloak.json in the frontend to use either http://localhost:8080 or https://aam.localhost/auth
 > Note that switching between the two Keycloak containers means the realm setup is different and the public key (`REPLICATION_BACKEND_PUBLIC_KEY`) has to be updated in .env
 
-- Open the Keycloak Admin UI at [https://aam.localhost/auth](https://aam.localhost/auth) with the credentials defined in
+- Open the Keycloak Admin UI at [https://keycloak.localhost](https://keycloak.localhost) with the credentials defined in
   the docker-compose file.
 
 - Create a new realm called **dummy-realm** by importing
   the [realm configuration file here](example-data/realm_config.dummy-realm.json).
 - Under **Keycloak Realm > Clients
-  ** ([https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients](https://aam.localhost/auth/admin/master/console/#/dummy-realm/clients)),
+  ** ([https://keycloak.localhost/admin/master/console/#/dummy-realm/clients](https://keycloak.localhost/admin/master/console/#/dummy-realm/clients)),
   import the client configuration using [client_app_configuration here](example-data/client_app.json).
 - In the new realm, create a user and assign relevant roles.
   (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.  
@@ -274,12 +272,12 @@ sudo wget https://github.com/Aam-Digital/aam-services/releases/download/keycloak
 ### Step 4: Configure the replication-backend
 
 Retrieve the `public_key` for **dummy-realm**
-from [https://aam.localhost/auth/realms/dummy-realm](https://aam.localhost/auth/realms/dummy-realm) and add it to the
+from [https://keycloak.localhost/realms/dummy-realm](https://keycloak.localhost/realms/dummy-realm) and add it to the
 `.env` file as `REPLICATION_BACKEND_PUBLIC_KEY`:
 
 ```
 # from
-REPLICATION_BACKEND_PUBLIC_KEY=<the-content-of-"public_key"-from-here-https://aam.localhost/auth/realms/dummy-realm>
+REPLICATION_BACKEND_PUBLIC_KEY=<the-content-of-"public_key"-from-here-https://keycloak.localhost/realms/dummy-realm>
 
 # to
 REPLICATION_BACKEND_PUBLIC_KEY=MIIBI....
@@ -309,7 +307,7 @@ account_url: "https://aam.localhost/accounts-backend"
 ```
 {
   "realm": "dummy-realm",
-  "auth-server-url": "https://aam.localhost/auth",
+  "auth-server-url": "https://keycloak.localhost",
   "ssl-required": "external",
   "resource": "app",
   "public-client": true,
@@ -366,7 +364,7 @@ Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific 
 - replication-backend: [https://aam.localhost/db](https://aam.localhost/db)
 - aam-backend-service: [https://aam.localhost/api](https://aam.localhost/api)
 - maildev (smtp-trap): [https://aam.localhost/maildev/](https://aam.localhost/maildev/)
-- Keycloak: [https://aam.localhost/auth](https://aam.localhost/auth)
+- Keycloak: [https://keycloak.localhost](https://keycloak.localhost)
 - CouchDB: [https://aam.localhost/db/couchdb](https://aam.localhost/db/couchdb)
 - CouchDB Admin: [https://aam.localhost/db/couchdb/_utils/](https://aam.localhost/db/couchdb/_utils/) (the final "/" is
   important!)

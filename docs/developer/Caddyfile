@@ -30,9 +30,9 @@ aam.localhost:80, aam.localhost:443 {
 
     handle_path /api* {
         # activate this line instead if your aam-services backend is running locally
-        # reverse_proxy http://host.docker.internal:9000 # local running app
+        reverse_proxy http://host.docker.internal:9000 # local running app
 
-        reverse_proxy aam-backend-service:8080  # official release docker container
+        # reverse_proxy aam-backend-service:8080  # official release docker container
     }
 
     handle_path /sqs* {
@@ -60,4 +60,15 @@ aam.localhost:80, aam.localhost:443 {
     handle_path /* {
         reverse_proxy http://host.docker.internal:4200
     }
+}
+
+keycloak.localhost:443 {
+    handle_path /* {
+        reverse_proxy keycloak:8080 {
+            header_up Host {host}
+        }
+    }
+}
+keycloak.localhost:80 {
+  redir https://{host}{uri} permanent
 }

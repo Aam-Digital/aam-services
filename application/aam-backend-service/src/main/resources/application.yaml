@@ -78,7 +78,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: https://aam.localhost/auth/realms/dummy-realm
+          issuer-uri: https://keycloak.localhost/realms/dummy-realm
   ssl:
     bundle:
       pem:
@@ -155,9 +155,9 @@ features:
 
 aam-keycloak-config:
   realm: dummy-realm
-  client-id: aam-api
+  client-id: aam-backend
   client-secret: 1234
-  server-url: https://aam.localhost/auth
+  server-url: https://keycloak.localhost
   application-url: aam.localhost
 
 notification-firebase-configuration:

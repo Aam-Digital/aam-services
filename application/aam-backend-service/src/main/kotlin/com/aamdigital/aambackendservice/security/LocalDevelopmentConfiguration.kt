@@ -56,9 +56,7 @@ class LocalDevelopmentConfiguration {
     ): JwtDecoder {
         return NimbusJwtDecoder
             .withIssuerLocation(
-                // this may need to be changed if using Keycloak through proxy
-                //"https://aam.localhost/auth/realms/dummy-realm"
-                "http://localhost:8080/realms/dummy-realm"
+                "https://keycloak.localhost/realms/dummy-realm"
             )
             .restOperations(restTemplate)
             .build()

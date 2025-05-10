@@ -97,7 +97,7 @@ aam-keycloak-config:
   realm: dummy-realm
   client-id: aam-backend
   client-secret: 1234
-  server-url: http://localhost:8080
+  server-url: https://keycloak.localhost
   application-url: aam.localhost
 
 sentry:
