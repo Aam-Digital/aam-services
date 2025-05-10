@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.thirdpartyauthentication.di
 
+import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
@@ -31,10 +32,12 @@ class AuthenticationConfiguration {
         authenticationSessionRepository: AuthenticationSessionRepository,
         passwordEncoder: PasswordEncoder,
         authenticationProvider: AuthenticationProvider,
+        couchDbClient: CouchDbClient,
     ): CreateSessionUseCase = DefaultCreateSessionUseCase(
         authenticationSessionRepository = authenticationSessionRepository,
         passwordEncoder = passwordEncoder,
         authenticationProvider = authenticationProvider,
+        couchDbClient = couchDbClient
     )
 
     @Bean

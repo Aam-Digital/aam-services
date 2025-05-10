@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.thirdpartyauthentication.core
 
+import com.aamdigital.aambackendservice.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.error.AamException
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
@@ -15,6 +16,7 @@ class DefaultCreateSessionUseCase(
     private val authenticationSessionRepository: AuthenticationSessionRepository,
     private val passwordEncoder: PasswordEncoder,
     private val authenticationProvider: AuthenticationProvider,
+    private val couchDbClient: CouchDbClient,
 ) : CreateSessionUseCase() {
 
     companion object {
@@ -71,15 +73,39 @@ class DefaultCreateSessionUseCase(
         )
 
         return if (existingUser.isEmpty) {
-            authenticationProvider.createExternalUser(
+            // generate uuid (could be passed via API request in the future)
+            val userEntityId = "User:" + UUID.randomUUID().toString()
+
+            val newAccount = authenticationProvider.createExternalUser(
                 realmId = request.realmId,
                 firstName = request.firstName,
                 lastName = request.lastName,
                 email = request.email,
                 externalUserId = request.userId,
+                userEntityId = userEntityId,
             )
+            logger.info("Created new Keycloak User {} for {}", newAccount.userId, newAccount.email)
+
+            createUserEntity(userEntityId, request.firstName, request.lastName)
+            logger.info("Created new CouchDB User {}", userEntityId)
+
+            return newAccount
         } else {
             existingUser.get()
         }
+    }
+
+    private fun createUserEntity(entityId: String, firstName: String, lastName: String) {
+        val entity = UserEntity(
+            id = entityId,
+            name = "$firstName $lastName",
+        )
+
+        couchDbClient
+            .putDatabaseDocument(
+                database = "app",
+                documentId = entity.id,
+                body = entity,
+            )
     }
 }

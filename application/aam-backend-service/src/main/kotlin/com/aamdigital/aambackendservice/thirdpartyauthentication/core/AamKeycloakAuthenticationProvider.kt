@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.thirdpartyauthentication.core
 
 import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.InternalServerException
+import com.aamdigital.aambackendservice.error.InvalidArgumentException
 import org.keycloak.admin.client.CreatedResponseUtil
 import org.keycloak.admin.client.Keycloak
 import org.keycloak.representations.idm.UserRepresentation
@@ -26,6 +27,7 @@ class AamKeycloakAuthenticationProvider(
         lastName: String,
         email: String,
         externalUserId: String,
+        userEntityId: String?,
     ): UserModel {
         val newUser = UserRepresentation()
 
@@ -35,6 +37,9 @@ class AamKeycloakAuthenticationProvider(
         newUser.email = email
         newUser.isEnabled = true
         newUser.isEmailVerified = true
+        if(userEntityId != null) {
+            newUser.singleAttribute("exact_username", userEntityId)
+        }
 
         val response = try {
             keycloak.realm(realmId).users().create(newUser)
@@ -49,6 +54,13 @@ class AamKeycloakAuthenticationProvider(
         if (response.status != 201) {
             val responseLines = (response.entity as InputStream).bufferedReader().readLines()
             logger.debug("Response: {}", responseLines.toString())
+            if (response.status == 409) {
+                throw InvalidArgumentException(
+                    code = AamKeycloakAuthenticationProviderError.USER_CREATION_ERROR,
+                    message = "User with username ${newUser.username} already exists for a different email ID"
+                )
+            }
+
             throw InternalServerException(
                 code = AamKeycloakAuthenticationProviderError.USER_CREATION_ERROR,
                 message = "Could not create externalUser"

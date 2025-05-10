@@ -16,6 +16,11 @@ For example:
 5. If necessary, System A automatically creates a new User U1 in the user database
 6. System A signs in the user U1. The user does not have to enter a password on System A.
 
+If there is already an account with the given email in Aam Digital, an access token is generated to log in as that existing user.
+
+If no user with the given email exists, a new user is created in Aam Digital's Keycloak
+and a new "User" entity is created in the CouchDB, linked to that Keycloak user.
+
 ### Dependencies
 The Keycloak server requires a special Authenticator: [see keycloak-third-party-authentication](/application/keycloak-third-party-authentication/README.md)
 
@@ -82,6 +87,11 @@ This is different from the Client shared with the external system!
 
 Done. The Third-Party-Authentication from an external system should now be usable.
 
+
+### Aam Digital app & permissions setup
+When a new account is created, that user does not have any roles assigned.
+To give at least basic access (to see the app "Config" doc and therefore the UI), 
+you should define the `"default"` role in your `Config:Permissions` configuration doc in the CouchDB and allow at least access to "Config".
 
 -----
 ## Usage
