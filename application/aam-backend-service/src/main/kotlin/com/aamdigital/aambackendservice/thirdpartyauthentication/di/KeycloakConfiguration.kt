@@ -21,7 +21,6 @@ class AamKeycloakConfig(
     val realm: String,
     val clientId: String,
     val clientSecret: String,
-    val applicationUrl: String,
 )
 
 @ConditionalOnProperty(
@@ -47,7 +46,9 @@ class KeycloakConfiguration {
     @Bean
     fun aamKeycloakAuthenticatorProvider(
         keycloak: Keycloak,
+        aamKeycloakConfig: AamKeycloakConfig,
     ): AuthenticationProvider = AamKeycloakAuthenticationProvider(
-        keycloak = keycloak
+        keycloak = keycloak,
+        keycloakConfig = aamKeycloakConfig,
     )
 }

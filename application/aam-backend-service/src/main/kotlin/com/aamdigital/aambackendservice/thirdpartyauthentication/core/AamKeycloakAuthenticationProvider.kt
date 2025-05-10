@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.thirdpartyauthentication.core
 import com.aamdigital.aambackendservice.error.AamErrorCode
 import com.aamdigital.aambackendservice.error.InternalServerException
 import com.aamdigital.aambackendservice.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.thirdpartyauthentication.di.AamKeycloakConfig
 import org.keycloak.admin.client.CreatedResponseUtil
 import org.keycloak.admin.client.Keycloak
 import org.keycloak.representations.idm.UserRepresentation
@@ -12,7 +13,8 @@ import java.util.*
 
 
 class AamKeycloakAuthenticationProvider(
-    private val keycloak: Keycloak
+    private val keycloak: Keycloak,
+    private val keycloakConfig: AamKeycloakConfig,
 ) : AuthenticationProvider {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -22,7 +24,6 @@ class AamKeycloakAuthenticationProvider(
     }
 
     override fun createExternalUser(
-        realmId: String,
         firstName: String,
         lastName: String,
         email: String,
@@ -42,9 +43,9 @@ class AamKeycloakAuthenticationProvider(
         }
 
         val response = try {
-            keycloak.realm(realmId).users().create(newUser)
+            keycloak.realm(keycloakConfig.realm).users().create(newUser)
         } catch (ex: Exception) {
-            logger.warn("KeycloakError: {}, {}", realmId, newUser, ex)
+            logger.warn("KeycloakError: {}", newUser, ex)
             throw InternalServerException(
                 code = AamKeycloakAuthenticationProviderError.USER_CREATION_ERROR,
                 message = "Could not create externalUser"
@@ -69,7 +70,7 @@ class AamKeycloakAuthenticationProvider(
 
         val clientId = CreatedResponseUtil.getCreatedId(response)
 
-        return keycloak.realm(realmId).users().get(clientId).toRepresentation().let {
+        return keycloak.realm(keycloakConfig.realm).users().get(clientId).toRepresentation().let {
             UserModel(
                 userId = it.id,
                 userName = it.username,
@@ -81,13 +82,12 @@ class AamKeycloakAuthenticationProvider(
     }
 
     override fun findByEmail(
-        realmId: String,
         email: String,
     ): Optional<UserModel> {
         val users = try {
-            keycloak.realm(realmId).users().searchByEmail(email, true)
+            keycloak.realm(keycloakConfig.realm).users().searchByEmail(email, true)
         } catch (ex: Exception) {
-            logger.warn("KeycloakError: {}, {}", realmId, email)
+            logger.warn("KeycloakError: {}", email)
             logger.warn(ex.localizedMessage, ex)
             return Optional.empty()
         }

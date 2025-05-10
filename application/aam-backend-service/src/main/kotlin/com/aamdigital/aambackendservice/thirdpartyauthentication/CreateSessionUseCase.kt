@@ -6,7 +6,6 @@ import com.aamdigital.aambackendservice.domain.UseCaseRequest
 import java.time.OffsetDateTime
 
 data class CreateSessionUseCaseRequest(
-    val realmId: String,
     val userId: String,
     val firstName: String,
     val lastName: String,

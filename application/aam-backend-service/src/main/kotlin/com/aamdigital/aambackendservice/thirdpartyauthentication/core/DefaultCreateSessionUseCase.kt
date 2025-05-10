@@ -67,17 +67,13 @@ class DefaultCreateSessionUseCase(
     }
 
     private fun findOrCreateUser(request: CreateSessionUseCaseRequest): UserModel {
-        val existingUser = authenticationProvider.findByEmail(
-            realmId = request.realmId,
-            email = request.email,
-        )
+        val existingUser = authenticationProvider.findByEmail(request.email)
 
         return if (existingUser.isEmpty) {
             // generate uuid (could be passed via API request in the future)
             val userEntityId = "User:" + UUID.randomUUID().toString()
 
             val newAccount = authenticationProvider.createExternalUser(
-                realmId = request.realmId,
                 firstName = request.firstName,
                 lastName = request.lastName,
                 email = request.email,

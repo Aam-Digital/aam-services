@@ -39,7 +39,7 @@ KEYCLOAK_CLIENTID=aam-backend
 KEYCLOAK_CLIENTSECRET=1234 # get this from the Keycloak client settings
 KEYCLOAK_SERVERURL=https://keycloak.aam-digital.net
 
-KEYCLOAK_APPLICATIONURL=aam-digital.net # the base domain of the Aam Digital application to build redirect URLs
+APPLICATION_BASEURL=dev.aam-digital.net # the base domain of the Aam Digital application to build redirect URLs
 ```
 
 Note that you need a Keycloak Client that our Backend can use to authenticate itself against the Keycloak server.

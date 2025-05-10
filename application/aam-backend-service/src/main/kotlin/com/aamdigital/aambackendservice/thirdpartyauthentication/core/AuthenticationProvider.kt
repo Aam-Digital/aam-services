@@ -16,7 +16,6 @@ interface AuthenticationProvider {
      * @param userEntityId (optional) the user entity id in the CouchDB that should be linked to the new user
      */
     fun createExternalUser(
-        realmId: String,
         firstName: String,
         lastName: String,
         email: String,
@@ -25,7 +24,6 @@ interface AuthenticationProvider {
     ): UserModel
 
     fun findByEmail(
-        realmId: String,
         email: String
     ): Optional<UserModel>
 }

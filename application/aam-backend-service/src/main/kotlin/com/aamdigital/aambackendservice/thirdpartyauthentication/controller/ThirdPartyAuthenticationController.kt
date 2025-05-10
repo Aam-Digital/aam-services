@@ -1,31 +1,19 @@
 package com.aamdigital.aambackendservice.thirdpartyauthentication.controller
 
+import com.aamdigital.aambackendservice.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.error.HttpErrorDto
-import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
-import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCaseRequest
-import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
-import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCaseRequest
-import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
-import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCaseRequest
-import com.aamdigital.aambackendservice.thirdpartyauthentication.di.AamKeycloakConfig
+import com.aamdigital.aambackendservice.thirdpartyauthentication.*
 import jakarta.validation.constraints.Email
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.validation.annotation.Validated
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.security.Principal
 
 data class UserSessionRequest(
-    val realmId: String,
     val userId: String,
     val firstName: String,
     val lastName: String,
@@ -63,7 +51,7 @@ class ThirdPartyAuthenticationController(
     private val createSessionUseCase: CreateSessionUseCase,
     private val verifySessionUseCase: VerifySessionUseCase,
     private val sessionRedirectUseCase: SessionRedirectUseCase,
-    private val aamKeycloakConfig: AamKeycloakConfig,
+    private val applicationConfig: ApplicationConfig,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -74,7 +62,6 @@ class ThirdPartyAuthenticationController(
     ): ResponseEntity<Any> {
         val response = createSessionUseCase.run(
             CreateSessionUseCaseRequest(
-                realmId = userSessionRequest.realmId,
                 userId = userSessionRequest.userId,
                 firstName = userSessionRequest.firstName,
                 lastName = userSessionRequest.lastName,
@@ -87,8 +74,7 @@ class ThirdPartyAuthenticationController(
         return when (response) {
             is UseCaseOutcome.Success -> {
                 val entryPointUrl =
-                    "https://${userSessionRequest.realmId}.${aamKeycloakConfig.applicationUrl}/login" +
-                            "?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
+                    "${applicationConfig.baseUrl}/login?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
 
                 ResponseEntity.ok(
                     UserSessionDto(
