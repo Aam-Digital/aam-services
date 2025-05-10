@@ -70,6 +70,9 @@ logging:
       total-size-cap: 50MB
       clean-history-on-start: true
 
+application:
+  base-url: "" # default for backwards compatibility - this should be set in env however!
+
 ---
 # <second part of the config, just active with profile "local-development">
 

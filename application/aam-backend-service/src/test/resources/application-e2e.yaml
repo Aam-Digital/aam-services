@@ -98,7 +98,6 @@ keycloak:
   client-id: aam-backend
   client-secret: 1234
   server-url: https://keycloak.localhost
-  application-url: aam.localhost
 
 sentry:
   logging:
@@ -106,6 +105,7 @@ sentry:
 
 # sentry version
 application:
+  base-url: https://aam.localhost
   version: application-e2e-test-build
 
 logging:
