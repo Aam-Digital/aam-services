@@ -153,7 +153,7 @@ features:
   third-party-authentication:
     enabled: true
 
-aam-keycloak-config:
+keycloak:
   realm: dummy-realm
   client-id: aam-backend
   client-secret: 1234

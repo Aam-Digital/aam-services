@@ -29,12 +29,12 @@ The backend module requires environment variables to access the Keycloak server:
 ```dotenv
 FEATURES_THIRDPARTYAUTHENTICATION_ENABLED=true
 
-AAMKEYCLOAKCONFIG_REALM=dummy-realm
-AAMKEYCLOAKCONFIG_CLIENTID=aam-backend
-AAMKEYCLOAKCONFIG_CLIENTSECRET=1234 # get this from the Keycloak client settings
-AAMKEYCLOAKCONFIG_SERVERURL=https://keycloak.aam-digital.net
+KEYCLOAK_REALM=dummy-realm
+KEYCLOAK_CLIENTID=aam-backend
+KEYCLOAK_CLIENTSECRET=1234 # get this from the Keycloak client settings
+KEYCLOAK_SERVERURL=https://keycloak.aam-digital.net
 
-AAMKEYCLOAKCONFIG_APPLICATIONURL=aam-digital.net # the base domain of the Aam Digital application to build redirect URLs
+KEYCLOAK_APPLICATIONURL=aam-digital.net # the base domain of the Aam Digital application to build redirect URLs
 ```
 
 Note that you need a Keycloak Client that our Backend can use to authenticate itself against the Keycloak server.

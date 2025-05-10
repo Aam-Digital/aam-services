@@ -8,11 +8,18 @@ import com.aamdigital.aambackendservice.thirdpartyauthentication.core.DefaultCre
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.DefaultSessionRedirectUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.DefaultVerifySessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.AuthenticationSessionRepository
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.crypto.password.PasswordEncoder
 
+@ConditionalOnProperty(
+    prefix = "features.third-party-authentication",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 @Configuration
 class AuthenticationConfiguration {
 

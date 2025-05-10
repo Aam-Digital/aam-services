@@ -93,7 +93,7 @@ events:
 database-change-detection:
   enabled: false
 
-aam-keycloak-config:
+keycloak:
   realm: dummy-realm
   client-id: aam-backend
   client-secret: 1234

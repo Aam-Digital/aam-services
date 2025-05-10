@@ -15,4 +15,4 @@ Use the developer setup [docs/developer](../../../../../../../../../docs/develop
 
 Follow the setup steps described in the [module README](../../../../../../../../../docs/modules/third-party-authentication.md).
 
-Set `AAMKEYCLOAKCONFIG_CLIENTSECRET` in your local env variables to the secret of the client you created in Keycloak.
+Set `KEYCLOAK_CLIENTSECRET` in your local env variables to the secret of the client you created in Keycloak.

@@ -50,14 +50,14 @@ data class UserSessionRedirectDto(
     val redirectUrl: String,
 )
 
-@RestController
-@RequestMapping("/v1/third-party-authentication")
 @ConditionalOnProperty(
     prefix = "features.third-party-authentication",
     name = ["enabled"],
     havingValue = "true",
     matchIfMissing = false
 )
+@RestController
+@RequestMapping("/v1/third-party-authentication")
 @Validated
 class ThirdPartyAuthenticationController(
     private val createSessionUseCase: CreateSessionUseCase,
