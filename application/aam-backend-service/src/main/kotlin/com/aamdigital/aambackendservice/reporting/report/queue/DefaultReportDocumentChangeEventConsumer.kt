@@ -46,6 +46,11 @@ class DefaultReportDocumentChangeEventConsumer(
                 if (payload.documentId.startsWith("ReportConfig:")) {
                     logger.trace(payload.toString())
 
+                    if (payload.deleted) {
+                        logger.trace("Skipping ReportConfig delete event")
+                        return
+                    }
+
                     // todo if aggregationDefinition is different, skip trigger ReportCalculation
 
                     val reportRef = try {
