@@ -164,7 +164,6 @@ keycloak:
   client-id: aam-backend
   client-secret: 1234
   server-url: https://keycloak.localhost
-  application-url: aam.localhost
 
 crypto-configuration:
   secret: super-duper-secret
@@ -183,8 +182,6 @@ sentry:
 
 application:
   base-url: https://aam.localhost
-  # sentry version
-  version: local-dev-build
 
 #management:
 #  otlp:
