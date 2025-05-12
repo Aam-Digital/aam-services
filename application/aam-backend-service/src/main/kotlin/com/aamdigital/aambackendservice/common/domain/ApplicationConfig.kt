@@ -9,7 +9,4 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 class ApplicationConfig(
     /** the base url of the app (e.g. dev.aam-digital.net) */
     val baseUrl: String,
-
-    /** version (for sentry logging etc.) */
-    val version: String,
 )

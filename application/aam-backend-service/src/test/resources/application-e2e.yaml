@@ -106,7 +106,6 @@ sentry:
 # sentry version
 application:
   base-url: https://aam.localhost
-  version: application-e2e-test-build
 
 logging:
   level:
