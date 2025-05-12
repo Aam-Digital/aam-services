@@ -97,18 +97,22 @@ class DefaultReportCalculationUseCase(
         }
 
         // Troubleshooting for sometimes empty report calculation results:
-        val resultLength = updatedReportCalculation.attachments["data.json"]?.length
-        if (resultLength != null && resultLength < 10) {
-            val msg = "REPORTING_DEBUG: possible empty report calculation result " + reportCalculation.id
-            logger.debug(msg)
-            Sentry.captureMessage(msg, SentryLevel.WARNING)
-        }
+        logWarningIfEmptyReport(updatedReportCalculation)
 
         return UseCaseOutcome.Success(
             data = ReportCalculationData(
                 reportCalculation = updatedReportCalculation,
             )
         )
+    }
+
+    private fun logWarningIfEmptyReport(reportCalculation: ReportCalculation) {
+        val resultLength = reportCalculation.attachments["data.json"]?.length
+        if (resultLength != null && resultLength < 10) {
+            val msg = "REPORTING_DEBUG: empty \"${reportCalculation.report.id}\" report calculation result: ${reportCalculation.id}"
+            logger.debug(msg)
+            Sentry.captureMessage(msg, SentryLevel.WARNING)
+        }
     }
 
     @Throws(AamException::class)
