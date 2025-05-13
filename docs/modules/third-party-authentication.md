@@ -68,7 +68,7 @@ This is different from the Client shared with the external system!
    - _if there already is a client for API integration with the "reporting" module, this can also be reused_
 2. Create the Keycloak User Role "third-party-authentication-provider"
 3. Add this role as a "Service Account Role" for the client.
-4. Add "roles" as a "Client Scope" for the client, so that the roles are included in the JWT token.
+4. Add "roles" as a "Client Scope" for the client, so that the roles are included in the JWT token. Make sure this is set to "Default" (not "Optional"). 
 
 #### Create an Authentication Flow
 1. Go to the `Authentication` settings in your Realm and copy the default `browser` flow and name it `browser-sso`.
@@ -81,9 +81,12 @@ This is different from the Client shared with the external system!
    - **Alias** to any name of the API / system
    - **API-Base Url** to the API module URL of the aam-services backend, e.g. `https://my-realm.aam.digital.app/api` (don't add API version or exact endpoints)
 ![dev-4.png](../assets/third-party-authentication/dev-4.png)
-6. Switch to: `Clients` -> `app` -> `Advanced` and scroll down to `Authentication flow overrides`
+
+Enable this flow:
+- Click the three dots to the right of the new "browser-sso" flow in the "Authentication" list and select "Bind flow" -> "Browser flow"
+- OR: Switch to: `Clients` -> `app` -> `Advanced` and scroll down to `Authentication flow overrides`.
    - Select the `browser-sso` flow here:
-![dev-5.png](../assets/third-party-authentication/dev-5.png)
+   ![dev-5.png](../assets/third-party-authentication/dev-5.png)
 
 Done. The Third-Party-Authentication from an external system should now be usable.
 
