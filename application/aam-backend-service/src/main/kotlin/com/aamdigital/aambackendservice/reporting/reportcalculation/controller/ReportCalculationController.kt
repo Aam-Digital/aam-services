@@ -89,7 +89,7 @@ class ReportCalculationController(
             )
         )
 
-        logger.trace("[POST /report/{reportId}]: Returning response for ${report.id}: $createReportCalculationResponse")
+        logger.trace("[POST /report/{reportId}]: Returning response for {}: {}", report.id, createReportCalculationResponse)
         return when (createReportCalculationResponse) {
             is CreateReportCalculationResult.Failure -> {
                 return ResponseEntity.internalServerError().build()
