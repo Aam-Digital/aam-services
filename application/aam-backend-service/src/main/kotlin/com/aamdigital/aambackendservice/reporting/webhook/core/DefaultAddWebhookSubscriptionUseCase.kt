@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateR
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
+import org.slf4j.LoggerFactory
 
 class DefaultAddWebhookSubscriptionUseCase(
     private val webhookStorage: WebhookStorage,
@@ -13,6 +14,8 @@ class DefaultAddWebhookSubscriptionUseCase(
     private val notificationService: NotificationService,
     private val createReportCalculationUseCase: CreateReportCalculationUseCase
 ) : AddWebhookSubscriptionUseCase {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     override fun subscribe(report: DomainReference, webhook: DomainReference) {
         webhookStorage.addSubscription(
             webhookRef = webhook,
@@ -22,6 +25,8 @@ class DefaultAddWebhookSubscriptionUseCase(
         val reportCalculations = reportCalculationStorage.fetchReportCalculations(
             report = report
         )
+
+        logger.info("Added new webhook ${webhook.id} for report ${report.id}")
 
         handleReportCalculations(reportCalculations, report, webhook)
     }

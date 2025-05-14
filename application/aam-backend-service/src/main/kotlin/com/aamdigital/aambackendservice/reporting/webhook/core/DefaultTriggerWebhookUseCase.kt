@@ -38,9 +38,10 @@ class DefaultTriggerWebhookUseCase(
 
         logger.debug(
             "[DefaultTriggerWebhookUseCase] Trying to trigger Webhook" +
-                    " {} to {} Calculation: {} ",
+                    " {} to {} Report: {} Calculation: {} ",
             webhookEvent.webhookId,
             uri.toString(),
+            webhookEvent.reportId,
             webhookEvent.calculationId,
         )
         val response = httpClient
