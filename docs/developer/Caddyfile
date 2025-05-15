@@ -39,6 +39,10 @@ aam.localhost:80, aam.localhost:443 {
         reverse_proxy sqs:4984
     }
 
+    handle_path /carbone-io* {
+        reverse_proxy carbone-io:4000
+    }
+
     handle_path /rabbitmq/* {
         reverse_proxy rabbitmq:15672
     }

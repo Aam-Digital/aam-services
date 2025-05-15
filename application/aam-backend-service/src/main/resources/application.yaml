@@ -63,6 +63,13 @@ events:
 notification-firebase-configuration:
   link-base-url: ${application.base-url}
 
+aam-render-api-client-configuration:
+  auth-config:
+    # default standard values that can be emitted from the environment
+    grant-type: client_credentials
+    scope: ""
+
+
 logging:
   logback:
     rollingpolicy:
@@ -124,13 +131,12 @@ logging:
     com.aamdigital.aambackendservice: trace
 
 aam-render-api-client-configuration:
-  base-path: https://pdf.aam-digital.dev
-#  auth-config:
-#   client-id: <needs-environment-configuration>
+  base-path: https://aam.localhost/carbone-io
+# you can also use https://pdf.aam-digital.dev
+  auth-config:
+    client-id: aam-backend-pdf-client
 #   client-secret: <needs-environment-configuration>
-#   token-endpoint: <needs-environment-configuration>
-#   grant-type: <needs-environment-configuration>
-#   scope: <needs-environment-configuration>
+    token-endpoint: https://keycloak.localhost/realms/aam-digital/protocol/openid-connect/token
 
 couch-db-client-configuration:
   base-path: https://aam.localhost/db/couchdb
@@ -150,7 +156,7 @@ skilllab-api-client-configuration:
 
 features:
   export-api:
-    enabled: false
+    enabled: true
   skill-api:
     mode: disabled
   notification-api:
