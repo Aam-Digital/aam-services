@@ -89,7 +89,7 @@ class ReportCalculationController(
             )
         )
 
-        logger.trace("[POST /report/{reportId}]: Returning response: $createReportCalculationResponse")
+        logger.trace("[POST /report/{reportId}]: Returning response for {}: {}", report.id, createReportCalculationResponse)
         return when (createReportCalculationResponse) {
             is CreateReportCalculationResult.Failure -> {
                 return ResponseEntity.internalServerError().build()
@@ -130,7 +130,7 @@ class ReportCalculationController(
 
         // TODO Auth check (https://github.com/Aam-Digital/aam-services/issues/10)
 
-        logger.trace("[GET /{calculationId}]: Returning $calculationId")
+        logger.trace("[GET /{calculationId}]: Returning $calculationId for ${reportCalculation.report.id}")
         return ResponseEntity.ok(toDto(reportCalculation))
     }
 
@@ -201,7 +201,7 @@ class ReportCalculationController(
             )
         }
 
-        logger.trace("[GET /{calculationId}/data]: Returning stream for calculationId $calculationId with ${reportCalculation.attachments["data.json"]?.digest}")
+        logger.trace("[GET /{calculationId}/data]: Returning stream for ${reportCalculation.report.id} calculationId $calculationId with ${reportCalculation.attachments["data.json"]?.digest}")
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=$calculationId-data.json")
             .contentType(MediaType.APPLICATION_JSON)
@@ -245,7 +245,7 @@ class ReportCalculationController(
             handleInputStreamToOutputStream(outputStream, file)
         }
 
-        logger.trace("[GET /{calculationId}/data-stream]: Returning stream for calculationId $calculationId")
+        logger.trace("[GET /{calculationId}/data-stream]: Returning stream for ${reportCalculation.report.id} calculationId $calculationId")
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=calculation-data.json")
             .contentType(MediaType.APPLICATION_JSON)

@@ -131,6 +131,8 @@ class TemplateExportController(
     fun postTemplate(
         @RequestPart("template") file: MultipartFile
     ): ResponseEntity<TemplateExportControllerResponse> {
+        logger.trace("trying to create new Template");
+
         val result = createTemplateUseCase
             .run(
                 CreateTemplateRequest(

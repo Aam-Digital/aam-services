@@ -45,10 +45,10 @@ class DefaultReportCalculationChangeUseCase(
                     reportCalculation = DomainReference(currentReportCalculation.id)
                 )
             } else {
-                logger.debug("skipped notification for ${currentReportCalculation.id}")
+                logger.debug("skipped notification for {} {} because data is unchanged", currentReportCalculation.report.id, currentReportCalculation.id)
             }
         } catch (ex: Exception) {
-            logger.warn("Could not fetch ${currentReportCalculation.id}. Skipped.", ex)
+            logger.warn("Could not fetch {} {}. Skipped.", currentReportCalculation.report.id, currentReportCalculation.id, ex)
         }
     }
 }
