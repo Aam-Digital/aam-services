@@ -84,7 +84,8 @@ services:
 
 # Currently Keycloak 23 is used in production:
   keycloak_23:
-    image: ghcr.io/aam-digital/aam-keycloak:23.0.7
+    image: quay.io/keycloak/keycloak:23.0.7
+    # our actual production image (currently not available publicly, however): ghcr.io/aam-digital/aam-keycloak:23.0.7
     container_name: keycloak
     networks:
       - aam-digital
@@ -102,10 +103,10 @@ services:
       KC_PROXY: edge
     depends_on:
       - db-keycloak_23
-    command: --verbose start --optimized --spi-theme-login-theme=aam-theme
-    # for debugging, use command: start-dev
-    #volumes:
-    #  - ./container-data/keycloak/providers:/opt/keycloak/providers
+    command: start-dev
+    # for production settings use command: start --optimized --spi-theme-login-theme=aam-theme
+    volumes:
+      - ./container-data/keycloak/providers:/opt/keycloak/providers
     #  - ./container-data/keycloak/themes:/opt/keycloak/themes
 
   db-keycloak_23:
@@ -203,6 +204,8 @@ services:
       - ./container-data/sqs/data:/data
     environment:
       SQS_COUCHDB_URL: http://db-couch:5984
+    profiles:
+      - include-private
 
   carbone-io:
     image: carbone/carbone-ee
