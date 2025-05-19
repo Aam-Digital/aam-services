@@ -24,8 +24,8 @@ REST controller responsible for handling export operations related to templates.
 This module has to be enabled through a feature flag in the environment:
 in .env file: `FEATURES_EXPORTAPI_ENABLED=true`
 
-Configure a compatible render api in the environment. You can use the default, aam-internal implementation,
-but make sure, that the authentication is configured:
+Configure a compatible render api in the environment. 
+You can use the default aam-internal implementation but make sure that authentication is configured:
 
 ```
 aam-render-api-client-configuration:
@@ -38,3 +38,9 @@ aam-render-api-client-configuration:
       scope: <needs-environment-configuration>
 ```
 
+### OAuth Proxy & Keycloak Client
+In our standard hosted setup, the carbone.io server is protected by an OAUTH proxy.
+The Keycloak Client used by our backend to authenticate against this can be reused across different systems.
+When initially setting up this infrastructure in a centralized realm (for us "aam-digital"),
+make sure the client is set up with the following Mapper:
+![keycloak-client-mapper-oauth.png](../assets/export/keycloak-client-mapper-oauth.png)
