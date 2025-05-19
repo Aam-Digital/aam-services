@@ -296,6 +296,6 @@ class DefaultReportCalculationUseCase(
 
     private fun getIsoLocalDateTime(): String = Date().toInstant()
         .atOffset(ZoneOffset.UTC)
-        .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
 }
 
