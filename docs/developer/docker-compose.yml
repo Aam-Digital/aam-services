@@ -171,7 +171,6 @@ services:
       - aam-backend-service-db
       - rabbitmq
     env_file:
-      - ../../templates/aam-backend-service/application.localdev.env
       - .env
     environment:
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-} # (macOS only) bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
