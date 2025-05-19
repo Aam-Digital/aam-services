@@ -21,8 +21,6 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportC
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.transformation.DataTransformation
-import io.sentry.Sentry
-import io.sentry.SentryLevel
 import org.springframework.stereotype.Component
 import java.io.InputStream
 import java.io.SequenceInputStream
@@ -96,23 +94,11 @@ class DefaultReportCalculationUseCase(
             return handleException(ex)
         }
 
-        // Troubleshooting for sometimes empty report calculation results:
-        logWarningIfEmptyReport(updatedReportCalculation)
-
         return UseCaseOutcome.Success(
             data = ReportCalculationData(
                 reportCalculation = updatedReportCalculation,
             )
         )
-    }
-
-    private fun logWarningIfEmptyReport(reportCalculation: ReportCalculation) {
-        val resultLength = reportCalculation.attachments["data.json"]?.length
-        if (resultLength != null && resultLength < 10) {
-            val msg = "REPORTING_DEBUG: empty \"${reportCalculation.report.id}\" report calculation result: ${reportCalculation.id}"
-            logger.debug(msg)
-            Sentry.captureMessage(msg, SentryLevel.WARNING)
-        }
     }
 
     @Throws(AamException::class)
