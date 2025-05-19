@@ -2,8 +2,8 @@ package com.aamdigital.aambackendservice.notification.queue
 
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.InternalServerException
-import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessage
+import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpException
@@ -31,7 +31,7 @@ class DefaultUserNotificationPublisher(
             event = event,
             createdAt = Instant.now()
                 .atOffset(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
         )
 
         try {
