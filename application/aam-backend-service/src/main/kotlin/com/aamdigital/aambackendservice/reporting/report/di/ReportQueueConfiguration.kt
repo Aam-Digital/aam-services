@@ -5,6 +5,7 @@ import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedRe
 import com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
+import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder
 import org.springframework.amqp.core.FanoutExchange
@@ -38,11 +39,13 @@ class ReportQueueConfiguration {
         createReportCalculationUseCase: CreateReportCalculationUseCase,
         reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
         identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
+        webhookStorage: WebhookStorage,
     ): ReportDocumentChangeEventConsumer =
         ReportDocumentChangeEventConsumer(
             messageParser,
             createReportCalculationUseCase,
             reportCalculationChangeUseCase,
             identifyAffectedReportsUseCase,
+            webhookStorage,
         )
 }

@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
+import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import com.rabbitmq.client.Channel
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -43,20 +44,25 @@ class ReportDocumentChangeEventConsumerTest {
     @Mock
     lateinit var identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase
 
+    @Mock
+    lateinit var webhookStorage: WebhookStorage
+
     @BeforeEach
     fun setUp() {
         reset(
             messageParser,
             createReportCalculationUseCase,
             reportCalculationChangeUseCase,
-            identifyAffectedReportsUseCase
+            identifyAffectedReportsUseCase,
+            webhookStorage,
         )
 
         service = ReportDocumentChangeEventConsumer(
             messageParser = messageParser,
             createReportCalculationUseCase = createReportCalculationUseCase,
             reportCalculationChangeUseCase = reportCalculationChangeUseCase,
-            identifyAffectedReportsUseCase = identifyAffectedReportsUseCase
+            identifyAffectedReportsUseCase = identifyAffectedReportsUseCase,
+            webhookStorage = webhookStorage,
         )
     }
 

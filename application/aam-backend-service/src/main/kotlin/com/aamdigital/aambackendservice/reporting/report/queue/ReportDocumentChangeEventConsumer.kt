@@ -9,6 +9,7 @@ import com.aamdigital.aambackendservice.reporting.report.di.ReportQueueConfigura
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
+import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
@@ -20,6 +21,7 @@ class ReportDocumentChangeEventConsumer(
     private val createReportCalculationUseCase: CreateReportCalculationUseCase,
     private val reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
     private val identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
+    private val webhookStorage: WebhookStorage,
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -43,33 +45,6 @@ class ReportDocumentChangeEventConsumer(
                     kClass = DocumentChangeEvent::class
                 )
 
-                if (payload.documentId.startsWith("ReportConfig:")) {
-                    logger.trace(payload.toString())
-
-                    if (payload.deleted) {
-                        logger.trace("Skipping ReportConfig delete event")
-                        return
-                    }
-
-                    // todo if aggregationDefinition is different, skip trigger ReportCalculation
-
-                    val reportRef = try {
-                        payload.currentVersion["_id"] as String
-                    } catch (ex: Exception) {
-                        logger.warn(ex.message, ex)
-                        return
-                    }
-
-                    createReportCalculationUseCase.createReportCalculation(
-                        request = CreateReportCalculationRequest(
-                            report = DomainReference(reportRef),
-                            args = mutableMapOf()
-                        )
-                    )
-
-                    return
-                }
-
                 if (payload.documentId.startsWith("ReportCalculation:")) {
                     if (payload.deleted) {
                         return
@@ -84,12 +59,22 @@ class ReportDocumentChangeEventConsumer(
                     documentChangeEvent = payload
                 )
 
-                affectedReports.forEach { report ->
+                val webhooks = webhookStorage.fetchAllWebhooks()
+
+                affectedReports
+                    .filter { report ->
+                        // we only need to do automatic calculations for reports that are subscribed to
+                        webhooks.any { webhook ->
+                            webhook.reportSubscriptions.contains(DomainReference(report.id))
+                        }
+                    }
+                    .forEach { report ->
                     createReportCalculationUseCase
                         .createReportCalculation(
                             request = CreateReportCalculationRequest(
                                 report = report,
-                                args = mutableMapOf()
+                                args = mutableMapOf(),
+                                fromAutomaticChangeDetection = true,
                             )
                         )
                 }

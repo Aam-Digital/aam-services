@@ -1,11 +1,11 @@
 package com.aamdigital.aambackendservice.common.couchdb.core
 
-import com.aamdigital.aambackendservice.common.error.AamErrorCode
-import com.aamdigital.aambackendservice.common.error.ExternalSystemException
-import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbChangesResponse
 import com.aamdigital.aambackendservice.common.couchdb.dto.DocSuccess
 import com.aamdigital.aambackendservice.common.couchdb.dto.FindResponse
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
@@ -202,6 +202,32 @@ class DefaultCouchDbClient(
                 }
             }
             .accept(MediaType.APPLICATION_JSON)
+            .exchange { _, clientResponse ->
+                handleResponse(clientResponse, DocSuccess::class)
+            }
+    }
+
+    override fun deleteDatabaseDocument(
+        database: String,
+        documentId: String,
+    ): DocSuccess {
+        val documentHeaders = headDatabaseDocument(
+            database = database,
+            documentId = documentId
+        )
+
+        val etag = documentHeaders.eTag?.replace("\"", "")
+
+        return httpClient.delete()
+            .uri {
+                it.path("/$database/$documentId")
+                it.build()
+            }
+            .headers {
+                if (etag.isNullOrBlank().not()) {
+                    it.set("If-Match", etag)
+                }
+            }
             .exchange { _, clientResponse ->
                 handleResponse(clientResponse, DocSuccess::class)
             }
