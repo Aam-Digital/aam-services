@@ -2,8 +2,6 @@ package com.aamdigital.aambackendservice.reporting.webhook.di
 
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
-import com.aamdigital.aambackendservice.reporting.webhook.queue.DefaultWebhookEventConsumer
-import com.aamdigital.aambackendservice.reporting.webhook.queue.DefaultWebhookEventPublisher
 import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventConsumer
 import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventPublisher
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -52,7 +50,7 @@ class ReportingNotificationQueueConfiguration {
     fun defaultNotificationEventPublisher(
         rabbitTemplate: RabbitTemplate,
         objectMapper: ObjectMapper,
-    ): WebhookEventPublisher = DefaultWebhookEventPublisher(
+    ): WebhookEventPublisher = WebhookEventPublisher(
         objectMapper = objectMapper, rabbitTemplate = rabbitTemplate
     )
 
@@ -60,5 +58,5 @@ class ReportingNotificationQueueConfiguration {
     fun defaultNotificationEventConsumer(
         messageParser: QueueMessageParser,
         useCase: TriggerWebhookUseCase,
-    ): WebhookEventConsumer = DefaultWebhookEventConsumer(messageParser, useCase)
+    ): WebhookEventConsumer = WebhookEventConsumer(messageParser, useCase)
 }

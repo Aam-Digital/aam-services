@@ -55,6 +55,8 @@ class DefaultReportCalculationUseCase(
 ) : ReportCalculationUseCase() {
 
     override fun apply(request: ReportCalculationRequest): UseCaseOutcome<ReportCalculationData> {
+        logger.trace("start processing report-calculation-request {}", request.reportCalculationId);
+
         val reportCalculation: ReportCalculation = try {
             reportCalculationStorage.fetchReportCalculation(
                 DomainReference(request.reportCalculationId)

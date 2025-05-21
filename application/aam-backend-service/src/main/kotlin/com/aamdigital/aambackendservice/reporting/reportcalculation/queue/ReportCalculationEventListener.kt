@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.reporting.reportcalculation.di
+package com.aamdigital.aambackendservice.reporting.reportcalculation.queue
 
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
@@ -13,7 +13,6 @@ import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
-
 
 /**
  * Process ReportCalculationEvents from RabbitMQ
