@@ -9,6 +9,7 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateR
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
+import org.slf4j.LoggerFactory
 import java.util.*
 
 // todo: migrate to DomainUseCase
@@ -16,14 +17,17 @@ class DefaultCreateReportCalculationUseCase(
     private val reportCalculationStorage: ReportCalculationStorage,
     private val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher
 ) : CreateReportCalculationUseCase {
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun createReportCalculation(request: CreateReportCalculationRequest): CreateReportCalculationResult {
         val calculation = ReportCalculation(
             id = "ReportCalculation:${UUID.randomUUID()}",
             report = request.report,
             status = ReportCalculationStatus.PENDING,
-            args = request.args
+            args = request.args,
+            fromAutomaticChangeDetection = request.fromAutomaticChangeDetection,
         )
+        logger.trace("creating report {} calculation {}", calculation.report.id, calculation.id)
 
         return try {
             val reportCalculations = reportCalculationStorage.fetchReportCalculations(request.report)
@@ -51,7 +55,6 @@ class DefaultCreateReportCalculationUseCase(
         reportCalculationEventPublisher.publish(
             "report.calculation",
             ReportCalculationEvent(
-//                tenant = "<customer>", // prepare tenant support
                 reportCalculationId = reportCalculation.id,
             )
         )

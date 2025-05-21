@@ -52,7 +52,7 @@ class WebhookEventConsumer(
                 )
 
                 throw AmqpRejectAndDontRequeueException(
-                    "[NO_USECASE_CONFIGURED] Could not found matching use case for: ${type.qualifiedName}",
+                    "[NO_USECASE_CONFIGURED] Could not find matching use case for: ${type.qualifiedName}",
                 )
             }
         }

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 data class CreateReportCalculationRequest(
     val report: DomainReference,
     val args: MutableMap<String, String>,
+    val fromAutomaticChangeDetection: Boolean = false,
 )
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)

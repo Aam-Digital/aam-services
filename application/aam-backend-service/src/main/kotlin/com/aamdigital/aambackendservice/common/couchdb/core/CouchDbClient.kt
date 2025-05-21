@@ -1,10 +1,10 @@
 package com.aamdigital.aambackendservice.common.couchdb.core
 
-import com.aamdigital.aambackendservice.common.error.ExternalSystemException
-import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbChangesResponse
 import com.aamdigital.aambackendservice.common.couchdb.dto.DocSuccess
 import com.aamdigital.aambackendservice.common.couchdb.dto.FindResponse
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.NotFoundException
 import org.springframework.http.HttpHeaders
 import org.springframework.util.MultiValueMap
 import java.io.InterruptedIOException
@@ -43,6 +43,11 @@ interface CouchDbClient {
         database: String,
         documentId: String,
         body: Any
+    ): DocSuccess
+
+    fun deleteDatabaseDocument(
+        database: String,
+        documentId: String,
     ): DocSuccess
 
     fun <T : Any> getPreviousDocRev(

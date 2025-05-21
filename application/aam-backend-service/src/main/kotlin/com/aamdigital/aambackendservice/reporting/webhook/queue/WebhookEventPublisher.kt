@@ -19,7 +19,7 @@ class WebhookEventPublisher(
     private val rabbitTemplate: RabbitTemplate,
 ) {
 
-    enum class NotificationEventPublisherErrorCode : AamErrorCode {
+    enum class WebhookEventPublisherErrorCode : AamErrorCode {
         EVENT_PUBLISH_ERROR
     }
 
@@ -43,8 +43,8 @@ class WebhookEventPublisher(
             )
         } catch (ex: AmqpException) {
             throw InternalServerException(
-                message = "Could not publish NotificationEvent: $event",
-                code = NotificationEventPublisherErrorCode.EVENT_PUBLISH_ERROR,
+                message = "Could not publish WebhookEvent: $event",
+                code = WebhookEventPublisherErrorCode.EVENT_PUBLISH_ERROR,
                 cause = ex
             )
         }

@@ -1,15 +1,15 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.storage
 
-import com.aamdigital.aambackendservice.common.error.AamErrorCode
-import com.aamdigital.aambackendservice.common.error.ExternalSystemException
-import com.aamdigital.aambackendservice.common.error.InternalServerException
-import com.aamdigital.aambackendservice.common.error.NetworkException
-import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getQueryParamsAllDocs
 import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbRow
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.FileStorage
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.InternalServerException
+import com.aamdigital.aambackendservice.common.error.NetworkException
+import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -54,6 +54,17 @@ class DefaultReportCalculationStorage(
         }
 
         return fetchReportCalculation(DomainReference(successDoc.id))
+    }
+
+    override fun deleteReportCalculation(reportCalculation: DomainReference) {
+        try {
+            couchDbClient.deleteDatabaseDocument(
+                database = REPORT_CALCULATION_DATABASE,
+                documentId = reportCalculation.id,
+            )
+        } catch (ex: Exception) {
+            throw handleException(ex)
+        }
     }
 
     override fun fetchReportCalculations(report: DomainReference): List<ReportCalculation> {
@@ -124,6 +135,7 @@ class DefaultReportCalculationStorage(
             calculationCompleted = doc.calculationCompleted,
             args = doc.args,
             attachments = doc.attachments,
+            fromAutomaticChangeDetection = doc.fromAutomaticChangeDetection,
         )
     }
 
@@ -137,6 +149,7 @@ class DefaultReportCalculationStorage(
             calculationCompleted = doc.calculationCompleted,
             args = doc.args,
             attachments = doc.attachments,
+            fromAutomaticChangeDetection = doc.fromAutomaticChangeDetection,
         )
     }
 

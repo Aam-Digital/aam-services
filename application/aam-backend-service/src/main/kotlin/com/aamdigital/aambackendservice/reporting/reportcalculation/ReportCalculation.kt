@@ -13,6 +13,7 @@ data class ReportCalculation(
     var calculationCompleted: String? = null,
     var args: MutableMap<String, String> = mutableMapOf(),
     val attachments: MutableMap<String, AttachmentMetaData> = mutableMapOf(),
+    val fromAutomaticChangeDetection: Boolean = false,
 ) {
     fun setStatus(status: ReportCalculationStatus): ReportCalculation {
         this.status = status

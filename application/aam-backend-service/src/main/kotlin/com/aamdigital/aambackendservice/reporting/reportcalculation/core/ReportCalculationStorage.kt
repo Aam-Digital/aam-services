@@ -22,4 +22,7 @@ interface ReportCalculationStorage {
         reportCalculation: ReportCalculation,
         file: InputStream
     ): ReportCalculation
+
+    @Throws(AamException::class)
+    fun deleteReportCalculation(reportCalculation: DomainReference)
 }

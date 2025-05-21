@@ -46,6 +46,13 @@ class DefaultReportCalculationChangeUseCase(
                 )
             } else {
                 logger.debug("skipped notification for {} {} because data is unchanged", currentReportCalculation.report.id, currentReportCalculation.id)
+
+                if (currentReportCalculation.fromAutomaticChangeDetection == true) {
+                    logger.debug("deleting automatically created report-calculation that is just duplicating existing result {}", currentReportCalculation.id)
+                    reportCalculationStorage.deleteReportCalculation(
+                        DomainReference(currentReportCalculation.id)
+                    )
+                }
             }
         } catch (ex: Exception) {
             logger.warn("Could not fetch {} {}. Skipped.", currentReportCalculation.report.id, currentReportCalculation.id, ex)
