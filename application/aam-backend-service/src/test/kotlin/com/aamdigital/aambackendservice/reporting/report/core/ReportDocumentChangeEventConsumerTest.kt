@@ -3,7 +3,6 @@ package com.aamdigital.aambackendservice.reporting.report.core
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
-import com.aamdigital.aambackendservice.reporting.report.queue.DefaultReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
@@ -22,7 +21,7 @@ import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.core.Message
 
 @ExtendWith(MockitoExtension::class)
-class DefaultReportDocumentChangeEventConsumerTest {
+class ReportDocumentChangeEventConsumerTest {
 
     private lateinit var service: ReportDocumentChangeEventConsumer
 
@@ -53,7 +52,7 @@ class DefaultReportDocumentChangeEventConsumerTest {
             identifyAffectedReportsUseCase
         )
 
-        service = DefaultReportDocumentChangeEventConsumer(
+        service = ReportDocumentChangeEventConsumer(
             messageParser = messageParser,
             createReportCalculationUseCase = createReportCalculationUseCase,
             reportCalculationChangeUseCase = reportCalculationChangeUseCase,
