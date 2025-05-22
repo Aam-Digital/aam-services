@@ -82,17 +82,20 @@ This returns a JWT access token required to provided as Bearer Token for any req
 }
 ```
 
+### Manually execute a report calculation
 2. Request the all available reports: `GET /v1/reporting/reports` (see OpenAPI specs for details)
 3. Trigger the calculation of a reports data: `POST /v1/reporting/report-calculation/report/<report-id>`
 4. Get status of the report calculation: `GET /v1/reporting/report-calculation/<calculation-id>`
 5. Once the status shows the calculation is completed, get the actual result data:
    `GET /v1/reporting/report-calculation/<calculation-id>/data`
 
-### Subscribe to continuous changes of a report
-
+## Subscribe to continuous changes of a report
 1. Create an initial webhook (if not already registered): `POST /v1/reporting/webhook`
-2. Register for events of the selected report: `POST /v1/reporting/webhook/{webhookId}/subscribe/report/{reportId}`
-3. You will receive Event objects to your webhook, including an initial event directly after you subscribe, pointing to
-   the current report data
-4. Use the report-calculation-id in the event to fetch actual data from
-   `/v1/reporting/report-calculation/<calculation-id>` endpoint
+   - pass your details how to receive the callback upon events
+2. Register for events of the selected report for your webhook: `POST /v1/reporting/webhook/{webhookId}/subscribe/report/{reportId}` 
+3. _... when data in Aam Digital changes (and once initially directly after you subscribe to a report) ..._
+4. You receive an event object sent to your webhook with the current report-calculation reference
+   - this does not contain the actual data, but only the reportCalculationId of the result that is ready
+5. Use the report-calculation-id in the event to fetch actual data:
+   - get metadata like timestamp of the calculation: `GET /v1/reporting/report-calculation/<calculation-id>`
+   - get the actual report data: `GET /v1/reporting/report-calculation/<calculation-id>/data`

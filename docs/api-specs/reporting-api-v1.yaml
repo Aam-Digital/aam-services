@@ -42,6 +42,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /report/{reportId}:
     get:
@@ -76,6 +88,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /report-calculation/report/{reportId}:
     get:
@@ -106,6 +130,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         404:
           description: If report does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
           content:
             application/json:
               schema:
@@ -159,6 +195,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /report-calculation/{calculationId}:
     get:
@@ -191,6 +239,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         404:
           description: If the calculation identifier does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
           content:
             application/json:
               schema:
@@ -232,6 +292,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /report-calculation/{calculationId}/data-stream:
     get:
@@ -262,6 +334,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         401:
           description: If the access token does not grant permission to this Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
           content:
             application/json:
               schema:
@@ -298,6 +382,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
     post:
       security:
         - development:
@@ -325,6 +422,18 @@ paths:
                     format: uuid
         401:
           description: If no valid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
           content:
             application/json:
               schema:
@@ -365,6 +474,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         404:
           description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
           content:
             application/json:
               schema:
@@ -419,6 +540,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     delete:
       security:
@@ -426,7 +559,7 @@ paths:
             - reporting_write
       tags:
         - notifications
-      summary: Remove event subscription for a specific Report
+      summary: Remove subscription for a specific Report
       parameters:
         - in: path
           name: webhookId
@@ -434,7 +567,7 @@ paths:
             type: string
           required: true
         - in: path
-          name: eventName
+          name: reportId
           schema:
             type: string
           required: true
@@ -449,6 +582,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         403:
           description: No permissions to access the resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: On internal server errors or broken server configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        502:
+          description: If the Aam Digital backend API is not enabled for that system
           content:
             application/json:
               schema:
@@ -566,6 +711,9 @@ components:
 
     ReportData:
       type: array
+      items:
+        type: object
+        description: JSON object containing one row of results
       example: |-
         [
           {
