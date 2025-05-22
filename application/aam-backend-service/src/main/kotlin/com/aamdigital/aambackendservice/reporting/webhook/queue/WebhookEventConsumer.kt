@@ -1,11 +1,14 @@
 package com.aamdigital.aambackendservice.reporting.webhook.queue
 
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.AamException
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookEvent
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.di.ReportingNotificationQueueConfiguration.Companion.NOTIFICATION_QUEUE
 import com.rabbitmq.client.Channel
+import io.sentry.Sentry
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.core.Message
@@ -17,6 +20,10 @@ class WebhookEventConsumer(
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
+
+    enum class WebhookError : AamErrorCode {
+        WEBHOOK_EVENT_TRIGGER_ERROR,
+    }
 
     @RabbitListener(
         queues = [NOTIFICATION_QUEUE],
@@ -37,10 +44,15 @@ class WebhookEventConsumer(
                 try {
                     useCase.trigger(payload)
                 } catch (ex: Exception) {
-                    throw AmqpRejectAndDontRequeueException(
+                    val aamEx = ExternalSystemException(
                         "[USECASE_ERROR] ${ex.localizedMessage}",
-                        ex
+                        ex,
+                        code = WebhookError.WEBHOOK_EVENT_TRIGGER_ERROR,
                     )
+                    Sentry.captureException(aamEx)
+
+                    // TODO: requeue to retry (but then we need to make sure to not send an old event after a newer calculation already delivered)
+                    throw AmqpRejectAndDontRequeueException(aamEx)
                 }
                 return
             }
