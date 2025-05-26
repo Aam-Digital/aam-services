@@ -272,7 +272,8 @@ paths:
           required: true
       responses:
         200:
-          description: The actual data that has been calculated by the calculation run.
+          description: The actual data that has been calculated by the calculation run. 
+            Note that if the report was calculated successfully but has an empty result, this is still returned here, not as an 404 error.
           content:
             application/json:
               schema:
@@ -281,7 +282,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReportMetadata'
         404:
-          description: report data is not available yet (when either the calculation id is not valid or the calculation is still running)
+          description: report data is not available yet (when either the calculation id is not valid or the calculation is still running).
+            Note that if the report calculation was successfully completed but the result is empty (because no data matchedd the report's query)
+            then this is not returning a 404 error but a 200 with an empty "items" array.
           content:
             application/json:
               schema:
@@ -327,7 +330,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReportData'
         404:
-          description: report data is not available yet (when either the calculation id is not valid or the calculation is still running)
+          description: report data is not available yet (when either the calculation id is not valid or the calculation is still running).
+            Note that if the report calculation was successfully completed but the result is empty (because no data matchedd the report's query)
+            then this is not returning a 404 error but a 200 with an empty "items" array.
           content:
             application/json:
               schema:
