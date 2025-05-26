@@ -9,6 +9,7 @@ import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.stream.handleInputStreamToOutputStream
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -25,6 +26,7 @@ class CouchDbFileStorage(
     private val restClient: RestClient,
     private val objectMapper: ObjectMapper,
 ) : FileStorage {
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     /**
      * see: https://docs.couchdb.org/en/stable/api/document/attachments.html
@@ -89,6 +91,7 @@ class CouchDbFileStorage(
 
 
         if (response == null) {
+            logger.debug("Response from CouchDb is null for path: $path/$fileName")
             throw ExternalSystemException(
                 message = "Could not parse response to Resource",
                 code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
@@ -96,6 +99,12 @@ class CouchDbFileStorage(
         }
 
         if (!response.exists() || !response.isReadable) {
+            logger.debug(
+                "Response from CouchDb for {} not accessible; exists: {}, isReadable: {}",
+                "$path/$fileName",
+                response.exists(),
+                response.isReadable
+            )
             throw ExternalSystemException(
                 message = "Resource is not readable or does not exist.",
                 code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
