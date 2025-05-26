@@ -37,7 +37,7 @@ class AamAccessDeniedHandler(
                 "The request requires higher privileges than provided by the access token."
             parameters["error_uri"] = "https://tools.ietf.org/html/rfc6750#section-3.1"
         }
-        val wwwAuthenticate = computeWWWAuthenticateHeaderValue(parameters)
+        val wwwAuthenticate = SecurityHeaderUtils.computeWWWAuthenticateHeaderValue(parameters)
 
         response.addHeader(HttpHeaders.CONTENT_TYPE, "application/json")
         response.addHeader(HttpHeaders.WWW_AUTHENTICATE, wwwAuthenticate)
@@ -52,23 +52,5 @@ class AamAccessDeniedHandler(
             )
         )
     }
-
-    private fun computeWWWAuthenticateHeaderValue(parameters: Map<String, String?>): String {
-        val wwwAuthenticate = StringBuilder()
-        wwwAuthenticate.append("Bearer")
-        if (parameters.isNotEmpty()) {
-            wwwAuthenticate.append(" ")
-            var i = 0
-            for ((key, value) in parameters) {
-                wwwAuthenticate.append(key).append("=\"").append(value).append("\"")
-                if (i != parameters.size - 1) {
-                    wwwAuthenticate.append(", ")
-                }
-                i++
-            }
-        }
-        return wwwAuthenticate.toString()
-    }
-
 }
 

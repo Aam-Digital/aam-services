@@ -54,7 +54,6 @@ class SecurityConfiguration {
                 accessDeniedHandler = aamAccessDeniedHandler
                 authenticationEntryPoint =
                     AamAuthenticationEntryPoint(
-                        parentEntryPoint = BearerTokenAuthenticationEntryPoint(),
                         objectMapper = objectMapper
                     )
             }
@@ -63,7 +62,6 @@ class SecurityConfiguration {
                     jwtAuthenticationConverter = aamAuthenticationConverter
                     authenticationEntryPoint =
                         AamAuthenticationEntryPoint(
-                            parentEntryPoint = BearerTokenAuthenticationEntryPoint(),
                             objectMapper = objectMapper
                         )
                 }
