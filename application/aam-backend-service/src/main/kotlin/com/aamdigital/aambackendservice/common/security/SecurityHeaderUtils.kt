@@ -14,14 +14,9 @@ object SecurityHeaderUtils {
         wwwAuthenticate.append("Bearer")
         if (parameters.isNotEmpty()) {
             wwwAuthenticate.append(" ")
-            var i = 0
-            for ((key, value) in parameters) {
-                wwwAuthenticate.append(key).append("=\"").append(value).append("\"")
-                if (i != parameters.size - 1) {
-                    wwwAuthenticate.append(", ")
-                }
-                i++
-            }
+            wwwAuthenticate.append(
+                parameters.entries.joinToString(", ") { (key, value) -> "$key=\"$value\"" }
+            )
         }
         return wwwAuthenticate.toString()
     }
