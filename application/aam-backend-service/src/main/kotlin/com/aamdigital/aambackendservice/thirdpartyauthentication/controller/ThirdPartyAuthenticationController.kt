@@ -3,14 +3,25 @@ package com.aamdigital.aambackendservice.thirdpartyauthentication.controller
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
-import com.aamdigital.aambackendservice.thirdpartyauthentication.*
+import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
+import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCaseRequest
+import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
+import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCaseRequest
+import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
+import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCaseRequest
 import jakarta.validation.constraints.Email
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.validation.annotation.Validated
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
 import java.security.Principal
 
 data class UserSessionRequest(
@@ -73,8 +84,14 @@ class ThirdPartyAuthenticationController(
 
         return when (response) {
             is UseCaseOutcome.Success -> {
+                // add https:// if not already part of applicationConfig.baseUrl
+                val baseUrl = if (applicationConfig.baseUrl.startsWith("http://") || applicationConfig.baseUrl.startsWith("https://")) {
+                    applicationConfig.baseUrl
+                } else {
+                    "https://${applicationConfig.baseUrl}"
+                }
                 val entryPointUrl =
-                    "${applicationConfig.baseUrl}/login?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
+                    "${baseUrl}/login?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
 
                 ResponseEntity.ok(
                     UserSessionDto(
