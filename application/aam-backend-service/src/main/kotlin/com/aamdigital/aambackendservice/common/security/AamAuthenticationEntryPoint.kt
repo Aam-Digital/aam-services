@@ -36,6 +36,7 @@ class AamAuthenticationEntryPoint(
         } else {
             parameters["error"] = BearerTokenErrorCodes.INVALID_TOKEN
             parameters["error_description"] = errorMessage
+            parameters["error_uri"] = "https://tools.ietf.org/html/rfc6750#section-3.1"
         }
         
         val wwwAuthenticate = SecurityHeaderUtils.computeWWWAuthenticateHeaderValue(parameters)
