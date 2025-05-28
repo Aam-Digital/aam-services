@@ -92,10 +92,15 @@ This returns a JWT access token required to provided as Bearer Token for any req
 ## Subscribe to continuous changes of a report
 1. Create an initial webhook (if not already registered): `POST /v1/reporting/webhook`
    - pass your details how to receive the callback upon events
-2. Register for events of the selected report for your webhook: `POST /v1/reporting/webhook/{webhookId}/subscribe/report/{reportId}` 
-3. _... when data in Aam Digital changes (and once initially directly after you subscribe to a report) ..._
-4. You receive an event object sent to your webhook with the current report-calculation reference
+   - you receive the ID of that webhook back in the response (use this to add one or more subscriptions to specific reports)
+2. Register for events of the selected report for your webhook: `POST /v1/reporting/webhook/{webhookId}/subscribe/report/{reportId}`
+3. After subscribing to a new report your webhook will immediately receive one callback with the latest report-calculation so far, so that you can do an initial import of data.
+4. If you want to subscribe to more reports later, you do not have to create a new webhook, you can also `GET /v1/reporting/webhook` to check the list of existing webhooks and update one of these, if you prefer.
+
+_... when data in Aam Digital changes (and once initially directly after you subscribe to a report) ..._
+
+5. You receive an event object sent to your webhook with the current report-calculation reference
    - this does not contain the actual data, but only the reportCalculationId of the result that is ready
-5. Use the report-calculation-id in the event to fetch actual data:
+6. Use the report-calculation-id in the event to fetch actual data:
    - get metadata like timestamp of the calculation: `GET /v1/reporting/report-calculation/<calculation-id>`
    - get the actual report data: `GET /v1/reporting/report-calculation/<calculation-id>/data`
