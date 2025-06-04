@@ -32,14 +32,18 @@ class DefaultReportCalculationChangeUseCase(
             )
 
             val existingDigest = calculations
-                .filter { it.id != currentReportCalculation.id }
+                .filter {
+                    it.id != currentReportCalculation.id // don't compare with itself
+                            && it.report.id == currentReportCalculation.report.id
+                            && it.status == ReportCalculationStatus.FINISHED_SUCCESS
+                }
                 .sortedBy { it.calculationCompleted }
-                .lastOrNull()?.attachments?.get("data.json")?.digest
+                .lastOrNull()
+                ?.attachments?.get("data.json")?.digest
 
             val currentDigest = currentReportCalculation.attachments["data.json"]?.digest
 
-            if (existingDigest != currentDigest
-            ) {
+            if (existingDigest != currentDigest) {
                 notificationService.sendNotifications(
                     report = currentReportCalculation.report,
                     reportCalculation = DomainReference(currentReportCalculation.id)
