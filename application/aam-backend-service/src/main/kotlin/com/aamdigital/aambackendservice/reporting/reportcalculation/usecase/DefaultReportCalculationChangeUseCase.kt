@@ -33,8 +33,9 @@ class DefaultReportCalculationChangeUseCase(
 
             val existingDigest = calculations
                 .filter {
-                    it.report.id == currentReportCalculation.report.id
-                    && it.status == ReportCalculationStatus.FINISHED_SUCCESS
+                    it.id != currentReportCalculation.id // don't compare with itself
+                            && it.report.id == currentReportCalculation.report.id
+                            && it.status == ReportCalculationStatus.FINISHED_SUCCESS
                 }
                 .sortedBy { it.calculationCompleted }
                 .lastOrNull()
