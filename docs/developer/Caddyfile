@@ -72,8 +72,8 @@ keycloak.localhost:443 {
             header_up Host {host}
 
             # enable CORS for user management
-            # WARNING: if accessing the app with https this has to be updated
-            header_down Access-Control-Allow-Origin "http://aam.localhost"
+            # WARNING: if accessing the app with http this has to be updated
+            header_down Access-Control-Allow-Origin "https://aam.localhost"
         }
     }
 }

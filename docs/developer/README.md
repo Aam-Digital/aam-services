@@ -206,10 +206,10 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
   the docker-compose file.
 
 - Create a new realm called **dummy-realm** by importing
-  the [realm configuration file here](example-data/realm_config.dummy-realm.json).
+  the realm configuration file [realm_config.json from the ndb-setup](https://github.com/Aam-Digital/ndb-setup/tree/master/keycloak).
 - Under **Keycloak Realm > Clients
   ** ([https://keycloak.localhost/admin/master/console/#/dummy-realm/clients](https://keycloak.localhost/admin/master/console/#/dummy-realm/clients)),
-  import the client configuration using [client_app_configuration here](example-data/client_app.json).
+  import the client configuration using [client_config.json from the ndb-setup](https://github.com/Aam-Digital/ndb-setup/tree/master/keycloak).
 - In the new realm, create a user and assign relevant roles.
   (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.  
   If the roles are not visible in "Assign roles" dialog, you may need to change the "Filter by realm roles".)
