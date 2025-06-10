@@ -160,7 +160,7 @@ features:
   skill-api:
     mode: disabled
   notification-api:
-    enabled: false
+    enabled: true
     mode: firebase
   third-party-authentication:
     enabled: true
@@ -177,10 +177,10 @@ crypto-configuration:
 events:
   listener:
     report-calculation:
-      enabled: false
+      enabled: true
 
 database-change-detection:
-  enabled: false
+  enabled: true
 
 sentry:
   logging:
