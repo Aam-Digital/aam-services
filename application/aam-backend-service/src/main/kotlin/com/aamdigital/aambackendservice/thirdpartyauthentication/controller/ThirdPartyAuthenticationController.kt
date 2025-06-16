@@ -93,6 +93,7 @@ class ThirdPartyAuthenticationController(
                 val entryPointUrl =
                     "${baseUrl}/login?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
 
+                logger.trace("[POST /session]: Created session for ${userSessionRequest.email}")
                 ResponseEntity.ok(
                     UserSessionDto(
                         sessionId = response.data.sessionId,
@@ -129,6 +130,7 @@ class ThirdPartyAuthenticationController(
         )
         return when (response) {
             is UseCaseOutcome.Success -> {
+                logger.trace("[GET /session/{sessionId}]: Validated session ${sessionId} for ${response.data.userId}")
                 ResponseEntity.ok(
                     UserSessionDataDto(
                         userId = response.data.userId,
@@ -137,6 +139,7 @@ class ThirdPartyAuthenticationController(
             }
 
             is UseCaseOutcome.Failure -> {
+                logger.warn("[GET /session/{sessionId}]: Failed to validate session ${sessionId}: ${response.errorMessage}")
                 ResponseEntity.badRequest().body(
                     HttpErrorDto(
                         errorMessage = response.errorMessage,
@@ -169,6 +172,7 @@ class ThirdPartyAuthenticationController(
             }
 
             is UseCaseOutcome.Failure -> {
+                logger.warn("[GET /session/{sessionId}/redirect]: Failed to return redirect for session ${sessionId}: ${response.errorMessage}")
                 ResponseEntity.badRequest().body(
                     HttpErrorDto(
                         errorMessage = response.errorMessage,
