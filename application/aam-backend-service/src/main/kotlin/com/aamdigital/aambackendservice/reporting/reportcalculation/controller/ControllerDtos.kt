@@ -14,6 +14,7 @@ data class ReportCalculationDto(
     var endDate: String? = null,
     var args: Map<String, String>,
     var data: ReportCalculationData?,
+    var errorDetails: String? = null,
 )
 
 data class ReportCalculationData(
