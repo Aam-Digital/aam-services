@@ -8,6 +8,7 @@ import com.aamdigital.aambackendservice.common.stream.handleInputStreamToOutputS
 import com.aamdigital.aambackendservice.export.controller.TemplateExportControllerResponse
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationResult
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
@@ -274,15 +275,34 @@ class ReportCalculationController(
             }
         }
 
-    private fun toDto(it: ReportCalculation): ReportCalculationDto = ReportCalculationDto(
-        id = it.id,
-        report = it.report,
-        status = it.status,
-        startDate = it.calculationStarted,
-        endDate = it.calculationCompleted,
-        args = it.args,
-        data = toReportCalculationData(it),
-    )
+    private fun toDto(it: ReportCalculation): ReportCalculationDto {
+        val result = ReportCalculationDto(
+            id = it.id,
+            report = it.report,
+            status = it.status,
+            startDate = it.calculationStarted,
+            endDate = it.calculationCompleted,
+            args = it.args,
+            data = toReportCalculationData(it),
+        )
+
+        if (it.status == ReportCalculationStatus.FINISHED_ERROR) {
+            result.errorDetails = toErrorDetails(it.errorDetails)
+        }
+
+        return result
+    }
+
+    private fun toErrorDetails(it: String?): String {
+        // e.g. "400 Bad Request: \"{\"statusCode\":400,\"error\":\"Bad Request\",\"message\":\"no such column: i.xxx\"}\""
+        // should be returned as "no such column: i.xxx"
+
+        if (it.isNullOrBlank()) {
+            return "Unknown error"
+        }
+
+        return Regex("""message":"(.*?)"""").find(it)?.groupValues?.getOrNull(1) ?: "Unknown error"
+    }
 
     private fun toReportCalculationData(it: ReportCalculation): ReportCalculationData? {
         val attachment = it.attachments["data.json"] ?: return null
