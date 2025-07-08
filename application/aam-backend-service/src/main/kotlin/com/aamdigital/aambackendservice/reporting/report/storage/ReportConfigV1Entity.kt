@@ -23,6 +23,6 @@ data class ReportConfigV1Entity(
 )
 
 data class EditAtBy(
-    val at: String,
-    val by: String,
+    val at: String?,
+    val by: String?,
 )

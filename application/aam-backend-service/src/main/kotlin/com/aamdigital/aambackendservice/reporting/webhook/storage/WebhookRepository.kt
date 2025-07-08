@@ -1,11 +1,11 @@
 package com.aamdigital.aambackendservice.reporting.webhook.storage
 
-import com.aamdigital.aambackendservice.common.error.AamErrorCode
-import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getQueryParamsAllDocs
 import com.aamdigital.aambackendservice.common.couchdb.dto.DocSuccess
 import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.springframework.stereotype.Service
@@ -34,20 +34,19 @@ class WebhookRepository(
                 kClass = ObjectNode::class
             )
 
-        val data =
-            (objectMapper.convertValue(objectNode, Map::class.java)["rows"] as Iterable<*>)
-                .map { entry ->
-                    if (entry is LinkedHashMap<*, *>) {
-                        objectMapper.convertValue(entry["doc"], WebhookEntity::class.java)
-                    } else {
-                        throw InternalServerException(
-                            message = "Invalid response",
-                            code = WebhookRepositoryErrorCode.INVALID_RESPONSE
-                        )
-                    }
+        val data = objectMapper.convertValue(objectNode, Map::class.java)
+        val rows = (data["rows"] as Iterable<*>)
+            .map { entry ->
+                if (entry is LinkedHashMap<*, *>) {
+                    objectMapper.convertValue(entry["doc"], WebhookEntity::class.java)
+                } else {
+                    throw InternalServerException(
+                        message = "Invalid response",
+                        code = WebhookRepositoryErrorCode.INVALID_RESPONSE
+                    )
                 }
-
-        return data
+            }
+        return rows
     }
 
     fun fetchWebhook(webhookRef: DomainReference): WebhookEntity {
