@@ -3,10 +3,16 @@ package com.aamdigital.aambackendservice.reporting.webhook.storage
 import com.aamdigital.aambackendservice.common.crypto.core.CryptoService
 import com.aamdigital.aambackendservice.common.crypto.core.EncryptedData
 import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.reporting.webhook.Webhook
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthentication
 import org.slf4j.LoggerFactory
 import java.util.*
+
+enum class WebhookError : AamErrorCode {
+    INVALID_WEBHOOK_CONFIG,
+}
 
 class DefaultWebhookStorage(
     private val webhookRepository: WebhookRepository,
@@ -36,16 +42,18 @@ class DefaultWebhookStorage(
 
     override fun fetchAllWebhooks(): List<Webhook> {
         val webhooks = webhookRepository.fetchAllWebhooks();
-        val mappedWebhooks = webhooks
-            .map { mapFromEntity(it) }
-            .filterNotNull()
-        return mappedWebhooks
+        return webhooks
+            .mapNotNull { mapFromEntity(it) }
     }
 
     override fun fetchWebhook(webhookRef: DomainReference): Webhook {
         val webhook = mapFromEntity(webhookRepository.fetchWebhook(webhookRef = webhookRef));
         if (webhook == null) {
-            throw Error("Error mapping Webhook entity ${webhookRef.id}")
+            throw InternalServerException(
+                "Error mapping Webhook entity ${webhookRef.id}",
+                null,
+                WebhookError.INVALID_WEBHOOK_CONFIG
+            )
         }
         return webhook
     }
