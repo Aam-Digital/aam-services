@@ -3,14 +3,23 @@ package com.aamdigital.aambackendservice.reporting.webhook.storage
 import com.aamdigital.aambackendservice.common.crypto.core.CryptoService
 import com.aamdigital.aambackendservice.common.crypto.core.EncryptedData
 import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.reporting.webhook.Webhook
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthentication
+import org.slf4j.LoggerFactory
 import java.util.*
+
+enum class WebhookError : AamErrorCode {
+    INVALID_WEBHOOK_CONFIG,
+}
 
 class DefaultWebhookStorage(
     private val webhookRepository: WebhookRepository,
     private val cryptoService: CryptoService,
 ) : WebhookStorage {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     override fun addSubscription(webhookRef: DomainReference, entityRef: DomainReference) {
         val webhook = webhookRepository.fetchWebhook(
             webhookRef = webhookRef
@@ -32,13 +41,21 @@ class DefaultWebhookStorage(
     }
 
     override fun fetchAllWebhooks(): List<Webhook> {
-        return webhookRepository.fetchAllWebhooks().map {
-            mapFromEntity(it)
-        }
+        val webhooks = webhookRepository.fetchAllWebhooks();
+        return webhooks
+            .mapNotNull { mapFromEntity(it) }
     }
 
     override fun fetchWebhook(webhookRef: DomainReference): Webhook {
-        return mapFromEntity(webhookRepository.fetchWebhook(webhookRef = webhookRef))
+        val webhook = mapFromEntity(webhookRepository.fetchWebhook(webhookRef = webhookRef));
+        if (webhook == null) {
+            throw InternalServerException(
+                "Error mapping Webhook entity ${webhookRef.id}",
+                null,
+                WebhookError.INVALID_WEBHOOK_CONFIG
+            )
+        }
+        return webhook
     }
 
     override fun createWebhook(request: CreateWebhookRequest): DomainReference {
@@ -68,12 +85,9 @@ class DefaultWebhookStorage(
         return DomainReference(newId)
     }
 
-    private fun mapFromEntity(entity: WebhookEntity): Webhook =
-        Webhook(
-            id = entity.id,
-            label = entity.label,
-            target = entity.target,
-            authentication = WebhookAuthentication(
+    private fun mapFromEntity(entity: WebhookEntity): Webhook? {
+        try {
+            val authentication = WebhookAuthentication(
                 type = entity.authentication.type,
                 secret = cryptoService.decrypt(
                     EncryptedData(
@@ -81,8 +95,19 @@ class DefaultWebhookStorage(
                         data = entity.authentication.data
                     )
                 ),
-            ),
-            owner = entity.owner,
-            reportSubscriptions = entity.reportSubscriptions.map { DomainReference(it) }.toMutableList()
-        )
+            )
+            val reportSubscriptions = entity.reportSubscriptions.map { DomainReference(it) }.toMutableList()
+            return Webhook(
+                id = entity.id,
+                label = entity.label,
+                target = entity.target,
+                authentication,
+                owner = entity.owner,
+                reportSubscriptions
+            )
+        } catch (ex: Exception) {
+            logger.error("Could not map webhook entity ${entity.id} to Webhook object: ${ex.message}", ex)
+            return null
+        }
+    }
 }
