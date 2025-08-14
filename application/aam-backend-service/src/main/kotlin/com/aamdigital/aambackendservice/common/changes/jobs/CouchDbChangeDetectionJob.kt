@@ -26,6 +26,8 @@ class CouchDbChangeDetectionJob(
 
         try {
             databaseChangeDetection.checkForChanges()
+            // Reset error counter on successful execution
+            ERROR_COUNTER = 0
         } catch (ex: Exception) {
             logger.error(
                 "[CouchDbChangeDetectionJob] An error occurred (count: $ERROR_COUNTER): {}",
