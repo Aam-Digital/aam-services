@@ -16,6 +16,10 @@ on:
 env:
   REGISTRY_IMAGE: ghcr.io/aam-digital/aam-backend-service
 
+permissions:
+  contents: read
+  id-token: write # for QLTY code coverage (https://docs.qlty.sh/migration/coverage)
+
 jobs:
   test:
     runs-on: ubuntu-latest
