@@ -16,18 +16,19 @@ A modularize Spring Boot application that contains API modules for [Aam Digital'
 
 _Modules have to be enabled via a feature flag in the environment config and may need additional environment variables as described in their module docs._
 
-### Querying availabilty of a feature module
+### Checking availability of a feature module
 You can make a request to the API to check if a certain feature is currently enabled and available:
-
 ```
 > GET /actuator/features
 
 // response:
 {
-  "notification": { "enabled": true }
+  "notification": { "enabled": true },
+  "export": { "enabled": true },
+  "skill": { "enabled": true },
+  "third-party-authentication": { "enabled": true }
 }
 ```
-
 The response lists feature modules with their status ("enabled").
 If the _aam-services backend_ is not deployed at all, such a request will usually return a HTTP 504 error.
 You should also account for that possibility.
