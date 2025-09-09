@@ -11,18 +11,20 @@ data class FeaturesInfoDto(
 /**
  * Central Health Endpoint for all features.
  *
- * Extend this in feature modules to register their status (see example in NotificationFeatureInfoEndpoint)
+ * Feature modules should implement FeatureRegistrar interface to provide their status
  *
  * see https://www.baeldung.com/spring-boot-actuators#custom-endpoint
  */
 @Component
 @Endpoint(id = "features")
-class FeaturesEndpoint {
-
-    val features = mutableMapOf<String, FeaturesInfoDto>()
+class FeaturesEndpoint(
+    private val featureRegistrars: List<FeatureRegistrar> = emptyList()
+) {
 
     @ReadOperation
-    fun getFeatureStatus(): MutableMap<String, FeaturesInfoDto> {
-        return features
+    fun getFeatureStatus(): Map<String, FeaturesInfoDto> {
+        return featureRegistrars.associate { registrar ->
+            registrar.getFeatureInfo()
+        }
     }
 }
