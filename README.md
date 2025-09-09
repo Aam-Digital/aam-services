@@ -14,10 +14,13 @@ A modularize Spring Boot application that contains API modules for [Aam Digital'
 - **[Notification](./docs/modules/notification.md)**: Push Notification system, triggering events based on custom rules for each user.
 - **[Third-Party-Authentication](./docs/modules/third-party-authentication.md)**: "Single-Sign-On" integration with other platforms.
 
-_Modules have to be enabled via a feature flag in the environment config and may need additional environment variables as described in their module docs._
+_Modules have to be enabled via a feature flag in the environment config and
+may need additional environment variables as described in their module docs._
 
 ### Checking availability of a feature module
+
 You can make a request to the API to check if a certain feature is currently enabled and available:
+
 ```
 > GET /actuator/features
 
@@ -29,12 +32,15 @@ You can make a request to the API to check if a certain feature is currently ena
   "third-party-authentication": { "enabled": true }
 }
 ```
+
 The response lists feature modules with their status ("enabled").
 If the _aam-services backend_ is not deployed at all, such a request will usually return a HTTP 504 error.
 You should also account for that possibility.
 
 -----
+
 # Setup & Configuration
+
 This API is part of the larger Aam Digital platform and usually deployed together with additional services via docker.
 See the [ndb-setup repository](https://github.com/Aam-Digital/ndb-setup) for tools and guidance how to run this in a production environment.
 
@@ -48,33 +54,42 @@ These allow you to run required additional services like databases and queues on
 
 
 -----
+
 # Development
+
 The developer README provides detailed instructions how to set up a local testing environment: [docs/developer/README.md](docs/developer/README.md)
 
 This backend is developed as independent modules that share some common services (e.g. for database access).
 
 ## Frameworks & Tools
+
 - Spring + Kotlin
 - Spring Boot ([see intro](https://docs.spring.io/spring-boot/reference/using/index.html))
 - Gradle ([see intro](https://docs.gradle.org/current/userguide/getting_started_eng.html))
 - RabbitMQ (AMQP) for message queues ([see Tutorial](https://www.rabbitmq.com/tutorials/tutorial-three-spring-amqp#))
 
 ## Folder structure
+
 Each feature module is separated into its own package.
 Additionally, there is a `common` package that contains shared code.
 This includes services to work with the CouchDB, get a feed of DB changes and other common functionality.
 The "common" package also holds base functionality for authentication and security.
 
 ## Configuration through environment variables
-Using Spring Boot's  system
+
+Using Spring Boot's system
 our configurable values are represented in the [application.yaml](application/aam-backend-service/src/main/resources/application.yaml).
 
 We define environment variables to set / overwrite the configuration to real values for production or testing.
 Variables in the yaml hierarchy can be set in env variables using "snake case" variable names
-(refer to the documentation of Spring Boot's [Externalized Configuration](https://docs.spring.io/spring-boot/reference/features/external-config.html) docs).
+(refer to the documentation of Spring
+Boot's [Externalized Configuration](https://docs.spring.io/spring-boot/reference/features/external-config.html) docs).
 
 ### Feature Flags
-Modules (usually) have to be explicitly enabled through a feature flag configuration. For example, `FEATURES_EXPORTAPI_ENABLED=true` in .env can toggle the feature flag
+
+Modules (usually) have to be explicitly enabled through a feature flag configuration. For example,
+`FEATURES_EXPORTAPI_ENABLED=true` in .env can toggle the feature flag
+
 ```
 @ConditionalOnProperty(
     prefix = "features.export-api",
@@ -85,5 +100,6 @@ Modules (usually) have to be explicitly enabled through a feature flag configura
 ```
 
 ## Message Queues
+
 Most modules use RabbitMQ to decouple processing and allow for asynchronous processing of tasks.
 Refer to the official documentation (the tutorials are quite good) if you are not familiar with the concept or the framework specifically.

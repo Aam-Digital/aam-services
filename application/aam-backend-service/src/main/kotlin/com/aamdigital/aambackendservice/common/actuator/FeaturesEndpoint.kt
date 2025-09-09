@@ -22,9 +22,9 @@ class FeaturesEndpoint(
 ) {
 
     @ReadOperation
-    fun getFeatureStatus(): Map<String, FeaturesInfoDto> {
-        return featureRegistrars.associate { registrar ->
+    fun getFeatureStatus(): Map<String, FeaturesInfoDto> =
+        featureRegistrars.associate { registrar ->
             registrar.getFeatureInfo()
         }
-    }
+
 }
