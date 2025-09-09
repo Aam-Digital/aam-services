@@ -26,5 +26,4 @@ class FeaturesEndpoint(
         featureRegistrars.associate { registrar ->
             registrar.getFeatureInfo()
         }
-
 }
