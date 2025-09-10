@@ -20,6 +20,22 @@ REST controller responsible for handling export operations related to templates.
 
 [export-api-v1.yaml](../api-specs/export-api-v1.yaml)
 
+### Check if feature is enabled
+
+You can make a request to the API to check if a certain feature is currently enabled and available:
+
+```
+> GET /actuator/features
+
+// response:
+{
+  "export": { "enabled": true }
+}
+```
+
+If the _aam-services backend_ is not deployed at all, such a request will usually return a HTTP 504 error.
+You should also account for that possibility.
+
 ## Setup
 This module has to be enabled through a feature flag in the environment:
 in .env file: `FEATURES_EXPORTAPI_ENABLED=true`
