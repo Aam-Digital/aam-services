@@ -27,6 +27,22 @@ The Keycloak server requires a special Authenticator: [see keycloak-third-party-
 ### API Specification
 _see [api-specs/third-party-authentication-api](../api-specs/third-party-authentication-api-v1.yaml)_
 
+### Check if feature is enabled
+
+You can make a request to the API to check if a certain feature is currently enabled and available:
+
+```
+> GET /actuator/features
+
+// response:
+{
+  "third-party-authentication": { "enabled": true }
+}
+```
+
+If the _aam-services backend_ is not deployed at all, such a request will usually return a HTTP 504 error.
+You should also account for that possibility.
+
 
 -----
 ## Setup

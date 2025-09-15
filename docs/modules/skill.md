@@ -71,6 +71,22 @@ This should usually be the `app` client
 
 _see [api-specs/skill-api](../api-specs/skill-api-v1.yaml)_
 
+### Check if feature is enabled
+
+You can make a request to the API to check if a certain feature is currently enabled and available:
+
+```
+> GET /actuator/features
+
+// response:
+{
+  "skill": { "enabled": true }
+}
+```
+
+If the _aam-services backend_ is not deployed at all, such a request will usually return a HTTP 504 error.
+You should also account for that possibility.
+
 ### Configuration in Frontend
 Define an Entity attribute of dataType "external-profile" to integrate the API in the application for users.
 Refer to [external-profile.datatype](https://github.com/Aam-Digital/ndb-core/blob/master/src/app/features/skill/external-profile.datatype.ts) for required config details.
