@@ -102,7 +102,7 @@ class SecurityConfiguration(
             }
 
             authenticationManagers.computeIfAbsent(normalizedIssuer) {
-                val decoder: JwtDecoder = JwtDecoders.fromIssuerLocation(issuer)
+                val decoder: JwtDecoder = JwtDecoders.fromIssuerLocation(normalizedIssuer)
                 val provider = JwtAuthenticationProvider(decoder)
                 provider.setJwtAuthenticationConverter(aamAuthenticationConverter)
                 ProviderManager(provider)

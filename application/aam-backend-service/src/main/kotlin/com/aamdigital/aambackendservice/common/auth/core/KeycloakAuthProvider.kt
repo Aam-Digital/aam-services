@@ -43,7 +43,7 @@ class KeycloakAuthProvider(
                     "grant_type" to listOf(authClientConfig.grantType)
                 ).also {
                     if (authClientConfig.scope.isNotBlank()) {
-                        "scope" to listOf(authClientConfig.scope)
+                        it["scope"] = listOf(authClientConfig.scope)
                     }
                 }
             )

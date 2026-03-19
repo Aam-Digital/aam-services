@@ -33,16 +33,16 @@ class DefaultCreateReportCalculationUseCase(
         return try {
             val reportCalculations = reportCalculationStorage.fetchReportCalculations(request.report)
 
-            val i =
-                reportCalculations.filter { reportCalculation ->
+            val existingPendingCalculation =
+                reportCalculations.firstOrNull { reportCalculation ->
                     reportCalculation.status == ReportCalculationStatus.PENDING &&
                         reportCalculation.args == calculation.args
                 }
 
-            if (i.isNotEmpty()) {
+            if (existingPendingCalculation != null) {
                 CreateReportCalculationResult.Success(
                     DomainReference(
-                        id = i.first().id
+                        id = existingPendingCalculation.id
                     )
                 )
             } else {
