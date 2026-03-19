@@ -20,7 +20,7 @@ class AamKeycloakConfig(
     val serverUrl: String,
     val realm: String,
     val clientId: String,
-    val clientSecret: String,
+    val clientSecret: String
 )
 
 @ConditionalOnProperty(
@@ -31,24 +31,24 @@ class AamKeycloakConfig(
 )
 @Configuration
 class KeycloakConfiguration {
-
     @Bean
-    fun keycloak(
-        aamKeycloakConfig: AamKeycloakConfig,
-    ): Keycloak = KeycloakBuilder.builder()
-        .serverUrl(aamKeycloakConfig.serverUrl)
-        .realm(aamKeycloakConfig.realm)
-        .grantType(org.keycloak.OAuth2Constants.CLIENT_CREDENTIALS)
-        .clientId(aamKeycloakConfig.clientId)
-        .clientSecret(aamKeycloakConfig.clientSecret)
-        .build()
+    fun keycloak(aamKeycloakConfig: AamKeycloakConfig): Keycloak =
+        KeycloakBuilder
+            .builder()
+            .serverUrl(aamKeycloakConfig.serverUrl)
+            .realm(aamKeycloakConfig.realm)
+            .grantType(org.keycloak.OAuth2Constants.CLIENT_CREDENTIALS)
+            .clientId(aamKeycloakConfig.clientId)
+            .clientSecret(aamKeycloakConfig.clientSecret)
+            .build()
 
     @Bean
     fun aamKeycloakAuthenticatorProvider(
         keycloak: Keycloak,
-        aamKeycloakConfig: AamKeycloakConfig,
-    ): AuthenticationProvider = AamKeycloakAuthenticationProvider(
-        keycloak = keycloak,
-        keycloakConfig = aamKeycloakConfig,
-    )
+        aamKeycloakConfig: AamKeycloakConfig
+    ): AuthenticationProvider =
+        AamKeycloakAuthenticationProvider(
+            keycloak = keycloak,
+            keycloakConfig = aamKeycloakConfig
+        )
 }

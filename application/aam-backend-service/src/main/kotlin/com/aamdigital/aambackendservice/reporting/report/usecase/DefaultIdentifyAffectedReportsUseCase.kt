@@ -9,16 +9,14 @@ import org.slf4j.LoggerFactory
 
 class DefaultIdentifyAffectedReportsUseCase(
     private val reportStorage: ReportStorage,
-    private val reportQueryAnalyser: ReportQueryAnalyser,
+    private val reportQueryAnalyser: ReportQueryAnalyser
 ) : IdentifyAffectedReportsUseCase {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun analyse(documentChangeEvent: DocumentChangeEvent): List<DomainReference> {
         logger.trace("analyzing document change for auto report calculation {}", documentChangeEvent.documentId)
 
         val changedEntity = documentChangeEvent.documentId.split(":").first()
-
 
         // special handling if ReportConfig changed
         if (changedEntity == "ReportConfig") {
@@ -27,14 +25,15 @@ class DefaultIdentifyAffectedReportsUseCase(
                 return emptyList()
             }
 
-            val reportRef = try {
-                documentChangeEvent.currentVersion["_id"] as String
-            } catch (ex: Exception) {
-                logger.warn(ex.message, ex)
-                return emptyList()
-            }
+            val reportRef =
+                try {
+                    documentChangeEvent.currentVersion["_id"] as String
+                } catch (ex: Exception) {
+                    logger.warn(ex.message, ex)
+                    return emptyList()
+                }
 
-            return mutableListOf( DomainReference(reportRef))
+            return mutableListOf(DomainReference(reportRef))
         }
 
         val reports = reportStorage.fetchAllReports("sql")
@@ -42,9 +41,10 @@ class DefaultIdentifyAffectedReportsUseCase(
         reports.forEach { report ->
             // todo better change detection (fields)
             val affectedEntities = reportQueryAnalyser.getAffectedEntities(report)
-            val affected = affectedEntities.any {
-                it == changedEntity
-            }
+            val affected =
+                affectedEntities.any {
+                    it == changedEntity
+                }
             if (affected) {
                 affectedReports.add(DomainReference(report.id))
             }

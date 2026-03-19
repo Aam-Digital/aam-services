@@ -38,15 +38,15 @@ data class UserSessionDto(
     val sessionId: String,
     val sessionToken: String,
     val entryPointUrl: String,
-    val validUntil: String,
+    val validUntil: String
 )
 
 data class UserSessionDataDto(
-    val userId: String,
+    val userId: String
 )
 
 data class UserSessionRedirectDto(
-    val redirectUrl: String,
+    val redirectUrl: String
 )
 
 @ConditionalOnProperty(
@@ -62,7 +62,7 @@ class ThirdPartyAuthenticationController(
     private val createSessionUseCase: CreateSessionUseCase,
     private val verifySessionUseCase: VerifySessionUseCase,
     private val sessionRedirectUseCase: SessionRedirectUseCase,
-    private val applicationConfig: ApplicationConfig,
+    private val applicationConfig: ApplicationConfig
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -71,27 +71,31 @@ class ThirdPartyAuthenticationController(
     fun startSession(
         @RequestBody userSessionRequest: UserSessionRequest
     ): ResponseEntity<Any> {
-        val response = createSessionUseCase.run(
-            CreateSessionUseCaseRequest(
-                userId = userSessionRequest.userId,
-                firstName = userSessionRequest.firstName,
-                lastName = userSessionRequest.lastName,
-                redirectUrl = userSessionRequest.redirectUrl,
-                email = userSessionRequest.email,
-                additionalData = userSessionRequest.additionalData
+        val response =
+            createSessionUseCase.run(
+                CreateSessionUseCaseRequest(
+                    userId = userSessionRequest.userId,
+                    firstName = userSessionRequest.firstName,
+                    lastName = userSessionRequest.lastName,
+                    redirectUrl = userSessionRequest.redirectUrl,
+                    email = userSessionRequest.email,
+                    additionalData = userSessionRequest.additionalData
+                )
             )
-        )
 
         return when (response) {
             is UseCaseOutcome.Success -> {
                 // add https:// if not already part of applicationConfig.baseUrl
-                val baseUrl = if (applicationConfig.baseUrl.startsWith("http://") || applicationConfig.baseUrl.startsWith("https://")) {
-                    applicationConfig.baseUrl
-                } else {
-                    "https://${applicationConfig.baseUrl}"
-                }
+                val baseUrl =
+                    if (applicationConfig.baseUrl.startsWith("http://") ||
+                        applicationConfig.baseUrl.startsWith("https://")
+                    ) {
+                        applicationConfig.baseUrl
+                    } else {
+                        "https://${applicationConfig.baseUrl}"
+                    }
                 val entryPointUrl =
-                    "${baseUrl}/login?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
+                    "$baseUrl/login?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
 
                 logger.trace("[POST /session]: Created session for ${userSessionRequest.email}")
                 ResponseEntity.ok(
@@ -120,26 +124,29 @@ class ThirdPartyAuthenticationController(
     @PreAuthorize("permitAll()")
     fun getSession(
         @PathVariable sessionId: String,
-        @RequestParam("session_token", required = true) sessionToken: String,
+        @RequestParam("session_token", required = true) sessionToken: String
     ): ResponseEntity<Any> {
-        val response = verifySessionUseCase.run(
-            VerifySessionUseCaseRequest(
-                sessionId = sessionId,
-                sessionToken = sessionToken,
+        val response =
+            verifySessionUseCase.run(
+                VerifySessionUseCaseRequest(
+                    sessionId = sessionId,
+                    sessionToken = sessionToken
+                )
             )
-        )
         return when (response) {
             is UseCaseOutcome.Success -> {
-                logger.trace("[GET /session/{sessionId}]: Validated session ${sessionId} for ${response.data.userId}")
+                logger.trace("[GET /session/{sessionId}]: Validated session $sessionId for ${response.data.userId}")
                 ResponseEntity.ok(
                     UserSessionDataDto(
-                        userId = response.data.userId,
+                        userId = response.data.userId
                     )
                 )
             }
 
             is UseCaseOutcome.Failure -> {
-                logger.warn("[GET /session/{sessionId}]: Failed to validate session ${sessionId}: ${response.errorMessage}")
+                logger.warn(
+                    "[GET /session/{sessionId}]: Failed to validate session $sessionId: ${response.errorMessage}"
+                )
                 ResponseEntity.badRequest().body(
                     HttpErrorDto(
                         errorMessage = response.errorMessage,
@@ -153,26 +160,29 @@ class ThirdPartyAuthenticationController(
     @GetMapping("/session/{sessionId}/redirect")
     fun getSessionRedirect(
         @PathVariable sessionId: String,
-        principal: Principal,
+        principal: Principal
     ): ResponseEntity<Any> {
-        val response = sessionRedirectUseCase.run(
-            SessionRedirectUseCaseRequest(
-                sessionId = sessionId,
-                userId = principal.name
+        val response =
+            sessionRedirectUseCase.run(
+                SessionRedirectUseCaseRequest(
+                    sessionId = sessionId,
+                    userId = principal.name
+                )
             )
-        )
 
         return when (response) {
             is UseCaseOutcome.Success -> {
                 ResponseEntity.ok(
                     UserSessionRedirectDto(
-                        redirectUrl = response.data.redirectUrl,
+                        redirectUrl = response.data.redirectUrl
                     )
                 )
             }
 
             is UseCaseOutcome.Failure -> {
-                logger.warn("[GET /session/{sessionId}/redirect]: Failed to return redirect for session ${sessionId}: ${response.errorMessage}")
+                logger.warn(
+                    "[GET /session/{sessionId}/redirect]: Failed to return redirect for session $sessionId: ${response.errorMessage}"
+                )
                 ResponseEntity.badRequest().body(
                     HttpErrorDto(
                         errorMessage = response.errorMessage,
@@ -182,5 +192,4 @@ class ThirdPartyAuthenticationController(
             }
         }
     }
-
 }

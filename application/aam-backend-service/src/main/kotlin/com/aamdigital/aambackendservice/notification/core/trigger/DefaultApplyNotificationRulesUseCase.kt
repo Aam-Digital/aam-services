@@ -16,27 +16,31 @@ import org.apache.commons.lang3.StringUtils
 
 class DefaultApplyNotificationRulesUseCase(
     val notificationConfigRepository: NotificationConfigRepository,
-    val userNotificationPublisher: UserNotificationPublisher,
+    val userNotificationPublisher: UserNotificationPublisher
 ) : ApplyNotificationRulesUseCase() {
-
     override fun apply(request: ApplyNotificationRulesRequest): UseCaseOutcome<ApplyNotificationRulesData> {
-        val changedEntity = request.documentChangeEvent.documentId.split(":").first()
+        val changedEntity =
+            request.documentChangeEvent.documentId
+                .split(":")
+                .first()
         val changeType = extractChangeType(request.documentChangeEvent)
 
         val notificationConfigurations = notificationConfigRepository.findAll() // todo database access optimization
 
-        val triggeredEvents = prefilterRules(notificationConfigurations, changedEntity, changeType)
-            .filter { (notificationConfig, rule) ->
-                logger.trace("{} -> {}", notificationConfig.userIdentifier, rule)
-                rule.conditions.all { condition -> checkConditionForDocument(condition, request.documentChangeEvent) }
-            }
-            .map { (notificationConfig, rule) ->
-                publishNotificationEventForUser(
-                    notificationConfig,
-                    rule,
-                    request.documentChangeEvent
-                )
-            }
+        val triggeredEvents =
+            prefilterRules(notificationConfigurations, changedEntity, changeType)
+                .filter { (notificationConfig, rule) ->
+                    logger.trace("{} -> {}", notificationConfig.userIdentifier, rule)
+                    rule.conditions.all { condition ->
+                        checkConditionForDocument(condition, request.documentChangeEvent)
+                    }
+                }.map { (notificationConfig, rule) ->
+                    publishNotificationEventForUser(
+                        notificationConfig,
+                        rule,
+                        request.documentChangeEvent
+                    )
+                }
 
         return UseCaseOutcome.Success(
             ApplyNotificationRulesData(
@@ -65,15 +69,13 @@ class DefaultApplyNotificationRulesUseCase(
     private fun prefilterRules(
         notificationConfigurations: MutableIterable<NotificationConfigEntity>,
         changedEntity: String,
-        changeType: String,
-    ): List<Pair<NotificationConfigEntity, NotificationRuleEntity>> {
-
-        return notificationConfigurations.flatMap { notificationConfig ->
+        changeType: String
+    ): List<Pair<NotificationConfigEntity, NotificationRuleEntity>> =
+        notificationConfigurations.flatMap { notificationConfig ->
             notificationConfig.notificationRules
                 .filter { it.enabled && it.entityType == changedEntity && it.changeType == changeType }
                 .map { rule -> Pair(notificationConfig, rule) }
         }
-    }
 
     private fun checkConditionForDocument(
         condition: NotificationConditionEntity,
@@ -87,52 +89,56 @@ class DefaultApplyNotificationRulesUseCase(
     private fun publishNotificationEventForUser(
         notificationConfig: NotificationConfigEntity,
         rule: NotificationRuleEntity,
-        documentChangeEvent: DocumentChangeEvent,
+        documentChangeEvent: DocumentChangeEvent
     ): NotificationDetails {
-
-        val notificationDetails = NotificationDetails(
-            title = rule.label,
-            // body = "name and details of the entity ...", // we load this only in the frontend currently. Add here later if needed for other channels like email
-            // TODO: add actionUrl for better linking
-            context = EntityNotificationContext(
-                entityType = rule.entityType,
-                entityId = documentChangeEvent.documentId
-            ),
-            notificationType = rule.notificationType,
-        )
+        val notificationDetails =
+            NotificationDetails(
+                title = rule.label,
+                // body = "name and details of the entity ...", // we load this only in the frontend currently. Add here later if needed for other channels like email
+                // TODO: add actionUrl for better linking
+                context =
+                    EntityNotificationContext(
+                        entityType = rule.entityType,
+                        entityId = documentChangeEvent.documentId
+                    ),
+                notificationType = rule.notificationType
+            )
 
         userNotificationPublisher.publish(
             channel = USER_NOTIFICATION_QUEUE,
-            event = CreateUserNotificationEvent(
-                userIdentifier = notificationConfig.userIdentifier,
-                notificationChannelType = NotificationChannelType.APP,
-                notificationRule = rule.externalIdentifier,
-                details = notificationDetails,
-            )
+            event =
+                CreateUserNotificationEvent(
+                    userIdentifier = notificationConfig.userIdentifier,
+                    notificationChannelType = NotificationChannelType.APP,
+                    notificationRule = rule.externalIdentifier,
+                    details = notificationDetails
+                )
         )
 
 //        todo refactor channelPush settings here
 //        if (notificationConfig.channelPush) {
         userNotificationPublisher.publish(
             channel = USER_NOTIFICATION_QUEUE,
-            event = CreateUserNotificationEvent(
-                userIdentifier = notificationConfig.userIdentifier,
-                notificationChannelType = NotificationChannelType.PUSH,
-                notificationRule = rule.externalIdentifier,
-                details = notificationDetails,
-            )
+            event =
+                CreateUserNotificationEvent(
+                    userIdentifier = notificationConfig.userIdentifier,
+                    notificationChannelType = NotificationChannelType.PUSH,
+                    notificationRule = rule.externalIdentifier,
+                    details = notificationDetails
+                )
         )
 //        }
 
         if (notificationConfig.channelEmail) {
             userNotificationPublisher.publish(
                 channel = USER_NOTIFICATION_QUEUE,
-                event = CreateUserNotificationEvent(
-                    userIdentifier = notificationConfig.userIdentifier,
-                    notificationChannelType = NotificationChannelType.EMAIL,
-                    notificationRule = rule.externalIdentifier,
-                    details = notificationDetails,
-                )
+                event =
+                    CreateUserNotificationEvent(
+                        userIdentifier = notificationConfig.userIdentifier,
+                        notificationChannelType = NotificationChannelType.EMAIL,
+                        notificationRule = rule.externalIdentifier,
+                        details = notificationDetails
+                    )
             )
         }
 

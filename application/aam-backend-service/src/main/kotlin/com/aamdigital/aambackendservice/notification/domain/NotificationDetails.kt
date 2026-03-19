@@ -14,7 +14,7 @@ data class NotificationDetails(
     val body: String? = null,
     val actionUrl: String = "",
     val context: EntityNotificationContext? = null,
-    val created: Instant = Instant.now(),
+    val created: Instant = Instant.now()
 )
 
 /**
@@ -22,5 +22,5 @@ data class NotificationDetails(
  */
 data class EntityNotificationContext(
     val entityType: String,
-    val entityId: String?,
+    val entityId: String?
 )

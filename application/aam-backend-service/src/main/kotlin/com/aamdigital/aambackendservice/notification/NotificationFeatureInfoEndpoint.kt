@@ -13,7 +13,5 @@ import org.springframework.stereotype.Component
     matchIfMissing = false
 )
 class NotificationFeatureInfoEndpoint : FeatureRegistrar {
-    override fun getFeatureInfo(): Pair<String, FeaturesInfoDto> {
-        return "notification" to FeaturesInfoDto(true)
-    }
+    override fun getFeatureInfo(): Pair<String, FeaturesInfoDto> = "notification" to FeaturesInfoDto(true)
 }

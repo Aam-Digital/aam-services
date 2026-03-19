@@ -35,7 +35,6 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-
 @RestController
 @RequestMapping("/v1/reporting/report-calculation")
 @Validated
@@ -44,7 +43,7 @@ class ReportCalculationController(
     private val reportCalculationStorage: ReportCalculationStorage,
     private val fileStorage: FileStorage,
     private val createReportCalculationUseCase: CreateReportCalculationUseCase,
-    private val objectMapper: ObjectMapper,
+    private val objectMapper: ObjectMapper
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -52,19 +51,21 @@ class ReportCalculationController(
     fun startCalculation(
         @PathVariable reportId: String,
         @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") from: Date?,
-        @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") to: Date?,
+        @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") to: Date?
     ): ResponseEntity<Any> {
-        val report = try {
-            reportStorage.fetchReport(DomainReference(id = reportId))
-        } catch (ex: NotFoundException) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(
-                    HttpErrorDto(
-                        errorCode = "NOT_FOUND",
-                        errorMessage = "Could not find report with id $reportId"
+        val report =
+            try {
+                reportStorage.fetchReport(DomainReference(id = reportId))
+            } catch (ex: NotFoundException) {
+                return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "NOT_FOUND",
+                            errorMessage = "Could not find report with id $reportId"
+                        )
                     )
-                )
-        }
+            }
 
         val args = mutableMapOf<String, String>()
 
@@ -84,13 +85,19 @@ class ReportCalculationController(
             }
         }
 
-        val createReportCalculationResponse = createReportCalculationUseCase.createReportCalculation(
-            CreateReportCalculationRequest(
-                report = DomainReference(report.id), args = args
+        val createReportCalculationResponse =
+            createReportCalculationUseCase.createReportCalculation(
+                CreateReportCalculationRequest(
+                    report = DomainReference(report.id),
+                    args = args
+                )
             )
-        )
 
-        logger.trace("[POST /report/{reportId}]: Returning response for {}: {}", report.id, createReportCalculationResponse)
+        logger.trace(
+            "[POST /report/{reportId}]: Returning response for {}: {}",
+            report.id,
+            createReportCalculationResponse
+        )
         return when (createReportCalculationResponse) {
             is CreateReportCalculationResult.Failure -> {
                 return ResponseEntity.internalServerError().build()
@@ -116,18 +123,20 @@ class ReportCalculationController(
     fun fetchReportCalculation(
         @PathVariable calculationId: String
     ): ResponseEntity<Any> {
-        val reportCalculation = try {
-            reportCalculationStorage.fetchReportCalculation(DomainReference(id = calculationId))
-        } catch (ex: NotFoundException) {
-            logger.trace("[GET /{calculationId}]: Requested calculationId $calculationId not found")
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(
-                    HttpErrorDto(
-                        errorCode = "NOT_FOUND",
-                        errorMessage = "Could not find reportCalculation with id $calculationId"
+        val reportCalculation =
+            try {
+                reportCalculationStorage.fetchReportCalculation(DomainReference(id = calculationId))
+            } catch (ex: NotFoundException) {
+                logger.trace("[GET /{calculationId}]: Requested calculationId $calculationId not found")
+                return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "NOT_FOUND",
+                            errorMessage = "Could not find reportCalculation with id $calculationId"
+                        )
                     )
-                )
-        }
+            }
 
         // TODO Auth check (https://github.com/Aam-Digital/aam-services/issues/10)
 
@@ -148,62 +157,70 @@ class ReportCalculationController(
                 HttpHeaders().apply {
                     set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 },
-                HttpStatus.NOT_FOUND,
+                HttpStatus.NOT_FOUND
             )
         }
 
         val calculationId = calculationIdRaw.trim()
 
-        val file: InputStream = try {
-            fileStorage.fetchFile(
-                path = "report-calculation/$calculationId",
-                fileName = "data.json"
-            )
-        } catch (ex: NotFoundException) {
-            logger.trace("[GET /{calculationId}/data]: Requested calculationId $calculationId file not found")
-            return ResponseEntity(
-                getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
-                HttpHeaders().apply {
-                    set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                },
-                HttpStatus.NOT_FOUND,
-            )
-        }
+        val file: InputStream =
+            try {
+                fileStorage.fetchFile(
+                    path = "report-calculation/$calculationId",
+                    fileName = "data.json"
+                )
+            } catch (ex: NotFoundException) {
+                logger.trace("[GET /{calculationId}/data]: Requested calculationId $calculationId file not found")
+                return ResponseEntity(
+                    getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
+                    HttpHeaders().apply {
+                        set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    },
+                    HttpStatus.NOT_FOUND
+                )
+            }
 
-        val reportCalculation = try {
-            reportCalculationStorage.fetchReportCalculation(DomainReference(id = calculationId))
-        } catch (ex: NotFoundException) {
-            logger.trace("[GET /{calculationId}/data]: Requested calculationId $calculationId not found")
-            return ResponseEntity(
-                getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
-                HttpHeaders().apply {
-                    set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                },
-                HttpStatus.NOT_FOUND,
-            )
-        }
+        val reportCalculation =
+            try {
+                reportCalculationStorage.fetchReportCalculation(DomainReference(id = calculationId))
+            } catch (ex: NotFoundException) {
+                logger.trace("[GET /{calculationId}/data]: Requested calculationId $calculationId not found")
+                return ResponseEntity(
+                    getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
+                    HttpHeaders().apply {
+                        set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    },
+                    HttpStatus.NOT_FOUND
+                )
+            }
 
-        val responseBody = StreamingResponseBody { outputStream: OutputStream ->
-            handleInputStreamToOutputStream(
-                outputStream, SequenceInputStream(
-                    Collections.enumeration(
-                        listOf(
-                            ("{\"id\": \"${calculationId}_data.json\"," +
-                                    "\"report\": {\"id\": \"${reportCalculation.report.id}\"}," +
-                                    "\"calculation\":{\"id\": \"$calculationId\"}," +
-                                    "\"dataHash\": \"${reportCalculation.attachments["data.json"]?.digest}\"," +
-                                    "\"data\":")
-                                .byteInputStream(),
-                            file,
-                            "}".byteInputStream()
+        val responseBody =
+            StreamingResponseBody { outputStream: OutputStream ->
+                handleInputStreamToOutputStream(
+                    outputStream,
+                    SequenceInputStream(
+                        Collections.enumeration(
+                            listOf(
+                                (
+                                    "{\"id\": \"${calculationId}_data.json\"," +
+                                        "\"report\": {\"id\": \"${reportCalculation.report.id}\"}," +
+                                        "\"calculation\":{\"id\": \"$calculationId\"}," +
+                                        "\"dataHash\": \"${reportCalculation.attachments["data.json"]?.digest}\"," +
+                                        "\"data\":"
+                                ).byteInputStream(),
+                                file,
+                                "}".byteInputStream()
+                            )
                         )
                     )
                 )
-            )
-        }
+            }
 
-        logger.trace("[GET /{calculationId}/data]: Returning stream for ${reportCalculation.report.id} calculationId $calculationId with ${reportCalculation.attachments["data.json"]?.digest}")
-        return ResponseEntity.ok()
+        logger.trace(
+            "[GET /{calculationId}/data]: Returning stream for ${reportCalculation.report.id} calculationId $calculationId with ${reportCalculation.attachments["data.json"]?.digest}"
+        )
+        return ResponseEntity
+            .ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=$calculationId-data.json")
             .contentType(MediaType.APPLICATION_JSON)
             .body(responseBody)
@@ -213,41 +230,49 @@ class ReportCalculationController(
     fun fetchReportCalculationDataStream(
         @PathVariable calculationId: String
     ): ResponseEntity<StreamingResponseBody> {
-        val file = try {
-            fileStorage.fetchFile(
-                path = "report-calculation/$calculationId",
-                fileName = "data.json"
-            )
-        } catch (ex: NotFoundException) {
-            logger.trace("[GET /{calculationId}/data-stream]: Requested calculationId $calculationId file not found")
-            return ResponseEntity(
-                getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
-                HttpHeaders().apply {
-                    set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                },
-                HttpStatus.NOT_FOUND,
-            )
-        }
+        val file =
+            try {
+                fileStorage.fetchFile(
+                    path = "report-calculation/$calculationId",
+                    fileName = "data.json"
+                )
+            } catch (ex: NotFoundException) {
+                logger.trace(
+                    "[GET /{calculationId}/data-stream]: Requested calculationId $calculationId file not found"
+                )
+                return ResponseEntity(
+                    getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
+                    HttpHeaders().apply {
+                        set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    },
+                    HttpStatus.NOT_FOUND
+                )
+            }
 
-        val reportCalculation = try {
-            reportCalculationStorage.fetchReportCalculation(DomainReference(id = calculationId))
-        } catch (ex: NotFoundException) {
-            logger.trace("[GET /{calculationId}/data-stream]: Requested calculationId $calculationId not found")
-            return ResponseEntity(
-                getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
-                HttpHeaders().apply {
-                    set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                },
-                HttpStatus.NOT_FOUND,
-            )
-        }
+        val reportCalculation =
+            try {
+                reportCalculationStorage.fetchReportCalculation(DomainReference(id = calculationId))
+            } catch (ex: NotFoundException) {
+                logger.trace("[GET /{calculationId}/data-stream]: Requested calculationId $calculationId not found")
+                return ResponseEntity(
+                    getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
+                    HttpHeaders().apply {
+                        set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    },
+                    HttpStatus.NOT_FOUND
+                )
+            }
 
-        val responseBody = StreamingResponseBody { outputStream: OutputStream ->
-            handleInputStreamToOutputStream(outputStream, file)
-        }
+        val responseBody =
+            StreamingResponseBody { outputStream: OutputStream ->
+                handleInputStreamToOutputStream(outputStream, file)
+            }
 
-        logger.trace("[GET /{calculationId}/data-stream]: Returning stream for ${reportCalculation.report.id} calculationId $calculationId")
-        return ResponseEntity.ok()
+        logger.trace(
+            "[GET /{calculationId}/data-stream]: Returning stream for ${reportCalculation.report.id} calculationId $calculationId"
+        )
+        return ResponseEntity
+            .ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=calculation-data.json")
             .contentType(MediaType.APPLICATION_JSON)
             .body(responseBody)
@@ -256,35 +281,41 @@ class ReportCalculationController(
     /*
      * Needed to be able to return "ResponseEntity<StreamingResponseBody>" without the need to write a converter.
      */
-    private fun getErrorStreamingBody(errorCode: String, errorMessage: String, byteArrayBufferLength: Int = 4096) =
-        StreamingResponseBody { outputStream: OutputStream ->
-            val buffer = ByteArray(byteArrayBufferLength)
-            var bytesRead: Int
+    private fun getErrorStreamingBody(
+        errorCode: String,
+        errorMessage: String,
+        byteArrayBufferLength: Int = 4096
+    ) = StreamingResponseBody { outputStream: OutputStream ->
+        val buffer = ByteArray(byteArrayBufferLength)
+        var bytesRead: Int
 
-            val bodyStream = objectMapper.writeValueAsString(
-                TemplateExportControllerResponse.ErrorControllerResponse(
-                    errorCode = errorCode,
-                    errorMessage = errorMessage,
-                )
-            ).byteInputStream()
+        val bodyStream =
+            objectMapper
+                .writeValueAsString(
+                    TemplateExportControllerResponse.ErrorControllerResponse(
+                        errorCode = errorCode,
+                        errorMessage = errorMessage
+                    )
+                ).byteInputStream()
 
-            while ((bodyStream.read(buffer).also { bytesRead = it }) != -1) {
-                if (bytesRead > 0) {
-                    outputStream.write(buffer, 0, bytesRead)
-                }
+        while ((bodyStream.read(buffer).also { bytesRead = it }) != -1) {
+            if (bytesRead > 0) {
+                outputStream.write(buffer, 0, bytesRead)
             }
         }
+    }
 
     private fun toDto(it: ReportCalculation): ReportCalculationDto {
-        val result = ReportCalculationDto(
-            id = it.id,
-            report = it.report,
-            status = it.status,
-            startDate = it.calculationStarted,
-            endDate = it.calculationCompleted,
-            args = it.args,
-            data = toReportCalculationData(it),
-        )
+        val result =
+            ReportCalculationDto(
+                id = it.id,
+                report = it.report,
+                status = it.status,
+                startDate = it.calculationStarted,
+                endDate = it.calculationCompleted,
+                args = it.args,
+                data = toReportCalculationData(it)
+            )
 
         if (it.status == ReportCalculationStatus.FINISHED_ERROR) {
             result.errorDetails = toErrorDetails(it.errorDetails)

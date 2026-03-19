@@ -23,15 +23,19 @@ open class WebClientTestBase {
         @BeforeAll
         fun init() {
             val config = AamRenderApiConfiguration()
-            restClient = config.aamRenderApiClient(
-                authProvider = object : AuthProvider {
-                    override fun fetchToken(authClientConfig: AuthConfig): TokenResponse = TokenResponse("dummy-token")
-                },
-                configuration = AamRenderApiClientConfiguration(
-                    basePath = "http://localhost:$WEBSERVER_PORT",
-                    responseTimeoutInSeconds = 10
+            restClient =
+                config.aamRenderApiClient(
+                    authProvider =
+                        object : AuthProvider {
+                            override fun fetchToken(authClientConfig: AuthConfig): TokenResponse =
+                                TokenResponse("dummy-token")
+                        },
+                    configuration =
+                        AamRenderApiClientConfiguration(
+                            basePath = "http://localhost:$WEBSERVER_PORT",
+                            responseTimeoutInSeconds = 10
+                        )
                 )
-            )
         }
     }
 
@@ -48,6 +52,7 @@ open class WebClientTestBase {
     }
 
     open fun setUp() {}
+
     open fun cleanUp() {}
 
     private fun startWebserver() {

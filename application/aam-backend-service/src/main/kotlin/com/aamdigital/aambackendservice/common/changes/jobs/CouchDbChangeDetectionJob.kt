@@ -9,7 +9,6 @@ import org.springframework.scheduling.annotation.Scheduled
 class CouchDbChangeDetectionJob(
     private val databaseChangeDetection: DatabaseChangeDetection
 ) {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {

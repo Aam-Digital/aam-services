@@ -7,7 +7,7 @@ import com.aamdigital.aambackendservice.common.domain.UseCaseRequest
 data class SyncNotificationConfigRequest(
     val notificationConfigDatabase: String,
     val notificationConfigId: String,
-    val notificationConfigRev: String,
+    val notificationConfigRev: String
 ) : UseCaseRequest
 
 data class SyncNotificationConfigData(
@@ -15,7 +15,7 @@ data class SyncNotificationConfigData(
     val updated: Boolean,
     val skipped: Boolean,
     val deleted: Boolean,
-    val message: String,
+    val message: String
 ) : UseCaseData
 
 abstract class SyncNotificationConfigUseCase :

@@ -7,5 +7,5 @@ data class QueueMessage(
     val id: UUID,
     val eventType: String,
     val event: DomainEvent,
-    val createdAt: String,
+    val createdAt: String
 )

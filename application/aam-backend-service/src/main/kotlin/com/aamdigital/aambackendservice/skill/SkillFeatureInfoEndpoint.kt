@@ -13,7 +13,5 @@ import org.springframework.stereotype.Component
     matchIfMissing = false
 )
 class SkillFeatureInfoEndpoint : FeatureRegistrar {
-    override fun getFeatureInfo(): Pair<String, FeaturesInfoDto> {
-        return "skill" to FeaturesInfoDto(true)
-    }
+    override fun getFeatureInfo(): Pair<String, FeaturesInfoDto> = "skill" to FeaturesInfoDto(true)
 }

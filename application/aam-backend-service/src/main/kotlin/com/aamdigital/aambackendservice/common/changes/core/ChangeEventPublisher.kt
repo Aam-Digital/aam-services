@@ -5,6 +5,13 @@ import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEven
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessage
 
 interface ChangeEventPublisher {
-    fun publish(channel: String, event: DatabaseChangeEvent): QueueMessage
-    fun publish(exchange: String, event: DocumentChangeEvent): QueueMessage
+    fun publish(
+        channel: String,
+        event: DatabaseChangeEvent
+    ): QueueMessage
+
+    fun publish(
+        exchange: String,
+        event: DocumentChangeEvent
+    ): QueueMessage
 }

@@ -13,7 +13,6 @@ import org.testcontainers.utility.DockerImageName
 
 @Testcontainers
 object TestContainers {
-
     private var network: Network = Network.newNetwork()
 
     @DynamicPropertySource
@@ -35,50 +34,52 @@ object TestContainers {
             "http://localhost:${CONTAINER_KEYCLOAK.getMappedPort(8080)}"
         }
         registry.add(
-            "couch-db-client-configuration.base-path",
+            "couch-db-client-configuration.base-path"
         ) {
             "http://localhost:${CONTAINER_COUCHDB.getMappedPort(5984)}"
         }
         registry.add(
-            "sqs-client-configuration.base-path",
+            "sqs-client-configuration.base-path"
         ) {
             "http://localhost:${CONTAINER_SQS.getMappedPort(4984)}"
         }
         registry.add(
-            "aam-render-api-client-configuration.base-path",
+            "aam-render-api-client-configuration.base-path"
         ) {
             "http://localhost:${CONTAINER_PDF.getMappedPort(4000)}"
         }
         registry.add(
-            "aam-render-api-client-configuration.auth-config.token-endpoint",
+            "aam-render-api-client-configuration.auth-config.token-endpoint"
         ) {
             "http://localhost:${CONTAINER_KEYCLOAK.getMappedPort(8080)}" +
-                    "/realms/dummy-realm/protocol/openid-connect/token"
+                "/realms/dummy-realm/protocol/openid-connect/token"
         }
         registry.add(
-            "spring.datasource.url",
+            "spring.datasource.url"
         ) {
             "jdbc:postgresql://localhost:${CONTAINER_POSTGRES.getMappedPort(5432)}" +
-                    "/aam_backend_service_test"
+                "/aam_backend_service_test"
         }
     }
 
     @Container
     @JvmStatic
-    val CONTAINER_KEYCLOAK: KeycloakContainer = KeycloakContainer()
+    val CONTAINER_KEYCLOAK: KeycloakContainer =
+        KeycloakContainer()
 //        .withEnv("JAVA_TOOL_OPTIONS", "-XX:UseSVE=0") # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
-        .withRealmImportFile("/dummy-realm-realm.json")
-        .withAdminUsername("admin")
-        .withAdminPassword("docker")
+            .withRealmImportFile("/dummy-realm-realm.json")
+            .withAdminUsername("admin")
+            .withAdminPassword("docker")
 
     @Container
     @ServiceConnection
     @JvmStatic
-    val CONTAINER_RABBIT_MQ: RabbitMQContainer = RabbitMQContainer(
-        DockerImageName
-            .parse("rabbitmq")
-            .withTag("3-management-alpine")
-    )
+    val CONTAINER_RABBIT_MQ: RabbitMQContainer =
+        RabbitMQContainer(
+            DockerImageName
+                .parse("rabbitmq")
+                .withTag("3-management-alpine")
+        )
 
     @Container
     @JvmStatic
@@ -87,17 +88,15 @@ object TestContainers {
             DockerImageName
                 .parse("couchdb")
                 .withTag("3.4.2")
-        )
-            .withNetwork(network)
+        ).withNetwork(network)
             .withNetworkAliases("couchdb")
             .withEnv(
                 mapOf(
                     Pair("COUCHDB_USER", "admin"),
                     Pair("COUCHDB_PASSWORD", "docker"),
-                    Pair("COUCHDB_SECRET", "docker"),
+                    Pair("COUCHDB_SECRET", "docker")
                 )
-            )
-            .withExposedPorts(5984)
+            ).withExposedPorts(5984)
 
     @Container
     @JvmStatic
@@ -106,17 +105,15 @@ object TestContainers {
             DockerImageName
                 .parse("postgres")
                 .withTag("16.5-bookworm")
-        )
-            .withNetwork(network)
+        ).withNetwork(network)
             .withNetworkAliases("postgres")
             .withEnv(
                 mapOf(
                     Pair("POSTGRES_DB", "aam_backend_service_test"),
                     Pair("POSTGRES_USER", "admin"),
-                    Pair("POSTGRES_PASSWORD", "docker"),
+                    Pair("POSTGRES_PASSWORD", "docker")
                 )
-            )
-            .withExposedPorts(5432)
+            ).withExposedPorts(5432)
 
     @Container
     @JvmStatic
@@ -126,15 +123,13 @@ object TestContainers {
                 .parse("ghcr.io/aam-digital/aam-sqs-linux")
                 .asCompatibleSubstituteFor("aam-sqs-linux")
                 .withTag("latest")
-        )
-            .withNetwork(network)
+        ).withNetwork(network)
             .withNetworkAliases("sqs")
             .withEnv(
                 mapOf(
-                    Pair("SQS_COUCHDB_URL", "http://couchdb:5984"),
+                    Pair("SQS_COUCHDB_URL", "http://couchdb:5984")
                 )
-            )
-            .withExposedPorts(4984)
+            ).withExposedPorts(4984)
 
     @Container
     @JvmStatic
@@ -143,9 +138,7 @@ object TestContainers {
             DockerImageName
                 .parse("carbone/carbone-ee")
                 .withTag("4.23.4")
-        )
-            .withNetwork(network)
+        ).withNetwork(network)
             .withNetworkAliases("pdf")
             .withExposedPorts(4000)
-
 }

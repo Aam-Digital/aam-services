@@ -8,12 +8,11 @@ import com.aamdigital.aambackendservice.skill.domain.UserProfile
 
 data class SyncUserProfileRequest(
     val userProfile: DomainReference,
-    val project: DomainReference,
+    val project: DomainReference
 ) : UseCaseRequest
 
 data class SyncUserProfileData(
     val result: UserProfile
 ) : UseCaseData
 
-abstract class SyncUserProfileUseCase :
-    DomainUseCase<SyncUserProfileRequest, SyncUserProfileData>()
+abstract class SyncUserProfileUseCase : DomainUseCase<SyncUserProfileRequest, SyncUserProfileData>()

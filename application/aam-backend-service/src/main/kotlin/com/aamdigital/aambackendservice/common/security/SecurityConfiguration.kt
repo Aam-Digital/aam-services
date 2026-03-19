@@ -26,13 +26,13 @@ class SecurityConfiguration(
     private val allowedIssuers: List<String>
         get() =
             configuredAllowedIssuers ?: listOf(
-            "https://keycloak.aam-digital.net",
-            "https://keycloak.aam-digital.com",
-            "https://auth.aam-digital.app",
-            "https://auth.aam-digital.dev",
-            "https://id.aam-digital.app",
-            "https://id.aam-digital.dev",
-        )
+                "https://keycloak.aam-digital.net",
+                "https://keycloak.aam-digital.com",
+                "https://auth.aam-digital.app",
+                "https://auth.aam-digital.dev",
+                "https://id.aam-digital.app",
+                "https://id.aam-digital.dev"
+            )
 
     @Bean
     fun filterChain(
@@ -85,13 +85,14 @@ class SecurityConfiguration(
     @Bean
     fun authenticationManagerResolver(
         aamAuthenticationConverter: AamAuthenticationConverter
-    ): JwtIssuerAuthenticationManagerResolver {
-        return JwtIssuerAuthenticationManagerResolver { issuer ->
+    ): JwtIssuerAuthenticationManagerResolver =
+        JwtIssuerAuthenticationManagerResolver { issuer ->
             val normalizedIssuer = issuer.trimEnd('/')
-            val isTrusted = allowedIssuers.any { allowed ->
-                val normalizedAllowed = allowed.trimEnd('/')
-                normalizedIssuer == normalizedAllowed || normalizedIssuer.startsWith("$normalizedAllowed/")
-            }
+            val isTrusted =
+                allowedIssuers.any { allowed ->
+                    val normalizedAllowed = allowed.trimEnd('/')
+                    normalizedIssuer == normalizedAllowed || normalizedIssuer.startsWith("$normalizedAllowed/")
+                }
             if (!isTrusted) {
                 throw BadCredentialsException("Untrusted issuer: $issuer")
             }
@@ -102,5 +103,4 @@ class SecurityConfiguration(
 
             ProviderManager(provider)
         }
-    }
 }

@@ -26,20 +26,22 @@ import org.springframework.stereotype.Service
 class PushCreateNotificationHandler(
     private val firebaseMessaging: FirebaseMessaging,
     private val userDeviceRepository: UserDeviceRepository,
-    private val notificationFirebaseClientConfiguration: NotificationFirebaseClientConfiguration,
+    private val notificationFirebaseClientConfiguration: NotificationFirebaseClientConfiguration
 ) : CreateNotificationHandler {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun canHandle(notificationChannelType: NotificationChannelType): Boolean =
         NotificationChannelType.PUSH == notificationChannelType
 
     override fun createMessage(createUserNotificationEvent: CreateUserNotificationEvent): CreateNotificationData {
-        val userDevices = userDeviceRepository.findByUserIdentifier(
-            createUserNotificationEvent.userIdentifier, Pageable.unpaged()
-        ).map {
-            it.deviceToken
-        }.toList()
+        val userDevices =
+            userDeviceRepository
+                .findByUserIdentifier(
+                    createUserNotificationEvent.userIdentifier,
+                    Pageable.unpaged()
+                ).map {
+                    it.deviceToken
+                }.toList()
 
         if (userDevices.isEmpty()) {
             return CreateNotificationData(
@@ -49,30 +51,30 @@ class PushCreateNotificationHandler(
             )
         }
 
-        val message = MulticastMessage.builder()
-            .addAllTokens(userDevices)
-            .setWebpushConfig(
-                WebpushConfig.builder()
-                    .setNotification(
-                        WebpushNotification.builder()
-                            .putCustomData(
-                                "url", notificationFirebaseClientConfiguration.linkBaseUrl
-                            )
-                            .setTitle("Update from Aam Digital")
-                            .setBody(createUserNotificationEvent.details.title)
-                            .build()
-
-                    )
-                    .setFcmOptions(
-                        WebpushFcmOptions
-                            .builder()
-                            .setLink(
-                                notificationFirebaseClientConfiguration.linkBaseUrl
-                            ).build()
-                    )
-                    .build()
-            )
-            .build()
+        val message =
+            MulticastMessage
+                .builder()
+                .addAllTokens(userDevices)
+                .setWebpushConfig(
+                    WebpushConfig
+                        .builder()
+                        .setNotification(
+                            WebpushNotification
+                                .builder()
+                                .putCustomData(
+                                    "url",
+                                    notificationFirebaseClientConfiguration.linkBaseUrl
+                                ).setTitle("Update from Aam Digital")
+                                .setBody(createUserNotificationEvent.details.title)
+                                .build()
+                        ).setFcmOptions(
+                            WebpushFcmOptions
+                                .builder()
+                                .setLink(
+                                    notificationFirebaseClientConfiguration.linkBaseUrl
+                                ).build()
+                        ).build()
+                ).build()
 
         val response = firebaseMessaging.sendEachForMulticast(message)
 
@@ -81,7 +83,9 @@ class PushCreateNotificationHandler(
         logger.trace("push notification sent {}", ids.toString())
 
         return CreateNotificationData(
-            success = true, messageCreated = true, messageReference = ids.toString()
+            success = true,
+            messageCreated = true,
+            messageReference = ids.toString()
         )
     }
 }

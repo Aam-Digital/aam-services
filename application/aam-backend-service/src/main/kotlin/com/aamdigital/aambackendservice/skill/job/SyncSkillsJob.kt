@@ -20,9 +20,8 @@ import org.springframework.scheduling.annotation.Scheduled
 )
 class SyncSkillsJob(
     private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase,
-    private val skillLabApiClientConfiguration: SkillLabApiClientConfiguration,
+    private val skillLabApiClientConfiguration: SkillLabApiClientConfiguration
 ) {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
@@ -39,9 +38,10 @@ class SyncSkillsJob(
 
         try {
             skillLabFetchUserProfileUpdatesUseCase.run(
-                request = FetchUserProfileUpdatesRequest(
-                    projectId = skillLabApiClientConfiguration.projectId
-                )
+                request =
+                    FetchUserProfileUpdatesRequest(
+                        projectId = skillLabApiClientConfiguration.projectId
+                    )
             )
         } catch (ex: Exception) {
             logger.error(

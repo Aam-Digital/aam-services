@@ -1,10 +1,10 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
-import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.aamdigital.aambackendservice.notification.repository.NotificationConditionEntity
 import com.aamdigital.aambackendservice.notification.repository.NotificationConfigEntity
@@ -18,7 +18,7 @@ data class NotificationConfigDto(
     @JsonProperty("_id") val id: String,
     @JsonProperty("_rev") val rev: String,
     val notificationRules: List<NotificationRuleDto>,
-    val channels: NotificationChannelConfig?,
+    val channels: NotificationChannelConfig?
 )
 
 data class NotificationRuleDto(
@@ -27,65 +27,72 @@ data class NotificationRuleDto(
     val entityType: String,
     val changeType: List<String>,
     val conditions: Map<String, Map<String, String>>,
-    val enabled: Boolean,
+    val enabled: Boolean
 )
 
 data class NotificationChannelConfig(
     val push: Boolean?,
-    val email: Boolean?,
+    val email: Boolean?
 )
 
 enum class CouchDbSyncNotificationConfigErrorCode : AamErrorCode {
     INVALID_USER_IDENTIFIER,
-    IO_EXCEPTION,
+    IO_EXCEPTION
 }
 
 class CouchDbSyncNotificationConfigUseCase(
     private val couchDbClient: CouchDbClient,
-    private val notificationConfigRepository: NotificationConfigRepository,
+    private val notificationConfigRepository: NotificationConfigRepository
 ) : SyncNotificationConfigUseCase() {
-
     override fun apply(request: SyncNotificationConfigRequest): UseCaseOutcome<SyncNotificationConfigData> {
-        val userIdentifier = try {
-            request.notificationConfigId.split(":")[1]
-        } catch (ex: Exception) {
-            return UseCaseOutcome.Failure(
-                errorCode = CouchDbSyncNotificationConfigErrorCode.INVALID_USER_IDENTIFIER,
-                errorMessage = ex.localizedMessage,
-                cause = ex
-            )
-        }
-
-        val notificationConfig = try {
-            couchDbClient.getDatabaseDocument(
-                database = request.notificationConfigDatabase,
-                documentId = request.notificationConfigId,
-                queryParams = LinkedMultiValueMap(),
-                kClass = NotificationConfigDto::class
-            )
-        } catch (@Suppress("SwallowedException") ex: NotFoundException) {
-            val currentNotificationConfigOptional = notificationConfigRepository.findByUserIdentifier(userIdentifier)
-
-            currentNotificationConfigOptional.ifPresent {
-                notificationConfigRepository.delete(it)
+        val userIdentifier =
+            try {
+                request.notificationConfigId.split(":")[1]
+            } catch (ex: Exception) {
+                return UseCaseOutcome.Failure(
+                    errorCode = CouchDbSyncNotificationConfigErrorCode.INVALID_USER_IDENTIFIER,
+                    errorMessage = ex.localizedMessage,
+                    cause = ex
+                )
             }
 
-            return UseCaseOutcome.Success(
-                data = SyncNotificationConfigData(
-                    imported = false,
-                    updated = false,
-                    skipped = false,
-                    deleted = true,
-                    message = "NotificationConfig deleted successfully."
+        val notificationConfig =
+            try {
+                couchDbClient.getDatabaseDocument(
+                    database = request.notificationConfigDatabase,
+                    documentId = request.notificationConfigId,
+                    queryParams = LinkedMultiValueMap(),
+                    kClass = NotificationConfigDto::class
                 )
-            )
-        } catch (ex: AamException) {
-            return UseCaseOutcome.Failure(
-                errorCode = CouchDbSyncNotificationConfigErrorCode.IO_EXCEPTION,
-                errorMessage = ex.localizedMessage,
-                cause = ex
-            )
-        }
+            } catch (
+                @Suppress("SwallowedException") ex: NotFoundException
+            ) {
+                val currentNotificationConfigOptional =
+                    notificationConfigRepository.findByUserIdentifier(
+                        userIdentifier
+                    )
+
+                currentNotificationConfigOptional.ifPresent {
+                    notificationConfigRepository.delete(it)
+                }
+
+                return UseCaseOutcome.Success(
+                    data =
+                        SyncNotificationConfigData(
+                            imported = false,
+                            updated = false,
+                            skipped = false,
+                            deleted = true,
+                            message = "NotificationConfig deleted successfully."
+                        )
+                )
+            } catch (ex: AamException) {
+                return UseCaseOutcome.Failure(
+                    errorCode = CouchDbSyncNotificationConfigErrorCode.IO_EXCEPTION,
+                    errorMessage = ex.localizedMessage,
+                    cause = ex
+                )
+            }
 
         val currentNotificationConfigOptional = notificationConfigRepository.findByUserIdentifier(userIdentifier)
 
@@ -100,13 +107,14 @@ class CouchDbSyncNotificationConfigUseCase(
                 )
             )
             UseCaseOutcome.Success(
-                data = SyncNotificationConfigData(
-                    imported = true,
-                    updated = false,
-                    skipped = false,
-                    deleted = false,
-                    message = "NotificationConfig updated successfully."
-                )
+                data =
+                    SyncNotificationConfigData(
+                        imported = true,
+                        updated = false,
+                        skipped = false,
+                        deleted = false,
+                        message = "NotificationConfig updated successfully."
+                    )
             )
         } else {
             updateNotificationConfigEntity(currentNotificationConfigOptional.get(), notificationConfig)
@@ -115,7 +123,7 @@ class CouchDbSyncNotificationConfigUseCase(
 
     private fun updateNotificationConfigEntity(
         notificationConfigEntity: NotificationConfigEntity,
-        notificationConfig: NotificationConfigDto,
+        notificationConfig: NotificationConfigDto
     ): UseCaseOutcome<SyncNotificationConfigData> {
         try {
             notificationConfigEntity.revision = notificationConfig.rev
@@ -138,13 +146,14 @@ class CouchDbSyncNotificationConfigUseCase(
         }
 
         return UseCaseOutcome.Success(
-            data = SyncNotificationConfigData(
-                imported = true,
-                updated = true,
-                skipped = false,
-                deleted = false,
-                message = "NotificationConfig updated successfully."
-            )
+            data =
+                SyncNotificationConfigData(
+                    imported = true,
+                    updated = true,
+                    skipped = false,
+                    deleted = false,
+                    message = "NotificationConfig updated successfully."
+                )
         )
     }
 
@@ -158,18 +167,19 @@ class CouchDbSyncNotificationConfigUseCase(
                     entityType = rule.entityType,
                     changeType = it,
                     enabled = rule.enabled,
-                    conditions = rule.conditions.mapNotNull { condition ->
-                        if (condition.value.isEmpty()) return@mapNotNull null
+                    conditions =
+                        rule.conditions.mapNotNull { condition ->
+                            if (condition.value.isEmpty()) return@mapNotNull null
 
-                        val firstKey = condition.value.keys.first()
-                        val firstValue = condition.value[firstKey] ?: return@mapNotNull null
+                            val firstKey = condition.value.keys.first()
+                            val firstValue = condition.value[firstKey] ?: return@mapNotNull null
 
-                        NotificationConditionEntity(
-                            field = condition.key,
-                            operator = firstKey,
-                            value = firstValue,
-                        )
-                    },
+                            NotificationConditionEntity(
+                                field = condition.key,
+                                operator = firstKey,
+                                value = firstValue
+                            )
+                        }
                 )
             }
         }

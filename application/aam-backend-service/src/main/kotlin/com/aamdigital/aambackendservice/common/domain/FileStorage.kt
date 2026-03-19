@@ -4,18 +4,18 @@ import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import java.io.InputStream
 
 enum class FileStorageError : AamErrorCode {
-    IO_ERROR,
+    IO_ERROR
 }
 
 interface FileStorage {
     fun storeFile(
         path: String,
         fileName: String,
-        file: InputStream,
+        file: InputStream
     )
 
     fun fetchFile(
         path: String,
-        fileName: String,
+        fileName: String
     ): InputStream
 }

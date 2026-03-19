@@ -7,11 +7,11 @@ import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 
 data class ReportCalculationRequest(
-    val reportCalculationId: String,
+    val reportCalculationId: String
 ) : UseCaseRequest
 
 data class ReportCalculationData(
-    val reportCalculation: ReportCalculation,
+    val reportCalculation: ReportCalculation
 ) : UseCaseData
 
 enum class ReportCalculationError : AamErrorCode {
@@ -20,7 +20,7 @@ enum class ReportCalculationError : AamErrorCode {
     REPORT_NOT_FOUND,
     UNSUPPORTED_REPORT_VERSION,
     PARSING_ERROR,
-    IO_ERROR,
+    IO_ERROR
 }
 
 abstract class ReportCalculationUseCase : DomainUseCase<ReportCalculationRequest, ReportCalculationData>()

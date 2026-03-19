@@ -26,7 +26,5 @@ fun main(args: Array<String>) {
 class HelloFriendController {
     @GetMapping("/")
     @Suppress("FunctionOnlyReturningConstant")
-    fun helloFriend(): String {
-        return "Hello, Friend. This is aam-backend-service."
-    }
+    fun helloFriend(): String = "Hello, Friend. This is aam-backend-service."
 }

@@ -9,9 +9,8 @@ import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
 
 class DefaultQueueMessageParser(
-    private val objectMapper: ObjectMapper,
+    private val objectMapper: ObjectMapper
 ) : QueueMessageParser {
-
     enum class DefaultQueueMessageParserErrorCode : AamErrorCode {
         INVALID_JSON,
         MISSING_TYPE_FIELD,
@@ -27,17 +26,16 @@ class DefaultQueueMessageParser(
         private const val PAYLOAD_FIELD = "event"
     }
 
-    private fun getJsonNode(body: ByteArray): JsonNode {
-        return try {
+    private fun getJsonNode(body: ByteArray): JsonNode =
+        try {
             objectMapper.readTree(body)
         } catch (ex: JacksonException) {
             throw InvalidArgumentException(
                 message = "Could not parse message.",
                 code = DefaultQueueMessageParserErrorCode.INVALID_JSON,
-                cause = ex,
+                cause = ex
             )
         }
-    }
 
     @Throws(InvalidArgumentException::class)
     override fun getType(body: ByteArray): String {
@@ -46,7 +44,7 @@ class DefaultQueueMessageParser(
         if (!jsonNode.has(TYPE_FIELD)) {
             throw InvalidArgumentException(
                 message = "Could not extract type from message.",
-                code = DefaultQueueMessageParserErrorCode.MISSING_TYPE_FIELD,
+                code = DefaultQueueMessageParserErrorCode.MISSING_TYPE_FIELD
             )
         }
 
@@ -63,19 +61,22 @@ class DefaultQueueMessageParser(
             logger.debug("INVALID_CLASS_NAME_DEBUG_EX", ex)
             throw InvalidArgumentException(
                 message = "Could not find Class for this type.",
-                code = DefaultQueueMessageParserErrorCode.INVALID_CLASS_NAME,
+                code = DefaultQueueMessageParserErrorCode.INVALID_CLASS_NAME
             )
         }
     }
 
     @Throws(InvalidArgumentException::class)
-    override fun <T : Any> getPayload(body: ByteArray, kClass: KClass<T>): T {
+    override fun <T : Any> getPayload(
+        body: ByteArray,
+        kClass: KClass<T>
+    ): T {
         val jsonNode = getJsonNode(body)
 
         if (!jsonNode.has(PAYLOAD_FIELD)) {
             throw InvalidArgumentException(
                 message = "Could not extract payload from message.",
-                code = DefaultQueueMessageParserErrorCode.MISSING_PAYLOAD_FIELD,
+                code = DefaultQueueMessageParserErrorCode.MISSING_PAYLOAD_FIELD
             )
         }
 
@@ -85,7 +86,7 @@ class DefaultQueueMessageParser(
             throw InvalidArgumentException(
                 message = "Could not parse payload object from message.",
                 code = DefaultQueueMessageParserErrorCode.INVALID_PAYLOAD,
-                cause = ex,
+                cause = ex
             )
         }
     }

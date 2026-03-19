@@ -4,10 +4,10 @@ import com.aamdigital.aambackendservice.common.changes.di.ChangesQueueConfigurat
 import com.aamdigital.aambackendservice.common.changes.domain.DatabaseChangeEvent
 import com.aamdigital.aambackendservice.common.changes.repository.SyncEntry
 import com.aamdigital.aambackendservice.common.changes.repository.SyncRepository
-import com.aamdigital.aambackendservice.common.error.AamErrorCode
-import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.fasterxml.jackson.databind.node.ObjectNode
 import java.util.*
 import kotlin.jvm.optionals.getOrDefault
@@ -15,7 +15,7 @@ import kotlin.jvm.optionals.getOrDefault
 class CouchDbDatabaseChangeDetection(
     private val couchDbClient: CouchDbClient,
     private val documentChangeEventPublisher: ChangeEventPublisher,
-    private val syncRepository: SyncRepository,
+    private val syncRepository: SyncRepository
 ) : DatabaseChangeDetection {
     companion object {
         private val LATEST_REFS: MutableMap<String, String> = Collections.synchronizedMap(hashMapOf())
@@ -32,18 +32,21 @@ class CouchDbDatabaseChangeDetection(
     override fun checkForChanges() {
         couchDbClient
             .allDatabases()
-            .filter { !it.startsWith("_") }.map { database ->
+            .filter { !it.startsWith("_") }
+            .map { database ->
                 fetchChangesForDatabase(database)
             }
     }
 
-    private fun getLatestRef(database: String): String {
-        return try {
-            couchDbClient.getDatabaseDocument(
-                database = database,
-                documentId = "",
-                kClass = ObjectNode::class
-            ).get("update_seq").textValue()
+    private fun getLatestRef(database: String): String =
+        try {
+            couchDbClient
+                .getDatabaseDocument(
+                    database = database,
+                    documentId = "",
+                    kClass = ObjectNode::class
+                ).get("update_seq")
+                .textValue()
         } catch (ex: Exception) {
             throw InvalidArgumentException(
                 message = "Could not fetch latest update_seq",
@@ -51,11 +54,11 @@ class CouchDbDatabaseChangeDetection(
                 code = CouchDbChangeDetectionError.COULD_NOT_FETCH_LATEST_REF
             )
         }
-    }
 
     private fun fetchChangesForDatabase(database: String) {
         var syncEntry =
-            syncRepository.findByDatabase(database)
+            syncRepository
+                .findByDatabase(database)
                 .getOrDefault(SyncEntry(database = database, latestRef = getLatestRef(database)))
 
         LATEST_REFS[database] = syncEntry.latestRef
@@ -69,9 +72,11 @@ class CouchDbDatabaseChangeDetection(
         queryParams.set("limit", CHANGES_LIMIT.toString())
         queryParams.set("include_docs", "true")
 
-        val changes = couchDbClient.changes(
-            database = database, queryParams = queryParams
-        )
+        val changes =
+            couchDbClient.changes(
+                database = database,
+                queryParams = queryParams
+            )
 
         changes.results.forEachIndexed { _, couchDbChangeResult ->
             val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
@@ -92,7 +97,8 @@ class CouchDbDatabaseChangeDetection(
         }
 
         syncEntry =
-            syncRepository.findByDatabase(database)
+            syncRepository
+                .findByDatabase(database)
                 .getOrDefault(SyncEntry(database = database, latestRef = getLatestRef(database)))
 
         syncEntry.latestRef = LATEST_REFS[database].orEmpty()

@@ -13,7 +13,5 @@ import org.springframework.stereotype.Component
     matchIfMissing = false
 )
 class ExportFeatureInfoEndpoint : FeatureRegistrar {
-    override fun getFeatureInfo(): Pair<String, FeaturesInfoDto> {
-        return "export" to FeaturesInfoDto(true)
-    }
+    override fun getFeatureInfo(): Pair<String, FeaturesInfoDto> = "export" to FeaturesInfoDto(true)
 }

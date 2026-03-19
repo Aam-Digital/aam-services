@@ -17,7 +17,6 @@ data class SkillLabUserProfileSyncEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     var id: Long = 0,
-
     var projectId: String,
-    var latestSync: OffsetDateTime,
+    var latestSync: OffsetDateTime
 )

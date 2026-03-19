@@ -19,7 +19,7 @@ import java.util.*
 )
 class NotificationFirebaseClientConfiguration(
     val credentialFileBase64: String,
-    val linkBaseUrl: String,
+    val linkBaseUrl: String
 )
 
 @Configuration
@@ -30,7 +30,6 @@ class NotificationFirebaseClientConfiguration(
     matchIfMissing = false
 )
 class FirebaseConfiguration {
-
     @Bean
     @ConditionalOnProperty(
         prefix = "features.notification-api",
@@ -42,9 +41,11 @@ class FirebaseConfiguration {
         val credentialFile =
             Base64.getDecoder().decode(notificationFirebaseClientConfiguration.credentialFileBase64)
 
-        val options = FirebaseOptions.builder()
-            .setCredentials(GoogleCredentials.fromStream(credentialFile.inputStream()))
-            .build()
+        val options =
+            FirebaseOptions
+                .builder()
+                .setCredentials(GoogleCredentials.fromStream(credentialFile.inputStream()))
+                .build()
 
         return FirebaseApp.initializeApp(options)
     }
@@ -56,7 +57,5 @@ class FirebaseConfiguration {
         havingValue = "firebase",
         matchIfMissing = false
     )
-    fun firebaseMessaging(firebaseApp: FirebaseApp): FirebaseMessaging {
-        return FirebaseMessaging.getInstance(firebaseApp)
-    }
+    fun firebaseMessaging(firebaseApp: FirebaseApp): FirebaseMessaging = FirebaseMessaging.getInstance(firebaseApp)
 }

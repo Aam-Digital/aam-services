@@ -4,14 +4,14 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.node.ObjectNode
 
 data class CouchDbChange(
-    val rev: String,
+    val rev: String
 )
 
 data class CouchDbRow<T>(
     val id: String,
     val key: String,
     val value: CouchDbChange,
-    val doc: T,
+    val doc: T
 )
 
 data class CouchDbSearchResponse(
@@ -24,7 +24,7 @@ data class CouchDbSearchResponse(
 data class DocSuccess(
     val ok: Boolean,
     val id: String,
-    val rev: String,
+    val rev: String
 )
 
 data class AttachmentMetaData(
@@ -33,7 +33,7 @@ data class AttachmentMetaData(
     val revpos: Int,
     val digest: String,
     val length: Long,
-    val stub: Boolean,
+    val stub: Boolean
 )
 
 data class FindResponse<T>(
@@ -53,7 +53,7 @@ data class CouchDbChangeResult(
     val changes: List<CouchDbChange>,
     val seq: String,
     val doc: ObjectNode?,
-    val deleted: Boolean? = false,
+    val deleted: Boolean? = false
 )
 
 /**
@@ -66,5 +66,5 @@ data class CouchDbChangesResponse(
     @JsonProperty("last_seq")
     val lastSeq: String,
     val results: List<CouchDbChangeResult>,
-    val pending: Int,
+    val pending: Int
 )

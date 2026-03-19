@@ -11,5 +11,5 @@ data class UserDevice(
     var deviceName: String?,
     var deviceToken: String,
     var user: DomainReference,
-    var createdAt: Instant,
+    var createdAt: Instant
 )

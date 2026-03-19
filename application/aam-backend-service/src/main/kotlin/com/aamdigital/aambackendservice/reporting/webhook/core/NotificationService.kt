@@ -28,7 +28,10 @@ class NotificationService(
         return affectedWebhooks
     }
 
-    fun sendNotifications(report: DomainReference, reportCalculation: DomainReference) {
+    fun sendNotifications(
+        report: DomainReference,
+        reportCalculation: DomainReference
+    ) {
         logger.debug("[NotificationService]: Trigger all affected webhooks for ${report.id}")
         val affectedWebhooks = getAffectedWebhooks(report)
 
@@ -41,7 +44,11 @@ class NotificationService(
         }
     }
 
-    fun triggerWebhook(report: DomainReference, reportCalculation: DomainReference, webhook: DomainReference) {
+    fun triggerWebhook(
+        report: DomainReference,
+        reportCalculation: DomainReference,
+        webhook: DomainReference
+    ) {
         logger.debug("[NotificationService]: Trigger NotificationEvent for ${webhook.id} and ${report.id}")
         webhookEventPublisher.publish(
             ReportingNotificationQueueConfiguration.NOTIFICATION_QUEUE,

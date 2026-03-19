@@ -7,7 +7,7 @@ data class UserModel(
     val userName: String,
     val firstName: String,
     val lastName: String,
-    val email: String,
+    val email: String
 )
 
 interface AuthenticationProvider {
@@ -20,10 +20,8 @@ interface AuthenticationProvider {
         lastName: String,
         email: String,
         externalUserId: String,
-        userEntityId: String? = null,
+        userEntityId: String? = null
     ): UserModel
 
-    fun findByEmail(
-        email: String
-    ): Optional<UserModel>
+    fun findByEmail(email: String): Optional<UserModel>
 }

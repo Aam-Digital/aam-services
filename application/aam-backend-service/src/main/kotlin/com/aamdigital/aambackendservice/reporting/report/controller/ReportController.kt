@@ -22,84 +22,95 @@ import org.springframework.web.bind.annotation.RestController
 data class ReportDto(
     val id: String,
     val name: String,
-    val schema: ReportSchema?,
+    val schema: ReportSchema?
 )
 
 @RestController
 @RequestMapping("/v1/reporting/report")
 @Validated
 class ReportController(
-    private val reportStorage: ReportStorage,
+    private val reportStorage: ReportStorage
 ) {
     @GetMapping
     fun fetchReports(): ResponseEntity<Any> {
-        val allReports = try {
-            reportStorage.fetchAllReports("sql")
-        } catch (ex: AamException) {
-            return handleException(ex)
-        }
+        val allReports =
+            try {
+                reportStorage.fetchAllReports("sql")
+            } catch (ex: AamException) {
+                return handleException(ex)
+            }
 
-        return ResponseEntity.ok(allReports.map { report ->
-            ReportDto(
-                id = report.id,
-                name = report.title,
-                schema = null,
-            )
-        })
+        return ResponseEntity.ok(
+            allReports.map { report ->
+                ReportDto(
+                    id = report.id,
+                    name = report.title,
+                    schema = null
+                )
+            }
+        )
     }
 
     @GetMapping("/{reportId}")
     fun fetchReport(
         @PathVariable reportId: String
     ): ResponseEntity<Any> {
-        val report = try {
-            reportStorage.fetchReport(DomainReference(id = reportId))
-        } catch (ex: AamException) {
-            return handleException(ex)
-        }
+        val report =
+            try {
+                reportStorage.fetchReport(DomainReference(id = reportId))
+            } catch (ex: AamException) {
+                return handleException(ex)
+            }
 
         return ResponseEntity.ok(
             ReportDto(
                 id = report.id,
                 name = report.title,
-                schema = null,
+                schema = null
             )
         )
     }
 
-    private fun handleException(ex: AamException): ResponseEntity<Any> {
-        return when (ex) {
-            is NotFoundException -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(
-                    HttpErrorDto(
-                        errorCode = "NOT_FOUND",
-                        errorMessage = ex.localizedMessage,
+    private fun handleException(ex: AamException): ResponseEntity<Any> =
+        when (ex) {
+            is NotFoundException ->
+                ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "NOT_FOUND",
+                            errorMessage = ex.localizedMessage
+                        )
                     )
-                )
 
-            is NetworkException -> ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                .body(
-                    HttpErrorDto(
-                        errorCode = "GATEWAY_TIMEOUT",
-                        errorMessage = ex.localizedMessage,
+            is NetworkException ->
+                ResponseEntity
+                    .status(HttpStatus.BAD_GATEWAY)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "GATEWAY_TIMEOUT",
+                            errorMessage = ex.localizedMessage
+                        )
                     )
-                )
 
-            is InvalidArgumentException -> ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(
-                    HttpErrorDto(
-                        errorCode = "BAD_REQUEST",
-                        errorMessage = ex.localizedMessage,
+            is InvalidArgumentException ->
+                ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "BAD_REQUEST",
+                            errorMessage = ex.localizedMessage
+                        )
                     )
-                )
 
-            else -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(
-                    HttpErrorDto(
-                        errorCode = "INTERNAL_SERVER_ERROR",
-                        errorMessage = ex.localizedMessage,
+            else ->
+                ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "INTERNAL_SERVER_ERROR",
+                            errorMessage = ex.localizedMessage
+                        )
                     )
-                )
         }
-    }
 }

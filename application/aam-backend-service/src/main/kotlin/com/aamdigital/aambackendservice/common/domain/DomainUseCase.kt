@@ -34,7 +34,6 @@ sealed interface UseCaseOutcome<D : UseCaseData> {
 }
 
 abstract class DomainUseCase<R : UseCaseRequest, D : UseCaseData> {
-
     protected val logger: Logger = LoggerFactory.getLogger(javaClass)
 
     enum class DomainError : AamErrorCode {
@@ -53,18 +52,17 @@ abstract class DomainUseCase<R : UseCaseRequest, D : UseCaseData> {
      */
     protected open fun errorHandler(it: Throwable): UseCaseOutcome<D> = baseErrorHandler(it)
 
-    private fun baseErrorHandler(
-        it: Throwable
-    ): UseCaseOutcome<D> {
-        val errorCode: AamErrorCode = when (it) {
-            is AamException -> {
-                it.code
-            }
+    private fun baseErrorHandler(it: Throwable): UseCaseOutcome<D> {
+        val errorCode: AamErrorCode =
+            when (it) {
+                is AamException -> {
+                    it.code
+                }
 
-            else -> {
-                DomainError.UNHANDLED_EXCEPTION_IN_USE_CASE
+                else -> {
+                    DomainError.UNHANDLED_EXCEPTION_IN_USE_CASE
+                }
             }
-        }
 
         logger.debug("[{}] {}", errorCode, it.localizedMessage, it.cause)
 
@@ -78,11 +76,10 @@ abstract class DomainUseCase<R : UseCaseRequest, D : UseCaseData> {
     /**
      *  Execute the use case with errorHandler() in place.
      */
-    fun run(request: R): UseCaseOutcome<D> {
-        return try {
+    fun run(request: R): UseCaseOutcome<D> =
+        try {
             apply(request)
         } catch (ex: Exception) {
             errorHandler(ex)
         }
-    }
 }

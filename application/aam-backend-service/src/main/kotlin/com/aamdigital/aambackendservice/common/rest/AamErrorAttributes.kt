@@ -20,7 +20,6 @@ import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @Component
 class AamErrorAttributes : DefaultErrorAttributes() {
-
     override fun getErrorAttributes(
         request: WebRequest,
         options: ErrorAttributeOptions
@@ -54,8 +53,8 @@ class AamErrorAttributes : DefaultErrorAttributes() {
         return errorAttributes
     }
 
-    private fun createErrorMessage(error: WebExchangeBindException): String {
-        return if (error.hasFieldErrors()) {
+    private fun createErrorMessage(error: WebExchangeBindException): String =
+        if (error.hasFieldErrors()) {
             error.allErrors.joinToString(", ") {
                 if (it is FieldError) {
                     "Error in field ${it.field}: ${it.defaultMessage}"
@@ -66,16 +65,16 @@ class AamErrorAttributes : DefaultErrorAttributes() {
         } else {
             error.reason ?: ""
         }
-    }
 
-    private fun getStatus(error: AamException) = when (error) {
-        is InternalServerException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
-        is IOException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
-        is ExternalSystemException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
-        is NetworkException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
-        is InvalidArgumentException -> HttpStatus.BAD_REQUEST.value()
-        is UnauthorizedAccessException -> HttpStatus.UNAUTHORIZED.value()
-        is ForbiddenAccessException -> HttpStatus.FORBIDDEN.value()
-        is NotFoundException -> HttpStatus.NOT_FOUND.value()
-    }
+    private fun getStatus(error: AamException) =
+        when (error) {
+            is InternalServerException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
+            is IOException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
+            is ExternalSystemException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
+            is NetworkException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
+            is InvalidArgumentException -> HttpStatus.BAD_REQUEST.value()
+            is UnauthorizedAccessException -> HttpStatus.UNAUTHORIZED.value()
+            is ForbiddenAccessException -> HttpStatus.FORBIDDEN.value()
+            is NotFoundException -> HttpStatus.NOT_FOUND.value()
+        }
 }

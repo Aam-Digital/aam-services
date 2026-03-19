@@ -17,20 +17,20 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class ReportQueueConfiguration {
-
     companion object {
         const val DOCUMENT_CHANGES_REPORT_QUEUE = "document.changes.report"
     }
 
     @Bean("report-config-changes-queue")
-    fun reportConfigChangesQueue(): Queue = QueueBuilder
-        .durable(DOCUMENT_CHANGES_REPORT_QUEUE)
-        .build()
+    fun reportConfigChangesQueue(): Queue =
+        QueueBuilder
+            .durable(DOCUMENT_CHANGES_REPORT_QUEUE)
+            .build()
 
     @Bean("report-document-changes-exchange")
     fun reportDocumentChangesBinding(
         @Qualifier("report-config-changes-queue") queue: Queue,
-        @Qualifier("document-changes-exchange") exchange: FanoutExchange,
+        @Qualifier("document-changes-exchange") exchange: FanoutExchange
     ): Binding = BindingBuilder.bind(queue).to(exchange)
 
     @Bean("report-document-changes-consumer")
@@ -39,13 +39,13 @@ class ReportQueueConfiguration {
         createReportCalculationUseCase: CreateReportCalculationUseCase,
         reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
         identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
-        webhookStorage: WebhookStorage,
+        webhookStorage: WebhookStorage
     ): ReportDocumentChangeEventConsumer =
         ReportDocumentChangeEventConsumer(
             messageParser,
             createReportCalculationUseCase,
             reportCalculationChangeUseCase,
             identifyAffectedReportsUseCase,
-            webhookStorage,
+            webhookStorage
         )
 }

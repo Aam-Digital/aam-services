@@ -12,21 +12,17 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.junit.jupiter.MockitoExtension
 
 enum class TestErrorCode : AamErrorCode {
-    TEST_EXCEPTION,
+    TEST_EXCEPTION
 }
 
 @ExtendWith(MockitoExtension::class)
 class BasicDomainUseCaseTest {
-
     class BasicTestUseCase : DomainUseCase<UseCaseRequest, UseCaseData>() {
-
-
-        override fun apply(request: UseCaseRequest): UseCaseOutcome<UseCaseData> {
+        override fun apply(request: UseCaseRequest): UseCaseOutcome<UseCaseData> =
             throw InternalServerException(
                 message = "error",
                 code = TestErrorCode.TEST_EXCEPTION
             )
-        }
     }
 
     private val useCase = BasicTestUseCase()
@@ -38,7 +34,8 @@ class BasicDomainUseCaseTest {
         val response = useCase.run(request)
 
         Assertions.assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
-        Assertions.assertThat((response as UseCaseOutcome.Failure).errorCode)
+        Assertions
+            .assertThat((response as UseCaseOutcome.Failure).errorCode)
             .isEqualTo(TestErrorCode.TEST_EXCEPTION)
     }
 }

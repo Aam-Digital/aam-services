@@ -19,7 +19,7 @@ data class SyncEntry(
     var id: Long = 0,
     var database: String,
     @Column(columnDefinition = "TEXT")
-    var latestRef: String,
+    var latestRef: String
 )
 
 @Repository

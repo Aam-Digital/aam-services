@@ -1,7 +1,8 @@
 package com.aamdigital.aambackendservice.common.auth.core
 
-data class TokenResponse(val token: String)
-
+data class TokenResponse(
+    val token: String
+)
 
 /**
  * Configuration data class for handling authentication.
@@ -17,7 +18,7 @@ data class AuthConfig(
     val clientSecret: String,
     val tokenEndpoint: String,
     val grantType: String,
-    val scope: String,
+    val scope: String
 )
 
 /**

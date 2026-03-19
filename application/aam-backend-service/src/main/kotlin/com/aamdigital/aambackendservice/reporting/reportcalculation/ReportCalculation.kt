@@ -13,7 +13,7 @@ data class ReportCalculation(
     var calculationCompleted: String? = null,
     var args: MutableMap<String, String> = mutableMapOf(),
     val attachments: MutableMap<String, AttachmentMetaData> = mutableMapOf(),
-    val fromAutomaticChangeDetection: Boolean = false,
+    val fromAutomaticChangeDetection: Boolean = false
 ) {
     fun setStatus(status: ReportCalculationStatus): ReportCalculation {
         this.status = status
@@ -36,7 +36,9 @@ data class ReportCalculation(
     }
 }
 
-
 enum class ReportCalculationStatus {
-    PENDING, RUNNING, FINISHED_SUCCESS, FINISHED_ERROR
+    PENDING,
+    RUNNING,
+    FINISHED_SUCCESS,
+    FINISHED_ERROR
 }

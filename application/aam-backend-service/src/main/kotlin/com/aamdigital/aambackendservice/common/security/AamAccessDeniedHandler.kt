@@ -14,9 +14,8 @@ import org.springframework.stereotype.Component
 
 @Component
 class AamAccessDeniedHandler(
-    private val objectMapper: ObjectMapper,
+    private val objectMapper: ObjectMapper
 ) : AccessDeniedHandler {
-
     /**
      * Collect error details from the provided parameters and format according to RFC
      * 6750, specifically `error`, `error_description`, `error_uri`, and
@@ -26,7 +25,8 @@ class AamAccessDeniedHandler(
      * @param accessDeniedException that caused the invocation
      */
     override fun handle(
-        request: HttpServletRequest, response: HttpServletResponse,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
         accessDeniedException: AccessDeniedException?
     ) {
         val parameters: MutableMap<String, String?> = LinkedHashMap()
@@ -53,4 +53,3 @@ class AamAccessDeniedHandler(
         )
     }
 }
-

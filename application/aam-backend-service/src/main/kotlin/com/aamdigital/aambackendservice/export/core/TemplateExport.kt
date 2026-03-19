@@ -17,5 +17,5 @@ data class TemplateExport(
     val targetFileName: String,
     val title: String,
     val description: String? = null,
-    val applicableForEntityTypes: List<String>,
+    val applicableForEntityTypes: List<String>
 )

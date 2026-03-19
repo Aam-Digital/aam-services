@@ -6,7 +6,6 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalcul
 import java.io.InputStream
 
 interface ReportCalculationStorage {
-
     // todo Pagination
     @Throws(AamException::class)
     fun fetchReportCalculations(report: DomainReference): List<ReportCalculation>

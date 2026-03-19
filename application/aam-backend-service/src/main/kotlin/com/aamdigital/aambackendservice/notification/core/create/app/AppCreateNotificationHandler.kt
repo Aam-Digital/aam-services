@@ -23,31 +23,31 @@ data class NotificationEventDto(
     val actionUrl: String?,
     val notificationType: String,
     val context: EntityNotificationContext?,
-    val created: UpdateMetadata,
+    val created: UpdateMetadata
 )
 
 class AppCreateNotificationHandler(
     private val couchDbClient: CouchDbClient,
-    private val couchDbInitializer: CouchDbInitializer,
+    private val couchDbInitializer: CouchDbInitializer
 ) : CreateNotificationHandler {
-
     override fun canHandle(notificationChannelType: NotificationChannelType): Boolean =
         NotificationChannelType.APP == notificationChannelType
 
     override fun createMessage(createUserNotificationEvent: CreateUserNotificationEvent): CreateNotificationData {
-
-        val event = NotificationEventDto(
-            id = "NotificationEvent:${createUserNotificationEvent.details.id}",
-            title = createUserNotificationEvent.details.title,
-            body = createUserNotificationEvent.details.body,
-            actionUrl = createUserNotificationEvent.details.actionUrl,
-            notificationType = createUserNotificationEvent.details.notificationType.toString(),
-            context = createUserNotificationEvent.details.context,
-            created = UpdateMetadata(
-                at = createUserNotificationEvent.details.created.toString(),
-                by = "system"
-            ),
-        )
+        val event =
+            NotificationEventDto(
+                id = "NotificationEvent:${createUserNotificationEvent.details.id}",
+                title = createUserNotificationEvent.details.title,
+                body = createUserNotificationEvent.details.body,
+                actionUrl = createUserNotificationEvent.details.actionUrl,
+                notificationType = createUserNotificationEvent.details.notificationType.toString(),
+                context = createUserNotificationEvent.details.context,
+                created =
+                    UpdateMetadata(
+                        at = createUserNotificationEvent.details.created.toString(),
+                        by = "system"
+                    )
+            )
 
         val userNotificationDb = "notifications_${createUserNotificationEvent.userIdentifier}"
 
@@ -61,7 +61,7 @@ class AppCreateNotificationHandler(
             .putDatabaseDocument(
                 database = userNotificationDb,
                 documentId = event.id,
-                body = event,
+                body = event
             )
 
         return CreateNotificationData(

@@ -19,12 +19,12 @@ import kotlin.jvm.optionals.getOrElse
 
 data class SkillDto(
     val projectId: String,
-    val latestSync: String,
+    val latestSync: String
 )
 
 enum class SyncModeDto {
     DELTA,
-    FULL,
+    FULL
 }
 
 @RestController
@@ -37,20 +37,20 @@ enum class SyncModeDto {
 )
 class SkillAdminController(
     private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase,
-    private val skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository,
+    private val skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository
 ) {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @GetMapping("/sync")
     @PreAuthorize("hasAuthority('ROLE_skill_admin')")
     fun fetchSyncStatus(): ResponseEntity<List<SkillDto>> {
-        val result = skillLabUserProfileSyncRepository.findAll().mapNotNull {
-            SkillDto(
-                projectId = it.projectId,
-                latestSync = it.latestSync.toString()
-            )
-        }
+        val result =
+            skillLabUserProfileSyncRepository.findAll().mapNotNull {
+                SkillDto(
+                    projectId = it.projectId,
+                    latestSync = it.latestSync.toString()
+                )
+            }
 
         return ResponseEntity.ok().body(result)
     }
@@ -64,27 +64,29 @@ class SkillAdminController(
     fun triggerSync(
         @PathVariable projectId: String,
         syncMode: SyncModeDto = SyncModeDto.DELTA,
-        updatedFrom: String? = null,
+        updatedFrom: String? = null
     ): ResponseEntity<Any> {
-
-        val result = skillLabUserProfileSyncRepository.findByProjectId(projectId).getOrElse {
-            return ResponseEntity.notFound().build()
-        }
+        val result =
+            skillLabUserProfileSyncRepository.findByProjectId(projectId).getOrElse {
+                return ResponseEntity.notFound().build()
+            }
 
         when (syncMode) {
-            SyncModeDto.DELTA -> if (!updatedFrom.isNullOrBlank()) {
-                result.latestSync = Instant.parse(updatedFrom).atOffset(ZoneOffset.UTC)
-                skillLabUserProfileSyncRepository.save(result)
-            }
+            SyncModeDto.DELTA ->
+                if (!updatedFrom.isNullOrBlank()) {
+                    result.latestSync = Instant.parse(updatedFrom).atOffset(ZoneOffset.UTC)
+                    skillLabUserProfileSyncRepository.save(result)
+                }
 
             SyncModeDto.FULL -> skillLabUserProfileSyncRepository.delete(result)
         }
 
         try {
             skillLabFetchUserProfileUpdatesUseCase.run(
-                request = FetchUserProfileUpdatesRequest(
-                    projectId = projectId
-                )
+                request =
+                    FetchUserProfileUpdatesRequest(
+                        projectId = projectId
+                    )
             )
         } catch (ex: Exception) {
             logger.error(
@@ -95,11 +97,10 @@ class SkillAdminController(
             return ResponseEntity.internalServerError().body(
                 HttpErrorDto(
                     errorCode = "INTERNAL_SERVER_ERROR",
-                    errorMessage = ex.localizedMessage,
+                    errorMessage = ex.localizedMessage
                 )
             )
         }
-
 
         return ResponseEntity.noContent().build()
     }

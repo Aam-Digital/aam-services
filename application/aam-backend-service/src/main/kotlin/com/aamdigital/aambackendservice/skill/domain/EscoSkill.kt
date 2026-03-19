@@ -14,7 +14,7 @@ enum class SkillUsage {
     BI_WEEKLY,
 
     @JsonEnumDefaultValue
-    UNKNOWN,
+    UNKNOWN
 }
 
 /**
@@ -23,6 +23,5 @@ enum class SkillUsage {
  */
 data class EscoSkill(
     val escoUri: String,
-    val usage: SkillUsage,
+    val usage: SkillUsage
 )
-

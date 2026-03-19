@@ -21,7 +21,6 @@ import org.springframework.web.client.RestClient
 
 @Configuration
 class ReportingNotificationConfiguration {
-
     @Bean
     fun defaultAddWebhookSubscription(
         webhookStorage: WebhookStorage,
@@ -58,6 +57,6 @@ class ReportingNotificationConfiguration {
     @Bean
     fun defaultNotificationStorage(
         webhookRepository: WebhookRepository,
-        cryptoService: CryptoService,
+        cryptoService: CryptoService
     ): WebhookStorage = DefaultWebhookStorage(webhookRepository, cryptoService)
 }

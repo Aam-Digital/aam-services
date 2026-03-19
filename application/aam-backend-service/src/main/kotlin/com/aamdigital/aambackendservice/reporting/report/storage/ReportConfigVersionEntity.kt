@@ -6,5 +6,5 @@ package com.aamdigital.aambackendservice.reporting.report.storage
  * @param version schema version of a ReportConfig, used to apply different business logic
  */
 data class ReportConfigVersionEntity(
-    val version: Int = 1,
+    val version: Int = 1
 )

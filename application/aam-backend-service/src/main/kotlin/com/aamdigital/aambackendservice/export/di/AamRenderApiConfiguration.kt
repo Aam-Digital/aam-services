@@ -11,7 +11,6 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestClient
 
-
 @ConfigurationProperties("aam-render-api-client-configuration")
 @ConditionalOnProperty(
     prefix = "features.export-api",
@@ -22,7 +21,7 @@ import org.springframework.web.client.RestClient
 class AamRenderApiClientConfiguration(
     val basePath: String,
     val authConfig: AuthConfig? = null,
-    val responseTimeoutInSeconds: Int = 30,
+    val responseTimeoutInSeconds: Int = 30
 )
 
 @Configuration
@@ -33,14 +32,15 @@ class AamRenderApiClientConfiguration(
     matchIfMissing = false
 )
 class AamRenderApiConfiguration {
-
     @Bean(name = ["aam-render-api-client"])
     fun aamRenderApiClient(
         @Qualifier("aam-keycloak") authProvider: AuthProvider,
         configuration: AamRenderApiClientConfiguration
     ): RestClient {
-        val clientBuilder = RestClient.builder()
-            .baseUrl(configuration.basePath)
+        val clientBuilder =
+            RestClient
+                .builder()
+                .baseUrl(configuration.basePath)
 
         if (configuration.authConfig != null) {
             clientBuilder.defaultRequest { request ->
@@ -52,10 +52,12 @@ class AamRenderApiConfiguration {
             }
         }
 
-        clientBuilder.requestFactory(SimpleClientHttpRequestFactory().apply {
-            setReadTimeout(configuration.responseTimeoutInSeconds * 1000)
-            setConnectTimeout(configuration.responseTimeoutInSeconds * 1000)
-        })
+        clientBuilder.requestFactory(
+            SimpleClientHttpRequestFactory().apply {
+                setReadTimeout(configuration.responseTimeoutInSeconds * 1000)
+                setConnectTimeout(configuration.responseTimeoutInSeconds * 1000)
+            }
+        )
 
         return clientBuilder.build()
     }

@@ -16,15 +16,19 @@ class DefaultAddWebhookSubscriptionUseCase(
 ) : AddWebhookSubscriptionUseCase {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    override fun subscribe(report: DomainReference, webhook: DomainReference) {
+    override fun subscribe(
+        report: DomainReference,
+        webhook: DomainReference
+    ) {
         webhookStorage.addSubscription(
             webhookRef = webhook,
             entityRef = report
         )
 
-        val reportCalculations = reportCalculationStorage.fetchReportCalculations(
-            report = report
-        )
+        val reportCalculations =
+            reportCalculationStorage.fetchReportCalculations(
+                report = report
+            )
 
         logger.info("Added new webhook ${webhook.id} for report ${report.id}")
 
@@ -47,9 +51,10 @@ class DefaultAddWebhookSubscriptionUseCase(
             notificationService.triggerWebhook(
                 report = report,
                 webhook = webhook,
-                reportCalculation = DomainReference(
-                    calculations.sortedByDescending { it.calculationCompleted }.first().id
-                )
+                reportCalculation =
+                    DomainReference(
+                        calculations.sortedByDescending { it.calculationCompleted }.first().id
+                    )
             )
         }
     }

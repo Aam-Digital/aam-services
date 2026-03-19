@@ -9,14 +9,13 @@ import org.springframework.http.HttpHeaders
 import java.io.InputStream
 
 data class FetchTemplateRequest(
-    val templateRef: DomainReference,
+    val templateRef: DomainReference
 ) : UseCaseRequest
 
 data class FetchTemplateData(
     val file: InputStream,
-    val responseHeaders: HttpHeaders,
+    val responseHeaders: HttpHeaders
 ) : UseCaseData
-
 
 enum class FetchTemplateError : AamErrorCode {
     INTERNAL_SERVER_ERROR,
@@ -24,5 +23,4 @@ enum class FetchTemplateError : AamErrorCode {
     NOT_FOUND_ERROR
 }
 
-abstract class FetchTemplateUseCase :
-    DomainUseCase<FetchTemplateRequest, FetchTemplateData>()
+abstract class FetchTemplateUseCase : DomainUseCase<FetchTemplateRequest, FetchTemplateData>()

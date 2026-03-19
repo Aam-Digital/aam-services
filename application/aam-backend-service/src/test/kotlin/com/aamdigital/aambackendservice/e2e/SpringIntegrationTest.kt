@@ -24,7 +24,6 @@ import org.springframework.test.context.ContextConfiguration
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
 
-
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT
 )
@@ -32,37 +31,43 @@ import org.springframework.web.client.RestTemplate
 @ImportTestcontainers(TestContainers::class)
 @ContextConfiguration
 abstract class SpringIntegrationTest {
-
     companion object {
         private const val APPLICATION_PORT = 9000
     }
 
     val objectMapper = jacksonObjectMapper()
 
-    val restTemplate: RestTemplate = RestTemplateBuilder()
-        .rootUri("http://localhost:$APPLICATION_PORT")
-        .build()
-
-    internal val couchDbTestingService: CouchDbTestingService = CouchDbTestingService(
+    val restTemplate: RestTemplate =
         RestTemplateBuilder()
-            .rootUri("http://localhost:${CONTAINER_COUCHDB.getMappedPort(5984)}")
-            .basicAuthentication("admin", "docker")
+            .rootUri("http://localhost:$APPLICATION_PORT")
             .build()
-    )
 
-    internal val authTestingService: AuthTestingService = AuthTestingService(
-        RestTemplateBuilder()
-            .rootUri("http://localhost:${CONTAINER_KEYCLOAK.getMappedPort(8080)}")
-            .basicAuthentication("admin", "docker")
-            .build()
-    )
+    internal val couchDbTestingService: CouchDbTestingService =
+        CouchDbTestingService(
+            RestTemplateBuilder()
+                .rootUri("http://localhost:${CONTAINER_COUCHDB.getMappedPort(5984)}")
+                .basicAuthentication("admin", "docker")
+                .build()
+        )
+
+    internal val authTestingService: AuthTestingService =
+        AuthTestingService(
+            RestTemplateBuilder()
+                .rootUri("http://localhost:${CONTAINER_KEYCLOAK.getMappedPort(8080)}")
+                .basicAuthentication("admin", "docker")
+                .build()
+        )
 
     var latestResponseBody: String? = null
     var latestResponseHeaders: HttpHeaders? = null
     var latestResponseStatus: HttpStatusCode? = null
     var authToken: String? = null
 
-    fun exchange(url: String, method: HttpMethod, body: String? = null) {
+    fun exchange(
+        url: String,
+        method: HttpMethod,
+        body: String? = null
+    ) {
         val headers = HttpHeaders()
 
         if (authToken != null) {
@@ -75,16 +80,17 @@ abstract class SpringIntegrationTest {
         val requestEntity = HttpEntity(body, headers)
 
         try {
-            restTemplate.exchange(
-                url,
-                method,
-                requestEntity,
-                String::class.java,
-            ).let {
-                latestResponseStatus = it.statusCode
-                latestResponseBody = it.body
-                latestResponseHeaders = it.headers
-            }
+            restTemplate
+                .exchange(
+                    url,
+                    method,
+                    requestEntity,
+                    String::class.java
+                ).let {
+                    latestResponseStatus = it.statusCode
+                    latestResponseBody = it.body
+                    latestResponseHeaders = it.headers
+                }
         } catch (ex: HttpClientErrorException) {
             latestResponseStatus = ex.statusCode
             latestResponseBody = ex.responseBodyAsString
@@ -92,7 +98,10 @@ abstract class SpringIntegrationTest {
         }
     }
 
-    fun exchangeMultipart(url: String, file: Resource) {
+    fun exchangeMultipart(
+        url: String,
+        file: Resource
+    ) {
         val headers = HttpHeaders()
 
         if (authToken != null) {
@@ -108,15 +117,16 @@ abstract class SpringIntegrationTest {
         val requestEntity = HttpEntity(builder.build(), headers)
 
         try {
-            restTemplate.postForEntity(
-                url,
-                requestEntity,
-                String::class.java,
-            ).let {
-                latestResponseStatus = it.statusCode
-                latestResponseBody = it.body
-                latestResponseHeaders = it.headers
-            }
+            restTemplate
+                .postForEntity(
+                    url,
+                    requestEntity,
+                    String::class.java
+                ).let {
+                    latestResponseStatus = it.statusCode
+                    latestResponseBody = it.body
+                    latestResponseHeaders = it.headers
+                }
         } catch (ex: HttpClientErrorException) {
             latestResponseStatus = ex.statusCode
             latestResponseBody = ex.responseBodyAsString
@@ -124,23 +134,23 @@ abstract class SpringIntegrationTest {
         }
     }
 
-    fun parseBodyToObjectNode(): ObjectNode? {
-        return latestResponseBody?.let {
+    fun parseBodyToObjectNode(): ObjectNode? =
+        latestResponseBody?.let {
             objectMapper.readValue<ObjectNode>(it)
         }
-    }
 
-    fun parseHeader(name: String): List<String> {
-        return latestResponseHeaders?.getOrElse(name) { emptyList() } ?: emptyList()
-    }
+    fun parseHeader(name: String): List<String> = latestResponseHeaders?.getOrElse(name) { emptyList() } ?: emptyList()
 
-    fun parseBodyToArrayNode(): ArrayNode? {
-        return latestResponseBody?.let {
+    fun parseBodyToArrayNode(): ArrayNode? =
+        latestResponseBody?.let {
             objectMapper.readValue<ArrayNode>(it)
         }
-    }
 
-    fun fetchToken(client: String, secret: String, realm: String) {
+    fun fetchToken(
+        client: String,
+        secret: String,
+        realm: String
+    ) {
         authToken = authTestingService.fetchToken(client, secret, realm)
     }
 }

@@ -19,10 +19,10 @@ data class ReportConfigV1Entity(
     val aggregationDefinition: String = "",
     val neededArgs: List<String> = emptyList(),
     val created: EditAtBy?,
-    val updated: EditAtBy?,
+    val updated: EditAtBy?
 )
 
 data class EditAtBy(
     val at: String?,
-    val by: String?,
+    val by: String?
 )

@@ -4,5 +4,5 @@ import com.aamdigital.aambackendservice.common.events.DomainEvent
 
 data class UserProfileUpdateEvent(
     val projectId: String,
-    val userProfileId: String,
+    val userProfileId: String
 ) : DomainEvent()

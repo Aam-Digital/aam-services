@@ -15,15 +15,15 @@ import org.springframework.mock.web.MockMultipartFile
 
 @ExtendWith(MockitoExtension::class)
 class DefaultCreateTemplateUseCaseTest : WebClientTestBase() {
-
     private lateinit var service: CreateTemplateUseCase
 
     override fun setUp() {
         super.setUp()
-        service = DefaultCreateTemplateUseCase(
-            restClient = restClient,
-            objectMapper = objectMapper,
-        )
+        service =
+            DefaultCreateTemplateUseCase(
+                restClient = restClient,
+                objectMapper = objectMapper
+            )
     }
 
     @Test
@@ -32,11 +32,12 @@ class DefaultCreateTemplateUseCaseTest : WebClientTestBase() {
         mockWebServer.enqueue(MockResponse().setBody("invalid json"))
 
         // when
-        val response = service.run(
-            CreateTemplateRequest(
-                file = MockMultipartFile("test", "dummy-content".byteInputStream()),
+        val response =
+            service.run(
+                CreateTemplateRequest(
+                    file = MockMultipartFile("test", "dummy-content".byteInputStream())
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
@@ -51,11 +52,12 @@ class DefaultCreateTemplateUseCaseTest : WebClientTestBase() {
         // given
 
         // when
-        val response = service.run(
-            CreateTemplateRequest(
-                file = MockMultipartFile("test", "dummy-content".byteInputStream()),
+        val response =
+            service.run(
+                CreateTemplateRequest(
+                    file = MockMultipartFile("test", "dummy-content".byteInputStream())
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
@@ -71,22 +73,23 @@ class DefaultCreateTemplateUseCaseTest : WebClientTestBase() {
         mockWebServer.enqueue(
             MockResponse().setBody(
                 """
-            {
-                "success": "true",
-                "data": {
-                    "templateId": "template-id"
+                {
+                    "success": "true",
+                    "data": {
+                        "templateId": "template-id"
+                    }
                 }
-            }
-        """.trimIndent()
+                """.trimIndent()
             )
         )
 
         // when
-        val response = service.run(
-            CreateTemplateRequest(
-                file = MockMultipartFile("test", "dummy-content".byteInputStream()),
+        val response =
+            service.run(
+                CreateTemplateRequest(
+                    file = MockMultipartFile("test", "dummy-content".byteInputStream())
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)

@@ -23,7 +23,6 @@ import org.springframework.amqp.core.Message
 
 @ExtendWith(MockitoExtension::class)
 class ReportDocumentChangeEventConsumerTest {
-
     private lateinit var service: ReportDocumentChangeEventConsumer
 
     @Mock
@@ -54,16 +53,17 @@ class ReportDocumentChangeEventConsumerTest {
             createReportCalculationUseCase,
             reportCalculationChangeUseCase,
             identifyAffectedReportsUseCase,
-            webhookStorage,
+            webhookStorage
         )
 
-        service = ReportDocumentChangeEventConsumer(
-            messageParser = messageParser,
-            createReportCalculationUseCase = createReportCalculationUseCase,
-            reportCalculationChangeUseCase = reportCalculationChangeUseCase,
-            identifyAffectedReportsUseCase = identifyAffectedReportsUseCase,
-            webhookStorage = webhookStorage,
-        )
+        service =
+            ReportDocumentChangeEventConsumer(
+                messageParser = messageParser,
+                createReportCalculationUseCase = createReportCalculationUseCase,
+                reportCalculationChangeUseCase = reportCalculationChangeUseCase,
+                identifyAffectedReportsUseCase = identifyAffectedReportsUseCase,
+                webhookStorage = webhookStorage
+            )
     }
 
     @Test
@@ -81,9 +81,10 @@ class ReportDocumentChangeEventConsumerTest {
             }
 
         // when
-        val response = assertThrows<AmqpRejectAndDontRequeueException> {
-            service.consume(rawMessage, mockMessage, mockChannel)
-        }
+        val response =
+            assertThrows<AmqpRejectAndDontRequeueException> {
+                service.consume(rawMessage, mockMessage, mockChannel)
+            }
 
         // then
         Assertions.assertTrue(response.localizedMessage.startsWith("[TEST_EXCEPTION]"))
@@ -100,9 +101,10 @@ class ReportDocumentChangeEventConsumerTest {
             }
 
         // when
-        val response = assertThrows<AmqpRejectAndDontRequeueException> {
-            service.consume(rawMessage, mockMessage, mockChannel)
-        }
+        val response =
+            assertThrows<AmqpRejectAndDontRequeueException> {
+                service.consume(rawMessage, mockMessage, mockChannel)
+            }
 
         // then
         Assertions.assertTrue(response.localizedMessage.startsWith("[NO_USECASE_CONFIGURED]"))

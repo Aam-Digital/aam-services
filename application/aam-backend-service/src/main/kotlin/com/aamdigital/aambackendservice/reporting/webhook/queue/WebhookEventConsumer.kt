@@ -16,39 +16,45 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener
 
 class WebhookEventConsumer(
     private val messageParser: QueueMessageParser,
-    private val useCase: TriggerWebhookUseCase,
+    private val useCase: TriggerWebhookUseCase
 ) {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     enum class WebhookError : AamErrorCode {
-        WEBHOOK_EVENT_TRIGGER_ERROR,
+        WEBHOOK_EVENT_TRIGGER_ERROR
     }
 
     @RabbitListener(
-        queues = [NOTIFICATION_QUEUE],
+        queues = [NOTIFICATION_QUEUE]
     )
-    fun consume(rawMessage: String, message: Message, channel: Channel) {
-        val type = try {
-            messageParser.getTypeKClass(rawMessage.toByteArray())
-        } catch (ex: AamException) {
-            throw AmqpRejectAndDontRequeueException("[${ex.code}] ${ex.localizedMessage}", ex)
-        }
+    fun consume(
+        rawMessage: String,
+        message: Message,
+        channel: Channel
+    ) {
+        val type =
+            try {
+                messageParser.getTypeKClass(rawMessage.toByteArray())
+            } catch (ex: AamException) {
+                throw AmqpRejectAndDontRequeueException("[${ex.code}] ${ex.localizedMessage}", ex)
+            }
 
         when (type.qualifiedName) {
             WebhookEvent::class.qualifiedName -> {
-                val payload = messageParser.getPayload(
-                    body = rawMessage.toByteArray(),
-                    kClass = WebhookEvent::class
-                )
+                val payload =
+                    messageParser.getPayload(
+                        body = rawMessage.toByteArray(),
+                        kClass = WebhookEvent::class
+                    )
                 try {
                     useCase.trigger(payload)
                 } catch (ex: Exception) {
-                    val aamEx = ExternalSystemException(
-                        "[USECASE_ERROR] ${ex.localizedMessage}",
-                        ex,
-                        code = WebhookError.WEBHOOK_EVENT_TRIGGER_ERROR,
-                    )
+                    val aamEx =
+                        ExternalSystemException(
+                            "[USECASE_ERROR] ${ex.localizedMessage}",
+                            ex,
+                            code = WebhookError.WEBHOOK_EVENT_TRIGGER_ERROR
+                        )
                     Sentry.captureException(aamEx)
 
                     // TODO: requeue to retry (but then we need to make sure to not send an old event after a newer calculation already delivered)
@@ -60,11 +66,11 @@ class WebhookEventConsumer(
             else -> {
                 logger.warn(
                     "Could not find any use case for this EventType: {}",
-                    type.qualifiedName,
+                    type.qualifiedName
                 )
 
                 throw AmqpRejectAndDontRequeueException(
-                    "[NO_USECASE_CONFIGURED] Could not find matching use case for: ${type.qualifiedName}",
+                    "[NO_USECASE_CONFIGURED] Could not find matching use case for: ${type.qualifiedName}"
                 )
             }
         }

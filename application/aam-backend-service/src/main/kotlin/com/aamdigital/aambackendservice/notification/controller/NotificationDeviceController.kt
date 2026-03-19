@@ -22,7 +22,7 @@ import kotlin.jvm.optionals.getOrNull
 
 data class DeviceRegistrationDto(
     val deviceName: String? = null,
-    val deviceToken: String,
+    val deviceToken: String
 )
 
 /**
@@ -38,7 +38,7 @@ data class DeviceRegistrationDto(
 )
 @Transactional
 class NotificationDeviceController(
-    private val userDeviceRepository: UserDeviceRepository,
+    private val userDeviceRepository: UserDeviceRepository
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -46,9 +46,8 @@ class NotificationDeviceController(
     @Validated
     fun registerDevice(
         @RequestBody deviceRegistrationDto: DeviceRegistrationDto,
-        authentication: JwtAuthenticationToken,
+        authentication: JwtAuthenticationToken
     ): ResponseEntity<Any> {
-
         if (authentication.name == null) {
             return ResponseEntity.badRequest().body(
                 HttpErrorDto(
@@ -71,10 +70,9 @@ class NotificationDeviceController(
             UserDeviceEntity(
                 userIdentifier = authentication.name,
                 deviceToken = deviceRegistrationDto.deviceToken,
-                deviceName = deviceRegistrationDto.deviceName,
+                deviceName = deviceRegistrationDto.deviceName
             )
         )
-
 
         return ResponseEntity.noContent().build()
     }
@@ -82,18 +80,20 @@ class NotificationDeviceController(
     @GetMapping("/{id}")
     fun getDeviceRegistration(
         @PathVariable id: String,
-        authentication: JwtAuthenticationToken,
+        authentication: JwtAuthenticationToken
     ): ResponseEntity<Any> {
         val userDevice =
             userDeviceRepository.findByDeviceToken(id).getOrNull() ?: return ResponseEntity.notFound().build()
 
-        if (userDevice.userIdentifier != (authentication.name
-                ?: authentication.tokenAttributes["username"].toString())
+        if (userDevice.userIdentifier != (
+                authentication.name
+                    ?: authentication.tokenAttributes["username"].toString()
+            )
         ) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                 HttpErrorDto(
                     errorCode = "Forbidden",
-                    errorMessage = "Token does not belong to User",
+                    errorMessage = "Token does not belong to User"
                 )
             )
         }
@@ -101,7 +101,7 @@ class NotificationDeviceController(
         return ResponseEntity.ok(
             DeviceRegistrationDto(
                 deviceToken = userDevice.deviceToken,
-                deviceName = userDevice.deviceName,
+                deviceName = userDevice.deviceName
             )
         )
     }
@@ -109,18 +109,20 @@ class NotificationDeviceController(
     @DeleteMapping("/{id}")
     fun unregisterDevice(
         @PathVariable id: String,
-        authentication: JwtAuthenticationToken,
+        authentication: JwtAuthenticationToken
     ): ResponseEntity<Any> {
         val userDevice =
             userDeviceRepository.findByDeviceToken(id).getOrNull() ?: return ResponseEntity.notFound().build()
 
-        if (userDevice.userIdentifier != (authentication.name
-                ?: authentication.tokenAttributes["username"].toString())
+        if (userDevice.userIdentifier != (
+                authentication.name
+                    ?: authentication.tokenAttributes["username"].toString()
+            )
         ) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                 HttpErrorDto(
                     errorCode = "Forbidden",
-                    errorMessage = "Token does not belong to User",
+                    errorMessage = "Token does not belong to User"
                 )
             )
         }

@@ -13,9 +13,8 @@ import org.slf4j.LoggerFactory
 class DefaultReportCalculationChangeUseCase(
     private val reportCalculationStorage: ReportCalculationStorage,
     private val objectMapper: ObjectMapper,
-    private val notificationService: NotificationService,
+    private val notificationService: NotificationService
 ) : ReportCalculationChangeUseCase {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun handle(documentChangeEvent: DocumentChangeEvent) {
@@ -27,19 +26,23 @@ class DefaultReportCalculationChangeUseCase(
         }
 
         try {
-            val calculations = reportCalculationStorage.fetchReportCalculations(
-                report = currentReportCalculation.report
-            )
+            val calculations =
+                reportCalculationStorage.fetchReportCalculations(
+                    report = currentReportCalculation.report
+                )
 
-            val existingDigest = calculations
-                .filter {
-                    it.id != currentReportCalculation.id // don't compare with itself
-                            && it.report.id == currentReportCalculation.report.id
-                            && it.status == ReportCalculationStatus.FINISHED_SUCCESS
-                }
-                .sortedBy { it.calculationCompleted }
-                .lastOrNull()
-                ?.attachments?.get("data.json")?.digest
+            val existingDigest =
+                calculations
+                    .filter {
+                        it.id != currentReportCalculation.id &&
+                            // don't compare with itself
+                            it.report.id == currentReportCalculation.report.id &&
+                            it.status == ReportCalculationStatus.FINISHED_SUCCESS
+                    }.sortedBy { it.calculationCompleted }
+                    .lastOrNull()
+                    ?.attachments
+                    ?.get("data.json")
+                    ?.digest
 
             val currentDigest = currentReportCalculation.attachments["data.json"]?.digest
 
@@ -49,17 +52,29 @@ class DefaultReportCalculationChangeUseCase(
                     reportCalculation = DomainReference(currentReportCalculation.id)
                 )
             } else {
-                logger.debug("skipped notification for {} {} because data is unchanged", currentReportCalculation.report.id, currentReportCalculation.id)
+                logger.debug(
+                    "skipped notification for {} {} because data is unchanged",
+                    currentReportCalculation.report.id,
+                    currentReportCalculation.id
+                )
 
                 if (currentReportCalculation.fromAutomaticChangeDetection == true) {
-                    logger.debug("deleting automatically created report-calculation that is just duplicating existing result {}", currentReportCalculation.id)
+                    logger.debug(
+                        "deleting automatically created report-calculation that is just duplicating existing result {}",
+                        currentReportCalculation.id
+                    )
                     reportCalculationStorage.deleteReportCalculation(
                         DomainReference(currentReportCalculation.id)
                     )
                 }
             }
         } catch (ex: Exception) {
-            logger.warn("Could not fetch {} {}. Skipped.", currentReportCalculation.report.id, currentReportCalculation.id, ex)
+            logger.warn(
+                "Could not fetch {} {}. Skipped.",
+                currentReportCalculation.report.id,
+                currentReportCalculation.id,
+                ex
+            )
         }
     }
 }

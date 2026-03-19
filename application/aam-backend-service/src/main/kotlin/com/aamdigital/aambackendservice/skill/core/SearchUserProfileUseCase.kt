@@ -10,14 +10,13 @@ data class SearchUserProfileRequest(
     val email: String?,
     val phone: String?,
     val page: Int,
-    val pageSize: Int,
+    val pageSize: Int
 ) : UseCaseRequest
 
 data class SearchUserProfileData(
     val result: List<UserProfile>,
     val totalElements: Int,
-    val totalPages: Int,
+    val totalPages: Int
 ) : UseCaseData
 
-abstract class SearchUserProfileUseCase :
-    DomainUseCase<SearchUserProfileRequest, SearchUserProfileData>()
+abstract class SearchUserProfileUseCase : DomainUseCase<SearchUserProfileRequest, SearchUserProfileData>()

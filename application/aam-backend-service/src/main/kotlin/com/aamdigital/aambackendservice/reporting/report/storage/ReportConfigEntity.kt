@@ -24,7 +24,7 @@ data class ReportConfigEntity(
     val mode: String,
     val version: Int,
     val transformations: Map<String, List<String>>,
-    val reportDefinition: List<ReportDefinitionDto>,
+    val reportDefinition: List<ReportDefinitionDto>
 )
 
 /**
@@ -34,5 +34,5 @@ data class ReportConfigEntity(
 data class ReportDefinitionDto(
     val query: String?,
     val groupTitle: String?,
-    val items: List<ReportDefinitionDto>?,
+    val items: List<ReportDefinitionDto>?
 )

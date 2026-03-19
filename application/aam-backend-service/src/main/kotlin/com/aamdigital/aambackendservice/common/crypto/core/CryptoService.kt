@@ -12,7 +12,10 @@ data class CryptoConfig(
     val secret: String
 )
 
-data class EncryptedData(val iv: String, val data: String)
+data class EncryptedData(
+    val iv: String,
+    val data: String
+)
 
 class CryptoService(
     private val config: CryptoConfig
@@ -60,7 +63,6 @@ class CryptoService(
         return data
     }
 
-    private fun byteArrayToHexString(array: ByteArray): String {
-        return array.joinToString("") { byte -> "%02x".format(byte and 0xFF.toByte()) }
-    }
+    private fun byteArrayToHexString(array: ByteArray): String =
+        array.joinToString("") { byte -> "%02x".format(byte and 0xFF.toByte()) }
 }

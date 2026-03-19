@@ -25,16 +25,13 @@ import org.springframework.web.client.RestClient
 )
 class UseCaseConfiguration {
     @Bean(name = ["default-template-storage"])
-    fun defaultTemplateStorage(
-        couchDbClient: CouchDbClient,
-    ): TemplateStorage = DefaultTemplateStorage(couchDbClient)
+    fun defaultTemplateStorage(couchDbClient: CouchDbClient): TemplateStorage = DefaultTemplateStorage(couchDbClient)
 
     @Bean(name = ["default-create-template-use-case"])
     fun defaultCreateTemplateUseCase(
         @Qualifier("aam-render-api-client") restClient: RestClient,
         objectMapper: ObjectMapper
     ): CreateTemplateUseCase = DefaultCreateTemplateUseCase(restClient, objectMapper)
-
 
     @Bean(name = ["default-fetch-template-use-case"])
     fun defaultFetchTemplateUseCase(

@@ -17,7 +17,6 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class ReportingNotificationQueueConfiguration {
-
     companion object {
         const val NOTIFICATION_QUEUE = "notification.webhook"
         const val NOTIFICATION_DEAD_LETTER_QUEUE = "notification.webhook.deadLetter"
@@ -25,38 +24,40 @@ class ReportingNotificationQueueConfiguration {
     }
 
     @Bean("notification-queue")
-    fun notificationQueue(): Queue = QueueBuilder
-        .durable(NOTIFICATION_QUEUE)
-        .deadLetterExchange(NOTIFICATION_DEAD_LETTER_EXCHANGE)
-        .build()
+    fun notificationQueue(): Queue =
+        QueueBuilder
+            .durable(NOTIFICATION_QUEUE)
+            .deadLetterExchange(NOTIFICATION_DEAD_LETTER_EXCHANGE)
+            .build()
 
     @Bean("notification-dead-letter-queue")
-    fun notificationDeadLetterQueue(): Queue = QueueBuilder
-        .durable(NOTIFICATION_DEAD_LETTER_QUEUE)
-        .build()
+    fun notificationDeadLetterQueue(): Queue =
+        QueueBuilder
+            .durable(NOTIFICATION_DEAD_LETTER_QUEUE)
+            .build()
 
     @Bean("notification-dead-letter-exchange")
-    fun notificationDeadLetterExchange(): FanoutExchange =
-        FanoutExchange(NOTIFICATION_DEAD_LETTER_EXCHANGE)
+    fun notificationDeadLetterExchange(): FanoutExchange = FanoutExchange(NOTIFICATION_DEAD_LETTER_EXCHANGE)
 
     @Bean
     fun notificationDeadLetterBinding(
         @Qualifier("notification-dead-letter-queue") notificationDeadLetterQueue: Queue,
-        @Qualifier("notification-dead-letter-exchange") notificationDeadLetterExchange: FanoutExchange,
-    ): Binding =
-        BindingBuilder.bind(notificationDeadLetterQueue).to(notificationDeadLetterExchange)
+        @Qualifier("notification-dead-letter-exchange") notificationDeadLetterExchange: FanoutExchange
+    ): Binding = BindingBuilder.bind(notificationDeadLetterQueue).to(notificationDeadLetterExchange)
 
     @Bean
     fun defaultNotificationEventPublisher(
         rabbitTemplate: RabbitTemplate,
-        objectMapper: ObjectMapper,
-    ): WebhookEventPublisher = WebhookEventPublisher(
-        objectMapper = objectMapper, rabbitTemplate = rabbitTemplate
-    )
+        objectMapper: ObjectMapper
+    ): WebhookEventPublisher =
+        WebhookEventPublisher(
+            objectMapper = objectMapper,
+            rabbitTemplate = rabbitTemplate
+        )
 
     @Bean
     fun defaultNotificationEventConsumer(
         messageParser: QueueMessageParser,
-        useCase: TriggerWebhookUseCase,
+        useCase: TriggerWebhookUseCase
     ): WebhookEventConsumer = WebhookEventConsumer(messageParser, useCase)
 }

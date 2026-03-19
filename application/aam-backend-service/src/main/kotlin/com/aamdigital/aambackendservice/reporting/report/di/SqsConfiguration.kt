@@ -9,14 +9,16 @@ import org.springframework.web.client.RestClient
 class SqsConfiguration {
     @Bean(name = ["sqs-client"])
     fun sqsRestClient(configuration: SqsClientConfiguration): RestClient {
-        val clientBuilder = RestClient.builder()
-            .baseUrl(configuration.basePath)
-            .defaultHeaders {
-                it.setBasicAuth(
-                    configuration.basicAuthUsername,
-                    configuration.basicAuthPassword,
-                )
-            }
+        val clientBuilder =
+            RestClient
+                .builder()
+                .baseUrl(configuration.basePath)
+                .defaultHeaders {
+                    it.setBasicAuth(
+                        configuration.basicAuthUsername,
+                        configuration.basicAuthPassword
+                    )
+                }
 
         return clientBuilder.build()
     }
@@ -26,5 +28,5 @@ class SqsConfiguration {
 class SqsClientConfiguration(
     val basePath: String,
     val basicAuthUsername: String,
-    val basicAuthPassword: String,
+    val basicAuthPassword: String
 )

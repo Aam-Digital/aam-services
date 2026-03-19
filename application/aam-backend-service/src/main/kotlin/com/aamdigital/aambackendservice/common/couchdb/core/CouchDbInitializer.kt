@@ -3,7 +3,6 @@ package com.aamdigital.aambackendservice.common.couchdb.core
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.InitializingBean
 
-
 /**
  * Representing a couchdb database
  */
@@ -29,11 +28,12 @@ class CouchDbInitializer(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
-        private val DEFAULT_DATABASES = listOf(
-            DatabaseRequest("_users"),
-            DatabaseRequest("app"),
-            DatabaseRequest("app-attachments"),
-        )
+        private val DEFAULT_DATABASES =
+            listOf(
+                DatabaseRequest("_users"),
+                DatabaseRequest("app"),
+                DatabaseRequest("app-attachments")
+            )
     }
 
     private fun initCouchDb() {
@@ -47,12 +47,13 @@ class CouchDbInitializer(
     }
 
     fun createDatabase(databaseRequest: DatabaseRequest) {
-        val dbExists = try {
-            couchDbClient.databaseExists(databaseRequest.name)
-        } catch (e: Exception) {
-            logger.error("Error fetching status of database ${databaseRequest.name}", e)
-            return
-        }
+        val dbExists =
+            try {
+                couchDbClient.databaseExists(databaseRequest.name)
+            } catch (e: Exception) {
+                logger.error("Error fetching status of database ${databaseRequest.name}", e)
+                return
+            }
 
         if (!dbExists) {
             logger.info("Database ${databaseRequest.name} does not exist. Creating it.")

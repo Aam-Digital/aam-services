@@ -7,7 +7,7 @@ import com.aamdigital.aambackendservice.reporting.report.Report
 
 enum class ReportStorageErrorCode : AamErrorCode {
     INVALID_REPORT_CONFIG,
-    PARSING_ERROR,
+    PARSING_ERROR
 }
 
 interface ReportStorage {

@@ -20,22 +20,24 @@ class DefaultCreateReportCalculationUseCase(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun createReportCalculation(request: CreateReportCalculationRequest): CreateReportCalculationResult {
-        val calculation = ReportCalculation(
-            id = "ReportCalculation:${UUID.randomUUID()}",
-            report = request.report,
-            status = ReportCalculationStatus.PENDING,
-            args = request.args,
-            fromAutomaticChangeDetection = request.fromAutomaticChangeDetection,
-        )
+        val calculation =
+            ReportCalculation(
+                id = "ReportCalculation:${UUID.randomUUID()}",
+                report = request.report,
+                status = ReportCalculationStatus.PENDING,
+                args = request.args,
+                fromAutomaticChangeDetection = request.fromAutomaticChangeDetection
+            )
         logger.trace("creating report {} calculation {}", calculation.report.id, calculation.id)
 
         return try {
             val reportCalculations = reportCalculationStorage.fetchReportCalculations(request.report)
 
-            val i = reportCalculations.filter { reportCalculation ->
-                reportCalculation.status == ReportCalculationStatus.PENDING &&
+            val i =
+                reportCalculations.filter { reportCalculation ->
+                    reportCalculation.status == ReportCalculationStatus.PENDING &&
                         reportCalculation.args == calculation.args
-            }
+                }
 
             if (i.isNotEmpty()) {
                 CreateReportCalculationResult.Success(
@@ -55,7 +57,7 @@ class DefaultCreateReportCalculationUseCase(
         reportCalculationEventPublisher.publish(
             "report.calculation",
             ReportCalculationEvent(
-                reportCalculationId = reportCalculation.id,
+                reportCalculationId = reportCalculation.id
             )
         )
         return CreateReportCalculationResult.Success(
@@ -63,9 +65,9 @@ class DefaultCreateReportCalculationUseCase(
         )
     }
 
-    private fun handleError(it: Throwable): CreateReportCalculationResult {
-        return CreateReportCalculationResult.Failure(
-            errorCode = CreateReportCalculationResult.ErrorCode.INTERNAL_SERVER_ERROR, cause = it
+    private fun handleError(it: Throwable): CreateReportCalculationResult =
+        CreateReportCalculationResult.Failure(
+            errorCode = CreateReportCalculationResult.ErrorCode.INTERNAL_SERVER_ERROR,
+            cause = it
         )
-    }
 }

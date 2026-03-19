@@ -15,7 +15,7 @@ data class Report(
     val title: String,
     val version: Int,
     val items: List<ReportItem>,
-    val transformations: Map<String, List<String>> = mutableMapOf(),
+    val transformations: Map<String, List<String>> = mutableMapOf()
 )
 
 /**
@@ -23,14 +23,13 @@ data class Report(
  * Sealed class - Can either be a ReportQuery or a ReportGroup
  */
 sealed class ReportItem {
-
     /**
      * Represents a SQL statement
      *
      * @param sql SQL statement with possible placeholders, starting with '$' char
      */
     data class ReportQuery(
-        val sql: String,
+        val sql: String
     ) : ReportItem()
 
     /**

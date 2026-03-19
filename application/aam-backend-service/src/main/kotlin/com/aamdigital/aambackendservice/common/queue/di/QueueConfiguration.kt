@@ -16,7 +16,6 @@ import org.springframework.context.annotation.Primary
 
 @Configuration
 class QueueConfiguration {
-
     @Bean
     @Primary
     fun rabbitTemplate(
@@ -34,9 +33,10 @@ class QueueConfiguration {
     }
 
     @Bean
-    fun defaultQueueMessageParser(objectMapper: ObjectMapper): QueueMessageParser = DefaultQueueMessageParser(
-        objectMapper = objectMapper
-    )
+    fun defaultQueueMessageParser(objectMapper: ObjectMapper): QueueMessageParser =
+        DefaultQueueMessageParser(
+            objectMapper = objectMapper
+        )
 
     @Bean
     fun defaultMessageConverter(): MessageConverter = Jackson2JsonMessageConverter()

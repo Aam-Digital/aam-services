@@ -16,20 +16,15 @@ data class NotificationRuleEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     val id: Long = 0,
-
     @Column
     var label: String,
-
     @Column(unique = true)
     var externalIdentifier: String,
-
     @Column
     @Enumerated(EnumType.STRING)
     var notificationType: NotificationType,
-
     @Column
     var entityType: String,
-
     /**
      * The kind of change of a document that should trigger a notification.
      * e.g. "created", "updated", "deleted"
@@ -39,10 +34,8 @@ data class NotificationRuleEntity(
      */
     @Column
     var changeType: String,
-
     @ElementCollection(fetch = FetchType.EAGER)
     var conditions: List<NotificationConditionEntity>,
-
     @Column
-    var enabled: Boolean,
+    var enabled: Boolean
 )

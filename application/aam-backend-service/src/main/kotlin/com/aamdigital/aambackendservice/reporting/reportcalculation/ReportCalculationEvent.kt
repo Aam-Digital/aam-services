@@ -7,5 +7,5 @@ import com.aamdigital.aambackendservice.common.events.DomainEvent
  */
 class ReportCalculationEvent(
 //    val tenant: String, // prepare tenant support
-    val reportCalculationId: String,
+    val reportCalculationId: String
 ) : DomainEvent()

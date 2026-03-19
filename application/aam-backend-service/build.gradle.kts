@@ -9,6 +9,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
     id("org.jetbrains.kotlin.kapt") version "2.1.20"
     id("io.sentry.jvm.gradle") version "6.2.0"
+    id("org.jlleitschuh.gradle.ktlint") version "12.3.0"
 }
 
 group = "com.aam-digital"
@@ -123,6 +124,10 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.addAll("-Xjsr305=strict")
     }
+}
+
+ktlint {
+    version.set("1.5.0")
 }
 
 tasks.withType<Test> {

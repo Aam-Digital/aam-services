@@ -6,7 +6,7 @@ import com.aamdigital.aambackendservice.common.domain.UseCaseData
 import com.aamdigital.aambackendservice.common.domain.UseCaseRequest
 
 data class FetchUserProfileUpdatesRequest(
-    val projectId: String,
+    val projectId: String
 ) : UseCaseRequest
 
 /**

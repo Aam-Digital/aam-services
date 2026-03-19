@@ -8,7 +8,5 @@ import java.util.concurrent.atomic.AtomicLong
 object SequenceGenerator {
     private val currentId = AtomicLong(0)
 
-    fun nextId(): Long {
-        return currentId.incrementAndGet()
-    }
+    fun nextId(): Long = currentId.incrementAndGet()
 }

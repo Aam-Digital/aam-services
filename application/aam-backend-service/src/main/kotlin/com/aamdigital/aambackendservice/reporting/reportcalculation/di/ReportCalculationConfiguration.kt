@@ -20,10 +20,9 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class ReportCalculationConfiguration {
-
     @Bean("report-calculation-database-request")
     fun reportCalculationDatabaseRequest(): DatabaseRequest = DatabaseRequest("report-calculation")
-    
+
     @Bean("notification-webhook-database-request")
     fun notificationWebhookDatabaseRequest(): DatabaseRequest = DatabaseRequest("notification-webhook")
 
@@ -37,14 +36,14 @@ class ReportCalculationConfiguration {
     fun defaultReportCalculationChangeUseCase(
         reportCalculationStorage: ReportCalculationStorage,
         objectMapper: ObjectMapper,
-        notificationService: NotificationService,
+        notificationService: NotificationService
     ): ReportCalculationChangeUseCase =
         DefaultReportCalculationChangeUseCase(reportCalculationStorage, objectMapper, notificationService)
 
     @Bean
     fun defaultCreateReportCalculationUseCase(
         reportCalculationStorage: ReportCalculationStorage,
-        reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher,
+        reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher
     ) = DefaultCreateReportCalculationUseCase(reportCalculationStorage, reportCalculationEventPublisher)
 
     @Bean
@@ -54,7 +53,5 @@ class ReportCalculationConfiguration {
     fun getSqlToDateTransformation(): DataTransformation<String> = SqlToDateTransformation()
 
     @Bean
-    fun getJsonFactory(
-        objectMapper: ObjectMapper
-    ): JsonFactory = JsonFactory().setCodec(objectMapper)
+    fun getJsonFactory(objectMapper: ObjectMapper): JsonFactory = JsonFactory().setCodec(objectMapper)
 }

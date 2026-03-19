@@ -14,12 +14,12 @@ data class Webhook(
 
 data class WebhookTarget(
     val method: String,
-    val url: String,
+    val url: String
 )
 
 class WebhookAuthentication(
     var type: WebhookAuthenticationType,
-    val secret: String,
+    val secret: String
 )
 
 enum class WebhookAuthenticationType {

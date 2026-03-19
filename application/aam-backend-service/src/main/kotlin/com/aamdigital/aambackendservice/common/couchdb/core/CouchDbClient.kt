@@ -13,7 +13,11 @@ import kotlin.reflect.KClass
 
 interface CouchDbClient {
     fun allDatabases(): List<String>
-    fun changes(database: String, queryParams: MultiValueMap<String, String>): CouchDbChangesResponse
+
+    fun changes(
+        database: String,
+        queryParams: MultiValueMap<String, String>
+    ): CouchDbChangesResponse
 
     fun <T : Any> find(
         database: String,
@@ -24,7 +28,7 @@ interface CouchDbClient {
 
     fun headDatabaseDocument(
         database: String,
-        documentId: String,
+        documentId: String
     ): HttpHeaders
 
     @Throws(
@@ -36,7 +40,7 @@ interface CouchDbClient {
         database: String,
         documentId: String,
         queryParams: MultiValueMap<String, String> = getEmptyQueryParams(),
-        kClass: KClass<T>,
+        kClass: KClass<T>
     ): T
 
     fun putDatabaseDocument(
@@ -47,14 +51,14 @@ interface CouchDbClient {
 
     fun deleteDatabaseDocument(
         database: String,
-        documentId: String,
+        documentId: String
     ): DocSuccess
 
     fun <T : Any> getPreviousDocRev(
         database: String,
         documentId: String,
         rev: String,
-        kClass: KClass<T>,
+        kClass: KClass<T>
     ): Optional<T>
 
     fun createDatabase(databaseName: String)

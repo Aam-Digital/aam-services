@@ -13,15 +13,15 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class ReportConfiguration {
-
     @Bean
     fun defaultReportStorage(
         couchDbClient: CouchDbClient,
-        objectMapper: ObjectMapper,
-    ): ReportStorage = DefaultReportStorage(
-        couchDbClient = couchDbClient,
-        objectMapper = objectMapper
-    )
+        objectMapper: ObjectMapper
+    ): ReportStorage =
+        DefaultReportStorage(
+            couchDbClient = couchDbClient,
+            objectMapper = objectMapper
+        )
 
     @Bean
     fun defaultSimpleReportSchemaGenerator(): ReportQueryAnalyser = SimpleReportQueryAnalyser()
@@ -29,8 +29,6 @@ class ReportConfiguration {
     @Bean
     fun defaultIdentifyAffectedReportsUseCase(
         reportStorage: ReportStorage,
-        schemaGenerator: ReportQueryAnalyser,
-    ): IdentifyAffectedReportsUseCase =
-        DefaultIdentifyAffectedReportsUseCase(reportStorage, schemaGenerator)
-
+        schemaGenerator: ReportQueryAnalyser
+    ): IdentifyAffectedReportsUseCase = DefaultIdentifyAffectedReportsUseCase(reportStorage, schemaGenerator)
 }

@@ -5,5 +5,6 @@ import com.aamdigital.aambackendservice.notification.domain.NotificationChannelT
 
 interface CreateNotificationHandler {
     fun canHandle(notificationChannelType: NotificationChannelType): Boolean
+
     fun createMessage(createUserNotificationEvent: CreateUserNotificationEvent): CreateNotificationData
 }

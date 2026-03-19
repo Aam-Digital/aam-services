@@ -13,7 +13,5 @@ import org.springframework.stereotype.Component
     matchIfMissing = false
 )
 class ThirdPartyAuthenticationFeatureInfoEndpoint : FeatureRegistrar {
-    override fun getFeatureInfo(): Pair<String, FeaturesInfoDto> {
-        return "third-party-authentication" to FeaturesInfoDto(true)
-    }
+    override fun getFeatureInfo(): Pair<String, FeaturesInfoDto> = "third-party-authentication" to FeaturesInfoDto(true)
 }

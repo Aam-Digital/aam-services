@@ -15,7 +15,6 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class ChangesConfiguration {
-
     @Bean
     @ConditionalOnProperty(
         prefix = "database-change-detection",
@@ -33,12 +32,13 @@ class ChangesConfiguration {
     fun couchDatabaseChangeDetection(
         couchDbClient: CouchDbClient,
         changeEventPublisher: ChangeEventPublisher,
-        syncRepository: SyncRepository,
-    ): DatabaseChangeDetection = CouchDbDatabaseChangeDetection(
-        couchDbClient,
-        changeEventPublisher,
-        syncRepository
-    )
+        syncRepository: SyncRepository
+    ): DatabaseChangeDetection =
+        CouchDbDatabaseChangeDetection(
+            couchDbClient,
+            changeEventPublisher,
+            syncRepository
+        )
 
     @Bean
     fun defaultAnalyseDocumentChangeUseCase(
@@ -49,6 +49,6 @@ class ChangesConfiguration {
         DefaultCreateDocumentChangeUseCase(
             couchDbClient = couchDbClient,
             objectMapper = objectMapper,
-            documentChangeEventPublisher = changeEventPublisher,
+            documentChangeEventPublisher = changeEventPublisher
         )
 }

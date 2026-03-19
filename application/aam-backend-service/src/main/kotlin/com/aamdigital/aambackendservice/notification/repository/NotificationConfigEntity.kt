@@ -17,27 +17,20 @@ data class NotificationConfigEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     val id: Long = 0,
-
     @Column
     var channelPush: Boolean,
-
     @Column
     var channelEmail: Boolean,
-
     @Column
     var revision: String,
-
     @Column(unique = true)
     var userIdentifier: String,
-
     @OneToMany(fetch = FetchType.EAGER, cascade = [CascadeType.ALL], orphanRemoval = true)
     var notificationRules: List<NotificationRuleEntity>,
-
     @CreationTimestamp(source = SourceType.DB)
     @Column
     var createdAt: OffsetDateTime? = null,
-
     @CreationTimestamp(source = SourceType.DB)
     @Column
-    var updatedAt: OffsetDateTime? = null,
+    var updatedAt: OffsetDateTime? = null
 )

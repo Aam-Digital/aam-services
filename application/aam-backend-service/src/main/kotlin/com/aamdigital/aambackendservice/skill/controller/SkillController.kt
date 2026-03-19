@@ -23,12 +23,12 @@ data class PaginationDto(
     val currentPage: Int,
     val pageSize: Int,
     val totalPages: Int,
-    val totalElements: Int,
+    val totalElements: Int
 )
 
 data class FetchUserProfilesDto(
     val pagination: PaginationDto,
-    val results: List<UserProfile>,
+    val results: List<UserProfile>
 )
 
 @RestController
@@ -42,9 +42,8 @@ data class FetchUserProfilesDto(
 class SkillController(
     private val searchUserProfileUseCase: SearchUserProfileUseCase,
     private val userProfileRepository: SkillLabUserProfileRepository,
-    private val objectMapper: ObjectMapper,
+    private val objectMapper: ObjectMapper
 ) {
-
     companion object {
         private const val MAX_PAGE_SIZE = 100
     }
@@ -56,7 +55,7 @@ class SkillController(
         email: String = "",
         phone: String = "",
         page: Int = 1,
-        pageSize: Int = 10,
+        pageSize: Int = 10
     ): ResponseEntity<Any> {
         if (page < 1) {
             return getBadRequestResponse(message = "Page must be greater than 0")
@@ -70,53 +69,58 @@ class SkillController(
             return getBadRequestResponse(message = "Max pageSize limit is $MAX_PAGE_SIZE")
         }
 
-        val result = searchUserProfileUseCase.run(
-            request = SearchUserProfileRequest(
-                fullName = fullName,
-                email = email,
-                phone = phone,
-                page = page,
-                pageSize = pageSize
-            ),
-        )
+        val result =
+            searchUserProfileUseCase.run(
+                request =
+                    SearchUserProfileRequest(
+                        fullName = fullName,
+                        email = email,
+                        phone = phone,
+                        page = page,
+                        pageSize = pageSize
+                    )
+            )
 
         return when (result) {
             is UseCaseOutcome.Failure<*> -> {
                 when (result.errorCode) {
-                    else -> ResponseEntity.badRequest().body(
-                        ResponseEntity.internalServerError().body(
-                            HttpErrorDto(
-                                errorCode = result.errorCode.toString(),
-                                errorMessage = result.errorMessage
+                    else ->
+                        ResponseEntity.badRequest().body(
+                            ResponseEntity.internalServerError().body(
+                                HttpErrorDto(
+                                    errorCode = result.errorCode.toString(),
+                                    errorMessage = result.errorMessage
+                                )
                             )
                         )
-                    )
                 }
                 ResponseEntity.badRequest().body(
                     result.errorMessage
                 )
             }
 
-            is UseCaseOutcome.Success<SearchUserProfileData> -> ResponseEntity.ok().body(
-                FetchUserProfilesDto(
-                    pagination = PaginationDto(
-                        currentPage = page,
-                        pageSize = pageSize,
-                        totalElements = result.data.totalElements,
-                        totalPages = result.data.totalPages,
-                    ),
-                    results = result.data.result
+            is UseCaseOutcome.Success<SearchUserProfileData> ->
+                ResponseEntity.ok().body(
+                    FetchUserProfilesDto(
+                        pagination =
+                            PaginationDto(
+                                currentPage = page,
+                                pageSize = pageSize,
+                                totalElements = result.data.totalElements,
+                                totalPages = result.data.totalPages
+                            ),
+                        results = result.data.result
+                    )
                 )
-            )
         }
     }
 
     @GetMapping("/user-profile/{id}")
     @PreAuthorize("hasAuthority('ROLE_skill_reader')")
     fun fetchUserProfile(
-        @PathVariable id: String,
-    ): ResponseEntity<Any> {
-        return if (!userProfileRepository.existsByExternalIdentifier(id)) {
+        @PathVariable id: String
+    ): ResponseEntity<Any> =
+        if (!userProfileRepository.existsByExternalIdentifier(id)) {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 HttpErrorDto(
                     errorCode = "NOT_FOUND",
@@ -131,26 +135,25 @@ class SkillController(
                     fullName = entity.fullName,
                     phone = entity.mobileNumber,
                     email = entity.email,
-                    skills = entity.skills.map {
-                        EscoSkill(
-                            usage = objectMapper.convertValue(it.usage.uppercase(), SkillUsage::class.java),
-                            escoUri = it.escoUri
-                        )
-                    },
+                    skills =
+                        entity.skills.map {
+                            EscoSkill(
+                                usage = objectMapper.convertValue(it.usage.uppercase(), SkillUsage::class.java),
+                                escoUri = it.escoUri
+                            )
+                        },
                     updatedAtExternalSystem = entity.updatedAt,
                     importedAt = entity.importedAt?.toInstant(),
-                    latestSyncAt = entity.latestSyncAt?.toInstant(),
+                    latestSyncAt = entity.latestSyncAt?.toInstant()
                 )
             )
         }
-    }
 
-    private fun getBadRequestResponse(message: String): ResponseEntity<Any> {
-        return ResponseEntity.badRequest().body(
+    private fun getBadRequestResponse(message: String): ResponseEntity<Any> =
+        ResponseEntity.badRequest().body(
             HttpErrorDto(
                 errorCode = "BAD_REQUEST",
                 errorMessage = message
             )
         )
-    }
 }

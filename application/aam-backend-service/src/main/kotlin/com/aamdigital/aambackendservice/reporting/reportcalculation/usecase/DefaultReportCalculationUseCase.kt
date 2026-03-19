@@ -51,88 +51,105 @@ class DefaultReportCalculationUseCase(
     private val reportCalculationStorage: ReportCalculationStorage,
     private val reportStorage: ReportStorage,
     private val transformations: List<DataTransformation<String>>,
-    private val queryStorage: QueryStorage,
+    private val queryStorage: QueryStorage
 ) : ReportCalculationUseCase() {
-
     override fun apply(request: ReportCalculationRequest): UseCaseOutcome<ReportCalculationData> {
         logger.trace("start processing report-calculation-request {}", request.reportCalculationId)
 
-        val reportCalculation: ReportCalculation = try {
-            reportCalculationStorage.fetchReportCalculation(
-                DomainReference(request.reportCalculationId)
-            )
-        } catch (ex: AamException) {
-            return handleException(ex, ReportCalculationError.REPORT_CALCULATION_NOT_FOUND)
-        }
+        val reportCalculation: ReportCalculation =
+            try {
+                reportCalculationStorage.fetchReportCalculation(
+                    DomainReference(request.reportCalculationId)
+                )
+            } catch (ex: AamException) {
+                return handleException(ex, ReportCalculationError.REPORT_CALCULATION_NOT_FOUND)
+            }
 
-        val report: Report = try {
-            reportStorage.fetchReport(reportCalculation.report)
-        } catch (ex: AamException) {
-            return handleException(ex, ReportCalculationError.REPORT_NOT_FOUND)
-        }
+        val report: Report =
+            try {
+                reportStorage.fetchReport(reportCalculation.report)
+            } catch (ex: AamException) {
+                return handleException(ex, ReportCalculationError.REPORT_NOT_FOUND)
+            }
 
         var updatedReportCalculation: ReportCalculation
         try {
-            updatedReportCalculation = reportCalculationStorage.storeCalculation(
-                reportCalculation = reportCalculation
-                    .setStatus(ReportCalculationStatus.RUNNING)
-                    .setStartDate(startDate = getIsoLocalDateTime())
-            )
+            updatedReportCalculation =
+                reportCalculationStorage.storeCalculation(
+                    reportCalculation =
+                        reportCalculation
+                            .setStatus(ReportCalculationStatus.RUNNING)
+                            .setStartDate(startDate = getIsoLocalDateTime())
+                )
 
             updatedReportCalculation = handleSqlReport(report, updatedReportCalculation)
 
-            updatedReportCalculation = reportCalculationStorage.storeCalculation(
-                reportCalculation = updatedReportCalculation
-                    .setStatus(ReportCalculationStatus.FINISHED_SUCCESS)
-                    .setEndDate(endDate = getIsoLocalDateTime())
-            )
+            updatedReportCalculation =
+                reportCalculationStorage.storeCalculation(
+                    reportCalculation =
+                        updatedReportCalculation
+                            .setStatus(ReportCalculationStatus.FINISHED_SUCCESS)
+                            .setEndDate(endDate = getIsoLocalDateTime())
+                )
         } catch (ex: Exception) {
             reportCalculationStorage.storeCalculation(
-                reportCalculation = reportCalculation.setStatus(ReportCalculationStatus.FINISHED_ERROR).setEndDate(
-                    endDate = getIsoLocalDateTime()
-                ).setErrorDetails(ex.localizedMessage)
+                reportCalculation =
+                    reportCalculation
+                        .setStatus(ReportCalculationStatus.FINISHED_ERROR)
+                        .setEndDate(
+                            endDate = getIsoLocalDateTime()
+                        ).setErrorDetails(ex.localizedMessage)
             )
 
             return handleException(ex)
         }
 
         return UseCaseOutcome.Success(
-            data = ReportCalculationData(
-                reportCalculation = updatedReportCalculation,
-            )
+            data =
+                ReportCalculationData(
+                    reportCalculation = updatedReportCalculation
+                )
         )
     }
 
     @Throws(AamException::class)
     private fun handleSqlReport(
         report: Report,
-        reportCalculation: ReportCalculation,
+        reportCalculation: ReportCalculation
     ): ReportCalculation {
         for ((argKey: String, transformationKeys: List<String>) in report.transformations) {
             handleTransformations(argKey, transformationKeys, reportCalculation.args)
         }
 
-        val resultData = if (report.version == 1) {
-            listOf(
-                handleReportItems(
-                    queries = report.items, report = report, reportCalculation = reportCalculation
-                ),
-            )
-        } else {
-            listOf(
-                "[".byteInputStream(),
-                handleReportItems(
-                    queries = report.items, report = report, reportCalculation = reportCalculation
-                ),
-                "]".byteInputStream()
-            )
-        }
+        val resultData =
+            if (report.version == 1) {
+                listOf(
+                    handleReportItems(
+                        queries = report.items,
+                        report = report,
+                        reportCalculation = reportCalculation
+                    )
+                )
+            } else {
+                listOf(
+                    "[".byteInputStream(),
+                    handleReportItems(
+                        queries = report.items,
+                        report = report,
+                        reportCalculation = reportCalculation
+                    ),
+                    "]".byteInputStream()
+                )
+            }
 
-        val result = reportCalculationStorage.addReportCalculationData(
-            reportCalculation = reportCalculation, file = SequenceInputStream(
-                Collections.enumeration(resultData)
+        val result =
+            reportCalculationStorage.addReportCalculationData(
+                reportCalculation = reportCalculation,
+                file =
+                    SequenceInputStream(
+                        Collections.enumeration(resultData)
+                    )
             )
-        )
 
         return result
     }
@@ -142,33 +159,36 @@ class DefaultReportCalculationUseCase(
         report: Report,
         reportCalculation: ReportCalculation
     ): InputStream {
-        val queryStreams = queries.mapIndexed { index, queryItem ->
-            val result: MutableList<InputStream> = when (queryItem) {
-                is ReportItem.ReportQuery -> {
-                    val queryResult = queryStorage.executeQuery(
-                        handleReportQuery(queryItem, report, reportCalculation)
+        val queryStreams =
+            queries.mapIndexed { index, queryItem ->
+                val result: MutableList<InputStream> =
+                    when (queryItem) {
+                        is ReportItem.ReportQuery -> {
+                            val queryResult =
+                                queryStorage.executeQuery(
+                                    handleReportQuery(queryItem, report, reportCalculation)
+                                )
+                            mutableListOf(queryResult)
+                        }
+
+                        is ReportItem.ReportGroup -> {
+                            val prefix = "{\"${queryItem.title}\":[".byteInputStream()
+                            val queryResult = handleReportItems(queryItem.items, report, reportCalculation)
+                            val suffix = "]}".byteInputStream()
+                            mutableListOf(prefix, queryResult, suffix)
+                        }
+                    }
+
+                if (index < queries.size - 1) {
+                    result.add(",".byteInputStream())
+                }
+
+                SequenceInputStream(
+                    Collections.enumeration(
+                        result
                     )
-                    mutableListOf(queryResult)
-                }
-
-                is ReportItem.ReportGroup -> {
-                    val prefix = "{\"${queryItem.title}\":[".byteInputStream()
-                    val queryResult = handleReportItems(queryItem.items, report, reportCalculation)
-                    val suffix = "]}".byteInputStream()
-                    mutableListOf(prefix, queryResult, suffix)
-                }
-            }
-
-            if (index < queries.size - 1) {
-                result.add(",".byteInputStream())
-            }
-
-            SequenceInputStream(
-                Collections.enumeration(
-                    result
                 )
-            )
-        }
+            }
 
         return SequenceInputStream(
             Collections.enumeration(
@@ -181,8 +201,8 @@ class DefaultReportCalculationUseCase(
         query: ReportItem.ReportQuery,
         report: Report,
         reportCalculation: ReportCalculation
-    ): QueryRequest {
-        return when (report.version) {
+    ): QueryRequest =
+        when (report.version) {
             1 -> {
                 if (query.sql.contains("$")) {
                     getQueryRequest(query, reportCalculation.args)
@@ -204,16 +224,20 @@ class DefaultReportCalculationUseCase(
                     code = ReportCalculationError.UNSUPPORTED_REPORT_VERSION
                 )
         }
-    }
 
-    private fun getQueryRequest(query: ReportItem.ReportQuery, args: MutableMap<String, String>): QueryRequest {
+    private fun getQueryRequest(
+        query: ReportItem.ReportQuery,
+        args: MutableMap<String, String>
+    ): QueryRequest {
         var sqlQuery = query.sql
 
         val findPlaceholderRegex = "\\$(\\w*)".toRegex()
-        val placeholders = findPlaceholderRegex.findAll(sqlQuery)
-            .map {
-                it.groupValues[1]
-            }
+        val placeholders =
+            findPlaceholderRegex
+                .findAll(sqlQuery)
+                .map {
+                    it.groupValues[1]
+                }
 
         val queryArgs = mutableListOf<String>()
 
@@ -241,11 +265,13 @@ class DefaultReportCalculationUseCase(
     ) {
         var value = args[argKey] ?: ""
 
-        val transformationsToApply = transformationKeys.map { transformationKey ->
-            transformations.find {
-                it.id == transformationKey
-            }
-        }.mapNotNull { it }
+        val transformationsToApply =
+            transformationKeys
+                .map { transformationKey ->
+                    transformations.find {
+                        it.id == transformationKey
+                    }
+                }.mapNotNull { it }
 
         for (transformation in transformationsToApply) {
             value = transformation.transform(value)
@@ -255,39 +281,45 @@ class DefaultReportCalculationUseCase(
 
     private fun handleException(
         exception: Exception,
-        useCaseStepCode: ReportCalculationError? = null,
+        useCaseStepCode: ReportCalculationError? = null
     ): UseCaseOutcome<ReportCalculationData> {
-        val useCaseException: AamException = when (exception) {
-            is NetworkException -> NetworkException(
-                message = exception.localizedMessage,
-                code = useCaseStepCode ?: ReportCalculationError.IO_ERROR,
-                cause = exception
-            )
+        val useCaseException: AamException =
+            when (exception) {
+                is NetworkException ->
+                    NetworkException(
+                        message = exception.localizedMessage,
+                        code = useCaseStepCode ?: ReportCalculationError.IO_ERROR,
+                        cause = exception
+                    )
 
-            is NotFoundException -> NotFoundException(
-                message = exception.localizedMessage,
-                code = useCaseStepCode ?: ReportCalculationError.UNEXPECTED_ERROR,
-                cause = exception
-            )
+                is NotFoundException ->
+                    NotFoundException(
+                        message = exception.localizedMessage,
+                        code = useCaseStepCode ?: ReportCalculationError.UNEXPECTED_ERROR,
+                        cause = exception
+                    )
 
-            is ExternalSystemException -> ExternalSystemException(
-                message = exception.localizedMessage,
-                code = useCaseStepCode ?: ReportCalculationError.UNEXPECTED_ERROR,
-                cause = exception
-            )
+                is ExternalSystemException ->
+                    ExternalSystemException(
+                        message = exception.localizedMessage,
+                        code = useCaseStepCode ?: ReportCalculationError.UNEXPECTED_ERROR,
+                        cause = exception
+                    )
 
-            is InvalidArgumentException -> InvalidArgumentException(
-                message = exception.localizedMessage,
-                code = exception.code,
-                cause = exception
-            )
+                is InvalidArgumentException ->
+                    InvalidArgumentException(
+                        message = exception.localizedMessage,
+                        code = exception.code,
+                        cause = exception
+                    )
 
-            else -> InternalServerException(
-                message = exception.localizedMessage,
-                code = ReportCalculationError.UNEXPECTED_ERROR,
-                cause = exception.cause
-            )
-        }
+                else ->
+                    InternalServerException(
+                        message = exception.localizedMessage,
+                        code = ReportCalculationError.UNEXPECTED_ERROR,
+                        cause = exception.cause
+                    )
+            }
 
         return UseCaseOutcome.Failure(
             errorMessage = useCaseException.localizedMessage,
@@ -296,8 +328,9 @@ class DefaultReportCalculationUseCase(
         )
     }
 
-    private fun getIsoLocalDateTime(): String = Date().toInstant()
-        .atOffset(ZoneOffset.UTC)
-        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+    private fun getIsoLocalDateTime(): String =
+        Date()
+            .toInstant()
+            .atOffset(ZoneOffset.UTC)
+            .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
 }
-

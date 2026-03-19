@@ -10,9 +10,13 @@ import org.springframework.util.MultiValueMap
 import org.springframework.web.client.RestTemplate
 
 class AuthTestingService(
-    private val restTemplate: RestTemplate,
+    private val restTemplate: RestTemplate
 ) {
-    fun fetchToken(client: String, secret: String, realm: String): String? {
+    fun fetchToken(
+        client: String,
+        secret: String,
+        realm: String
+    ): String? {
         val headers = HttpHeaders()
         headers.contentType = MediaType.APPLICATION_FORM_URLENCODED
 
@@ -24,12 +28,13 @@ class AuthTestingService(
 
         val requestEntity = HttpEntity(body, headers)
 
-        val tokenResponse = restTemplate.exchange(
-            "/realms/$realm/protocol/openid-connect/token",
-            HttpMethod.POST,
-            requestEntity,
-            ObjectNode::class.java
-        )
+        val tokenResponse =
+            restTemplate.exchange(
+                "/realms/$realm/protocol/openid-connect/token",
+                HttpMethod.POST,
+                requestEntity,
+                ObjectNode::class.java
+            )
 
         return tokenResponse.body?.get("access_token")?.textValue()
     }

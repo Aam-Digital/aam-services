@@ -18,24 +18,25 @@ data class QueryRequest(
 @Service
 class SqsQueryStorage(
     @Qualifier("sqs-client") private val sqsClient: RestClient,
-    private val schemaService: SqsSchemaService,
+    private val schemaService: SqsSchemaService
 ) : QueryStorage {
-
     enum class SqsQueryStorageErrorCode : AamErrorCode {
-        EMPTY_RESPONSE,
+        EMPTY_RESPONSE
     }
 
     override fun executeQuery(query: QueryRequest): InputStream {
         val schemaPath = schemaService.getSchemaPath()
         schemaService.updateSchema()
 
-        val response = sqsClient.post()
-            .uri(schemaPath)
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(query)
-            .accept(MediaType.APPLICATION_JSON)
-            .retrieve()
-            .body(Resource::class.java)
+        val response =
+            sqsClient
+                .post()
+                .uri(schemaPath)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(query)
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .body(Resource::class.java)
 
         if (response == null) {
             throw ExternalSystemException(

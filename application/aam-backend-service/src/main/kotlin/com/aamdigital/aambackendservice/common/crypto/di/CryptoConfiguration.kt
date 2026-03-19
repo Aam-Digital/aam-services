@@ -7,10 +7,6 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class CryptoConfiguration {
-
     @Bean
-    fun defaultCryptoService(
-        config: CryptoConfig
-    ): CryptoService =
-        CryptoService(config)
+    fun defaultCryptoService(config: CryptoConfig): CryptoService = CryptoService(config)
 }

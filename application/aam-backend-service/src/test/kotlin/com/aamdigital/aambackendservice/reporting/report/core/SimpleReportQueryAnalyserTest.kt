@@ -23,13 +23,14 @@ class SimpleReportQueryAnalyserTest {
     @Test
     fun `should be able to handle empty items`() {
         // given
-        val report = Report(
-            id = "report-1",
-            title = "Report 1",
-            version = 1,
-            transformations = emptyMap(),
-            items = listOf()
-        )
+        val report =
+            Report(
+                id = "report-1",
+                title = "Report 1",
+                version = 1,
+                transformations = emptyMap(),
+                items = listOf()
+            )
 
         // when
         val result = service.getAffectedEntities(report)
@@ -44,23 +45,25 @@ class SimpleReportQueryAnalyserTest {
     @Test
     fun `should be able to handle invalid SQL queries`() {
         // given
-        val report = Report(
-            id = "report-1",
-            title = "Report 1",
-            version = 1,
-            transformations = emptyMap(),
-            items = listOf(
-                ReportItem.ReportQuery(
-                    sql = "SELECT nothing"
-                ),
-                ReportItem.ReportQuery(
-                    sql = "SELECT nothing FROM"
-                ),
-                ReportItem.ReportQuery(
-                    sql = "FROM"
-                )
+        val report =
+            Report(
+                id = "report-1",
+                title = "Report 1",
+                version = 1,
+                transformations = emptyMap(),
+                items =
+                    listOf(
+                        ReportItem.ReportQuery(
+                            sql = "SELECT nothing"
+                        ),
+                        ReportItem.ReportQuery(
+                            sql = "SELECT nothing FROM"
+                        ),
+                        ReportItem.ReportQuery(
+                            sql = "FROM"
+                        )
+                    )
             )
-        )
 
         // when
         val result = service.getAffectedEntities(report)
@@ -75,17 +78,19 @@ class SimpleReportQueryAnalyserTest {
     @Test
     fun `should extract Entities from Report with one ReportQuery`() {
         // given
-        val report = Report(
-            id = "report-1",
-            title = "Report 1",
-            version = 1,
-            transformations = emptyMap(),
-            items = listOf(
-                ReportItem.ReportQuery(
-                    sql = "SELECT * FROM Children c JOIN School s WHERE c.school_id = s.id"
-                )
+        val report =
+            Report(
+                id = "report-1",
+                title = "Report 1",
+                version = 1,
+                transformations = emptyMap(),
+                items =
+                    listOf(
+                        ReportItem.ReportQuery(
+                            sql = "SELECT * FROM Children c JOIN School s WHERE c.school_id = s.id"
+                        )
+                    )
             )
-        )
 
         // when
         val result = service.getAffectedEntities(report)
@@ -100,23 +105,25 @@ class SimpleReportQueryAnalyserTest {
     @Test
     fun `should extract Entities from Report with multiple ReportQuery`() {
         // given
-        val report = Report(
-            id = "report-1",
-            title = "Report 1",
-            version = 1,
-            transformations = emptyMap(),
-            items = listOf(
-                ReportItem.ReportQuery(
-                    sql = "SELECT * FROM Children c JOIN School s WHERE c.school_id = s.id"
-                ),
-                ReportItem.ReportQuery(
-                    sql = "SELECT c.name FROM Event c JOIN EventLocation e WHERE c.location = e.id"
-                ),
-                ReportItem.ReportQuery(
-                    sql = "SELECT * FROM EventNotes"
-                )
+        val report =
+            Report(
+                id = "report-1",
+                title = "Report 1",
+                version = 1,
+                transformations = emptyMap(),
+                items =
+                    listOf(
+                        ReportItem.ReportQuery(
+                            sql = "SELECT * FROM Children c JOIN School s WHERE c.school_id = s.id"
+                        ),
+                        ReportItem.ReportQuery(
+                            sql = "SELECT c.name FROM Event c JOIN EventLocation e WHERE c.location = e.id"
+                        ),
+                        ReportItem.ReportQuery(
+                            sql = "SELECT * FROM EventNotes"
+                        )
+                    )
             )
-        )
 
         // when
         val result = service.getAffectedEntities(report)
@@ -131,31 +138,34 @@ class SimpleReportQueryAnalyserTest {
     @Test
     fun `should extract Entities from Report with multiple ReportQuery and ReportGroup`() {
         // given
-        val report = Report(
-            id = "report-1",
-            title = "Report 1",
-            version = 1,
-            transformations = emptyMap(),
-            items = listOf(
-                ReportItem.ReportQuery(
-                    sql = "SELECT * FROM User"
-                ),
-                ReportItem.ReportGroup(
-                    title = "foo",
-                    items = listOf(
+        val report =
+            Report(
+                id = "report-1",
+                title = "Report 1",
+                version = 1,
+                transformations = emptyMap(),
+                items =
+                    listOf(
                         ReportItem.ReportQuery(
-                            sql = "SELECT * FROM Children c JOIN School s WHERE c.school_id = s.id"
+                            sql = "SELECT * FROM User"
+                        ),
+                        ReportItem.ReportGroup(
+                            title = "foo",
+                            items =
+                                listOf(
+                                    ReportItem.ReportQuery(
+                                        sql = "SELECT * FROM Children c JOIN School s WHERE c.school_id = s.id"
+                                    ),
+                                    ReportItem.ReportQuery(
+                                        sql = "SELECT c.name FROM Event c JOIN EventLocation e WHERE c.location = e.id"
+                                    )
+                                )
                         ),
                         ReportItem.ReportQuery(
-                            sql = "SELECT c.name FROM Event c JOIN EventLocation e WHERE c.location = e.id"
-                        ),
+                            sql = "SELECT * FROM EventNotes"
+                        )
                     )
-                ),
-                ReportItem.ReportQuery(
-                    sql = "SELECT * FROM EventNotes"
-                )
             )
-        )
 
         // when
         val result = service.getAffectedEntities(report)
@@ -174,17 +184,19 @@ class SimpleReportQueryAnalyserTest {
         val query = data.getString("query").replace("\"", "")
         val expectedEntities = data.getJsonArray("entities").map { it.toString().replace("\"", "") }
 
-        val report = Report(
-            id = "report-1",
-            title = "Report 1",
-            version = 1,
-            transformations = emptyMap(),
-            items = listOf(
-                ReportItem.ReportQuery(
-                    sql = query
-                ),
+        val report =
+            Report(
+                id = "report-1",
+                title = "Report 1",
+                version = 1,
+                transformations = emptyMap(),
+                items =
+                    listOf(
+                        ReportItem.ReportQuery(
+                            sql = query
+                        )
+                    )
             )
-        )
 
         // when
         val result = service.getAffectedEntities(report)

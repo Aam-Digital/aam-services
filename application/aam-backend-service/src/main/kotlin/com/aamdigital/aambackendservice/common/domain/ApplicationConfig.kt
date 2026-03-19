@@ -8,5 +8,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 @ConfigurationProperties("application")
 class ApplicationConfig(
     /** the base url of the app (e.g. dev.aam-digital.net) */
-    val baseUrl: String,
+    val baseUrl: String
 )

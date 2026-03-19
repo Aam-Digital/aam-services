@@ -8,5 +8,5 @@ data class CreateUserNotificationEvent(
     val userIdentifier: String,
     val notificationChannelType: NotificationChannelType,
     val notificationRule: String,
-    val details: NotificationDetails,
+    val details: NotificationDetails
 ) : DomainEvent()

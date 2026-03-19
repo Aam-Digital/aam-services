@@ -9,9 +9,8 @@ import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.Auth
 import kotlin.jvm.optionals.getOrNull
 
 class DefaultSessionRedirectUseCase(
-    private val authenticationSessionRepository: AuthenticationSessionRepository,
+    private val authenticationSessionRepository: AuthenticationSessionRepository
 ) : SessionRedirectUseCase() {
-
     enum class DefaultSessionRedirectUseCaseError : AamErrorCode {
         INVALID_SESSION,
         INVALID_USER_SESSION,
@@ -19,11 +18,12 @@ class DefaultSessionRedirectUseCase(
     }
 
     override fun apply(request: SessionRedirectUseCaseRequest): UseCaseOutcome<SessionRedirectUseCaseData> {
-        val session = authenticationSessionRepository.findByExternalIdentifier(request.sessionId).getOrNull()
-            ?: return UseCaseOutcome.Failure(
-                errorCode = DefaultSessionRedirectUseCaseError.INVALID_SESSION,
-                errorMessage = "Invalid credentials"
-            )
+        val session =
+            authenticationSessionRepository.findByExternalIdentifier(request.sessionId).getOrNull()
+                ?: return UseCaseOutcome.Failure(
+                    errorCode = DefaultSessionRedirectUseCaseError.INVALID_SESSION,
+                    errorMessage = "Invalid credentials"
+                )
 
         if (session.userId != request.userId) {
             return UseCaseOutcome.Failure(
@@ -41,9 +41,10 @@ class DefaultSessionRedirectUseCase(
             )
         } else {
             UseCaseOutcome.Success(
-                data = SessionRedirectUseCaseData(
-                    redirectUrl = redirectUrl
-                )
+                data =
+                    SessionRedirectUseCaseData(
+                        redirectUrl = redirectUrl
+                    )
             )
         }
     }

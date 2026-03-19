@@ -23,7 +23,6 @@ import org.springframework.security.crypto.password.PasswordEncoder
 )
 @Configuration
 class AuthenticationConfiguration {
-
     @Bean
     fun passwordEncoder(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
 
@@ -32,27 +31,30 @@ class AuthenticationConfiguration {
         authenticationSessionRepository: AuthenticationSessionRepository,
         passwordEncoder: PasswordEncoder,
         authenticationProvider: AuthenticationProvider,
-        couchDbClient: CouchDbClient,
-    ): CreateSessionUseCase = DefaultCreateSessionUseCase(
-        authenticationSessionRepository = authenticationSessionRepository,
-        passwordEncoder = passwordEncoder,
-        authenticationProvider = authenticationProvider,
-        couchDbClient = couchDbClient
-    )
+        couchDbClient: CouchDbClient
+    ): CreateSessionUseCase =
+        DefaultCreateSessionUseCase(
+            authenticationSessionRepository = authenticationSessionRepository,
+            passwordEncoder = passwordEncoder,
+            authenticationProvider = authenticationProvider,
+            couchDbClient = couchDbClient
+        )
 
     @Bean
     fun defaultSessionRedirectUseCase(
         authenticationSessionRepository: AuthenticationSessionRepository
-    ): SessionRedirectUseCase = DefaultSessionRedirectUseCase(
-        authenticationSessionRepository = authenticationSessionRepository,
-    )
+    ): SessionRedirectUseCase =
+        DefaultSessionRedirectUseCase(
+            authenticationSessionRepository = authenticationSessionRepository
+        )
 
     @Bean
     fun defaultVerifySessionUseCase(
         authenticationSessionRepository: AuthenticationSessionRepository,
-        passwordEncoder: PasswordEncoder,
-    ): VerifySessionUseCase = DefaultVerifySessionUseCase(
-        authenticationSessionRepository = authenticationSessionRepository,
-        passwordEncoder = passwordEncoder,
-    )
+        passwordEncoder: PasswordEncoder
+    ): VerifySessionUseCase =
+        DefaultVerifySessionUseCase(
+            authenticationSessionRepository = authenticationSessionRepository,
+            passwordEncoder = passwordEncoder
+        )
 }

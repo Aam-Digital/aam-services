@@ -8,5 +8,5 @@ enum class NotificationChannelType {
     EMAIL,
 
     @JsonEnumDefaultValue
-    UNKNOWN,
+    UNKNOWN
 }

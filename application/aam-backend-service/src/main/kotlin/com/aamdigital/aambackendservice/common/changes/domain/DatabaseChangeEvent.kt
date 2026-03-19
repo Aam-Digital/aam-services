@@ -6,5 +6,5 @@ data class DatabaseChangeEvent(
     val database: String,
     val documentId: String,
     val rev: String?,
-    val deleted: Boolean,
+    val deleted: Boolean
 ) : DomainEvent()
