@@ -24,6 +24,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       packages: read
       pull-requests: write
       id-token: write

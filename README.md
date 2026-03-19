@@ -101,7 +101,7 @@ See [docs/developer/README.md](docs/developer/README.md) for full environment se
 ./gradlew bootRun --args='--spring.profiles.active=local-development'
 ```
 
-The application starts on port **9000** with context path `/api` (i.e. `http://localhost:9000/api`).
+The application starts on port **9000** with context path `/` when using the `local-development` profile (i.e. `http://localhost:9000/`). Other profiles may configure a different context path (for example `/api`).
 
 Make sure to copy the reverse-proxy certificate for HTTPS connections to Keycloak (see [developer README](docs/developer/README.md#link-certificate-to-aam-backend-service)).
 
