@@ -2,7 +2,7 @@
 
 Collection of aam-digital services and tools
 
-[![Maintainability](https://api.codeclimate.com/v1/badges/57213b5887a579196d6d/maintainability)](https://codeclimate.com/github/Aam-Digital/aam-services/maintainability) [![Test Coverage](https://api.codeclimate.com/v1/badges/57213b5887a579196d6d/test_coverage)](https://codeclimate.com/github/Aam-Digital/aam-services/test_coverage)
+[![Maintainability](https://qlty.sh/badges/gh/Aam-Digital/aam-services/maintainability.svg)](https://qlty.sh/gh/Aam-Digital/aam-services) [![Test Coverage](https://qlty.sh/badges/gh/Aam-Digital/aam-services/test_coverage.svg)](https://qlty.sh/gh/Aam-Digital/aam-services)
 
 A modularize Spring Boot application that contains API modules for [Aam Digital's case management platform](https://github.com/Aam-Digital/ndb-core).
 
@@ -37,7 +37,7 @@ The response lists feature modules with their status ("enabled").
 If the _aam-services backend_ is not deployed at all, such a request will usually return a HTTP 504 error.
 You should also account for that possibility.
 
------
+---
 
 # Setup & Configuration
 
@@ -52,8 +52,7 @@ Please refer to the respective READMEs in the "API Modules" list above for instr
 To run the system locally for development, refer to the [docs/developer/README.md](docs/developer/README.md) and sample docker files there.
 These allow you to run required additional services like databases and queues on your machine.
 
-
------
+---
 
 # Development
 
@@ -67,6 +66,46 @@ This backend is developed as independent modules that share some common services
 - Spring Boot ([see intro](https://docs.spring.io/spring-boot/reference/using/index.html))
 - Gradle ([see intro](https://docs.gradle.org/current/userguide/getting_started_eng.html))
 - RabbitMQ (AMQP) for message queues ([see Tutorial](https://www.rabbitmq.com/tutorials/tutorial-three-spring-amqp#))
+
+## Running Tests
+
+All commands should be run from `application/aam-backend-service/`.
+
+```shell
+# Run all tests (unit + e2e)
+./gradlew test
+
+# Run tests with coverage report (CSV + XML in build/reports/jacoco/)
+./gradlew jacocoTestReport
+
+# Run a single test class
+./gradlew test --tests "com.aamdigital.aambackendservice.export.usecase.DefaultCreateTemplateUseCaseTest"
+```
+
+The test suite includes:
+
+- **Unit tests** (JUnit 5 + Mockito) for individual use cases and services
+- **E2E / integration tests** (Cucumber BDD) that spin up real Docker containers via Testcontainers (Keycloak, CouchDB, PostgreSQL, RabbitMQ, Carbone, SQS) and test full API flows. Cucumber feature files are located in `src/test/resources/cucumber/features/`.
+
+Both run together with `./gradlew test` — Docker must be available for the e2e tests.
+
+**VS Code:** Install the [Gradle for Java](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-gradle) extension to discover and run tests from the Test Explorer sidebar.
+
+## Running the Application Locally
+
+**Prerequisites:** JDK 21 and a running local dev stack (databases, message queues, Keycloak).
+See [docs/developer/README.md](docs/developer/README.md) for full environment setup instructions.
+
+```shell
+# From application/aam-backend-service/
+./gradlew bootRun --args='--spring.profiles.active=local-development'
+```
+
+The application starts on port **9000** with context path `/` when using the `local-development` profile (i.e. `http://localhost:9000/`). Other profiles may configure a different context path (for example `/api`).
+
+Make sure to copy the reverse-proxy certificate for HTTPS connections to Keycloak (see [developer README](docs/developer/README.md#link-certificate-to-aam-backend-service)).
+
+**VS Code:** Install the [Spring Boot Dashboard](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-spring-boot-dashboard) extension, then set the environment variable `SPRING_PROFILES_ACTIVE=local-development` in your launch configuration.
 
 ## Folder structure
 
