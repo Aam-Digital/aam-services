@@ -33,7 +33,7 @@ class CouchDbDatabaseChangeDetection(
         couchDbClient
             .allDatabases()
             .filter { !it.startsWith("_") }
-            .map { database ->
+            .forEach { database ->
                 fetchChangesForDatabase(database)
             }
     }
