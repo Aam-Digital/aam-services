@@ -70,6 +70,7 @@ abstract class SpringIntegrationTest {
         }
 
         headers.contentType = MediaType.APPLICATION_JSON
+        headers.accept = listOf(MediaType.APPLICATION_JSON)
 
         val requestEntity = HttpEntity(body, headers)
 

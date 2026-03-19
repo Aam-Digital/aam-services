@@ -113,7 +113,7 @@ class SkillLabClient(
                     )
 
                 }
-            }
+            }!!
     }
 
     fun fetchUserProfiles(pageable: Pageable, updatedFrom: String?): List<DomainReference> {
@@ -148,6 +148,6 @@ class SkillLabClient(
                     )
 
                 }
-            }
+            }!!
     }
 }

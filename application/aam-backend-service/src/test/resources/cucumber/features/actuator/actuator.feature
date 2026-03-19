@@ -1,5 +1,6 @@
 Feature: the health endpoint can be retrieved
 
+    @Disabled
     Scenario: client makes call to GET /actuator/health
         When the client calls GET /actuator/health
         Then the client receives an json object

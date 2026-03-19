@@ -134,7 +134,7 @@ class DefaultCouchDbClient(
                         code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
                     )
                 }
-            }
+            }!!
     }
 
     /**
@@ -175,7 +175,7 @@ class DefaultCouchDbClient(
                     )
                 }
                 handleResponse(clientResponse, kClass)
-            }
+            }!!
     }
 
     override fun putDatabaseDocument(
@@ -204,7 +204,7 @@ class DefaultCouchDbClient(
             .accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
                 handleResponse(clientResponse, DocSuccess::class)
-            }
+            }!!
     }
 
     override fun deleteDatabaseDocument(
@@ -230,7 +230,7 @@ class DefaultCouchDbClient(
             }
             .exchange { _, clientResponse ->
                 handleResponse(clientResponse, DocSuccess::class)
-            }
+            }!!
     }
 
     override fun <T : Any> getPreviousDocRev(
@@ -325,7 +325,7 @@ class DefaultCouchDbClient(
     }
 
     override fun createDatabase(databaseName: String) {
-        return httpClient.put()
+        httpClient.put()
             .uri {
                 it.path("/$databaseName")
                 it.build()
@@ -358,6 +358,6 @@ class DefaultCouchDbClient(
             }
             .exchange { _, clientResponse ->
                 return@exchange clientResponse.statusCode.is2xxSuccessful
-            }
+            }!!
     }
 }

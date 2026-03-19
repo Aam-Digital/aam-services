@@ -17,7 +17,7 @@ class CouchDbChangeDetectionJob(
         private var MAX_ERROR_COUNT: Int = 5
     }
 
-    @Scheduled(fixedDelay = 8000)
+    @Scheduled(fixedDelayString = "\${database-change-detection.fixed-delay:8000}")
     fun checkForCouchDbChanges() {
         if (ERROR_COUNTER >= MAX_ERROR_COUNT) {
             logger.trace("[CouchDbChangeDetectionJob]: MAX_ERROR_COUNT reached. Not starting job again.")

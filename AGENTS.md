@@ -419,6 +419,19 @@ All Gradle commands should be run from `application/aam-backend-service/`.
 
 For local development setup (databases, queues, Keycloak), see `docs/developer/README.md` and the docker-compose files there.
 
+### Working with Test Results
+
+Gradle generates structured test reports that persist after each run. To avoid re-running tests for further analysis, read the existing report files:
+
+- **JUnit XML reports**: `build/test-results/test/` — machine-readable per-class results
+- **JaCoCo coverage**: `build/reports/jacoco/test/jacocoTestReport.xml` (XML) and `.csv` (CSV)
+
+When running tests, always pipe console output to a file for later reference:
+
+```bash
+./gradlew test 2>&1 | tee build/test-output.log
+```
+
 ## Examples and Templates
 
 When generating code, refer to existing patterns in the codebase:

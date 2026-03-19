@@ -7,7 +7,6 @@ import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.RabbitMQContainer
-import org.testcontainers.images.PullPolicy
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
@@ -29,6 +28,11 @@ object TestContainers {
             "spring.security.oauth2.resourceserver.jwt.issuer-uri"
         ) {
             "http://localhost:${CONTAINER_KEYCLOAK.getMappedPort(8080)}/realms/dummy-realm"
+        }
+        registry.add(
+            "aam-security.allowed-issuers"
+        ) {
+            "http://localhost:${CONTAINER_KEYCLOAK.getMappedPort(8080)}"
         }
         registry.add(
             "couch-db-client-configuration.base-path",
@@ -63,7 +67,7 @@ object TestContainers {
     @JvmStatic
     val CONTAINER_KEYCLOAK: KeycloakContainer = KeycloakContainer()
 //        .withEnv("JAVA_TOOL_OPTIONS", "-XX:UseSVE=0") # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
-        .withRealmImportFile("/e2e-keycloak-realm.json")
+        .withRealmImportFile("/dummy-realm-realm.json")
         .withAdminUsername("admin")
         .withAdminPassword("docker")
 
@@ -73,7 +77,7 @@ object TestContainers {
     val CONTAINER_RABBIT_MQ: RabbitMQContainer = RabbitMQContainer(
         DockerImageName
             .parse("rabbitmq")
-            .withTag("3.7.25-management-alpine")
+            .withTag("3-management-alpine")
     )
 
     @Container
@@ -82,7 +86,7 @@ object TestContainers {
         GenericContainer(
             DockerImageName
                 .parse("couchdb")
-                .withTag("3.3")
+                .withTag("3.4.2")
         )
             .withNetwork(network)
             .withNetworkAliases("couchdb")
@@ -123,7 +127,6 @@ object TestContainers {
                 .asCompatibleSubstituteFor("aam-sqs-linux")
                 .withTag("latest")
         )
-            .withImagePullPolicy(PullPolicy.alwaysPull())
             .withNetwork(network)
             .withNetworkAliases("sqs")
             .withEnv(
@@ -141,7 +144,6 @@ object TestContainers {
                 .parse("carbone/carbone-ee")
                 .withTag("4.23.4")
         )
-            .withImagePullPolicy(PullPolicy.alwaysPull())
             .withNetwork(network)
             .withNetworkAliases("pdf")
             .withExposedPorts(4000)

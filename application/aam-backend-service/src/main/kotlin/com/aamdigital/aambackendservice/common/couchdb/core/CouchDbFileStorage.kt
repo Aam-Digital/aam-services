@@ -132,7 +132,7 @@ class CouchDbFileStorage(
                         code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
                     )
                 }
-            }
+            }!!
 
         val etag = fileHeaders.eTag?.replace("\"", "")
 

@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
 import org.springframework.util.LinkedMultiValueMap
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
 
 class CouchDbTestingService(
@@ -42,9 +43,17 @@ class CouchDbTestingService(
     }
 
     fun createDatabase(database: String) {
-        val response = restTemplate
-            .exchange("/$database", HttpMethod.PUT, HttpEntity.EMPTY, ObjectNode::class.java)
-        logger.info("[CouchDbSetup] create Database: $database, ${response.statusCode}")
+        try {
+            val response = restTemplate
+                .exchange("/$database", HttpMethod.PUT, HttpEntity.EMPTY, ObjectNode::class.java)
+            logger.info("[CouchDbSetup] create Database: $database, ${response.statusCode}")
+        } catch (e: HttpClientErrorException) {
+            if (e.statusCode.value() == 412) {
+                logger.info("[CouchDbSetup] Database $database already exists, skipping creation.")
+            } else {
+                throw e
+            }
+        }
     }
 
     fun createDocument(database: String, documentName: String, documentContent: String) {

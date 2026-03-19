@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.common.security
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -18,7 +19,20 @@ import org.springframework.security.web.SecurityFilterChain
 
 @Configuration
 @EnableWebSecurity
-class SecurityConfiguration {
+class SecurityConfiguration(
+    @Value("\${aam-security.allowed-issuers:#{null}}")
+    private val configuredAllowedIssuers: List<String>?,
+) {
+
+    private val allowedIssuers: List<String>
+        get() = configuredAllowedIssuers ?: listOf(
+            "https://keycloak.aam-digital.net",
+            "https://keycloak.aam-digital.com",
+            "https://auth.aam-digital.app",
+            "https://auth.aam-digital.dev",
+            "https://id.aam-digital.app",
+            "https://id.aam-digital.dev",
+        )
 
     @Bean
     fun filterChain(
@@ -26,6 +40,7 @@ class SecurityConfiguration {
         aamAuthenticationConverter: AamAuthenticationConverter,
         aamAccessDeniedHandler: AamAccessDeniedHandler,
         objectMapper: ObjectMapper,
+        jwtIssuerAuthenticationManagerResolver: JwtIssuerAuthenticationManagerResolver,
     ): SecurityFilterChain {
         http {
             authorizeRequests {
@@ -57,33 +72,22 @@ class SecurityConfiguration {
                     )
             }
             oauth2ResourceServer {
-                jwt {
-                    jwtAuthenticationConverter = aamAuthenticationConverter
-                    authenticationEntryPoint =
-                        AamAuthenticationEntryPoint(
-                            objectMapper = objectMapper
-                        )
-                }
+                authenticationManagerResolver = jwtIssuerAuthenticationManagerResolver
+                authenticationEntryPoint =
+                    AamAuthenticationEntryPoint(
+                        objectMapper = objectMapper
+                    )
             }
         }
         return http.build()
     }
-
-    private val allowedOrigins = listOf(
-        "https://keycloak.aam-digital.net",
-        "https://keycloak.aam-digital.com",
-        "https://auth.aam-digital.app",
-        "https://auth.aam-digital.dev",
-        "https://id.aam-digital.app",
-        "https://id.aam-digital.dev",
-    )
 
     @Bean
     fun authenticationManagerResolver(
         aamAuthenticationConverter: AamAuthenticationConverter
     ): JwtIssuerAuthenticationManagerResolver {
         return JwtIssuerAuthenticationManagerResolver { issuer ->
-            if (allowedOrigins.any { issuer.startsWith(it) }.not()) {
+            if (allowedIssuers.any { issuer.startsWith(it) }.not()) {
                 throw BadCredentialsException("Untrusted issuer: $issuer")
             }
 

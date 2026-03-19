@@ -165,7 +165,7 @@ class DefaultRenderTemplateUseCase(
                         file = buffer.inputStream(),
                         headers = forwardHeaders
                     )
-                }
+                }!!
         } catch (ex: Exception) {
             throw when (ex) {
                 is ResourceAccessException -> NetworkException(

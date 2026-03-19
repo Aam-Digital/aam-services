@@ -92,6 +92,7 @@ events:
 
 database-change-detection:
   enabled: false
+  fixed-delay: 1000
 
 keycloak:
   realm: dummy-realm
