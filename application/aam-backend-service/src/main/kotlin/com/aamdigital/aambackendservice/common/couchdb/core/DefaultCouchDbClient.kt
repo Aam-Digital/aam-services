@@ -341,12 +341,9 @@ class DefaultCouchDbClient(
             .accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
                 if (!clientResponse.statusCode.is2xxSuccessful) {
+                    val responseBody = clientResponse.bodyTo(String::class.java)
                     logger.error(
-                        "Failed to create CouchDB $databaseName with status code ${clientResponse.statusCode} (${
-                            clientResponse.bodyTo(
-                                String::class.java
-                            )
-                        })"
+                        "Failed to create CouchDB $databaseName with status code ${clientResponse.statusCode} ($responseBody)"
                     )
 
                     throw ExternalSystemException(

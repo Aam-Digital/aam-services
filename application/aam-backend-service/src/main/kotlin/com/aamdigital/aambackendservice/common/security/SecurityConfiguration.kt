@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
+import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.ProviderManager
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -16,6 +17,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoders
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider
 import org.springframework.security.oauth2.server.resource.authentication.JwtIssuerAuthenticationManagerResolver
 import org.springframework.security.web.SecurityFilterChain
+import java.util.concurrent.ConcurrentHashMap
 
 @Configuration
 @EnableWebSecurity
@@ -85,8 +87,10 @@ class SecurityConfiguration(
     @Bean
     fun authenticationManagerResolver(
         aamAuthenticationConverter: AamAuthenticationConverter
-    ): JwtIssuerAuthenticationManagerResolver =
-        JwtIssuerAuthenticationManagerResolver { issuer ->
+    ): JwtIssuerAuthenticationManagerResolver {
+        val authenticationManagers = ConcurrentHashMap<String, AuthenticationManager>()
+
+        return JwtIssuerAuthenticationManagerResolver { issuer ->
             val normalizedIssuer = issuer.trimEnd('/')
             val isTrusted =
                 allowedIssuers.any { allowed ->
@@ -97,10 +101,12 @@ class SecurityConfiguration(
                 throw BadCredentialsException("Untrusted issuer: $issuer")
             }
 
-            val decoder: JwtDecoder = JwtDecoders.fromIssuerLocation(issuer)
-            val provider = JwtAuthenticationProvider(decoder)
-            provider.setJwtAuthenticationConverter(aamAuthenticationConverter)
-
-            ProviderManager(provider)
+            authenticationManagers.computeIfAbsent(normalizedIssuer) {
+                val decoder: JwtDecoder = JwtDecoders.fromIssuerLocation(issuer)
+                val provider = JwtAuthenticationProvider(decoder)
+                provider.setJwtAuthenticationConverter(aamAuthenticationConverter)
+                ProviderManager(provider)
+            }
         }
+    }
 }
