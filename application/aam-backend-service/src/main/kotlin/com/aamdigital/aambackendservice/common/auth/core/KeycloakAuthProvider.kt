@@ -10,7 +10,7 @@ import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 
 data class KeycloakTokenResponse(
-    @JsonProperty("access_token") val accessToken: String,
+    @JsonProperty("access_token") val accessToken: String
 )
 
 /**
@@ -25,40 +25,40 @@ data class KeycloakTokenResponse(
  */
 class KeycloakAuthProvider(
     val httpClient: RestClient,
-    val objectMapper: ObjectMapper,
+    val objectMapper: ObjectMapper
 ) : AuthProvider {
-
     enum class KeycloakAuthProviderError : AamErrorCode {
         EMPTY_RESPONSE,
-        RESPONSE_PARSING_ERROR,
+        RESPONSE_PARSING_ERROR
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun fetchToken(authClientConfig: AuthConfig): TokenResponse {
-        val formData = LinkedMultiValueMap(
-            mutableMapOf(
-                "client_id" to listOf(authClientConfig.clientId),
-                "client_secret" to listOf(authClientConfig.clientSecret),
-                "grant_type" to listOf(authClientConfig.grantType),
-            ).also {
-                if (authClientConfig.scope.isNotBlank()) {
-                    "scope" to listOf(authClientConfig.scope)
+        val formData =
+            LinkedMultiValueMap(
+                mutableMapOf(
+                    "client_id" to listOf(authClientConfig.clientId),
+                    "client_secret" to listOf(authClientConfig.clientSecret),
+                    "grant_type" to listOf(authClientConfig.grantType)
+                ).also {
+                    if (authClientConfig.scope.isNotBlank()) {
+                        it["scope"] = listOf(authClientConfig.scope)
+                    }
                 }
-            }
-        )
+            )
 
         return try {
-            val response = httpClient.post()
-                .uri(authClientConfig.tokenEndpoint)
-                .headers {
-                    it.contentType = MediaType.APPLICATION_FORM_URLENCODED
-                }
-                .body(
-                    formData
-                )
-                .retrieve()
-                .body(String::class.java)
+            val response =
+                httpClient
+                    .post()
+                    .uri(authClientConfig.tokenEndpoint)
+                    .headers {
+                        it.contentType = MediaType.APPLICATION_FORM_URLENCODED
+                    }.body(
+                        formData
+                    ).retrieve()
+                    .body(String::class.java)
             parseResponse(response)
         } catch (ex: ExternalSystemException) {
             logger.error(ex.message, ex)

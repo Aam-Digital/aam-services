@@ -37,13 +37,14 @@ class SkillLabSyncUserProfileUseCaseTest {
     fun setUp() {
         reset(
             skillLabClient,
-            skillLabUserProfileRepository,
+            skillLabUserProfileRepository
         )
-        service = SkillLabSyncUserProfileUseCase(
-            skillLabClient = skillLabClient,
-            skillLabUserProfileRepository = skillLabUserProfileRepository,
-            objectMapper = Jackson2ObjectMapperBuilder().build(),
-        )
+        service =
+            SkillLabSyncUserProfileUseCase(
+                skillLabClient = skillLabClient,
+                skillLabUserProfileRepository = skillLabUserProfileRepository,
+                objectMapper = Jackson2ObjectMapperBuilder().build()
+            )
     }
 
     @Test
@@ -55,12 +56,13 @@ class SkillLabSyncUserProfileUseCaseTest {
         whenever(skillLabUserProfileRepository.existsByExternalIdentifier(eq("user-profile-1"))).thenReturn(false)
 
         // when
-        val response = service.run(
-            SyncUserProfileRequest(
-                userProfile = DomainReference("user-profile-1"),
-                project = DomainReference("project-1"),
+        val response =
+            service.run(
+                SyncUserProfileRequest(
+                    userProfile = DomainReference("user-profile-1"),
+                    project = DomainReference("project-1")
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -76,7 +78,43 @@ class SkillLabSyncUserProfileUseCaseTest {
                     fullName = "Max Muster",
                     mobileNumber = "",
                     email = "max.muster@fake.local",
-                    skills = setOf(
+                    skills =
+                        setOf(
+                            SkillReferenceEntity(
+                                externalIdentifier = "00000000-0000-0000-0000-000000000001",
+                                escoUri = "http://link-to-esco-skill-1",
+                                usage = "always"
+                            ),
+                            SkillReferenceEntity(
+                                externalIdentifier = "00000000-0000-0000-0000-000000000002",
+                                escoUri = "http://link-to-esco-skill-2",
+                                usage = "always"
+                            ),
+                            SkillReferenceEntity(
+                                externalIdentifier = "00000000-0000-0000-0000-000000000003",
+                                escoUri = "http://link-to-esco-skill-3",
+                                usage = "always"
+                            )
+                        ),
+                    updatedAt = "2022-02-02T22:22Z",
+                    latestSyncAt = null,
+                    importedAt = null
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `should update existing user profile  and return Success`() {
+        val existingEntity =
+            SkillLabUserProfileEntity(
+                id = 0L,
+                externalIdentifier = "user-profile-1",
+                fullName = "Max Muster",
+                mobileNumber = "+49123456789",
+                email = "max.muster@fake.local",
+                skills =
+                    setOf(
                         SkillReferenceEntity(
                             externalIdentifier = "00000000-0000-0000-0000-000000000001",
                             escoUri = "http://link-to-esco-skill-1",
@@ -93,43 +131,10 @@ class SkillLabSyncUserProfileUseCaseTest {
                             usage = "always"
                         )
                     ),
-                    updatedAt = "2022-02-02T22:22Z",
-                    latestSyncAt = null,
-                    importedAt = null
-                )
+                updatedAt = "2022-02-02T22:22Z",
+                latestSyncAt = null,
+                importedAt = null
             )
-        )
-    }
-
-    @Test
-    fun `should update existing user profile  and return Success`() {
-        val existingEntity = SkillLabUserProfileEntity(
-            id = 0L,
-            externalIdentifier = "user-profile-1",
-            fullName = "Max Muster",
-            mobileNumber = "+49123456789",
-            email = "max.muster@fake.local",
-            skills = setOf(
-                SkillReferenceEntity(
-                    externalIdentifier = "00000000-0000-0000-0000-000000000001",
-                    escoUri = "http://link-to-esco-skill-1",
-                    usage = "always"
-                ),
-                SkillReferenceEntity(
-                    externalIdentifier = "00000000-0000-0000-0000-000000000002",
-                    escoUri = "http://link-to-esco-skill-2",
-                    usage = "always"
-                ),
-                SkillReferenceEntity(
-                    externalIdentifier = "00000000-0000-0000-0000-000000000003",
-                    escoUri = "http://link-to-esco-skill-3",
-                    usage = "always"
-                )
-            ),
-            updatedAt = "2022-02-02T22:22Z",
-            latestSyncAt = null,
-            importedAt = null
-        )
 
         // given
         whenever(skillLabClient.fetchUserProfile(any())).thenReturn(
@@ -141,14 +146,14 @@ class SkillLabSyncUserProfileUseCaseTest {
                 existingEntity
             )
 
-
         // when
-        val response = service.run(
-            SyncUserProfileRequest(
-                userProfile = DomainReference("user-profile-1"),
-                project = DomainReference("project-1"),
+        val response =
+            service.run(
+                SyncUserProfileRequest(
+                    userProfile = DomainReference("user-profile-1"),
+                    project = DomainReference("project-1")
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -178,41 +183,42 @@ class SkillLabSyncUserProfileUseCaseTest {
                         fullName = "Max Muster",
                         mobileNumber = "+49123456789",
                         email = "max.muster@fake.local",
-                        skills = setOf(
-                            SkillReferenceEntity(
-                                externalIdentifier = "00000000-0000-0000-0000-000000000001",
-                                escoUri = "http://link-to-esco-skill-1",
-                                usage = "always"
+                        skills =
+                            setOf(
+                                SkillReferenceEntity(
+                                    externalIdentifier = "00000000-0000-0000-0000-000000000001",
+                                    escoUri = "http://link-to-esco-skill-1",
+                                    usage = "always"
+                                ),
+                                SkillReferenceEntity(
+                                    externalIdentifier = "00000000-0000-0000-0000-000000000002",
+                                    escoUri = "http://link-to-esco-skill-2",
+                                    usage = "always"
+                                ),
+                                SkillReferenceEntity(
+                                    externalIdentifier = "00000000-0000-0000-0000-000000000003",
+                                    escoUri = "http://link-to-esco-skill-3",
+                                    usage = "always"
+                                )
                             ),
-                            SkillReferenceEntity(
-                                externalIdentifier = "00000000-0000-0000-0000-000000000002",
-                                escoUri = "http://link-to-esco-skill-2",
-                                usage = "always"
-                            ),
-                            SkillReferenceEntity(
-                                externalIdentifier = "00000000-0000-0000-0000-000000000003",
-                                escoUri = "http://link-to-esco-skill-3",
-                                usage = "always"
-                            )
-                        ),
                         updatedAt = "2022-02-02T22:22Z",
                         latestSyncAt = null,
                         importedAt = null
                     )
                 )
-
             )
         ).thenAnswer {
             throw IOException("mock-error")
         }
 
         // when
-        val response = service.run(
-            SyncUserProfileRequest(
-                userProfile = DomainReference("user-profile-1"),
-                project = DomainReference("project-1"),
+        val response =
+            service.run(
+                SyncUserProfileRequest(
+                    userProfile = DomainReference("user-profile-1"),
+                    project = DomainReference("project-1")
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
@@ -225,45 +231,48 @@ class SkillLabSyncUserProfileUseCaseTest {
 
     private fun getSkillLabProfileResponseDto(
         id: String = "user-profile-1",
-        mobileNumber: String = " +49 1234-56789 ",
+        mobileNumber: String = " +49 1234-56789 "
     ): SkillLabProfileResponseDto =
         SkillLabProfileResponseDto(
-            profile = SkillLabProfileDto(
-                id = id,
-                mobileNumber = mobileNumber,
-                city = "Berlin",
-                country = "DE",
-                projects = listOf("Project 1", "Project 2", "Project 3"),
-                fullName = "Max Muster",
-                email = "max.muster@fake.local",
-                streetAndHouseNumber = "",
-                arrivalInCountry = "",
-                nationality = "DE",
-                gender = "male",
-                birthday = "2000-01-01",
-                genderCustom = null,
-                experiences = listOf(
-                    SkillLabExperienceDto(
-                        experiencesSkills = mutableListOf(
-                            SkillLabSkillDto(
-                                id = UUID.fromString("00000000-0000-0000-0000-000000000001"),
-                                externalId = "http://link-to-esco-skill-1",
-                                choice = "always",
-                            ),
-                            SkillLabSkillDto(
-                                id = UUID.fromString("00000000-0000-0000-0000-000000000002"),
-                                externalId = "http://link-to-esco-skill-2",
-                                choice = "always",
-                            ),
-                            SkillLabSkillDto(
-                                id = UUID.fromString("00000000-0000-0000-0000-000000000003"),
-                                externalId = "http://link-to-esco-skill-3",
-                                choice = "always",
+            profile =
+                SkillLabProfileDto(
+                    id = id,
+                    mobileNumber = mobileNumber,
+                    city = "Berlin",
+                    country = "DE",
+                    projects = listOf("Project 1", "Project 2", "Project 3"),
+                    fullName = "Max Muster",
+                    email = "max.muster@fake.local",
+                    streetAndHouseNumber = "",
+                    arrivalInCountry = "",
+                    nationality = "DE",
+                    gender = "male",
+                    birthday = "2000-01-01",
+                    genderCustom = null,
+                    experiences =
+                        listOf(
+                            SkillLabExperienceDto(
+                                experiencesSkills =
+                                    mutableListOf(
+                                        SkillLabSkillDto(
+                                            id = UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                                            externalId = "http://link-to-esco-skill-1",
+                                            choice = "always"
+                                        ),
+                                        SkillLabSkillDto(
+                                            id = UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                                            externalId = "http://link-to-esco-skill-2",
+                                            choice = "always"
+                                        ),
+                                        SkillLabSkillDto(
+                                            id = UUID.fromString("00000000-0000-0000-0000-000000000003"),
+                                            externalId = "http://link-to-esco-skill-3",
+                                            choice = "always"
+                                        )
+                                    )
                             )
-                        )
-                    )
-                ),
-                updatedAt = "2022-02-02T22:22Z",
-            )
+                        ),
+                    updatedAt = "2022-02-02T22:22Z"
+                )
         )
 }

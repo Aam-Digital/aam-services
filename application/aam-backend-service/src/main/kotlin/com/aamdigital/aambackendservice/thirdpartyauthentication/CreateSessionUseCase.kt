@@ -11,14 +11,14 @@ data class CreateSessionUseCaseRequest(
     val lastName: String,
     val redirectUrl: String? = null,
     val email: String,
-    val additionalData: Map<String, String>,
+    val additionalData: Map<String, String>
 ) : UseCaseRequest
 
 data class CreateSessionUseCaseData(
     val sessionId: String,
     val sessionToken: String,
     val entryPointUrl: String,
-    val validUntil: OffsetDateTime,
+    val validUntil: OffsetDateTime
 ) : UseCaseData
 
 abstract class CreateSessionUseCase : DomainUseCase<CreateSessionUseCaseRequest, CreateSessionUseCaseData>()

@@ -22,28 +22,29 @@ import org.springframework.context.annotation.Configuration
     matchIfMissing = false
 )
 class UserProfileUpdateEventQueueConfiguration {
-
     companion object {
         const val USER_PROFILE_UPDATE_QUEUE = "skill.userProfile.update"
     }
 
     @Bean("user-profile-update-queue")
-    fun userProfileUpdateQueue(): Queue = QueueBuilder
-        .durable(USER_PROFILE_UPDATE_QUEUE)
-        .build()
+    fun userProfileUpdateQueue(): Queue =
+        QueueBuilder
+            .durable(USER_PROFILE_UPDATE_QUEUE)
+            .build()
 
     @Bean
     fun defaultUserProfileUpdatePublisher(
         objectMapper: ObjectMapper,
-        rabbitTemplate: RabbitTemplate,
-    ): UserProfileUpdatePublisher = DefaultUserProfileUpdatePublisher(
-        objectMapper = objectMapper,
-        rabbitTemplate = rabbitTemplate,
-    )
+        rabbitTemplate: RabbitTemplate
+    ): UserProfileUpdatePublisher =
+        DefaultUserProfileUpdatePublisher(
+            objectMapper = objectMapper,
+            rabbitTemplate = rabbitTemplate
+        )
 
     @Bean
     fun defaultUserProfileUpdateConsumer(
         messageParser: QueueMessageParser,
-        syncUserProfileUseCase: SyncUserProfileUseCase,
+        syncUserProfileUseCase: SyncUserProfileUseCase
     ): UserProfileUpdateConsumer = DefaultUserProfileUpdateConsumer(messageParser, syncUserProfileUseCase)
 }

@@ -11,12 +11,12 @@ import java.io.InputStream
 
 data class RenderTemplateRequest(
     val templateRef: DomainReference,
-    val bodyData: JsonNode,
+    val bodyData: JsonNode
 ) : UseCaseRequest
 
 data class RenderTemplateData(
     val file: InputStream,
-    val responseHeaders: HttpHeaders,
+    val responseHeaders: HttpHeaders
 ) : UseCaseData
 
 enum class RenderTemplateError : AamErrorCode {
@@ -25,8 +25,7 @@ enum class RenderTemplateError : AamErrorCode {
     CREATE_RENDER_REQUEST_FAILED_ERROR,
     FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
     PARSE_RESPONSE_ERROR,
-    NOT_FOUND_ERROR;
+    NOT_FOUND_ERROR
 }
 
-abstract class RenderTemplateUseCase :
-    DomainUseCase<RenderTemplateRequest, RenderTemplateData>()
+abstract class RenderTemplateUseCase : DomainUseCase<RenderTemplateRequest, RenderTemplateData>()

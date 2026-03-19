@@ -9,13 +9,23 @@ data class CreateWebhookRequest(
     val user: String,
     val label: String,
     val target: WebhookTarget,
-    val authentication: WebhookAuthenticationWriteDto,
+    val authentication: WebhookAuthenticationWriteDto
 )
 
 interface WebhookStorage {
-    fun addSubscription(webhookRef: DomainReference, entityRef: DomainReference)
-    fun removeSubscription(webhookRef: DomainReference, entityRef: DomainReference)
+    fun addSubscription(
+        webhookRef: DomainReference,
+        entityRef: DomainReference
+    )
+
+    fun removeSubscription(
+        webhookRef: DomainReference,
+        entityRef: DomainReference
+    )
+
     fun fetchAllWebhooks(): List<Webhook>
+
     fun fetchWebhook(webhookRef: DomainReference): Webhook
+
     fun createWebhook(request: CreateWebhookRequest): DomainReference
 }

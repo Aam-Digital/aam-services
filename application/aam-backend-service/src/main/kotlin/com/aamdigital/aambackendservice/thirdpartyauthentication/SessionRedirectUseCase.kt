@@ -6,11 +6,11 @@ import com.aamdigital.aambackendservice.common.domain.UseCaseRequest
 
 data class SessionRedirectUseCaseRequest(
     val sessionId: String,
-    val userId: String,
+    val userId: String
 ) : UseCaseRequest
 
 data class SessionRedirectUseCaseData(
-    val redirectUrl: String,
+    val redirectUrl: String
 ) : UseCaseData
 
 abstract class SessionRedirectUseCase : DomainUseCase<SessionRedirectUseCaseRequest, SessionRedirectUseCaseData>()

@@ -20,7 +20,6 @@ data class FeaturesInfoDto(
 class FeaturesEndpoint(
     private val featureRegistrars: List<FeatureRegistrar> = emptyList()
 ) {
-
     @ReadOperation
     fun getFeatureStatus(): Map<String, FeaturesInfoDto> =
         featureRegistrars.associate { registrar ->

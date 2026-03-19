@@ -18,7 +18,8 @@ import java.time.ZoneOffset
 import kotlin.jvm.optionals.getOrNull
 
 enum class SkillLabFetchUserProfileUpdatesErrorCode : AamErrorCode {
-    EXTERNAL_SYSTEM_ERROR, EVENT_PUBLISH_ERROR
+    EXTERNAL_SYSTEM_ERROR,
+    EVENT_PUBLISH_ERROR
 }
 
 /**
@@ -27,9 +28,8 @@ enum class SkillLabFetchUserProfileUpdatesErrorCode : AamErrorCode {
 class SkillLabFetchUserProfileUpdatesUseCase(
     private val skillLabClient: SkillLabClient,
     private val skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository,
-    private val userProfileUpdatePublisher: UserProfileUpdatePublisher,
+    private val userProfileUpdatePublisher: UserProfileUpdatePublisher
 ) : FetchUserProfileUpdatesUseCase() {
-
     companion object {
         private const val PAGE_SIZE = 50
         private const val MAX_RESULTS_LIMIT = 10_000
@@ -41,18 +41,19 @@ class SkillLabFetchUserProfileUpdatesUseCase(
         var page = 1
 
         do {
-            val batch = try {
-                fetchNextBatch(
-                    pageable = Pageable.ofSize(PAGE_SIZE).withPage(page++),
-                    currentSync = currentSync,
-                )
-            } catch (ex: AamException) {
-                return UseCaseOutcome.Failure(
-                    errorCode = SkillLabFetchUserProfileUpdatesErrorCode.EXTERNAL_SYSTEM_ERROR,
-                    errorMessage = ex.localizedMessage,
-                    cause = ex,
-                )
-            }
+            val batch =
+                try {
+                    fetchNextBatch(
+                        pageable = Pageable.ofSize(PAGE_SIZE).withPage(page++),
+                        currentSync = currentSync
+                    )
+                } catch (ex: AamException) {
+                    return UseCaseOutcome.Failure(
+                        errorCode = SkillLabFetchUserProfileUpdatesErrorCode.EXTERNAL_SYSTEM_ERROR,
+                        errorMessage = ex.localizedMessage,
+                        cause = ex
+                    )
+                }
             results.addAll(batch)
         } while (batch.size >= PAGE_SIZE && results.size < MAX_RESULTS_LIMIT)
 
@@ -69,7 +70,7 @@ class SkillLabFetchUserProfileUpdatesUseCase(
                 return UseCaseOutcome.Failure(
                     errorCode = SkillLabFetchUserProfileUpdatesErrorCode.EVENT_PUBLISH_ERROR,
                     errorMessage = ex.localizedMessage,
-                    cause = ex,
+                    cause = ex
                 )
             }
         }
@@ -77,35 +78,39 @@ class SkillLabFetchUserProfileUpdatesUseCase(
         if (currentSync != null) {
             currentSync.latestSync = Instant.now().atOffset(ZoneOffset.UTC)
         } else {
-            currentSync = SkillLabUserProfileSyncEntity(
-                projectId = request.projectId,
-                latestSync = Instant.now().atOffset(ZoneOffset.UTC),
-            )
+            currentSync =
+                SkillLabUserProfileSyncEntity(
+                    projectId = request.projectId,
+                    latestSync = Instant.now().atOffset(ZoneOffset.UTC)
+                )
         }
 
         skillLabUserProfileSyncRepository.save(currentSync)
 
         return UseCaseOutcome.Success(
-            data = FetchUserProfileUpdatesData(
-                result = results.map {
-                    DomainReference(id = it.id)
-                }
-            )
+            data =
+                FetchUserProfileUpdatesData(
+                    result =
+                        results.map {
+                            DomainReference(id = it.id)
+                        }
+                )
         )
     }
 
     private fun fetchNextBatch(
         pageable: Pageable,
-        currentSync: SkillLabUserProfileSyncEntity?,
-    ): List<DomainReference> = if (currentSync == null) {
-        skillLabClient.fetchUserProfiles(
-            pageable = pageable,
-            updatedFrom = null
-        )
-    } else {
-        skillLabClient.fetchUserProfiles(
-            pageable = pageable,
-            updatedFrom = currentSync.latestSync.toString()
-        )
-    }
+        currentSync: SkillLabUserProfileSyncEntity?
+    ): List<DomainReference> =
+        if (currentSync == null) {
+            skillLabClient.fetchUserProfiles(
+                pageable = pageable,
+                updatedFrom = null
+            )
+        } else {
+            skillLabClient.fetchUserProfiles(
+                pageable = pageable,
+                updatedFrom = currentSync.latestSync.toString()
+            )
+        }
 }

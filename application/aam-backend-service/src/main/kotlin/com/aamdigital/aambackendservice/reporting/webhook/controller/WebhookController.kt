@@ -24,11 +24,11 @@ import java.security.Principal
 
 data class WebhookAuthenticationWriteDto(
     val type: WebhookAuthenticationType,
-    val apiKey: String,
+    val apiKey: String
 )
 
 data class WebhookAuthenticationReadDto(
-    val type: String,
+    val type: String
 )
 
 data class WebhookDto(
@@ -37,13 +37,13 @@ data class WebhookDto(
     val target: WebhookTarget,
     val authentication: WebhookAuthenticationReadDto,
     val owner: WebhookOwner,
-    val reportSubscriptions: MutableList<String>,
+    val reportSubscriptions: MutableList<String>
 )
 
 data class CreateWebhookRequestDto(
     val label: String,
     val target: WebhookTarget,
-    val authentication: WebhookAuthenticationWriteDto,
+    val authentication: WebhookAuthenticationWriteDto
 )
 
 @RestController
@@ -51,69 +51,76 @@ data class CreateWebhookRequestDto(
 @Validated
 class WebhookController(
     private val webhookStorage: WebhookStorage,
-    private val addWebhookSubscriptionUseCase: AddWebhookSubscriptionUseCase,
+    private val addWebhookSubscriptionUseCase: AddWebhookSubscriptionUseCase
 ) {
-
     @GetMapping
-    fun fetchWebhooks(
-        principal: Principal,
-    ): ResponseEntity<Any> {
-        val webhooks = try {
-            webhookStorage.fetchAllWebhooks()
-                .filter { webhook ->
-                    webhook.owner.creator == principal.name
-                }
-                .map { webhook ->
-                    mapToDto(webhook)
-                }
-        } catch (ex: Exception) {
-            return when (ex) {
-                is NotFoundException -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(
-                        HttpErrorDto(
-                            errorCode = "NOT_FOUND",
-                            errorMessage = ex.localizedMessage,
-                        )
-                    )
+    fun fetchWebhooks(principal: Principal): ResponseEntity<Any> {
+        val webhooks =
+            try {
+                webhookStorage
+                    .fetchAllWebhooks()
+                    .filter { webhook ->
+                        webhook.owner.creator == principal.name
+                    }.map { webhook ->
+                        mapToDto(webhook)
+                    }
+            } catch (ex: Exception) {
+                return when (ex) {
+                    is NotFoundException ->
+                        ResponseEntity
+                            .status(HttpStatus.NOT_FOUND)
+                            .body(
+                                HttpErrorDto(
+                                    errorCode = "NOT_FOUND",
+                                    errorMessage = ex.localizedMessage
+                                )
+                            )
 
-                else -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(
-                        HttpErrorDto(
-                            errorCode = "INTERNAL_SERVER_ERROR",
-                            errorMessage = ex.localizedMessage,
-                        )
-                    )
+                    else ->
+                        ResponseEntity
+                            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(
+                                HttpErrorDto(
+                                    errorCode = "INTERNAL_SERVER_ERROR",
+                                    errorMessage = ex.localizedMessage
+                                )
+                            )
+                }
             }
-        }
         return ResponseEntity.ok(webhooks)
     }
 
     @GetMapping("/{webhookId}")
     fun fetchWebhook(
         @PathVariable webhookId: String,
-        principal: Principal,
+        principal: Principal
     ): ResponseEntity<Any> {
-        val webhook = try {
-            webhookStorage.fetchWebhook(DomainReference(webhookId))
-        } catch (ex: Exception) {
-            return when (ex) {
-                is NotFoundException -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(
-                        HttpErrorDto(
-                            errorCode = "NOT_FOUND",
-                            errorMessage = ex.localizedMessage,
-                        )
-                    )
+        val webhook =
+            try {
+                webhookStorage.fetchWebhook(DomainReference(webhookId))
+            } catch (ex: Exception) {
+                return when (ex) {
+                    is NotFoundException ->
+                        ResponseEntity
+                            .status(HttpStatus.NOT_FOUND)
+                            .body(
+                                HttpErrorDto(
+                                    errorCode = "NOT_FOUND",
+                                    errorMessage = ex.localizedMessage
+                                )
+                            )
 
-                else -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(
-                        HttpErrorDto(
-                            errorCode = "INTERNAL_SERVER_ERROR",
-                            errorMessage = ex.localizedMessage,
-                        )
-                    )
+                    else ->
+                        ResponseEntity
+                            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(
+                                HttpErrorDto(
+                                    errorCode = "INTERNAL_SERVER_ERROR",
+                                    errorMessage = ex.localizedMessage
+                                )
+                            )
+                }
             }
-        }
 
         return if (webhook.owner.creator == principal.name) {
             ResponseEntity.ok(mapToDto(webhook))
@@ -125,36 +132,41 @@ class WebhookController(
     @PostMapping
     fun storeWebhook(
         @RequestBody request: CreateWebhookRequestDto,
-        principal: Principal,
+        principal: Principal
     ): ResponseEntity<Any> {
-        val webhook = try {
-            webhookStorage.createWebhook(
-                CreateWebhookRequest(
-                    user = principal.name,
-                    label = request.label,
-                    target = request.target,
-                    authentication = request.authentication
+        val webhook =
+            try {
+                webhookStorage.createWebhook(
+                    CreateWebhookRequest(
+                        user = principal.name,
+                        label = request.label,
+                        target = request.target,
+                        authentication = request.authentication
+                    )
                 )
-            )
-        } catch (ex: Exception) {
-            return when (ex) {
-                is NotFoundException -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(
-                        HttpErrorDto(
-                            errorCode = "NOT_FOUND",
-                            errorMessage = ex.localizedMessage,
-                        )
-                    )
+            } catch (ex: Exception) {
+                return when (ex) {
+                    is NotFoundException ->
+                        ResponseEntity
+                            .status(HttpStatus.NOT_FOUND)
+                            .body(
+                                HttpErrorDto(
+                                    errorCode = "NOT_FOUND",
+                                    errorMessage = ex.localizedMessage
+                                )
+                            )
 
-                else -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(
-                        HttpErrorDto(
-                            errorCode = "INTERNAL_SERVER_ERROR",
-                            errorMessage = ex.localizedMessage,
-                        )
-                    )
+                    else ->
+                        ResponseEntity
+                            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(
+                                HttpErrorDto(
+                                    errorCode = "INTERNAL_SERVER_ERROR",
+                                    errorMessage = ex.localizedMessage
+                                )
+                            )
+                }
             }
-        }
 
         return ResponseEntity.ok(DomainReference(webhook.id))
     }
@@ -162,7 +174,7 @@ class WebhookController(
     @PostMapping("/{webhookId}/subscribe/report/{reportId}")
     fun registerReportNotification(
         @PathVariable webhookId: String,
-        @PathVariable reportId: String,
+        @PathVariable reportId: String
     ): ResponseEntity<*> {
         addWebhookSubscriptionUseCase.subscribe(
             report = DomainReference(reportId),
@@ -175,7 +187,7 @@ class WebhookController(
     @DeleteMapping("/{webhookId}/subscribe/report/{reportId}")
     fun unregisterReportNotification(
         @PathVariable webhookId: String,
-        @PathVariable reportId: String,
+        @PathVariable reportId: String
     ): ResponseEntity<*> {
         webhookStorage.removeSubscription(
             DomainReference(webhookId),
@@ -185,16 +197,16 @@ class WebhookController(
         return ResponseEntity.ok().build<Any>()
     }
 
-    private fun mapToDto(it: Webhook): WebhookDto {
-        return WebhookDto(
+    private fun mapToDto(it: Webhook): WebhookDto =
+        WebhookDto(
             id = it.id,
             label = it.label,
             target = it.target,
-            authentication = WebhookAuthenticationReadDto(
-                type = it.authentication.type.toString()
-            ),
+            authentication =
+                WebhookAuthenticationReadDto(
+                    type = it.authentication.type.toString()
+                ),
             owner = it.owner,
             reportSubscriptions = it.reportSubscriptions.map { it.id }.toMutableList()
         )
-    }
 }

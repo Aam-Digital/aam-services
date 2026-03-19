@@ -6,14 +6,14 @@ import com.aamdigital.aambackendservice.reporting.webhook.WebhookTarget
 data class WebhookAuthenticationEntity(
     var type: WebhookAuthenticationType,
     val iv: String,
-    val data: String,
+    val data: String
 )
 
 data class WebhookOwner(
     val creator: String,
     val users: List<String> = emptyList(),
     val groups: List<String> = emptyList(),
-    val roles: List<String> = emptyList(),
+    val roles: List<String> = emptyList()
 )
 
 data class WebhookEntity(

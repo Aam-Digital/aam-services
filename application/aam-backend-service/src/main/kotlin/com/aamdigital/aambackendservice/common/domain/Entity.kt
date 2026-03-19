@@ -7,7 +7,6 @@ package com.aamdigital.aambackendservice.common.domain
 data class UpdateMetadata(
     /** Timestamp **/
     val at: String,
-
     /** User ID **/
-    val by: String,
+    val by: String
 )

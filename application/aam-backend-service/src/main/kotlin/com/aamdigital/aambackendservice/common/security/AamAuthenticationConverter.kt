@@ -10,21 +10,21 @@ import org.springframework.stereotype.Component
 
 @Component
 class AamAuthenticationConverter : Converter<Jwt, AbstractAuthenticationToken> {
-    override fun convert(source: Jwt): AbstractAuthenticationToken {
-        return JwtAuthenticationToken(source, getClientAuthorities(source))
-    }
+    override fun convert(source: Jwt): AbstractAuthenticationToken =
+        JwtAuthenticationToken(source, getClientAuthorities(source))
 
     private fun getClientAuthorities(jwt: Jwt): Collection<GrantedAuthority> {
         val realmAccessClaim = jwt.getClaimAsMap("realm_access") ?: return emptyList()
 
-        val roles: List<String> = if (realmAccessClaim.containsKey("roles")) {
-            when (val rolesClaim = realmAccessClaim["roles"]) {
-                is List<*> -> rolesClaim.filterIsInstance<String>()
-                else -> emptyList()
+        val roles: List<String> =
+            if (realmAccessClaim.containsKey("roles")) {
+                when (val rolesClaim = realmAccessClaim["roles"]) {
+                    is List<*> -> rolesClaim.filterIsInstance<String>()
+                    else -> emptyList()
+                }
+            } else {
+                emptyList()
             }
-        } else {
-            emptyList()
-        }
 
         return roles
             .map {

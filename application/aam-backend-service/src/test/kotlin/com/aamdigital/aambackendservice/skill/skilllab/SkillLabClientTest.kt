@@ -26,7 +26,6 @@ class SkillLabClientTest {
         lateinit var mockWebServer: MockWebServer
         lateinit var objectMapper: ObjectMapper
 
-
         @JvmStatic
         @BeforeAll
         fun init() {
@@ -213,10 +212,11 @@ class SkillLabClientTest {
         )
 
         // when
-        val response = service.fetchUserProfiles(
-            pageable = Pageable.ofSize(10),
-            updatedFrom = " "
-        )
+        val response =
+            service.fetchUserProfiles(
+                pageable = Pageable.ofSize(10),
+                updatedFrom = " "
+            )
 
         // then
         assertThat(response).isInstanceOf(List::class.java)
@@ -254,17 +254,19 @@ class SkillLabClientTest {
     }
 
     private fun setUp() {
-        service = SkillLabClient(
-            http = SkillConfigurationSkillLab().skillLabApiClient(
-                SkillLabApiClientConfiguration(
-                    basePath = "http://localhost:$WEBSERVER_PORT",
-                    apiKey = "dummy-api-key",
-                    projectId = "dummy-project-id",
-                    responseTimeoutInSeconds = 10
-                )
-            ),
-            objectMapper = objectMapper
-        )
+        service =
+            SkillLabClient(
+                http =
+                    SkillConfigurationSkillLab().skillLabApiClient(
+                        SkillLabApiClientConfiguration(
+                            basePath = "http://localhost:$WEBSERVER_PORT",
+                            apiKey = "dummy-api-key",
+                            projectId = "dummy-project-id",
+                            responseTimeoutInSeconds = 10
+                        )
+                    ),
+                objectMapper = objectMapper
+            )
     }
 
     private fun startWebserver() {

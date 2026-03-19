@@ -6,11 +6,11 @@ import com.aamdigital.aambackendservice.common.domain.UseCaseRequest
 
 data class VerifySessionUseCaseRequest(
     val sessionId: String,
-    val sessionToken: String,
+    val sessionToken: String
 ) : UseCaseRequest
 
 data class VerifySessionUseCaseData(
-    val userId: String,
+    val userId: String
 ) : UseCaseData
 
 abstract class VerifySessionUseCase : DomainUseCase<VerifySessionUseCaseRequest, VerifySessionUseCaseData>()

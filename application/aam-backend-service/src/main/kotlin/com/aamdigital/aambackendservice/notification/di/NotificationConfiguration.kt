@@ -30,45 +30,50 @@ class NotificationConfiguration {
     @Bean
     fun defaultSyncNotificationConfigUseCase(
         couchDbClient: CouchDbClient,
-        notificationConfigRepository: NotificationConfigRepository,
-    ): SyncNotificationConfigUseCase = CouchDbSyncNotificationConfigUseCase(
-        couchDbClient = couchDbClient,
-        notificationConfigRepository = notificationConfigRepository,
-    )
+        notificationConfigRepository: NotificationConfigRepository
+    ): SyncNotificationConfigUseCase =
+        CouchDbSyncNotificationConfigUseCase(
+            couchDbClient = couchDbClient,
+            notificationConfigRepository = notificationConfigRepository
+        )
 
     @Bean
     fun defaultApplyNotificationRulesUseCase(
         notificationConfigRepository: NotificationConfigRepository,
-        userNotificationPublisher: UserNotificationPublisher,
-    ): ApplyNotificationRulesUseCase = DefaultApplyNotificationRulesUseCase(
-        notificationConfigRepository = notificationConfigRepository,
-        userNotificationPublisher = userNotificationPublisher,
-    )
+        userNotificationPublisher: UserNotificationPublisher
+    ): ApplyNotificationRulesUseCase =
+        DefaultApplyNotificationRulesUseCase(
+            notificationConfigRepository = notificationConfigRepository,
+            userNotificationPublisher = userNotificationPublisher
+        )
 
     @Bean
     fun defaultCreateNotificationUseCase(
         createNotificationHandler: List<CreateNotificationHandler>
-    ): CreateNotificationUseCase = DefaultCreateNotificationUseCase(
-        createNotificationHandler = createNotificationHandler,
-    )
+    ): CreateNotificationUseCase =
+        DefaultCreateNotificationUseCase(
+            createNotificationHandler = createNotificationHandler
+        )
 
     @Bean("push-create-notification-handler")
     fun pushCreateNotificationHandler(
         firebaseMessaging: FirebaseMessaging,
         userDeviceRepository: UserDeviceRepository,
-        notificationFirebaseClientConfiguration: NotificationFirebaseClientConfiguration,
-    ): CreateNotificationHandler = PushCreateNotificationHandler(
-        firebaseMessaging = firebaseMessaging,
-        userDeviceRepository = userDeviceRepository,
-        notificationFirebaseClientConfiguration = notificationFirebaseClientConfiguration
-    )
+        notificationFirebaseClientConfiguration: NotificationFirebaseClientConfiguration
+    ): CreateNotificationHandler =
+        PushCreateNotificationHandler(
+            firebaseMessaging = firebaseMessaging,
+            userDeviceRepository = userDeviceRepository,
+            notificationFirebaseClientConfiguration = notificationFirebaseClientConfiguration
+        )
 
     @Bean("app-create-notification-handler")
     fun appCreateNotificationHandler(
         couchDbClient: CouchDbClient,
-        couchDbInitializer: CouchDbInitializer,
-    ): CreateNotificationHandler = AppCreateNotificationHandler(
-        couchDbClient = couchDbClient,
-        couchDbInitializer = couchDbInitializer,
-    )
+        couchDbInitializer: CouchDbInitializer
+    ): CreateNotificationHandler =
+        AppCreateNotificationHandler(
+            couchDbClient = couchDbClient,
+            couchDbInitializer = couchDbInitializer
+        )
 }

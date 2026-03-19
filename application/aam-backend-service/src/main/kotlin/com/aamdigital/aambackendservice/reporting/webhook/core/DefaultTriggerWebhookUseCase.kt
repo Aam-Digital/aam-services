@@ -18,58 +18,58 @@ class DefaultTriggerWebhookUseCase(
     private val webhookStorage: WebhookStorage,
     private val httpClient: RestClient,
     private val uriParser: UriParser,
-    private val objectMapper: ObjectMapper,
+    private val objectMapper: ObjectMapper
 ) : TriggerWebhookUseCase {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun trigger(webhookEvent: WebhookEvent) {
-        val webhook = webhookStorage.fetchWebhook(
-            webhookRef = DomainReference(webhookEvent.webhookId)
-        )
-
-        val uri = URI(
-            uriParser.replacePlaceholder(
-                webhook.target.url,
-                mapOf(
-                    Pair("reportId", webhookEvent.reportId)
-                )
+        val webhook =
+            webhookStorage.fetchWebhook(
+                webhookRef = DomainReference(webhookEvent.webhookId)
             )
-        )
 
-        logger.debug(
-            "[DefaultTriggerWebhookUseCase] Trying to trigger Webhook" +
-                    " {} to {} Report: {} Calculation: {} ",
-            webhookEvent.webhookId,
-            uri.toString(),
-            webhookEvent.reportId,
-            webhookEvent.calculationId,
-        )
-        val response = httpClient
-            .method(HttpMethod.valueOf(webhook.target.method))
-            .uri {
-                it.scheme(uri.scheme)
-                it.host(uri.host)
-                it.path(uri.path)
-                it.build()
-            }
-            .headers {
-                it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
-            }
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(
-                objectMapper.writeValueAsString(
-                    hashMapOf(
-                        "calculation_id" to webhookEvent.calculationId
+        val uri =
+            URI(
+                uriParser.replacePlaceholder(
+                    webhook.target.url,
+                    mapOf(
+                        Pair("reportId", webhookEvent.reportId)
                     )
                 )
             )
-            .accept(MediaType.APPLICATION_JSON)
-            .retrieve()
-            .body(String::class.java)
+
+        logger.debug(
+            "[DefaultTriggerWebhookUseCase] Trying to trigger Webhook" +
+                " {} to {} Report: {} Calculation: {} ",
+            webhookEvent.webhookId,
+            uri.toString(),
+            webhookEvent.reportId,
+            webhookEvent.calculationId
+        )
+        val response =
+            httpClient
+                .method(HttpMethod.valueOf(webhook.target.method))
+                .uri {
+                    it.scheme(uri.scheme)
+                    it.host(uri.host)
+                    it.path(uri.path)
+                    it.build()
+                }.headers {
+                    it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
+                }.contentType(MediaType.APPLICATION_JSON)
+                .body(
+                    objectMapper.writeValueAsString(
+                        hashMapOf(
+                            "calculation_id" to webhookEvent.calculationId
+                        )
+                    )
+                ).accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .body(String::class.java)
 
         logger.debug(
             "[DefaultTriggerWebhookUseCase] Webhook trigger completed for Webhook:" +
-                    " {} Report: {} Calculation: {} - Response: {}",
+                " {} Report: {} Calculation: {} - Response: {}",
             webhookEvent.webhookId,
             webhookEvent.reportId,
             webhookEvent.calculationId,

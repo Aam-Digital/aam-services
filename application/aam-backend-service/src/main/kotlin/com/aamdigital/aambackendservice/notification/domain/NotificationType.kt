@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 enum class NotificationType {
     @JsonProperty("entity_change")
     ENTITY_CHANGE,
-    
+
     @JsonEnumDefaultValue
-    UNKNOWN,
+    UNKNOWN
 }

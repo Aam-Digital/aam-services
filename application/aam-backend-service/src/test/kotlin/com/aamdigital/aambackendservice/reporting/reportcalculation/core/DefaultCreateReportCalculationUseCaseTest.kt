@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
-import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
+import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultCreateReportCalculationUseCase
 import org.assertj.core.api.Assertions.assertThat
@@ -18,7 +18,6 @@ import org.mockito.kotlin.whenever
 
 @ExtendWith(MockitoExtension::class)
 class DefaultCreateReportCalculationUseCaseTest {
-
     private lateinit var service: CreateReportCalculationUseCase
 
     @Mock
@@ -46,12 +45,13 @@ class DefaultCreateReportCalculationUseCaseTest {
             }
 
         // when
-        val response = service.createReportCalculation(
-            CreateReportCalculationRequest(
-                report = DomainReference("Report:1"),
-                args = mutableMapOf()
+        val response =
+            service.createReportCalculation(
+                CreateReportCalculationRequest(
+                    report = DomainReference("Report:1"),
+                    args = mutableMapOf()
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(CreateReportCalculationResult.Failure::class.java)

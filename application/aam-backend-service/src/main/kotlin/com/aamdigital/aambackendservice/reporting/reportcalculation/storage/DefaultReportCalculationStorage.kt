@@ -22,14 +22,13 @@ data class FetchReportCalculationsResponse(
     @JsonProperty("total_rows")
     val totalRows: Int,
     val offset: Int,
-    val rows: List<CouchDbRow<ReportCalculationEntity>>,
+    val rows: List<CouchDbRow<ReportCalculationEntity>>
 )
 
 class DefaultReportCalculationStorage(
     private val couchDbClient: CouchDbClient,
-    private val fileStorage: FileStorage,
+    private val fileStorage: FileStorage
 ) : ReportCalculationStorage {
-
     companion object {
         private const val REPORT_CALCULATION_DATABASE = "report-calculation"
     }
@@ -37,21 +36,20 @@ class DefaultReportCalculationStorage(
     enum class DefaultReportCalculationStorageError : AamErrorCode {
         NETWORK_ERROR,
         NOT_FOUND,
-        UNEXPECTED,
+        UNEXPECTED
     }
 
-    override fun storeCalculation(
-        reportCalculation: ReportCalculation,
-    ): ReportCalculation {
-        val successDoc = try {
-            couchDbClient.putDatabaseDocument(
-                database = REPORT_CALCULATION_DATABASE,
-                documentId = reportCalculation.id,
-                body = toEntity(reportCalculation),
-            )
-        } catch (ex: Exception) {
-            throw handleException(ex)
-        }
+    override fun storeCalculation(reportCalculation: ReportCalculation): ReportCalculation {
+        val successDoc =
+            try {
+                couchDbClient.putDatabaseDocument(
+                    database = REPORT_CALCULATION_DATABASE,
+                    documentId = reportCalculation.id,
+                    body = toEntity(reportCalculation)
+                )
+            } catch (ex: Exception) {
+                throw handleException(ex)
+            }
 
         return fetchReportCalculation(DomainReference(successDoc.id))
     }
@@ -60,7 +58,7 @@ class DefaultReportCalculationStorage(
         try {
             couchDbClient.deleteDatabaseDocument(
                 database = REPORT_CALCULATION_DATABASE,
-                documentId = reportCalculation.id,
+                documentId = reportCalculation.id
             )
         } catch (ex: Exception) {
             throw handleException(ex)
@@ -68,22 +66,22 @@ class DefaultReportCalculationStorage(
     }
 
     override fun fetchReportCalculations(report: DomainReference): List<ReportCalculation> {
-        val calculations = try {
-            couchDbClient.getDatabaseDocument(
-                database = REPORT_CALCULATION_DATABASE,
-                documentId = "_all_docs",
-                getQueryParamsAllDocs("ReportCalculation"),
-                FetchReportCalculationsResponse::class
-            )
-        } catch (ex: Exception) {
-            throw handleException(ex)
-        }
+        val calculations =
+            try {
+                couchDbClient.getDatabaseDocument(
+                    database = REPORT_CALCULATION_DATABASE,
+                    documentId = "_all_docs",
+                    getQueryParamsAllDocs("ReportCalculation"),
+                    FetchReportCalculationsResponse::class
+                )
+            } catch (ex: Exception) {
+                throw handleException(ex)
+            }
 
         return calculations.rows
             .filter { entity ->
                 entity.doc.report.id == report.id
-            }
-            .map { entity ->
+            }.map { entity ->
                 fromEntity(entity.doc)
             }
     }
@@ -93,8 +91,8 @@ class DefaultReportCalculationStorage(
         ExternalSystemException::class,
         NetworkException::class
     )
-    override fun fetchReportCalculation(calculation: DomainReference): ReportCalculation {
-        return try {
+    override fun fetchReportCalculation(calculation: DomainReference): ReportCalculation =
+        try {
             fromEntity(
                 couchDbClient.getDatabaseDocument(
                     database = REPORT_CALCULATION_DATABASE,
@@ -106,17 +104,16 @@ class DefaultReportCalculationStorage(
         } catch (ex: Exception) {
             throw handleException(ex)
         }
-    }
 
     override fun addReportCalculationData(
         reportCalculation: ReportCalculation,
-        file: InputStream,
+        file: InputStream
     ): ReportCalculation {
         try {
             fileStorage.storeFile(
                 path = "report-calculation/${reportCalculation.id}",
                 fileName = "data.json",
-                file = file,
+                file = file
             )
         } catch (ex: Exception) {
             throw handleException(ex)
@@ -125,8 +122,8 @@ class DefaultReportCalculationStorage(
         return fetchReportCalculation(DomainReference(reportCalculation.id))
     }
 
-    private fun toEntity(doc: ReportCalculation): ReportCalculationEntity {
-        return ReportCalculationEntity(
+    private fun toEntity(doc: ReportCalculation): ReportCalculationEntity =
+        ReportCalculationEntity(
             id = doc.id,
             report = doc.report,
             status = doc.status,
@@ -135,12 +132,11 @@ class DefaultReportCalculationStorage(
             calculationCompleted = doc.calculationCompleted,
             args = doc.args,
             attachments = doc.attachments,
-            fromAutomaticChangeDetection = doc.fromAutomaticChangeDetection,
+            fromAutomaticChangeDetection = doc.fromAutomaticChangeDetection
         )
-    }
 
-    private fun fromEntity(doc: ReportCalculationEntity): ReportCalculation {
-        return ReportCalculation(
+    private fun fromEntity(doc: ReportCalculationEntity): ReportCalculation =
+        ReportCalculation(
             id = doc.id,
             report = doc.report,
             status = doc.status,
@@ -149,35 +145,37 @@ class DefaultReportCalculationStorage(
             calculationCompleted = doc.calculationCompleted,
             args = doc.args,
             attachments = doc.attachments,
-            fromAutomaticChangeDetection = doc.fromAutomaticChangeDetection,
+            fromAutomaticChangeDetection = doc.fromAutomaticChangeDetection
         )
-    }
 
-    private fun handleException(ex: Exception): Throwable {
-        return when (ex) {
-            is NotFoundException -> NotFoundException(
-                message = ex.localizedMessage,
-                cause = ex,
-                code = DefaultReportCalculationStorageError.NOT_FOUND
-            )
+    private fun handleException(ex: Exception): Throwable =
+        when (ex) {
+            is NotFoundException ->
+                NotFoundException(
+                    message = ex.localizedMessage,
+                    cause = ex,
+                    code = DefaultReportCalculationStorageError.NOT_FOUND
+                )
 
-            is InterruptedIOException -> NetworkException(
-                message = ex.localizedMessage,
-                cause = ex,
-                code = DefaultReportCalculationStorageError.NETWORK_ERROR
-            )
+            is InterruptedIOException ->
+                NetworkException(
+                    message = ex.localizedMessage,
+                    cause = ex,
+                    code = DefaultReportCalculationStorageError.NETWORK_ERROR
+                )
 
-            is HttpClientErrorException -> NetworkException(
-                message = ex.localizedMessage,
-                cause = ex,
-                code = DefaultReportCalculationStorageError.NETWORK_ERROR
-            )
+            is HttpClientErrorException ->
+                NetworkException(
+                    message = ex.localizedMessage,
+                    cause = ex,
+                    code = DefaultReportCalculationStorageError.NETWORK_ERROR
+                )
 
-            else -> InternalServerException(
-                message = ex.localizedMessage,
-                code = DefaultReportCalculationStorageError.UNEXPECTED,
-                cause = ex,
-            )
+            else ->
+                InternalServerException(
+                    message = ex.localizedMessage,
+                    code = DefaultReportCalculationStorageError.UNEXPECTED,
+                    cause = ex
+                )
         }
-    }
 }

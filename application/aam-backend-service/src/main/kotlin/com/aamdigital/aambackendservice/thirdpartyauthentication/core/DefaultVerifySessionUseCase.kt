@@ -13,22 +13,22 @@ import kotlin.jvm.optionals.getOrNull
 
 class DefaultVerifySessionUseCase(
     private val authenticationSessionRepository: AuthenticationSessionRepository,
-    private val passwordEncoder: PasswordEncoder,
+    private val passwordEncoder: PasswordEncoder
 ) : VerifySessionUseCase() {
-
     enum class DefaultVerifySessionUseCaseError : AamErrorCode {
         INVALID_SESSION,
         INVALID_SESSION_TOKEN,
         SESSION_ALREADY_USED,
-        SESSION_EXPIRED,
+        SESSION_EXPIRED
     }
 
     override fun apply(request: VerifySessionUseCaseRequest): UseCaseOutcome<VerifySessionUseCaseData> {
-        val session = authenticationSessionRepository.findByExternalIdentifier(request.sessionId).getOrNull()
-            ?: return UseCaseOutcome.Failure(
-                errorCode = DefaultVerifySessionUseCaseError.INVALID_SESSION,
-                errorMessage = "Invalid credentials"
-            )
+        val session =
+            authenticationSessionRepository.findByExternalIdentifier(request.sessionId).getOrNull()
+                ?: return UseCaseOutcome.Failure(
+                    errorCode = DefaultVerifySessionUseCaseError.INVALID_SESSION,
+                    errorMessage = "Invalid credentials"
+                )
 
         if (!passwordEncoder.matches(request.sessionToken, session.sessionToken)) {
             return UseCaseOutcome.Failure(
@@ -56,10 +56,10 @@ class DefaultVerifySessionUseCase(
         authenticationSessionRepository.save(session)
 
         return UseCaseOutcome.Success(
-            data = VerifySessionUseCaseData(
-                userId = session.userId
-            )
+            data =
+                VerifySessionUseCaseData(
+                    userId = session.userId
+                )
         )
-
     }
 }

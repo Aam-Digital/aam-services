@@ -6,23 +6,24 @@ import java.util.regex.Pattern
 
 class SimpleReportQueryAnalyser : ReportQueryAnalyser {
     companion object {
-        private val EXTRACT_ENTITIES_FROM_SQL_REGEX: Pattern = Pattern.compile(
-            "(FROM|from|JOIN|join)\\s+(`\\w+.+\\w+\\s*`|(\\[)\\w+.+\\w+\\s*(])|\\w+\\s*\\.+\\s*\\w*|\\w+\\b)"
-        )
+        private val EXTRACT_ENTITIES_FROM_SQL_REGEX: Pattern =
+            Pattern.compile(
+                "(FROM|from|JOIN|join)\\s+(`\\w+.+\\w+\\s*`|(\\[)\\w+.+\\w+\\s*(])|\\w+\\s*\\.+\\s*\\w*|\\w+\\b)"
+            )
     }
 
-    override fun getAffectedEntities(report: Report): List<String> {
-        return extractEntitiesFromItems(report.items)
-    }
+    override fun getAffectedEntities(report: Report): List<String> = extractEntitiesFromItems(report.items)
 
-    private fun extractEntitiesFromItems(items: List<ReportItem>): List<String> = items.flatMap { reportItem ->
-        when (reportItem) {
-            is ReportItem.ReportGroup -> extractEntitiesFromItems(reportItem.items)
-            is ReportItem.ReportQuery -> EXTRACT_ENTITIES_FROM_SQL_REGEX
-                .matcher(reportItem.sql)
-                .results()
-                .map { it.group(2) }
-                .toList()
+    private fun extractEntitiesFromItems(items: List<ReportItem>): List<String> =
+        items.flatMap { reportItem ->
+            when (reportItem) {
+                is ReportItem.ReportGroup -> extractEntitiesFromItems(reportItem.items)
+                is ReportItem.ReportQuery ->
+                    EXTRACT_ENTITIES_FROM_SQL_REGEX
+                        .matcher(reportItem.sql)
+                        .results()
+                        .map { it.group(2) }
+                        .toList()
+            }
         }
-    }
 }

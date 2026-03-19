@@ -37,12 +37,12 @@ class SqlSearchUserProfileUseCaseTest {
     @BeforeEach
     fun setup() {
         reset(userProfileRepository)
-        service = SqlSearchUserProfileUseCase(
-            userProfileRepository = userProfileRepository,
-            objectMapper = Jackson2ObjectMapperBuilder().build()
-        )
+        service =
+            SqlSearchUserProfileUseCase(
+                userProfileRepository = userProfileRepository,
+                objectMapper = Jackson2ObjectMapperBuilder().build()
+            )
     }
-
 
     @Test
     fun `should return exact match for email address`() {
@@ -54,7 +54,7 @@ class SqlSearchUserProfileUseCaseTest {
                         getSkillLabUserProfileEntity(
                             fullName = "Max Muster",
                             mobileNumber = "123",
-                            email = "example@mail.local",
+                            email = "example@mail.local"
                         ),
                         MATCHER_EMAIL
                     )
@@ -67,22 +67,23 @@ class SqlSearchUserProfileUseCaseTest {
                     getSkillLabUserProfileEntity(
                         fullName = "Max Muster",
                         mobileNumber = null,
-                        email = "example@mail.local",
+                        email = "example@mail.local"
                     )
                 )
             )
         )
 
         // when
-        val response = service.run(
-            SearchUserProfileRequest(
-                email = "example@mail.local",
-                fullName = "Max Muster",
-                phone = "123",
-                page = 1,
-                pageSize = 50,
+        val response =
+            service.run(
+                SearchUserProfileRequest(
+                    email = "example@mail.local",
+                    fullName = "Max Muster",
+                    phone = "123",
+                    page = 1,
+                    pageSize = 50
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -100,17 +101,19 @@ class SqlSearchUserProfileUseCaseTest {
 
     @Test
     fun `should return exact match for mobileNumber when email check returns no match`() {
-        val exampleEntity = getSkillLabUserProfileEntity(
-            fullName = "Max Muster",
-            mobileNumber = "123456789",
-            email = "foo@mail.local",
-        )
+        val exampleEntity =
+            getSkillLabUserProfileEntity(
+                fullName = "Max Muster",
+                mobileNumber = "123456789",
+                email = "foo@mail.local"
+            )
 
-        val responseEntity = getSkillLabUserProfileEntity(
-            fullName = "Max Muster",
-            mobileNumber = "123456789",
-            email = "example@mail.local",
-        )
+        val responseEntity =
+            getSkillLabUserProfileEntity(
+                fullName = "Max Muster",
+                mobileNumber = "123456789",
+                email = "example@mail.local"
+            )
 
         // given
         whenever(
@@ -140,15 +143,16 @@ class SqlSearchUserProfileUseCaseTest {
         )
 
         // when
-        val response = service.run(
-            SearchUserProfileRequest(
-                email = "foo@mail.local",
-                fullName = "Max Muster",
-                phone = "123456789",
-                page = 1,
-                pageSize = 50,
+        val response =
+            service.run(
+                SearchUserProfileRequest(
+                    email = "foo@mail.local",
+                    fullName = "Max Muster",
+                    phone = "123456789",
+                    page = 1,
+                    pageSize = 50
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -166,26 +170,29 @@ class SqlSearchUserProfileUseCaseTest {
 
     @ParameterizedTest
     @ValueSource(
-        strings = ["null", "", "    "],
+        strings = ["null", "", "    "]
     )
     fun `should return exact match for mobileNumber when email is nullOrBlank`(emailRawValue: String?) {
-        val emailValue = if (emailRawValue == "null") {
-            null
-        } else {
-            emailRawValue
-        }
+        val emailValue =
+            if (emailRawValue == "null") {
+                null
+            } else {
+                emailRawValue
+            }
 
-        val exampleEntity = getSkillLabUserProfileEntity(
-            fullName = "Max Muster",
-            mobileNumber = "123456789",
-            email = emailValue,
-        )
+        val exampleEntity =
+            getSkillLabUserProfileEntity(
+                fullName = "Max Muster",
+                mobileNumber = "123456789",
+                email = emailValue
+            )
 
-        val responseEntity = getSkillLabUserProfileEntity(
-            fullName = "Max Muster",
-            mobileNumber = "123456789",
-            email = "example@mail.local",
-        )
+        val responseEntity =
+            getSkillLabUserProfileEntity(
+                fullName = "Max Muster",
+                mobileNumber = "123456789",
+                email = "example@mail.local"
+            )
 
         // given
         whenever(
@@ -203,15 +210,16 @@ class SqlSearchUserProfileUseCaseTest {
         )
 
         // when
-        val response = service.run(
-            SearchUserProfileRequest(
-                email = emailValue,
-                fullName = "Max Muster",
-                phone = "123456789",
-                page = 1,
-                pageSize = 50,
+        val response =
+            service.run(
+                SearchUserProfileRequest(
+                    email = emailValue,
+                    fullName = "Max Muster",
+                    phone = "123456789",
+                    page = 1,
+                    pageSize = 50
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -229,17 +237,19 @@ class SqlSearchUserProfileUseCaseTest {
 
     @Test
     fun `should return matches for fullName`() {
-        val exampleEntity = getSkillLabUserProfileEntity(
-            fullName = "Max Muster",
-            mobileNumber = null,
-            email = null,
-        )
+        val exampleEntity =
+            getSkillLabUserProfileEntity(
+                fullName = "Max Muster",
+                mobileNumber = null,
+                email = null
+            )
 
-        val responseEntity = getSkillLabUserProfileEntity(
-            fullName = "Max Muster",
-            mobileNumber = "123456789",
-            email = "example@mail.local",
-        )
+        val responseEntity =
+            getSkillLabUserProfileEntity(
+                fullName = "Max Muster",
+                mobileNumber = "123456789",
+                email = "example@mail.local"
+            )
 
         // given
         whenever(
@@ -257,15 +267,16 @@ class SqlSearchUserProfileUseCaseTest {
         )
 
         // when
-        val response = service.run(
-            SearchUserProfileRequest(
-                email = null,
-                fullName = "Max Muster",
-                phone = null,
-                page = 1,
-                pageSize = 50,
+        val response =
+            service.run(
+                SearchUserProfileRequest(
+                    email = null,
+                    fullName = "Max Muster",
+                    phone = null,
+                    page = 1,
+                    pageSize = 50
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -283,11 +294,12 @@ class SqlSearchUserProfileUseCaseTest {
 
     @Test
     fun `should return matches for split fullName`() {
-        val responseEntity = getSkillLabUserProfileEntity(
-            fullName = "Max Muster",
-            mobileNumber = "123456789",
-            email = "example@mail.local",
-        )
+        val responseEntity =
+            getSkillLabUserProfileEntity(
+                fullName = "Max Muster",
+                mobileNumber = "123456789",
+                email = "example@mail.local"
+            )
 
         // given
         whenever(
@@ -297,7 +309,7 @@ class SqlSearchUserProfileUseCaseTest {
                         getSkillLabUserProfileEntity(
                             fullName = "Max Martin Muster",
                             mobileNumber = null,
-                            email = null,
+                            email = null
                         ),
                         MATCHER_NAME
                     )
@@ -313,7 +325,7 @@ class SqlSearchUserProfileUseCaseTest {
                         getSkillLabUserProfileEntity(
                             fullName = "Max",
                             mobileNumber = null,
-                            email = null,
+                            email = null
                         ),
                         MATCHER_NAME
                     )
@@ -331,7 +343,7 @@ class SqlSearchUserProfileUseCaseTest {
                         getSkillLabUserProfileEntity(
                             fullName = "Muster",
                             mobileNumber = null,
-                            email = null,
+                            email = null
                         ),
                         MATCHER_NAME
                     )
@@ -343,15 +355,16 @@ class SqlSearchUserProfileUseCaseTest {
         )
 
         // when
-        val response = service.run(
-            SearchUserProfileRequest(
-                email = null,
-                fullName = "Max Martin Muster",
-                phone = null,
-                page = 1,
-                pageSize = 50,
+        val response =
+            service.run(
+                SearchUserProfileRequest(
+                    email = null,
+                    fullName = "Max Martin Muster",
+                    phone = null,
+                    page = 1,
+                    pageSize = 50
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -377,7 +390,7 @@ class SqlSearchUserProfileUseCaseTest {
                         getSkillLabUserProfileEntity(
                             fullName = "Mila",
                             mobileNumber = null,
-                            email = null,
+                            email = null
                         ),
                         MATCHER_NAME
                     )
@@ -387,15 +400,16 @@ class SqlSearchUserProfileUseCaseTest {
         ).thenReturn(Page.empty())
 
         // when
-        val response = service.run(
-            SearchUserProfileRequest(
-                email = null,
-                fullName = "Mila",
-                phone = null,
-                page = 1,
-                pageSize = 50,
+        val response =
+            service.run(
+                SearchUserProfileRequest(
+                    email = null,
+                    fullName = "Mila",
+                    phone = null,
+                    page = 1,
+                    pageSize = 50
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -411,28 +425,29 @@ class SqlSearchUserProfileUseCaseTest {
         assertEquals(0, (response as UseCaseOutcome.Success).data.totalElements)
     }
 
-
     @ParameterizedTest
     @ValueSource(
-        strings = ["null", "", "    "],
+        strings = ["null", "", "    "]
     )
     fun `should return empty list when all search parameter are empty`(rawValue: String?) {
-        val emptyOrBlankValue = if (rawValue == "null") {
-            null
-        } else {
-            rawValue
-        }
+        val emptyOrBlankValue =
+            if (rawValue == "null") {
+                null
+            } else {
+                rawValue
+            }
 
         // when
-        val response = service.run(
-            SearchUserProfileRequest(
-                email = emptyOrBlankValue,
-                fullName = emptyOrBlankValue,
-                phone = emptyOrBlankValue,
-                page = 1,
-                pageSize = 50,
+        val response =
+            service.run(
+                SearchUserProfileRequest(
+                    email = emptyOrBlankValue,
+                    fullName = emptyOrBlankValue,
+                    phone = emptyOrBlankValue,
+                    page = 1,
+                    pageSize = 50
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -452,16 +467,17 @@ class SqlSearchUserProfileUseCaseTest {
         externalIdentifier: String = "",
         fullName: String,
         mobileNumber: String?,
-        email: String?,
-    ): SkillLabUserProfileEntity = SkillLabUserProfileEntity(
-        id = 0,
-        externalIdentifier = externalIdentifier,
-        fullName = fullName,
-        mobileNumber = mobileNumber,
-        email = email,
-        skills = emptySet(),
-        updatedAt = "",
-        latestSyncAt = null,
-        importedAt = null,
-    )
+        email: String?
+    ): SkillLabUserProfileEntity =
+        SkillLabUserProfileEntity(
+            id = 0,
+            externalIdentifier = externalIdentifier,
+            fullName = fullName,
+            mobileNumber = mobileNumber,
+            email = email,
+            skills = emptySet(),
+            updatedAt = "",
+            latestSyncAt = null,
+            importedAt = null
+        )
 }

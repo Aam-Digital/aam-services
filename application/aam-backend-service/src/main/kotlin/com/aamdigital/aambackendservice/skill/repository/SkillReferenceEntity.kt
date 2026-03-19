@@ -7,10 +7,8 @@ import jakarta.persistence.Embeddable
 data class SkillReferenceEntity(
     @Column(unique = true)
     var externalIdentifier: String,
-
     @Column
     var escoUri: String,
-
     @Column
-    var usage: String,
+    var usage: String
 )

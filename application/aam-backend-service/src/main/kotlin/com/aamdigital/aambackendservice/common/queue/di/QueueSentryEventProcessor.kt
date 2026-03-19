@@ -16,8 +16,12 @@ class QueueSentryEventProcessor : EventProcessor {
         logger.info("SENTRY: QueueSentryEventProcessor initialized " + Sentry.isEnabled())
     }
 
-    private var lastFailedCheckQueuesError: Date? = null;
-    override fun process(event: SentryEvent, hint: Hint): SentryEvent? {
+    private var lastFailedCheckQueuesError: Date? = null
+
+    override fun process(
+        event: SentryEvent,
+        hint: Hint
+    ): SentryEvent? {
         logger.trace("SENTRY EVENT: ${event.throwable?.javaClass?.toString()} ${event.message?.toString()}")
 
         if (event.message?.toString() == "Failed to check/redeclare auto-delete queue(s).") {

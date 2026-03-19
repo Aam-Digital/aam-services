@@ -27,15 +27,17 @@ class ChangesQueueConfiguration {
     }
 
     @Bean
-    fun dbChangesQueue(): Queue = QueueBuilder
-        .durable(DB_CHANGES_QUEUE)
-        .deadLetterExchange(DB_CHANGES_DEAD_LETTER_EXCHANGE)
-        .build()
+    fun dbChangesQueue(): Queue =
+        QueueBuilder
+            .durable(DB_CHANGES_QUEUE)
+            .deadLetterExchange(DB_CHANGES_DEAD_LETTER_EXCHANGE)
+            .build()
 
     @Bean("db-changes-dead-letter-queue")
-    fun dbChangesDeadLetterQueue(): Queue = QueueBuilder
-        .durable(DB_CHANGES_DEAD_LETTER_QUEUE)
-        .build()
+    fun dbChangesDeadLetterQueue(): Queue =
+        QueueBuilder
+            .durable(DB_CHANGES_DEAD_LETTER_QUEUE)
+            .build()
 
     @Bean("db-changes-dead-letter-exchange")
     fun dbChangesDeadLetterExchange(): FanoutExchange = FanoutExchange(DB_CHANGES_DEAD_LETTER_EXCHANGE)
@@ -43,9 +45,8 @@ class ChangesQueueConfiguration {
     @Bean
     fun deadLetterBinding(
         @Qualifier("db-changes-dead-letter-queue") dbChangesDeadLetterQueue: Queue,
-        @Qualifier("db-changes-dead-letter-exchange") dbChangesDeadLetterExchange: FanoutExchange,
-    ): Binding =
-        BindingBuilder.bind(dbChangesDeadLetterQueue).to(dbChangesDeadLetterExchange)
+        @Qualifier("db-changes-dead-letter-exchange") dbChangesDeadLetterExchange: FanoutExchange
+    ): Binding = BindingBuilder.bind(dbChangesDeadLetterQueue).to(dbChangesDeadLetterExchange)
 
     @Bean("document-changes-exchange")
     fun documentChangesExchange(): FanoutExchange = FanoutExchange(DOCUMENT_CHANGES_EXCHANGE)
@@ -53,18 +54,20 @@ class ChangesQueueConfiguration {
     @Bean
     fun defaultChangeEventPublisher(
         objectMapper: ObjectMapper,
-        rabbitTemplate: RabbitTemplate,
-    ): ChangeEventPublisher = DefaultChangeEventPublisher(
-        objectMapper = objectMapper,
-        rabbitTemplate = rabbitTemplate,
-    )
+        rabbitTemplate: RabbitTemplate
+    ): ChangeEventPublisher =
+        DefaultChangeEventPublisher(
+            objectMapper = objectMapper,
+            rabbitTemplate = rabbitTemplate
+        )
 
     @Bean
     fun defaultDocumentChangeEventProcessor(
         messageParser: QueueMessageParser,
-        useCase: CreateDocumentChangeUseCase,
-    ): DatabaseChangeEventConsumer = DefaultDatabaseChangeEventConsumer(
-        messageParser = messageParser,
-        useCase = useCase,
-    )
+        useCase: CreateDocumentChangeUseCase
+    ): DatabaseChangeEventConsumer =
+        DefaultDatabaseChangeEventConsumer(
+            messageParser = messageParser,
+            useCase = useCase
+        )
 }

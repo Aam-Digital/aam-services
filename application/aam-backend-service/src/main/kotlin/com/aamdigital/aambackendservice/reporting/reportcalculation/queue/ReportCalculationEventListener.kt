@@ -23,39 +23,38 @@ import org.springframework.stereotype.Component
 @ConditionalOnProperty(
     prefix = "events.listener.report-calculation",
     name = ["enabled"],
-    havingValue = "true",
+    havingValue = "true"
 )
 class ReportCalculationEventListener(
     val observationRegistry: ObservationRegistry,
     val reportCalculationUseCase: DefaultReportCalculationUseCase,
-    val objectMapper: ObjectMapper,
+    val objectMapper: ObjectMapper
 ) {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     init {
         logger.debug(
             "[ReportCalculationEventListener] Initiate RabbitListener " +
-                    "for Queue '$REPORT_CALCULATION_EVENT_QUEUE'"
+                "for Queue '$REPORT_CALCULATION_EVENT_QUEUE'"
         )
     }
 
     @RabbitListener(
         queues = [REPORT_CALCULATION_EVENT_QUEUE],
-        concurrency = "2-5",
+        concurrency = "2-5"
     )
-    fun handleReportCalculationEvent(
-        event: ReportCalculationEvent,
-    ) {
+    fun handleReportCalculationEvent(event: ReportCalculationEvent) {
         val observation = Observation.createNotStarted("report-calculation-use-case", this.observationRegistry)
         observation.lowCardinalityKeyValue("reportCalculationId", event.reportCalculationId)
 //        observation.lowCardinalityKeyValue("realm", event.tenant) // prepare tenant support
         observation.observe {
-            val response = reportCalculationUseCase.run(
-                request = ReportCalculationRequest(
-                    reportCalculationId = event.reportCalculationId,
+            val response =
+                reportCalculationUseCase.run(
+                    request =
+                        ReportCalculationRequest(
+                            reportCalculationId = event.reportCalculationId
+                        )
                 )
-            )
 
             when (response) {
                 is UseCaseOutcome.Failure -> throw AmqpRejectAndDontRequeueException(
@@ -65,8 +64,6 @@ class ReportCalculationEventListener(
 
                 is UseCaseOutcome.Success -> logger.trace(objectMapper.writeValueAsString(response))
             }
-
         }
     }
-
 }

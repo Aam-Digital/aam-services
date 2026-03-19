@@ -3,7 +3,6 @@ package com.aamdigital.aambackendservice.skill.di
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
 
-
 /**
  * Configures behaviour of the skill-api.
  *
@@ -16,7 +15,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
  */
 @ConfigurationProperties("features.skill-api")
 class FeatureConfigurationSkillApi(
-    val mode: String,
+    val mode: String
 )
 
 @ConfigurationProperties("skilllab-api-client-configuration")
@@ -30,5 +29,5 @@ class SkillLabApiClientConfiguration(
     val basePath: String,
     val apiKey: String,
     val projectId: String,
-    val responseTimeoutInSeconds: Int = 30,
+    val responseTimeoutInSeconds: Int = 30
 )

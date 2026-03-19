@@ -6,13 +6,13 @@ import com.aamdigital.aambackendservice.common.domain.UseCaseRequest
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 
 data class CreateNotificationRequest(
-    val createUserNotificationEvent: CreateUserNotificationEvent,
+    val createUserNotificationEvent: CreateUserNotificationEvent
 ) : UseCaseRequest
 
 data class CreateNotificationData(
     val success: Boolean,
     val messageCreated: Boolean,
-    val messageReference: String?,
+    val messageReference: String?
 ) : UseCaseData
 
 abstract class CreateNotificationUseCase : DomainUseCase<CreateNotificationRequest, CreateNotificationData>()

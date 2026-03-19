@@ -23,42 +23,42 @@ import javax.net.ssl.HttpsURLConnection
 class LocalDevelopmentConfiguration {
     @Bean
     @Profile("local-development")
-    fun restTemplate(restTemplateBuilder: RestTemplateBuilder, sslBundles: SslBundles): RestTemplate {
-        return restTemplateBuilder.setSslBundle(sslBundles.getBundle("local-development")).build()
-    }
-
-    @Bean
-    @Profile("local-development")
-    fun restClientBuilder(
+    fun restTemplate(
+        restTemplateBuilder: RestTemplateBuilder,
         sslBundles: SslBundles
-    ): RestClient.Builder {
-        return RestClient.builder()
-            .requestFactory(object : SimpleClientHttpRequestFactory() {
-                override fun prepareConnection(connection: HttpURLConnection, httpMethod: String) {
-                    if (connection is HttpsURLConnection) {
-                        try {
-                            val context = sslBundles.getBundle("local-development").createSslContext()
-                            connection.sslSocketFactory = context.socketFactory
-                        } catch (ex: Exception) {
-                            // nothing
-                        }
-                    }
-
-                    super.prepareConnection(connection, httpMethod)
-                }
-            })
-    }
+    ): RestTemplate = restTemplateBuilder.setSslBundle(sslBundles.getBundle("local-development")).build()
 
     @Bean
     @Profile("local-development")
-    fun sslCheckDisabledJwtDecoder(
-        restTemplate: RestTemplate
-    ): JwtDecoder {
-        return NimbusJwtDecoder
+    fun restClientBuilder(sslBundles: SslBundles): RestClient.Builder =
+        RestClient
+            .builder()
+            .requestFactory(
+                object : SimpleClientHttpRequestFactory() {
+                    override fun prepareConnection(
+                        connection: HttpURLConnection,
+                        httpMethod: String
+                    ) {
+                        if (connection is HttpsURLConnection) {
+                            try {
+                                val context = sslBundles.getBundle("local-development").createSslContext()
+                                connection.sslSocketFactory = context.socketFactory
+                            } catch (ex: Exception) {
+                                // nothing
+                            }
+                        }
+
+                        super.prepareConnection(connection, httpMethod)
+                    }
+                }
+            )
+
+    @Bean
+    @Profile("local-development")
+    fun sslCheckDisabledJwtDecoder(restTemplate: RestTemplate): JwtDecoder =
+        NimbusJwtDecoder
             .withIssuerLocation(
                 "https://keycloak.localhost/realms/dummy-realm"
-            )
-            .restOperations(restTemplate)
+            ).restOperations(restTemplate)
             .build()
-    }
 }

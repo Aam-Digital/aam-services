@@ -13,7 +13,7 @@ import org.springframework.security.oauth2.server.resource.BearerTokenErrorCodes
 import org.springframework.security.web.AuthenticationEntryPoint
 
 class AamAuthenticationEntryPoint(
-    private val objectMapper: ObjectMapper,
+    private val objectMapper: ObjectMapper
 ) : AuthenticationEntryPoint {
     override fun commence(
         request: HttpServletRequest,
@@ -22,12 +22,12 @@ class AamAuthenticationEntryPoint(
     ) {
         response.status = HttpStatus.UNAUTHORIZED.value()
         response.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        
+
         // Build WWW-Authenticate header
         val parameters: MutableMap<String, String?> = LinkedHashMap()
         var errorCode = HttpStatus.UNAUTHORIZED.value().toString()
         var errorMessage = authException.message ?: "Unauthorized"
-        
+
         if (authException is OAuth2AuthenticationException) {
             errorCode = authException.error.errorCode
             parameters["error"] = errorCode
@@ -38,7 +38,7 @@ class AamAuthenticationEntryPoint(
             parameters["error_description"] = errorMessage
             parameters["error_uri"] = "https://tools.ietf.org/html/rfc6750#section-3.1"
         }
-        
+
         val wwwAuthenticate = SecurityHeaderUtils.computeWWWAuthenticateHeaderValue(parameters)
         response.addHeader(HttpHeaders.WWW_AUTHENTICATE, wwwAuthenticate)
 

@@ -22,7 +22,6 @@ class DefaultCouchDbClient(
     private val httpClient: RestClient,
     private val objectMapper: ObjectMapper
 ) : CouchDbClient {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     enum class DefaultCouchDbClientErrorCode : AamErrorCode {
@@ -40,12 +39,13 @@ class DefaultCouchDbClient(
     }
 
     override fun allDatabases(): List<String> {
-        val response = httpClient
-            .get()
-            .uri("/_all_dbs")
-            .accept(MediaType.APPLICATION_JSON)
-            .retrieve()
-            .body(object : ParameterizedTypeReference<List<String>>() {})
+        val response =
+            httpClient
+                .get()
+                .uri("/_all_dbs")
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .body(object : ParameterizedTypeReference<List<String>>() {})
 
         if (response.isNullOrEmpty()) {
             throw ExternalSystemException(
@@ -58,23 +58,24 @@ class DefaultCouchDbClient(
     }
 
     override fun changes(
-        database: String, queryParams: MultiValueMap<String, String>
+        database: String,
+        queryParams: MultiValueMap<String, String>
     ): CouchDbChangesResponse {
-        val response = httpClient
-            .get()
-            .uri {
-                it.path("/$database/$CHANGES_URL")
-                it.queryParams(queryParams)
-                it.build()
-            }
-            .accept(MediaType.APPLICATION_JSON)
-            .retrieve()
-            .body(CouchDbChangesResponse::class.java)
+        val response =
+            httpClient
+                .get()
+                .uri {
+                    it.path("/$database/$CHANGES_URL")
+                    it.queryParams(queryParams)
+                    it.build()
+                }.accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .body(CouchDbChangesResponse::class.java)
 
         if (response == null) {
             throw ExternalSystemException(
                 message = "Could not parse response to CouchDbChangesResponse",
-                code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE,
+                code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
             )
         }
 
@@ -82,19 +83,22 @@ class DefaultCouchDbClient(
     }
 
     override fun <T : Any> find(
-        database: String, body: Map<String, Any>, queryParams: MultiValueMap<String, String>, kClass: KClass<T>
+        database: String,
+        body: Map<String, Any>,
+        queryParams: MultiValueMap<String, String>,
+        kClass: KClass<T>
     ): FindResponse<T> {
-        val response = httpClient
-            .post()
-            .uri {
-                it.path("/$database/$FIND_URL")
-                it.queryParams(queryParams)
-                it.build()
-            }
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(body)
-            .retrieve()
-            .body(ObjectNode::class.java)
+        val response =
+            httpClient
+                .post()
+                .uri {
+                    it.path("/$database/$FIND_URL")
+                    it.queryParams(queryParams)
+                    it.build()
+                }.contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(ObjectNode::class.java)
 
         if (response == null) {
             throw ExternalSystemException(
@@ -114,15 +118,14 @@ class DefaultCouchDbClient(
 
     override fun headDatabaseDocument(
         database: String,
-        documentId: String,
-    ): HttpHeaders {
-        return httpClient
+        documentId: String
+    ): HttpHeaders =
+        httpClient
             .head()
             .uri {
                 it.path("/$database/$documentId")
                 it.build()
-            }
-            .accept(MediaType.APPLICATION_JSON)
+            }.accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
                 if (clientResponse.statusCode.is2xxSuccessful) {
                     clientResponse.headers
@@ -134,8 +137,10 @@ class DefaultCouchDbClient(
                         code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
                     )
                 }
-            }
-    }
+            } ?: throw ExternalSystemException(
+            message = "Received null response when retrieving headers for document $documentId in database $database",
+            code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
+        )
 
     /**
      *  Fetch a document from the couchdb and return a parsed instance of given kClass.
@@ -158,15 +163,15 @@ class DefaultCouchDbClient(
         database: String,
         documentId: String,
         queryParams: MultiValueMap<String, String>,
-        kClass: KClass<T>,
-    ): T {
-        return httpClient.get()
+        kClass: KClass<T>
+    ): T =
+        httpClient
+            .get()
             .uri {
                 it.path("/$database/$documentId")
                 it.queryParams(queryParams)
                 it.build()
-            }
-            .accept(MediaType.APPLICATION_JSON)
+            }.accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
                 if (clientResponse.statusCode.is4xxClientError) {
                     throw NotFoundException(
@@ -175,83 +180,83 @@ class DefaultCouchDbClient(
                     )
                 }
                 handleResponse(clientResponse, kClass)
-            }
-    }
+            }!!
 
     override fun putDatabaseDocument(
         database: String,
         documentId: String,
-        body: Any,
+        body: Any
     ): DocSuccess {
-        val documentHeaders = headDatabaseDocument(
-            database = database,
-            documentId = documentId
-        )
+        val documentHeaders =
+            headDatabaseDocument(
+                database = database,
+                documentId = documentId
+            )
 
         val etag = documentHeaders.eTag?.replace("\"", "")
 
-        return httpClient.put()
+        return httpClient
+            .put()
             .uri {
                 it.path("/$database/$documentId")
                 it.build()
-            }
-            .body(body)
+            }.body(body)
             .headers {
                 if (etag.isNullOrBlank().not()) {
                     it.set("If-Match", etag)
                 }
-            }
-            .accept(MediaType.APPLICATION_JSON)
+            }.accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
                 handleResponse(clientResponse, DocSuccess::class)
-            }
+            }!!
     }
 
     override fun deleteDatabaseDocument(
         database: String,
-        documentId: String,
+        documentId: String
     ): DocSuccess {
-        val documentHeaders = headDatabaseDocument(
-            database = database,
-            documentId = documentId
-        )
+        val documentHeaders =
+            headDatabaseDocument(
+                database = database,
+                documentId = documentId
+            )
 
         val etag = documentHeaders.eTag?.replace("\"", "")
 
-        return httpClient.delete()
+        return httpClient
+            .delete()
             .uri {
                 it.path("/$database/$documentId")
                 it.build()
-            }
-            .headers {
+            }.headers {
                 if (etag.isNullOrBlank().not()) {
                     it.set("If-Match", etag)
                 }
-            }
-            .exchange { _, clientResponse ->
+            }.exchange { _, clientResponse ->
                 handleResponse(clientResponse, DocSuccess::class)
-            }
+            }!!
     }
 
     override fun <T : Any> getPreviousDocRev(
         database: String,
         documentId: String,
         rev: String,
-        kClass: KClass<T>,
+        kClass: KClass<T>
     ): Optional<T> {
         val allRevsInfoQueryParams = getEmptyQueryParams()
         allRevsInfoQueryParams.set("revs_info", "true")
 
-        val currentDoc = try {
-            getDatabaseDocument(
-                database = database,
-                documentId = documentId,
-                queryParams = allRevsInfoQueryParams,
-                kClass = ObjectNode::class
-            )
-        } catch (ex: NotFoundException) {
-            return Optional.empty()
-        }
+        val currentDoc =
+            try {
+                getDatabaseDocument(
+                    database = database,
+                    documentId = documentId,
+                    queryParams = allRevsInfoQueryParams,
+                    kClass = ObjectNode::class
+                )
+            } catch (ex: NotFoundException) {
+                return Optional.empty()
+            }
 
         val revInfo = currentDoc.get("_revs_info") ?: return Optional.empty()
 
@@ -274,12 +279,13 @@ class DefaultCouchDbClient(
         val previousRevQueryParams = getEmptyQueryParams()
         previousRevQueryParams.set("rev", previousRef)
 
-        val previousDoc = getDatabaseDocument(
-            database = database,
-            documentId = documentId,
-            queryParams = previousRevQueryParams,
-            kClass = ObjectNode::class
-        )
+        val previousDoc =
+            getDatabaseDocument(
+                database = database,
+                documentId = documentId,
+                queryParams = previousRevQueryParams,
+                kClass = ObjectNode::class
+            )
 
         return Optional.of(objectMapper.convertValue(previousDoc, kClass.java))
     }
@@ -289,22 +295,23 @@ class DefaultCouchDbClient(
         response: RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse,
         typeReference: KClass<T>
     ): T {
-        val rawResponse = try {
-            response.bodyTo(String::class.java) ?: throw ExternalSystemException(
-                message = "[DefaultCouchDbClient] empty response from server",
-                code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
-            )
-        } catch (ex: Exception) {
-            logger.error(
-                "[DefaultCouchDbClient] Invalid response from couchdb. Could not parse response to String.",
-                ex
-            )
-            throw ExternalSystemException(
-                message = ex.localizedMessage,
-                cause = ex,
-                code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
-            )
-        }
+        val rawResponse =
+            try {
+                response.bodyTo(String::class.java) ?: throw ExternalSystemException(
+                    message = "[DefaultCouchDbClient] empty response from server",
+                    code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
+                )
+            } catch (ex: Exception) {
+                logger.error(
+                    "[DefaultCouchDbClient] Invalid response from couchdb. Could not parse response to String.",
+                    ex
+                )
+                throw ExternalSystemException(
+                    message = ex.localizedMessage,
+                    cause = ex,
+                    code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
+                )
+            }
 
         if (typeReference == String::class) {
             @Suppress("UNCHECKED_CAST")
@@ -325,21 +332,18 @@ class DefaultCouchDbClient(
     }
 
     override fun createDatabase(databaseName: String) {
-        return httpClient.put()
+        httpClient
+            .put()
             .uri {
                 it.path("/$databaseName")
                 it.build()
-            }
-            .body("")
+            }.body("")
             .accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
                 if (!clientResponse.statusCode.is2xxSuccessful) {
+                    val responseBody = clientResponse.bodyTo(String::class.java)
                     logger.error(
-                        "Failed to create CouchDB $databaseName with status code ${clientResponse.statusCode} (${
-                            clientResponse.bodyTo(
-                                String::class.java
-                            )
-                        })"
+                        "Failed to create CouchDB $databaseName with status code ${clientResponse.statusCode} ($responseBody)"
                     )
 
                     throw ExternalSystemException(
@@ -351,13 +355,13 @@ class DefaultCouchDbClient(
     }
 
     override fun databaseExists(name: String): Boolean {
-        return httpClient.get()
+        return httpClient
+            .get()
             .uri {
                 it.path("/$name")
                 it.build()
-            }
-            .exchange { _, clientResponse ->
+            }.exchange { _, clientResponse ->
                 return@exchange clientResponse.statusCode.is2xxSuccessful
-            }
+            }!!
     }
 }

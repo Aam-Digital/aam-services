@@ -30,50 +30,50 @@ import java.io.InputStream
  */
 class DefaultFetchTemplateUseCase(
     private val restClient: RestClient,
-    private val templateStorage: TemplateStorage,
+    private val templateStorage: TemplateStorage
 ) : FetchTemplateUseCase() {
-
     private data class FileResponse(
         val file: InputStream,
-        val headers: HttpHeaders,
+        val headers: HttpHeaders
     )
 
-    override fun apply(
-        request: FetchTemplateRequest
-    ): UseCaseOutcome<FetchTemplateData> {
+    override fun apply(request: FetchTemplateRequest): UseCaseOutcome<FetchTemplateData> {
         val template = fetchTemplateRequest(request.templateRef)
 
         var responseHeaders = HttpHeaders()
 
-        val fileStream = try {
-            restClient.get()
-                .uri("/template/${template.templateId}")
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange { _, clientResponse ->
+        val fileStream =
+            try {
+                restClient
+                    .get()
+                    .uri("/template/${template.templateId}")
+                    .accept(MediaType.APPLICATION_JSON)
+                    .exchange { _, clientResponse ->
 
-                    if (clientResponse.statusCode.is4xxClientError) {
-                        throw NotFoundException(
-                            code = FetchTemplateError.NOT_FOUND_ERROR,
-                            message = "Template not found in template engine. Please re-upload" +
-                                    " the template and try again."
-                        )
+                        if (clientResponse.statusCode.is4xxClientError) {
+                            throw NotFoundException(
+                                code = FetchTemplateError.NOT_FOUND_ERROR,
+                                message =
+                                    "Template not found in template engine. Please re-upload" +
+                                        " the template and try again."
+                            )
+                        }
+
+                        responseHeaders = clientResponse.headers
+
+                        clientResponse.bodyTo(ByteArray::class.java)
+                            ?: throw ExternalSystemException(
+                                code = FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR,
+                                message = "Could not fetch the template file from the template engine."
+                            )
                     }
-
-                    responseHeaders = clientResponse.headers
-
-                    clientResponse.bodyTo(ByteArray::class.java)
-                        ?: throw ExternalSystemException(
-                            code = FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR,
-                            message = "Could not fetch the template file from the template engine."
-                        )
-                }
-        } catch (ex: ResourceAccessException) {
-            throw NetworkException(
-                cause = ex,
-                message = ex.localizedMessage,
-                code = FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR
-            )
-        }
+            } catch (ex: ResourceAccessException) {
+                throw NetworkException(
+                    cause = ex,
+                    message = ex.localizedMessage,
+                    code = FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR
+                )
+            }
 
         val forwardHeaders = HttpHeaders()
         forwardHeaders.contentType = responseHeaders.contentType
@@ -84,21 +84,23 @@ class DefaultFetchTemplateUseCase(
 
         val inputStream = ByteArrayInputStream(fileStream)
 
-        val fileResponse = FileResponse(
-            file = inputStream,
-            headers = forwardHeaders
-        )
+        val fileResponse =
+            FileResponse(
+                file = inputStream,
+                headers = forwardHeaders
+            )
 
         return Success(
-            data = FetchTemplateData(
-                file = fileResponse.file,
-                responseHeaders = fileResponse.headers
-            )
+            data =
+                FetchTemplateData(
+                    file = fileResponse.file,
+                    responseHeaders = fileResponse.headers
+                )
         )
     }
 
-    private fun fetchTemplateRequest(templateRef: DomainReference): TemplateExport {
-        return try {
+    private fun fetchTemplateRequest(templateRef: DomainReference): TemplateExport =
+        try {
             templateStorage.fetchTemplate(templateRef)
         } catch (ex: NotFoundException) {
             throw NotFoundException(
@@ -113,5 +115,4 @@ class DefaultFetchTemplateUseCase(
                 code = FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR
             )
         }
-    }
 }

@@ -14,13 +14,13 @@ data class ReportCalculationDto(
     var endDate: String? = null,
     var args: Map<String, String>,
     var data: ReportCalculationData?,
-    var errorDetails: String? = null,
+    var errorDetails: String? = null
 )
 
 data class ReportCalculationData(
     val contentType: String,
     val hash: String,
-    val length: Number,
+    val length: Number
 )
 
 /**

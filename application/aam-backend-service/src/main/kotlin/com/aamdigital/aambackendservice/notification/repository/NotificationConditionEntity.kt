@@ -7,10 +7,8 @@ import jakarta.persistence.Embeddable
 data class NotificationConditionEntity(
     @Column
     var field: String,
-
     @Column
     var operator: String,
-
     @Column
-    var value: String,
+    var value: String
 )

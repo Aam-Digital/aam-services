@@ -15,9 +15,8 @@ import org.springframework.stereotype.Service
 @Service
 class RabbitMqReportCalculationEventPublisher(
     private val objectMapper: ObjectMapper,
-    private val rabbitTemplate: RabbitTemplate,
+    private val rabbitTemplate: RabbitTemplate
 ) {
-
     enum class RabbitMqReportCalculationEventErrorCode : AamErrorCode {
         EVENT_PUBLISH_ERROR
     }
@@ -25,7 +24,10 @@ class RabbitMqReportCalculationEventPublisher(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @Throws(AamException::class)
-    fun publish(channel: String, event: ReportCalculationEvent) {
+    fun publish(
+        channel: String,
+        event: ReportCalculationEvent
+    ) {
         try {
             rabbitTemplate.send(
                 channel,

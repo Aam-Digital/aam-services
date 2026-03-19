@@ -16,9 +16,8 @@ import java.util.*
 
 class WebhookEventPublisher(
     private val objectMapper: ObjectMapper,
-    private val rabbitTemplate: RabbitTemplate,
+    private val rabbitTemplate: RabbitTemplate
 ) {
-
     enum class WebhookEventPublisherErrorCode : AamErrorCode {
         EVENT_PUBLISH_ERROR
     }
@@ -26,15 +25,21 @@ class WebhookEventPublisher(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @Throws(AamException::class)
-    fun publish(channel: String, event: WebhookEvent): QueueMessage {
-        val message = QueueMessage(
-            id = UUID.randomUUID(),
-            eventType = WebhookEvent::class.java.canonicalName,
-            event = event,
-            createdAt = Instant.now()
-                .atOffset(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-        )
+    fun publish(
+        channel: String,
+        event: WebhookEvent
+    ): QueueMessage {
+        val message =
+            QueueMessage(
+                id = UUID.randomUUID(),
+                eventType = WebhookEvent::class.java.canonicalName,
+                event = event,
+                createdAt =
+                    Instant
+                        .now()
+                        .atOffset(ZoneOffset.UTC)
+                        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+            )
 
         try {
             rabbitTemplate.convertAndSend(

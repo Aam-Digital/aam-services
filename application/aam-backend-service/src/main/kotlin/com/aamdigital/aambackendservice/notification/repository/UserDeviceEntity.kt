@@ -14,21 +14,17 @@ data class UserDeviceEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     val id: Long = 0,
-
     @Column
     var deviceName: String?,
-
     @Column(
         unique = true,
         nullable = false,
-        updatable = false,
+        updatable = false
     )
     var deviceToken: String,
-
     @Column
     var userIdentifier: String,
-
     @CreationTimestamp(source = SourceType.DB)
     @Column
-    var createdAt: OffsetDateTime? = null,
+    var createdAt: OffsetDateTime? = null
 )

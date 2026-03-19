@@ -6,7 +6,7 @@ import com.aamdigital.aambackendservice.common.domain.UseCaseData
 import com.aamdigital.aambackendservice.common.domain.UseCaseRequest
 
 data class ApplyNotificationRulesRequest(
-    val documentChangeEvent: DocumentChangeEvent,
+    val documentChangeEvent: DocumentChangeEvent
 ) : UseCaseRequest
 
 data class ApplyNotificationRulesData(

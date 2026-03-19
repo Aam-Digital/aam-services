@@ -15,25 +15,23 @@ import org.springframework.web.client.RestClient
 
 @Configuration
 class CouchDbConfiguration {
-
     @Bean
     fun couchDbFileStorage(
         @Qualifier("couch-db-client") restClient: RestClient,
-        objectMapper: ObjectMapper,
+        objectMapper: ObjectMapper
     ): FileStorage = CouchDbFileStorage(restClient, objectMapper)
 
     @Bean
     fun defaultCouchDbStorage(
         @Qualifier("couch-db-client") restClient: RestClient,
-        objectMapper: ObjectMapper,
+        objectMapper: ObjectMapper
     ): CouchDbClient = DefaultCouchDbClient(restClient, objectMapper)
 
     @Bean
     fun couchDbInitializer(
         couchDbClient: CouchDbClient,
-        databaseRequests: List<DatabaseRequest>,
-    ): CouchDbInitializer =
-        CouchDbInitializer(couchDbClient = couchDbClient, databaseRequests = databaseRequests)
+        databaseRequests: List<DatabaseRequest>
+    ): CouchDbInitializer = CouchDbInitializer(couchDbClient = couchDbClient, databaseRequests = databaseRequests)
 
     @Bean(name = ["couch-db-client"])
     fun couchDbWebClient(
@@ -45,14 +43,15 @@ class CouchDbConfiguration {
             basePath = "$basePath/"
         }
 
-        val clientBuilder = restTemplateBuilder
-            .baseUrl(basePath)
-            .defaultHeaders {
-                it.setBasicAuth(
-                    configuration.basicAuthUsername,
-                    configuration.basicAuthPassword,
-                )
-            }
+        val clientBuilder =
+            restTemplateBuilder
+                .baseUrl(basePath)
+                .defaultHeaders {
+                    it.setBasicAuth(
+                        configuration.basicAuthUsername,
+                        configuration.basicAuthPassword
+                    )
+                }
 
         return clientBuilder.build()
     }
@@ -62,5 +61,5 @@ class CouchDbConfiguration {
 class CouchDbClientConfiguration(
     val basePath: String,
     val basicAuthUsername: String,
-    val basicAuthPassword: String,
+    val basicAuthPassword: String
 )

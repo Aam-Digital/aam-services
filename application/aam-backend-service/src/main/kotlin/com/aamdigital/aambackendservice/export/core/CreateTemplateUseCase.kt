@@ -8,13 +8,12 @@ import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import org.springframework.web.multipart.MultipartFile
 
 data class CreateTemplateRequest(
-    val file: MultipartFile,
+    val file: MultipartFile
 ) : UseCaseRequest
 
 data class CreateTemplateData(
-    val templateRef: DomainReference,
+    val templateRef: DomainReference
 ) : UseCaseData
-
 
 enum class CreateTemplateError : AamErrorCode {
     INTERNAL_SERVER_ERROR,
@@ -22,5 +21,4 @@ enum class CreateTemplateError : AamErrorCode {
     CREATE_TEMPLATE_REQUEST_FAILED_ERROR
 }
 
-abstract class CreateTemplateUseCase :
-    DomainUseCase<CreateTemplateRequest, CreateTemplateData>()
+abstract class CreateTemplateUseCase : DomainUseCase<CreateTemplateRequest, CreateTemplateData>()

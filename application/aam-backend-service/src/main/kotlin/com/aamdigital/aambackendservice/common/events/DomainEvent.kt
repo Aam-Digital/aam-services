@@ -15,5 +15,5 @@ import java.time.format.DateTimeFormatter
  */
 abstract class DomainEvent(
     val id: Long = SequenceGenerator.nextId(),
-    val createdAt: String = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME).toString(),
+    val createdAt: String = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME).toString()
 )

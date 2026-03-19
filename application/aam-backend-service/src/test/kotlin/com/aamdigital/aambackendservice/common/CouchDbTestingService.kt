@@ -6,10 +6,11 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
 import org.springframework.util.LinkedMultiValueMap
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
 
 class CouchDbTestingService(
-    private val restTemplate: RestTemplate,
+    private val restTemplate: RestTemplate
 ) {
     companion object {
         private val DEFAULT_DATABASES = listOf("app", "notification-webhook", "report-calculation")
@@ -18,17 +19,18 @@ class CouchDbTestingService(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     fun reset() {
-        val allDbsResponse = restTemplate
-            .exchange("/_all_dbs", HttpMethod.GET, HttpEntity.EMPTY, ArrayNode::class.java)
+        val allDbsResponse =
+            restTemplate
+                .exchange("/_all_dbs", HttpMethod.GET, HttpEntity.EMPTY, ArrayNode::class.java)
 
-        val dbs = allDbsResponse
-            .body
-            ?.filter {
-                !it.textValue().startsWith("_")
-            }
-            ?.map {
-                it.textValue()
-            } ?: emptyList()
+        val dbs =
+            allDbsResponse
+                .body
+                ?.filter {
+                    !it.textValue().startsWith("_")
+                }?.map {
+                    it.textValue()
+                } ?: emptyList()
 
         dbs.forEach {
             deleteDatabase(it)
@@ -42,65 +44,86 @@ class CouchDbTestingService(
     }
 
     fun createDatabase(database: String) {
-        val response = restTemplate
-            .exchange("/$database", HttpMethod.PUT, HttpEntity.EMPTY, ObjectNode::class.java)
-        logger.info("[CouchDbSetup] create Database: $database, ${response.statusCode}")
+        try {
+            val response =
+                restTemplate
+                    .exchange("/$database", HttpMethod.PUT, HttpEntity.EMPTY, ObjectNode::class.java)
+            logger.info("[CouchDbSetup] create Database: $database, ${response.statusCode}")
+        } catch (e: HttpClientErrorException) {
+            if (e.statusCode.value() == 412) {
+                logger.info("[CouchDbSetup] Database $database already exists, skipping creation.")
+            } else {
+                throw e
+            }
+        }
     }
 
-    fun createDocument(database: String, documentName: String, documentContent: String) {
-        val response = restTemplate
-            .exchange(
-                "/$database/${documentName.replaceFirst("_", ":")}",
-                HttpMethod.PUT,
-                HttpEntity(documentContent),
-                ObjectNode::class.java,
-            )
+    fun createDocument(
+        database: String,
+        documentName: String,
+        documentContent: String
+    ) {
+        val response =
+            restTemplate
+                .exchange(
+                    "/$database/${documentName.replaceFirst("_", ":")}",
+                    HttpMethod.PUT,
+                    HttpEntity(documentContent),
+                    ObjectNode::class.java
+                )
         logger.info("[CouchDbSetup] create Document: $database, $documentName, ${response.statusCode}")
     }
 
-    fun addAttachment(database: String, documentName: String, attachmentName: String, documentContent: String) {
-        val responseDocument = restTemplate
-            .headForHeaders(
-                "/$database/${
-                    documentName.replaceFirst(
-                        "_",
-                        ":"
-                    )
-                }",
-            )
+    fun addAttachment(
+        database: String,
+        documentName: String,
+        attachmentName: String,
+        documentContent: String
+    ) {
+        val responseDocument =
+            restTemplate
+                .headForHeaders(
+                    "/$database/${
+                        documentName.replaceFirst(
+                            "_",
+                            ":"
+                        )
+                    }"
+                )
 
         val etag = responseDocument.eTag?.replace("\"", "")
 
         val headers = LinkedMultiValueMap<String, String>()
         headers.set("If-Match", etag)
 
-        val response = restTemplate
-            .exchange(
-                "/$database/${
-                    documentName.replaceFirst(
-                        "_",
-                        ":"
-                    )
-                }/$attachmentName",
-                HttpMethod.PUT,
-                HttpEntity(documentContent, headers),
-                ObjectNode::class.java,
-            )
+        val response =
+            restTemplate
+                .exchange(
+                    "/$database/${
+                        documentName.replaceFirst(
+                            "_",
+                            ":"
+                        )
+                    }/$attachmentName",
+                    HttpMethod.PUT,
+                    HttpEntity(documentContent, headers),
+                    ObjectNode::class.java
+                )
         logger.info(
             "[CouchDbSetup] create attachment:" +
-                    " $database, $documentName, $attachmentName, ${response.statusCode}"
+                " $database, $documentName, $attachmentName, ${response.statusCode}"
         )
     }
 
     private fun deleteDatabase(database: String) {
-        val response = restTemplate
-            .exchange(
-                "/$database",
-                HttpMethod.DELETE,
-                HttpEntity.EMPTY,
-                ObjectNode::class.java,
-            )
+        val response =
+            restTemplate
+                .exchange(
+                    "/$database",
+                    HttpMethod.DELETE,
+                    HttpEntity.EMPTY,
+                    ObjectNode::class.java
+                )
         logger.info("[CouchDbSetup] delete Database: $database, ${response.statusCode}")
     }
-
 }

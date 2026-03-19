@@ -35,7 +35,6 @@ import java.util.*
 
 @ExtendWith(MockitoExtension::class)
 class SkillLabFetchUserProfileUpdatesUseCaseTest {
-
     private lateinit var service: SkillLabFetchUserProfileUpdatesUseCase
 
     @Mock
@@ -54,11 +53,12 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             skillLabUserProfileSyncRepository,
             userProfileUpdatePublisher
         )
-        service = SkillLabFetchUserProfileUpdatesUseCase(
-            skillLabClient = skillLabClient,
-            skillLabUserProfileSyncRepository = skillLabUserProfileSyncRepository,
-            userProfileUpdatePublisher = userProfileUpdatePublisher
-        )
+        service =
+            SkillLabFetchUserProfileUpdatesUseCase(
+                skillLabClient = skillLabClient,
+                skillLabUserProfileSyncRepository = skillLabUserProfileSyncRepository,
+                userProfileUpdatePublisher = userProfileUpdatePublisher
+            )
     }
 
     @Test
@@ -69,16 +69,17 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
                 throw InternalServerException(
                     message = "error",
                     code = TestErrorCode.TEST_EXCEPTION,
-                    cause = null,
+                    cause = null
                 )
             }
 
         // when
-        val response = service.run(
-            FetchUserProfileUpdatesRequest(
-                projectId = "1",
+        val response =
+            service.run(
+                FetchUserProfileUpdatesRequest(
+                    projectId = "1"
+                )
             )
-        )
 
         // then
 
@@ -96,7 +97,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             listOf(
                 DomainReference("user-profile-1"),
                 DomainReference("user-profile-2"),
-                DomainReference("user-profile-3"),
+                DomainReference("user-profile-3")
             )
         )
 
@@ -105,11 +106,12 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         )
 
         // when
-        val response = service.run(
-            FetchUserProfileUpdatesRequest(
-                projectId = "1",
+        val response =
+            service.run(
+                FetchUserProfileUpdatesRequest(
+                    projectId = "1"
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -122,7 +124,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             eq(
                 UserProfileUpdateEvent(
                     projectId = "1",
-                    userProfileId = "user-profile-1",
+                    userProfileId = "user-profile-1"
                 )
             )
         )
@@ -135,7 +137,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             eq(
                 UserProfileUpdateEvent(
                     projectId = "1",
-                    userProfileId = "user-profile-2",
+                    userProfileId = "user-profile-2"
                 )
             )
         )
@@ -148,7 +150,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             eq(
                 UserProfileUpdateEvent(
                     projectId = "1",
-                    userProfileId = "user-profile-3",
+                    userProfileId = "user-profile-3"
                 )
             )
         )
@@ -176,11 +178,12 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         )
 
         // when
-        val response = service.run(
-            FetchUserProfileUpdatesRequest(
-                projectId = "1",
+        val response =
+            service.run(
+                FetchUserProfileUpdatesRequest(
+                    projectId = "1"
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -214,11 +217,12 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         }
 
         // when
-        val response = service.run(
-            FetchUserProfileUpdatesRequest(
-                projectId = "1",
+        val response =
+            service.run(
+                FetchUserProfileUpdatesRequest(
+                    projectId = "1"
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
@@ -231,11 +235,12 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
 
     @Test
     fun `should store latestSyncEntity when SyncEntity exist for this projectId`() {
-        val syncEntity = SkillLabUserProfileSyncEntity(
-            id = 42L,
-            projectId = "1",
-            latestSync = OffsetDateTime.parse("2024-01-01T00:00:00Z"),
-        )
+        val syncEntity =
+            SkillLabUserProfileSyncEntity(
+                id = 42L,
+                projectId = "1",
+                latestSync = OffsetDateTime.parse("2024-01-01T00:00:00Z")
+            )
 
         // given
         whenever(skillLabUserProfileSyncRepository.findByProjectId(any()))
@@ -249,7 +254,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             listOf(
                 DomainReference("user-profile-1"),
                 DomainReference("user-profile-2"),
-                DomainReference("user-profile-3"),
+                DomainReference("user-profile-3")
             )
         )
 
@@ -258,11 +263,12 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         )
 
         // when
-        val response = service.run(
-            FetchUserProfileUpdatesRequest(
-                projectId = "1",
+        val response =
+            service.run(
+                FetchUserProfileUpdatesRequest(
+                    projectId = "1"
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -282,7 +288,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             listOf(
                 DomainReference("user-profile-1"),
                 DomainReference("user-profile-2"),
-                DomainReference("user-profile-3"),
+                DomainReference("user-profile-3")
             )
         )
 
@@ -291,11 +297,12 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         )
 
         // when
-        val response = service.run(
-            FetchUserProfileUpdatesRequest(
-                projectId = "1",
+        val response =
+            service.run(
+                FetchUserProfileUpdatesRequest(
+                    projectId = "1"
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -308,13 +315,15 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         )
     }
 
-    private fun getQueueMessage(): QueueMessage = QueueMessage(
-        id = UUID.fromString("00000000-0000-0000-0000-000000000000"),
-        eventType = "FOO",
-        event = UserProfileUpdateEvent(
-            projectId = "1",
-            userProfileId = "mock",
-        ),
-        createdAt = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-    )
+    private fun getQueueMessage(): QueueMessage =
+        QueueMessage(
+            id = UUID.fromString("00000000-0000-0000-0000-000000000000"),
+            eventType = "FOO",
+            event =
+                UserProfileUpdateEvent(
+                    projectId = "1",
+                    userProfileId = "mock"
+                ),
+            createdAt = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        )
 }

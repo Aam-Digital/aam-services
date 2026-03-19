@@ -24,16 +24,16 @@ import java.io.InputStream
 
 data class RenderRequestResponseDto(
     val success: Boolean,
-    val data: RenderRequestResponseDataDto,
+    val data: RenderRequestResponseDataDto
 )
 
 data class RenderRequestErrorResponseDto(
     val success: Boolean,
-    val error: String,
+    val error: String
 )
 
 data class RenderRequestResponseDataDto(
-    val renderId: String,
+    val renderId: String
 )
 
 /**
@@ -51,22 +51,19 @@ data class RenderRequestResponseDataDto(
 class DefaultRenderTemplateUseCase(
     private val renderClient: RestClient,
     private val objectMapper: ObjectMapper,
-    private val templateStorage: TemplateStorage,
+    private val templateStorage: TemplateStorage
 ) : RenderTemplateUseCase() {
-
     private data class FileResponse(
         val file: InputStream,
-        val headers: HttpHeaders,
+        val headers: HttpHeaders
     )
 
-    override fun apply(
-        request: RenderTemplateRequest
-    ): UseCaseOutcome<RenderTemplateData> {
-
+    override fun apply(request: RenderTemplateRequest): UseCaseOutcome<RenderTemplateData> {
         val template = fetchTemplate(request.templateRef)
 
-        val targetFileName = template.targetFileName
-            .replace(Regex("[\\\\/*?\"<>|]"), "_")
+        val targetFileName =
+            template.targetFileName
+                .replace(Regex("[\\\\/*?\"<>|]"), "_")
 
         (request.bodyData as ObjectNode).put(
             "reportName",
@@ -78,56 +75,63 @@ class DefaultRenderTemplateUseCase(
         val fileResponse = fetchRenderIdRequest(renderId)
 
         return Success(
-            data = RenderTemplateData(
-                file = fileResponse.file,
-                responseHeaders = fileResponse.headers
-            )
+            data =
+                RenderTemplateData(
+                    file = fileResponse.file,
+                    responseHeaders = fileResponse.headers
+                )
         )
     }
 
-    private fun fetchTemplate(templateRef: DomainReference): TemplateExport {
-        return try {
+    private fun fetchTemplate(templateRef: DomainReference): TemplateExport =
+        try {
             templateStorage.fetchTemplate(templateRef)
         } catch (ex: Exception) {
             throw when (ex) {
-                is NotFoundException -> NotFoundException(
-                    cause = ex.cause ?: ex,
-                    message = ex.localizedMessage,
-                    code = RenderTemplateError.NOT_FOUND_ERROR
-                )
+                is NotFoundException ->
+                    NotFoundException(
+                        cause = ex.cause ?: ex,
+                        message = ex.localizedMessage,
+                        code = RenderTemplateError.NOT_FOUND_ERROR
+                    )
 
-                is NetworkException -> NetworkException(
-                    cause = ex.cause ?: ex,
-                    message = ex.localizedMessage,
-                    code = RenderTemplateError.FETCH_TEMPLATE_FAILED_ERROR
-                )
+                is NetworkException ->
+                    NetworkException(
+                        cause = ex.cause ?: ex,
+                        message = ex.localizedMessage,
+                        code = RenderTemplateError.FETCH_TEMPLATE_FAILED_ERROR
+                    )
 
-                else -> ExternalSystemException(
-                    cause = ex.cause ?: ex,
-                    message = "Could not create render request to template engine.",
-                    code = RenderTemplateError.FETCH_TEMPLATE_FAILED_ERROR
-                )
-
+                else ->
+                    ExternalSystemException(
+                        cause = ex.cause ?: ex,
+                        message = "Could not create render request to template engine.",
+                        code = RenderTemplateError.FETCH_TEMPLATE_FAILED_ERROR
+                    )
             }
         }
-    }
 
-    private fun createRenderRequest(templateId: String, bodyData: JsonNode): String {
-        val response = try {
-            renderClient.post()
-                .uri("/render/$templateId")
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)
-                .body(bodyData)
-                .retrieve()
-                .body(String::class.java)
-        } catch (ex: Exception) {
-            throw ExternalSystemException(
-                cause = ex,
-                message = ex.localizedMessage,
-                code = CREATE_RENDER_REQUEST_FAILED_ERROR
-            )
-        }
+    private fun createRenderRequest(
+        templateId: String,
+        bodyData: JsonNode
+    ): String {
+        val response =
+            try {
+                renderClient
+                    .post()
+                    .uri("/render/$templateId")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(bodyData)
+                    .retrieve()
+                    .body(String::class.java)
+            } catch (ex: Exception) {
+                throw ExternalSystemException(
+                    cause = ex,
+                    message = ex.localizedMessage,
+                    code = CREATE_RENDER_REQUEST_FAILED_ERROR
+                )
+            }
 
         if (response.isNullOrEmpty()) {
             throw ExternalSystemException(
@@ -140,9 +144,10 @@ class DefaultRenderTemplateUseCase(
         return response
     }
 
-    private fun fetchRenderIdRequest(renderId: String): FileResponse {
-        return try {
-            renderClient.get()
+    private fun fetchRenderIdRequest(renderId: String): FileResponse =
+        try {
+            renderClient
+                .get()
                 .uri("/render/$renderId")
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange { _, clientResponse ->
@@ -155,45 +160,52 @@ class DefaultRenderTemplateUseCase(
                         forwardHeaders["Content-Disposition"] = responseHeaders["Content-Disposition"]
                     }
 
-                    val buffer = clientResponse.bodyTo(ByteArray::class.java) ?: throw ExternalSystemException(
-                        cause = null,
-                        message = "Could not convert body to Resource.",
-                        code = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
-                    )
+                    val buffer =
+                        clientResponse.bodyTo(ByteArray::class.java) ?: throw ExternalSystemException(
+                            cause = null,
+                            message = "Could not convert body to Resource.",
+                            code = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+                        )
 
                     FileResponse(
                         file = buffer.inputStream(),
                         headers = forwardHeaders
                     )
-                }
+                } ?: throw ExternalSystemException(
+                cause = null,
+                message = "Could not fetch render response from template engine.",
+                code = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+            )
         } catch (ex: Exception) {
             throw when (ex) {
-                is ResourceAccessException -> NetworkException(
-                    cause = ex.cause ?: ex,
-                    message = ex.localizedMessage,
-                    code = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
-                )
+                is ResourceAccessException ->
+                    NetworkException(
+                        cause = ex.cause ?: ex,
+                        message = ex.localizedMessage,
+                        code = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+                    )
 
-                else -> ExternalSystemException(
-                    cause = ex.cause ?: ex,
-                    message = "Could not create render request to template engine.",
-                    code = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
-                )
+                else ->
+                    ExternalSystemException(
+                        cause = ex.cause ?: ex,
+                        message = "Could not create render request to template engine.",
+                        code = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+                    )
             }
         }
-    }
 
     private fun parseRenderRequestResponse(raw: String): String {
         try {
             val renderApiClientResponse = objectMapper.readValue(raw, RenderRequestResponseDto::class.java)
             return renderApiClientResponse.data.renderId
         } catch (ex: Exception) {
-            val renderApiClientResponse = try {
-                val response = objectMapper.readValue(raw, RenderRequestErrorResponseDto::class.java)
-                response.error
-            } catch (ex: Exception) {
-                ex.localizedMessage
-            }
+            val renderApiClientResponse =
+                try {
+                    val response = objectMapper.readValue(raw, RenderRequestErrorResponseDto::class.java)
+                    response.error
+                } catch (ex: Exception) {
+                    ex.localizedMessage
+                }
 
             throw ExternalSystemException(
                 cause = ex,

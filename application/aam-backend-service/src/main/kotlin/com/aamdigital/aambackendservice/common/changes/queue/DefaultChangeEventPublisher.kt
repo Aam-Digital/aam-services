@@ -18,9 +18,8 @@ import java.util.*
 
 class DefaultChangeEventPublisher(
     private val objectMapper: ObjectMapper,
-    private val rabbitTemplate: RabbitTemplate,
+    private val rabbitTemplate: RabbitTemplate
 ) : ChangeEventPublisher {
-
     enum class DefaultChangeEventPublisherErrorCode : AamErrorCode {
         EVENT_PUBLISH_ERROR
     }
@@ -28,15 +27,21 @@ class DefaultChangeEventPublisher(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @Throws(AamException::class)
-    override fun publish(channel: String, event: DatabaseChangeEvent): QueueMessage {
-        val message = QueueMessage(
-            id = UUID.randomUUID(),
-            eventType = DatabaseChangeEvent::class.java.canonicalName,
-            event = event,
-            createdAt = Instant.now()
-                .atOffset(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-        )
+    override fun publish(
+        channel: String,
+        event: DatabaseChangeEvent
+    ): QueueMessage {
+        val message =
+            QueueMessage(
+                id = UUID.randomUUID(),
+                eventType = DatabaseChangeEvent::class.java.canonicalName,
+                event = event,
+                createdAt =
+                    Instant
+                        .now()
+                        .atOffset(ZoneOffset.UTC)
+                        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+            )
 
         try {
             rabbitTemplate.convertAndSend(
@@ -54,15 +59,21 @@ class DefaultChangeEventPublisher(
     }
 
     @Throws(AamException::class)
-    override fun publish(exchange: String, event: DocumentChangeEvent): QueueMessage {
-        val message = QueueMessage(
-            id = UUID.randomUUID(),
-            eventType = DocumentChangeEvent::class.java.canonicalName,
-            event = event,
-            createdAt = Instant.now()
-                .atOffset(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-        )
+    override fun publish(
+        exchange: String,
+        event: DocumentChangeEvent
+    ): QueueMessage {
+        val message =
+            QueueMessage(
+                id = UUID.randomUUID(),
+                eventType = DocumentChangeEvent::class.java.canonicalName,
+                event = event,
+                createdAt =
+                    Instant
+                        .now()
+                        .atOffset(ZoneOffset.UTC)
+                        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+            )
         try {
             rabbitTemplate.convertAndSend(
                 exchange,

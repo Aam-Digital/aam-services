@@ -14,9 +14,8 @@ import org.springframework.util.LinkedMultiValueMap
 @Service
 class WebhookRepository(
     private val couchDbClient: CouchDbClient,
-    private val objectMapper: ObjectMapper,
+    private val objectMapper: ObjectMapper
 ) {
-
     enum class WebhookRepositoryErrorCode : AamErrorCode {
         INVALID_RESPONSE
     }
@@ -26,45 +25,45 @@ class WebhookRepository(
     }
 
     fun fetchAllWebhooks(): List<WebhookEntity> {
-        val objectNode = couchDbClient
-            .getDatabaseDocument(
-                database = WEBHOOK_DATABASE,
-                documentId = "_all_docs",
-                queryParams = getQueryParamsAllDocs("Webhook"),
-                kClass = ObjectNode::class
-            )
+        val objectNode =
+            couchDbClient
+                .getDatabaseDocument(
+                    database = WEBHOOK_DATABASE,
+                    documentId = "_all_docs",
+                    queryParams = getQueryParamsAllDocs("Webhook"),
+                    kClass = ObjectNode::class
+                )
 
         val data = objectMapper.convertValue(objectNode, Map::class.java)
-        val rows = (data["rows"] as Iterable<*>)
-            .map { entry ->
-                if (entry is LinkedHashMap<*, *>) {
-                    objectMapper.convertValue(entry["doc"], WebhookEntity::class.java)
-                } else {
-                    throw InternalServerException(
-                        message = "Invalid response",
-                        code = WebhookRepositoryErrorCode.INVALID_RESPONSE
-                    )
+        val rows =
+            (data["rows"] as Iterable<*>)
+                .map { entry ->
+                    if (entry is LinkedHashMap<*, *>) {
+                        objectMapper.convertValue(entry["doc"], WebhookEntity::class.java)
+                    } else {
+                        throw InternalServerException(
+                            message = "Invalid response",
+                            code = WebhookRepositoryErrorCode.INVALID_RESPONSE
+                        )
+                    }
                 }
-            }
         return rows
     }
 
-    fun fetchWebhook(webhookRef: DomainReference): WebhookEntity {
-        return couchDbClient
+    fun fetchWebhook(webhookRef: DomainReference): WebhookEntity =
+        couchDbClient
             .getDatabaseDocument(
                 database = WEBHOOK_DATABASE,
                 documentId = webhookRef.id,
                 queryParams = LinkedMultiValueMap(),
                 kClass = WebhookEntity::class
             )
-    }
 
-    fun storeWebhook(webhook: WebhookEntity): DocSuccess {
-        return couchDbClient
+    fun storeWebhook(webhook: WebhookEntity): DocSuccess =
+        couchDbClient
             .putDatabaseDocument(
                 database = WEBHOOK_DATABASE,
                 documentId = webhook.id,
-                body = webhook,
+                body = webhook
             )
-    }
 }

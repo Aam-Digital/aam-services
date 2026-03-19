@@ -13,5 +13,5 @@ data class UserProfile(
     var skills: List<EscoSkill>,
     var updatedAtExternalSystem: String?,
     var importedAt: Instant? = null,
-    var latestSyncAt: Instant? = null,
+    var latestSyncAt: Instant? = null
 )

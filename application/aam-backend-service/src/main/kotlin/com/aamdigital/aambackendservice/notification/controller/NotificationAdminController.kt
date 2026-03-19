@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 data class TestMessageResponse(
-    val outcome: CreateNotificationData,
+    val outcome: CreateNotificationData
 )
 
 @RestController
@@ -26,24 +26,22 @@ data class TestMessageResponse(
     matchIfMissing = false
 )
 class NotificationAdminController(
-    private val pushCreateNotificationHandler: PushCreateNotificationHandler,
+    private val pushCreateNotificationHandler: PushCreateNotificationHandler
 ) {
-
     @PostMapping("/message/device-test")
-    fun sendTestMessageToDevice(
-        authentication: JwtAuthenticationToken,
-    ): ResponseEntity<TestMessageResponse> {
-
-        val testEvent = CreateUserNotificationEvent(
-            userIdentifier = authentication.name ?: authentication.tokenAttributes["username"].toString(),
-            notificationChannelType = NotificationChannelType.PUSH,
-            notificationRule = "test",
-            details = NotificationDetails(
-                title = "Test Notification",
-                body = "Hello World",
-                notificationType = NotificationType.UNKNOWN,
+    fun sendTestMessageToDevice(authentication: JwtAuthenticationToken): ResponseEntity<TestMessageResponse> {
+        val testEvent =
+            CreateUserNotificationEvent(
+                userIdentifier = authentication.name ?: authentication.tokenAttributes["username"].toString(),
+                notificationChannelType = NotificationChannelType.PUSH,
+                notificationRule = "test",
+                details =
+                    NotificationDetails(
+                        title = "Test Notification",
+                        body = "Hello World",
+                        notificationType = NotificationType.UNKNOWN
+                    )
             )
-        )
 
         val outcome = pushCreateNotificationHandler.createMessage(testEvent)
 

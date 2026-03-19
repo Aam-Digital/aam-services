@@ -33,33 +33,36 @@ import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.OutputStream
 
-
 sealed interface TemplateExportControllerResponse {
-
     /**
      * @param templateId The external identifier of the implementing TemplateEngine
      */
     data class CreateTemplateControllerResponse(
-        val templateId: String,
+        val templateId: String
     ) : TemplateExportControllerResponse
 
     /**
      * StreamingResponse of the template binary file
      */
-    fun interface FetchTemplateControllerResponse : StreamingResponseBody, TemplateExportControllerResponse
+    fun interface FetchTemplateControllerResponse :
+        StreamingResponseBody,
+        TemplateExportControllerResponse
 
     /**
      * StreamingResponse of the template, rendered with passed data as binary file
      */
-    fun interface RenderTemplateControllerResponse : StreamingResponseBody, TemplateExportControllerResponse
+    fun interface RenderTemplateControllerResponse :
+        StreamingResponseBody,
+        TemplateExportControllerResponse
 
     class ErrorControllerResponse(
         errorCode: String,
         errorMessage: String
     ) : HttpErrorDto(
-        errorCode,
-        errorMessage
-    ), TemplateExportControllerResponse
+            errorCode,
+            errorMessage
+        ),
+        TemplateExportControllerResponse
 }
 
 /**
@@ -85,9 +88,8 @@ class TemplateExportController(
     private val createTemplateUseCase: CreateTemplateUseCase,
     private val fetchTemplateUseCase: FetchTemplateUseCase,
     private val renderTemplateUseCase: RenderTemplateUseCase,
-    private val objectMapper: ObjectMapper,
+    private val objectMapper: ObjectMapper
 ) {
-
     companion object {
         private const val BYTE_ARRAY_BUFFER_LENGTH = 4096
     }
@@ -98,14 +100,15 @@ class TemplateExportController(
         errorCode: String,
         errorMessage: String,
         status: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR
-    ): ResponseEntity<TemplateExportControllerResponse> = ResponseEntity
-        .status(status)
-        .body(
-            TemplateExportControllerResponse.ErrorControllerResponse(
-                errorMessage = errorMessage,
-                errorCode = errorCode,
+    ): ResponseEntity<TemplateExportControllerResponse> =
+        ResponseEntity
+            .status(status)
+            .body(
+                TemplateExportControllerResponse.ErrorControllerResponse(
+                    errorMessage = errorMessage,
+                    errorCode = errorCode
+                )
             )
-        )
 
     /*
      * Needed so be able to return "ResponseEntity<StreamingResponseBody>" without the need to write a converter.
@@ -115,12 +118,14 @@ class TemplateExportController(
             val buffer = ByteArray(BYTE_ARRAY_BUFFER_LENGTH)
             var bytesRead: Int
 
-            val bodyStream = objectMapper.writeValueAsString(
-                TemplateExportControllerResponse.ErrorControllerResponse(
-                    errorCode = result.errorCode.toString(),
-                    errorMessage = result.errorMessage,
-                )
-            ).byteInputStream()
+            val bodyStream =
+                objectMapper
+                    .writeValueAsString(
+                        TemplateExportControllerResponse.ErrorControllerResponse(
+                            errorCode = result.errorCode.toString(),
+                            errorMessage = result.errorMessage
+                        )
+                    ).byteInputStream()
 
             while ((bodyStream.read(buffer).also { bytesRead = it }) != -1) {
                 outputStream.write(buffer, 0, bytesRead)
@@ -131,20 +136,22 @@ class TemplateExportController(
     fun postTemplate(
         @RequestPart("template") file: MultipartFile
     ): ResponseEntity<TemplateExportControllerResponse> {
-        logger.trace("trying to create new Template");
+        logger.trace("trying to create new Template")
 
-        val result = createTemplateUseCase
-            .run(
-                CreateTemplateRequest(
-                    file = file
+        val result =
+            createTemplateUseCase
+                .run(
+                    CreateTemplateRequest(
+                        file = file
+                    )
                 )
-            )
 
         return when (result) {
             is Success -> {
-                val response = TemplateExportControllerResponse.CreateTemplateControllerResponse(
-                    templateId = result.data.templateRef.id
-                )
+                val response =
+                    TemplateExportControllerResponse.CreateTemplateControllerResponse(
+                        templateId = result.data.templateRef.id
+                    )
 
                 logger.trace(
                     "[TemplateExportController.postTemplate()] success response: {}",
@@ -155,12 +162,14 @@ class TemplateExportController(
             }
 
             is Failure -> {
-                val responseEntity = when (result.errorCode as CreateTemplateError) {
-                    else -> getErrorEntity(
-                        errorCode = result.errorCode.toString(),
-                        errorMessage = result.errorMessage
-                    )
-                }
+                val responseEntity =
+                    when (result.errorCode as CreateTemplateError) {
+                        else ->
+                            getErrorEntity(
+                                errorCode = result.errorCode.toString(),
+                                errorMessage = result.errorMessage
+                            )
+                    }
 
                 logger.trace(
                     "[TemplateExportController.postTemplate()] failure response: {}",
@@ -174,13 +183,14 @@ class TemplateExportController(
 
     @GetMapping("/template/{templateId}")
     fun fetchTemplate(
-        @PathVariable templateId: String,
+        @PathVariable templateId: String
     ): ResponseEntity<StreamingResponseBody> {
-        val result = fetchTemplateUseCase.run(
-            FetchTemplateRequest(
-                templateRef = DomainReference(templateId),
+        val result =
+            fetchTemplateUseCase.run(
+                FetchTemplateRequest(
+                    templateRef = DomainReference(templateId)
+                )
             )
-        )
 
         return when (result) {
             is Success -> {
@@ -188,13 +198,18 @@ class TemplateExportController(
                     TemplateExportControllerResponse.FetchTemplateControllerResponse { outputStream: OutputStream ->
                         val buffer = ByteArray(BYTE_ARRAY_BUFFER_LENGTH)
                         var bytesRead: Int
-                        while ((result.data.file.read(buffer).also { bytesRead = it }) != -1) {
+                        while ((
+                                result.data.file
+                                    .read(buffer)
+                                    .also { bytesRead = it }
+                            ) != -1
+                        ) {
                             outputStream.write(buffer, 0, bytesRead)
                         }
                     }
 
                 logger.trace(
-                    "[TemplateExportController.fetchTemplate()] success response: (FetchTemplateControllerResponse)",
+                    "[TemplateExportController.fetchTemplate()] success response: (FetchTemplateControllerResponse)"
                 )
 
                 ResponseEntity(
@@ -209,19 +224,22 @@ class TemplateExportController(
                 val headers = HttpHeaders()
                 headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 
-                val responseEntity = when (result.errorCode as FetchTemplateError) {
-                    FetchTemplateError.NOT_FOUND_ERROR -> ResponseEntity(
-                        errorStreamingBody,
-                        headers,
-                        HttpStatus.NOT_FOUND,
-                    )
+                val responseEntity =
+                    when (result.errorCode as FetchTemplateError) {
+                        FetchTemplateError.NOT_FOUND_ERROR ->
+                            ResponseEntity(
+                                errorStreamingBody,
+                                headers,
+                                HttpStatus.NOT_FOUND
+                            )
 
-                    else -> ResponseEntity(
-                        errorStreamingBody,
-                        headers,
-                        HttpStatus.INTERNAL_SERVER_ERROR
-                    )
-                }
+                        else ->
+                            ResponseEntity(
+                                errorStreamingBody,
+                                headers,
+                                HttpStatus.INTERNAL_SERVER_ERROR
+                            )
+                    }
 
                 return responseEntity
             }
@@ -231,14 +249,15 @@ class TemplateExportController(
     @PostMapping("/render/{templateId}")
     fun renderTemplate(
         @PathVariable templateId: String,
-        @RequestBody templateData: JsonNode,
+        @RequestBody templateData: JsonNode
     ): ResponseEntity<StreamingResponseBody> {
-        val result = renderTemplateUseCase.run(
-            RenderTemplateRequest(
-                templateRef = DomainReference(templateId),
-                bodyData = templateData
+        val result =
+            renderTemplateUseCase.run(
+                RenderTemplateRequest(
+                    templateRef = DomainReference(templateId),
+                    bodyData = templateData
+                )
             )
-        )
 
         return when (result) {
             is Success -> {
@@ -246,13 +265,18 @@ class TemplateExportController(
                     TemplateExportControllerResponse.RenderTemplateControllerResponse { outputStream: OutputStream ->
                         val buffer = ByteArray(BYTE_ARRAY_BUFFER_LENGTH)
                         var bytesRead: Int
-                        while ((result.data.file.read(buffer).also { bytesRead = it }) != -1) {
+                        while ((
+                                result.data.file
+                                    .read(buffer)
+                                    .also { bytesRead = it }
+                            ) != -1
+                        ) {
                             outputStream.write(buffer, 0, bytesRead)
                         }
                     }
 
                 logger.trace(
-                    "[TemplateExportController.renderTemplate()] success response: (RenderTemplateControllerResponse)",
+                    "[TemplateExportController.renderTemplate()] success response: (RenderTemplateControllerResponse)"
                 )
 
                 ResponseEntity(
@@ -267,19 +291,22 @@ class TemplateExportController(
                 val headers = HttpHeaders()
                 headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 
-                val responseEntity = when (result.errorCode as RenderTemplateError) {
-                    RenderTemplateError.NOT_FOUND_ERROR -> ResponseEntity(
-                        errorStreamingBody,
-                        headers,
-                        HttpStatus.NOT_FOUND
-                    )
+                val responseEntity =
+                    when (result.errorCode as RenderTemplateError) {
+                        RenderTemplateError.NOT_FOUND_ERROR ->
+                            ResponseEntity(
+                                errorStreamingBody,
+                                headers,
+                                HttpStatus.NOT_FOUND
+                            )
 
-                    else -> ResponseEntity(
-                        errorStreamingBody,
-                        headers,
-                        HttpStatus.INTERNAL_SERVER_ERROR
-                    )
-                }
+                        else ->
+                            ResponseEntity(
+                                errorStreamingBody,
+                                headers,
+                                HttpStatus.INTERNAL_SERVER_ERROR
+                            )
+                    }
 
                 return responseEntity
             }

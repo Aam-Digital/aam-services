@@ -8,6 +8,5 @@ import com.fasterxml.jackson.annotation.JsonProperty
 data class UserEntity(
     @JsonProperty("_id")
     val id: String,
-
-    val name: String,
+    val name: String
 )

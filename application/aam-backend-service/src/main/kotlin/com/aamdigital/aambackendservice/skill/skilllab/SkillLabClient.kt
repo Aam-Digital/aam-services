@@ -18,16 +18,16 @@ data class SkillLabErrorDetailsDto(
     var code: Int,
     var title: String = "",
     var message: String = "",
-    var detail: String = "",
+    var detail: String = ""
 )
 
 data class SkillLabProfilesResponseDto(
     val pagination: SkillLabPaginationDto,
-    val results: List<SkillLabProfileIdDto>,
+    val results: List<SkillLabProfileIdDto>
 )
 
 data class SkillLabProfileIdDto(
-    val id: String,
+    val id: String
 )
 
 data class SkillLabPaginationDto(
@@ -36,23 +36,23 @@ data class SkillLabPaginationDto(
     @JsonProperty("per_page")
     val perPage: Int,
     @JsonProperty("total_entries")
-    val totalEntries: Int,
+    val totalEntries: Int
 )
 
 data class SkillLabSkillDto(
     var id: UUID = UUID.randomUUID(),
     @JsonProperty("external_id")
     val externalId: String,
-    val choice: String,
+    val choice: String
 )
 
 data class SkillLabExperienceDto(
     @JsonProperty("experiences_skills")
-    var experiencesSkills: MutableList<SkillLabSkillDto>,
+    var experiencesSkills: MutableList<SkillLabSkillDto>
 )
 
 data class SkillLabProfileResponseDto(
-    val profile: SkillLabProfileDto,
+    val profile: SkillLabProfileDto
 )
 
 data class SkillLabProfileDto(
@@ -76,7 +76,7 @@ data class SkillLabProfileDto(
     var genderCustom: String?,
     var experiences: List<SkillLabExperienceDto> = emptyList(),
     @JsonProperty("updated_at")
-    var updatedAt: String?,
+    var updatedAt: String?
 )
 
 enum class SkillLabUserProfileStorageAamErrorCode : AamErrorCode {
@@ -87,17 +87,19 @@ enum class SkillLabUserProfileStorageAamErrorCode : AamErrorCode {
 
 class SkillLabClient(
     val http: RestClient,
-    val objectMapper: ObjectMapper,
+    val objectMapper: ObjectMapper
 ) {
-    fun fetchUserProfile(externalIdentifier: DomainReference): SkillLabProfileResponseDto {
-        return http.get()
+    fun fetchUserProfile(externalIdentifier: DomainReference): SkillLabProfileResponseDto =
+        http
+            .get()
             .uri("/profiles/${externalIdentifier.id}")
             .accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
-                val response = clientResponse.bodyTo(String::class.java) ?: throw ExternalSystemException(
-                    message = "Empty or invalid response from server",
-                    code = SkillLabUserProfileStorageAamErrorCode.EMPTY_RESPONSE
-                )
+                val response =
+                    clientResponse.bodyTo(String::class.java) ?: throw ExternalSystemException(
+                        message = "Empty or invalid response from server",
+                        code = SkillLabUserProfileStorageAamErrorCode.EMPTY_RESPONSE
+                    )
 
                 if (clientResponse.statusCode.is2xxSuccessful) {
                     val skillLabResponse =
@@ -111,32 +113,39 @@ class SkillLabClient(
                         message = error.error.message,
                         code = SkillLabUserProfileStorageAamErrorCode.INTERNAL_SERVER_ERROR
                     )
-
                 }
+            } ?: throw ExternalSystemException(
+            message = "Exchange returned null response when fetching user profile",
+            code = SkillLabUserProfileStorageAamErrorCode.EMPTY_RESPONSE
+        )
+
+    fun fetchUserProfiles(
+        pageable: Pageable,
+        updatedFrom: String?
+    ): List<DomainReference> {
+        val uri =
+            if (updatedFrom.isNullOrBlank()) {
+                "/profiles?page=${pageable.pageNumber}&perPage=${pageable.pageSize}"
+            } else {
+                "/profiles?page=${pageable.pageNumber}&perPage=${pageable.pageSize}&updated_from=$updatedFrom"
             }
-    }
 
-    fun fetchUserProfiles(pageable: Pageable, updatedFrom: String?): List<DomainReference> {
-        val uri = if (updatedFrom.isNullOrBlank()) {
-            "/profiles?page=${pageable.pageNumber}&perPage=${pageable.pageSize}"
-        } else {
-            "/profiles?page=${pageable.pageNumber}&perPage=${pageable.pageSize}&updated_from=$updatedFrom"
-        }
-
-        return http.get()
+        return http
+            .get()
             .uri(uri)
             .accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
-                val response = clientResponse.bodyTo(String::class.java) ?: throw ExternalSystemException(
-                    message = "Empty or invalid response from server",
-                    code = SkillLabUserProfileStorageAamErrorCode.EMPTY_RESPONSE
-                )
+                val response =
+                    clientResponse.bodyTo(String::class.java) ?: throw ExternalSystemException(
+                        message = "Empty or invalid response from server",
+                        code = SkillLabUserProfileStorageAamErrorCode.EMPTY_RESPONSE
+                    )
 
                 if (clientResponse.statusCode.is2xxSuccessful) {
                     val skillLabResponse = objectMapper.readValue(response, SkillLabProfilesResponseDto::class.java)
                     skillLabResponse.results.map { profileDto ->
                         DomainReference(
-                            id = profileDto.id,
+                            id = profileDto.id
                         )
                     }
                 } else {
@@ -146,8 +155,10 @@ class SkillLabClient(
                         message = error.error.message,
                         code = SkillLabUserProfileStorageAamErrorCode.INTERNAL_SERVER_ERROR
                     )
-
                 }
-            }
+            } ?: throw ExternalSystemException(
+            message = "Exchange returned null response when fetching user profiles",
+            code = SkillLabUserProfileStorageAamErrorCode.EMPTY_RESPONSE
+        )
     }
 }

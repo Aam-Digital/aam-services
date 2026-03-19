@@ -8,10 +8,8 @@ import org.springframework.context.annotation.Primary
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 
-
 @Configuration
 class ObjectMapperConfiguration {
-
     @Bean
     @Primary
     fun objectMapper(): ObjectMapper {

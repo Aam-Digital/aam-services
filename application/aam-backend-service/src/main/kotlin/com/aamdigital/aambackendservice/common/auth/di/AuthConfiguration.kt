@@ -10,10 +10,8 @@ import org.springframework.web.client.RestClient
 
 @Configuration
 class AuthConfiguration {
-    
     @Bean(name = ["aam-keycloak-client"])
-    fun aamKeycloakRestClient(
-    ): RestClient {
+    fun aamKeycloakRestClient(): RestClient {
         val clientBuilder = RestClient.builder()
         return clientBuilder.build()
     }
@@ -21,7 +19,6 @@ class AuthConfiguration {
     @Bean(name = ["aam-keycloak"])
     fun aamKeycloakAuthProvider(
         @Qualifier("aam-keycloak-client") webClient: RestClient,
-        objectMapper: ObjectMapper,
-    ): AuthProvider =
-        KeycloakAuthProvider(httpClient = webClient, objectMapper = objectMapper)
+        objectMapper: ObjectMapper
+    ): AuthProvider = KeycloakAuthProvider(httpClient = webClient, objectMapper = objectMapper)
 }

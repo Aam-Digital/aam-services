@@ -1,12 +1,12 @@
 package com.aamdigital.aambackendservice.export.usecase
 
 import com.aamdigital.aambackendservice.common.WebClientTestBase
-import com.aamdigital.aambackendservice.common.error.ExternalSystemException
-import com.aamdigital.aambackendservice.common.error.NetworkException
-import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.NetworkException
+import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.RenderTemplateError
 import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
@@ -31,10 +31,8 @@ import java.io.ByteArrayInputStream
 import java.io.File
 import java.net.SocketTimeoutException
 
-
 @ExtendWith(MockitoExtension::class)
 class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
-
     @Mock
     lateinit var templateStorage: TemplateStorage
 
@@ -44,44 +42,50 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
         super.setUp()
         reset(templateStorage)
 
-        service = DefaultRenderTemplateUseCase(
-            renderClient = restClient,
-            objectMapper = objectMapper,
-            templateStorage = templateStorage,
-        )
+        service =
+            DefaultRenderTemplateUseCase(
+                renderClient = restClient,
+                objectMapper = objectMapper,
+                templateStorage = templateStorage
+            )
     }
 
     @Test
     fun `should return Failure when fetchTemplate returns an error`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = objectMapper.readValue(
-            """
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """
                 {"foo":"bar"}
-            """.trimIndent()
-        )
+                """.trimIndent()
+            )
 
-        val exception = ExternalSystemException(
-            message = "fetchTemplate error",
-            code = TestErrorCode.TEST_EXCEPTION,
-            cause = null
-        )
+        val exception =
+            ExternalSystemException(
+                message = "fetchTemplate error",
+                code = TestErrorCode.TEST_EXCEPTION,
+                cause = null
+            )
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenAnswer {
             throw exception
         }
 
         // when
-        val response = service.run(
-            RenderTemplateRequest(
-                templateRef, bodyData
+        val response =
+            service.run(
+                RenderTemplateRequest(
+                    templateRef,
+                    bodyData
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
         assertEquals(
-            RenderTemplateError.FETCH_TEMPLATE_FAILED_ERROR, (response as UseCaseOutcome.Failure).errorCode
+            RenderTemplateError.FETCH_TEMPLATE_FAILED_ERROR,
+            (response as UseCaseOutcome.Failure).errorCode
         )
     }
 
@@ -89,34 +93,39 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure when json response could not be parsed`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = objectMapper.readValue(
-            """
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """
                 {"foo":"bar"}
-            """.trimIndent()
-        )
-        val templateExport = TemplateExport(
-            id = "export-id",
-            templateId = "export-template-id",
-            targetFileName = "target_file_name.file",
-            title = "export-title",
-            description = "export-description",
-            applicableForEntityTypes = emptyList()
-        )
+                """.trimIndent()
+            )
+        val templateExport =
+            TemplateExport(
+                id = "export-id",
+                templateId = "export-template-id",
+                targetFileName = "target_file_name.file",
+                title = "export-title",
+                description = "export-description",
+                applicableForEntityTypes = emptyList()
+            )
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
         mockWebServer.enqueue(MockResponse().setBody("invalid json"))
 
         // when
-        val response = service.run(
-            RenderTemplateRequest(
-                templateRef, bodyData
+        val response =
+            service.run(
+                RenderTemplateRequest(
+                    templateRef,
+                    bodyData
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
         assertEquals(
-            RenderTemplateError.PARSE_RESPONSE_ERROR, (response as UseCaseOutcome.Failure).errorCode
+            RenderTemplateError.PARSE_RESPONSE_ERROR,
+            (response as UseCaseOutcome.Failure).errorCode
         )
     }
 
@@ -124,29 +133,33 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure with NOT_FOUND_ERROR when fetchTemplate throws NotFoundException exception`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = objectMapper.readValue(
-            """
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """
                 {"foo":"bar"}
-            """.trimIndent()
-        )
+                """.trimIndent()
+            )
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenAnswer {
             throw NotFoundException(
-                code = TestErrorCode.TEST_EXCEPTION,
+                code = TestErrorCode.TEST_EXCEPTION
             )
         }
 
         // when
-        val response = service.run(
-            RenderTemplateRequest(
-                templateRef, bodyData
+        val response =
+            service.run(
+                RenderTemplateRequest(
+                    templateRef,
+                    bodyData
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
         assertEquals(
-            RenderTemplateError.NOT_FOUND_ERROR, (response as UseCaseOutcome.Failure).errorCode
+            RenderTemplateError.NOT_FOUND_ERROR,
+            (response as UseCaseOutcome.Failure).errorCode
         )
     }
 
@@ -154,31 +167,33 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Success with DataBuffer`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = objectMapper.readValue(
-            """
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """
                 {"foo":"bar"}
-            """.trimIndent()
-        )
-        val templateExport = TemplateExport(
-            id = "export-id",
-            templateId = "export-template-id",
-            targetFileName = "target_file_name.file",
-            title = "export-title",
-            description = "export-description",
-            applicableForEntityTypes = emptyList()
-        )
+                """.trimIndent()
+            )
+        val templateExport =
+            TemplateExport(
+                id = "export-id",
+                templateId = "export-template-id",
+                targetFileName = "target_file_name.file",
+                title = "export-title",
+                description = "export-description",
+                applicableForEntityTypes = emptyList()
+            )
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
 
         mockWebServer.enqueue(
             MockResponse().setBody(
                 """
-            {
-                "success": true,
-                "data": {
-                    "renderId": "some-render-id"
+                {
+                    "success": true,
+                    "data": {
+                        "renderId": "some-render-id"
+                    }
                 }
-            }
                 """.trimIndent()
             )
         )
@@ -192,19 +207,19 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
                     mapOf(
                         "Content-Type" to "application/pdf",
                         "Content-Length" to buffer.size.toString(),
-                        "Cache-Control" to "no-cache, no-store, max-age=0, must-revalidate",
+                        "Cache-Control" to "no-cache, no-store, max-age=0, must-revalidate"
                     ).toHeaders()
-                )
-                .setBody(buffer)
-
+                ).setBody(buffer)
         )
 
         // when
-        val response = service.run(
-            RenderTemplateRequest(
-                templateRef, bodyData
+        val response =
+            service.run(
+                RenderTemplateRequest(
+                    templateRef,
+                    bodyData
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -216,39 +231,43 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure with parsed error message`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = objectMapper.readValue(
-            """
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """
                 {"foo":"bar"}
-            """.trimIndent()
-        )
-        val templateExport = TemplateExport(
-            id = "export-id",
-            templateId = "export-template-id",
-            targetFileName = "target_file_name.file",
-            title = "export-title",
-            description = "export-description",
-            applicableForEntityTypes = emptyList()
-        )
+                """.trimIndent()
+            )
+        val templateExport =
+            TemplateExport(
+                id = "export-id",
+                templateId = "export-template-id",
+                targetFileName = "target_file_name.file",
+                title = "export-title",
+                description = "export-description",
+                applicableForEntityTypes = emptyList()
+            )
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
 
         mockWebServer.enqueue(
             MockResponse().setBody(
                 """
-            {
-                "success": false,
-                "error": "this is an error message"
-            }
+                {
+                    "success": false,
+                    "error": "this is an error message"
+                }
                 """.trimIndent()
             )
         )
 
         // when
-        val response = service.run(
-            RenderTemplateRequest(
-                templateRef, bodyData
+        val response =
+            service.run(
+                RenderTemplateRequest(
+                    templateRef,
+                    bodyData
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
@@ -260,28 +279,32 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure when createRenderRequest runs in timeout`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = objectMapper.readValue(
-            """
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """
                 {"foo":"bar"}
-            """.trimIndent()
-        )
-        val templateExport = TemplateExport(
-            id = "export-id",
-            templateId = "export-template-id",
-            targetFileName = "target_file_name.file",
-            title = "export-title",
-            description = "export-description",
-            applicableForEntityTypes = emptyList()
-        )
+                """.trimIndent()
+            )
+        val templateExport =
+            TemplateExport(
+                id = "export-id",
+                templateId = "export-template-id",
+                targetFileName = "target_file_name.file",
+                title = "export-title",
+                description = "export-description",
+                applicableForEntityTypes = emptyList()
+            )
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
 
         // when
-        val response = service.run(
-            RenderTemplateRequest(
-                templateRef, bodyData
+        val response =
+            service.run(
+                RenderTemplateRequest(
+                    templateRef,
+                    bodyData
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
@@ -300,41 +323,45 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     fun `should return Failure when fetchRenderIdRequest fails`() {
         // given
         val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode = objectMapper.readValue(
-            """
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """
                 {"foo":"bar"}
-            """.trimIndent()
-        )
-        val templateExport = TemplateExport(
-            id = "export-id",
-            templateId = "export-template-id",
-            targetFileName = "target_file_name.file",
-            title = "export-title",
-            description = "export-description",
-            applicableForEntityTypes = emptyList()
-        )
+                """.trimIndent()
+            )
+        val templateExport =
+            TemplateExport(
+                id = "export-id",
+                templateId = "export-template-id",
+                targetFileName = "target_file_name.file",
+                title = "export-title",
+                description = "export-description",
+                applicableForEntityTypes = emptyList()
+            )
 
         whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
 
         mockWebServer.enqueue(
             MockResponse().setBody(
                 """
-            {
-                "success": true,
-                "data": {
-                    "renderId": "some-render-id"
+                {
+                    "success": true,
+                    "data": {
+                        "renderId": "some-render-id"
+                    }
                 }
-            }
                 """.trimIndent()
             )
         )
 
         // when
-        val response = service.run(
-            RenderTemplateRequest(
-                templateRef, bodyData
+        val response =
+            service.run(
+                RenderTemplateRequest(
+                    templateRef,
+                    bodyData
+                )
             )
-        )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)

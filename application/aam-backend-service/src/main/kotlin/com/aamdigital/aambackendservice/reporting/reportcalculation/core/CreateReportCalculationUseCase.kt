@@ -7,17 +7,17 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 data class CreateReportCalculationRequest(
     val report: DomainReference,
     val args: MutableMap<String, String>,
-    val fromAutomaticChangeDetection: Boolean = false,
+    val fromAutomaticChangeDetection: Boolean = false
 )
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
 @JsonSubTypes(
     JsonSubTypes.Type(value = CreateReportCalculationResult.Success::class),
-    JsonSubTypes.Type(value = CreateReportCalculationResult.Failure::class),
+    JsonSubTypes.Type(value = CreateReportCalculationResult.Failure::class)
 )
 sealed class CreateReportCalculationResult {
     data class Success(
-        val calculation: DomainReference,
+        val calculation: DomainReference
     ) : CreateReportCalculationResult()
 
     data class Failure(

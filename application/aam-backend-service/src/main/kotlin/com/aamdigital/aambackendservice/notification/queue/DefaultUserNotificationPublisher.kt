@@ -15,24 +15,29 @@ import java.util.*
 
 class DefaultUserNotificationPublisher(
     private val objectMapper: ObjectMapper,
-    private val rabbitTemplate: RabbitTemplate,
+    private val rabbitTemplate: RabbitTemplate
 ) : UserNotificationPublisher {
-
     enum class DefaultNotificationPublisherErrorCode : AamErrorCode {
         EVENT_PUBLISH_ERROR
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    override fun publish(channel: String, event: CreateUserNotificationEvent): QueueMessage {
-        val message = QueueMessage(
-            id = UUID.randomUUID(),
-            eventType = CreateUserNotificationEvent::class.java.canonicalName,
-            event = event,
-            createdAt = Instant.now()
-                .atOffset(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-        )
+    override fun publish(
+        channel: String,
+        event: CreateUserNotificationEvent
+    ): QueueMessage {
+        val message =
+            QueueMessage(
+                id = UUID.randomUUID(),
+                eventType = CreateUserNotificationEvent::class.java.canonicalName,
+                event = event,
+                createdAt =
+                    Instant
+                        .now()
+                        .atOffset(ZoneOffset.UTC)
+                        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+            )
 
         try {
             rabbitTemplate.convertAndSend(
