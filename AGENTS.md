@@ -1,29 +1,73 @@
-# Copilot Instructions for Aam Services Backend/API
+# AI Agent Instructions
 
-This document provides context and guidelines for AI code generation in the Aam Digital backend (aam-services)
-repository.
+You are an expert Kotlin and Spring Boot developer working on Aam Digital's backend services. Follow these project-specific guidelines and best practices.
 
-## Project Overview
+## Project Context
 
-Aam Digital is a comprehensive case management software for social organizations, designed to improve effectiveness and
-transparency in work with beneficiaries.
+Aam Digital is a comprehensive case management software for social organizations, designed to improve effectiveness and transparency in work with beneficiaries.
 It is designed offline-first, as a progressive-web-app (PWA) using CouchDB for data storage and synchronization.
 Some advanced features require backend services, which are provided by this repository.
 
-### Key Technologies
+This repository provides the backend API as a modularized Spring Boot application for [Aam Digital's case management platform](https://github.com/Aam-Digital/ndb-core).
 
-A modularized Spring Boot application providing API modules for Aam Digital's case management platform.
-The system uses a microservices architecture with asynchronous processing via RabbitMQ and CouchDB
-for data persistence.
+### Related Repositories
+
+- **[ndb-core](https://github.com/Aam-Digital/ndb-core)** — Angular frontend application
+- **[replication-backend](https://github.com/Aam-Digital/replication-backend)** — CouchDB replication and permission proxy
+- **[ndb-setup](https://github.com/Aam-Digital/ndb-setup)** — Docker-based deployment and infrastructure setup
+
+### Architecture & Tech Stack
 
 - **Language**: Kotlin (target JVM 21)
-- **Framework**: Spring Boot 3.3.4 with Spring Security, Spring Data JPA
+- **Framework**: Spring Boot with Spring Security, Spring Data JPA
 - **Build Tool**: Gradle with Kotlin DSL
-- **Database**: CouchDB with SQL query capabilities (SQS)
+- **Database**: CouchDB with SQL query capabilities (SQS), PostgreSQL via JPA
 - **Message Queue**: RabbitMQ (AMQP)
-- **Testing**: JUnit 5 with Mockito and AssertJ
-- **Code Quality**: Detekt for static analysis
+- **Testing**: JUnit 5 with Mockito and AssertJ, Cucumber for BDD
+- **Code Quality**: Detekt for static analysis, JaCoCo for coverage
 - **Architecture**: Clean Architecture with Domain-Driven Design principles
+- **Observability**: Micrometer, SLF4J, Spring Actuator, OpenTelemetry
+
+### Key Features
+
+- Template-based file export (carbone.io)
+- SQL reporting and analytics
+- Push notification system with custom rules
+- SkillLab external system integration
+- Third-party SSO authentication
+- Feature-flag-based module enablement
+
+---
+
+## Project & File Structure
+
+```
+aam-services/
+├── application/
+│   ├── aam-backend-service/          # Main Spring Boot application
+│   │   ├── build.gradle.kts
+│   │   ├── detekt-config.yml
+│   │   ├── Dockerfile
+│   │   └── src/
+│   │       ├── main/kotlin/com/aamdigital/aambackendservice/
+│   │       │   ├── common/           # Shared infrastructure and domain services
+│   │       │   ├── export/           # Template-based file export module
+│   │       │   ├── notification/     # Push notification system
+│   │       │   ├── reporting/        # SQL reporting and analytics
+│   │       │   ├── skill/            # SkillLab integration
+│   │       │   └── thirdpartyauthentication/  # SSO integration
+│   │       ├── main/resources/
+│   │       │   └── application.yaml  # Spring Boot configuration
+│   │       └── test/kotlin/          # Unit and integration tests
+│   └── keycloak-third-party-authentication/  # Keycloak SPI module
+├── docs/
+│   ├── api-specs/                    # OpenAPI specifications
+│   ├── developer/                    # Local development setup (docker-compose, etc.)
+│   └── modules/                      # Admin/deployment documentation per module
+└── templates/                        # Template files for export module
+```
+
+---
 
 ## Architecture Patterns
 
@@ -37,12 +81,25 @@ com.aamdigital.aambackendservice/
 ├── export/           # Template-based file export module
 ├── notification/     # Push notification system
 ├── reporting/        # SQL reporting and analytics
-├── ...               # Additional feature modules
+├── skill/            # SkillLab integration
+└── thirdpartyauthentication/  # SSO integration
 ```
 
 Each module is self-contained with its own controllers, services, and domain logic.
 A module can use common services but should not depend on other modules.
 Modules are located under `com.aamdigital.aambackendservice.<module>`.
+
+### Package Organization
+
+```
+module/
+├── controller/       # REST endpoints
+├── di/               # Configuration of dependency injection
+├── storage/          # Repositories and data access
+├── queue/            # Message queue wiring with listeners and publishers
+├── usecase/          # Domain logic and use cases
+└── README.md         # Module-specific developer documentation
+```
 
 ### Domain Architecture
 
@@ -77,6 +134,14 @@ abstract class CreateExampleUseCase :
     DomainUseCase<CreateExampleRequest, CreateExampleData>()
 ```
 
+The `DomainUseCase` base class handles error wrapping:
+
+- Override `apply(request)` to implement business logic
+- Return `UseCaseOutcome.Success(data)` or `UseCaseOutcome.Failure(errorCode, errorMessage)`
+- Uncaught exceptions are automatically wrapped as `Failure`
+
+---
+
 ## Coding Standards
 
 ### Code Style (Detekt Configuration)
@@ -95,17 +160,12 @@ abstract class CreateExampleUseCase :
 - Error enums end with `Error`
 - Data classes use clear, intention-revealing names
 
-### Package Organization
+### Refactoring & Legacy Code
 
-```
-module/
-├── controller/       # REST endpoints
-├── di/               # Configuration of dependency injection
-├── storage/          # Repositories and data access
-├── queue/            # Message queue wiring with listeners and publishers
-├── usecase/          # Domain logic and use cases
-└── README.md         # Module-specific developer documentation
-```
+- Some existing code may not follow current conventions. For existing code, analyse the status and refactor only after confirmation.
+- Always separate refactoring changes into their own commits and PRs — do not mix refactoring with feature work.
+
+---
 
 ## Testing Guidelines
 
@@ -137,6 +197,9 @@ fun `should return success when valid request is provided`() {
 - Unit tests for all use cases and business logic
 - Integration tests for controllers and external service interactions
 - Mock external dependencies (databases, message queues, HTTP clients)
+- Cucumber BDD tests for end-to-end scenarios
+
+---
 
 ## Security Guidelines
 
@@ -149,19 +212,27 @@ fun `should return success when valid request is provided`() {
 
 ### Error Handling
 
+Use domain-specific error codes and the `UseCaseOutcome` sealed interface:
+
 ```kotlin
-// Use domain-specific error codes
+// Domain-specific error codes
 enum class ValidationError : AamErrorCode {
     INVALID_INPUT,
     MISSING_REQUIRED_FIELD
 }
 
-// Return structured error responses
-sealed interface UseCaseOutcome<out T> {
-    data class Success<T>(val data: T) : UseCaseOutcome<T>
-    data class Failure<T>(val error: AamErrorCode, val message: String) : UseCaseOutcome<T>
+// UseCaseOutcome pattern
+sealed interface UseCaseOutcome<D : UseCaseData> {
+    data class Success<D : UseCaseData>(val data: D) : UseCaseOutcome<D>
+    data class Failure<D : UseCaseData>(
+        val errorCode: AamErrorCode,
+        val errorMessage: String,
+        val cause: Throwable? = null
+    ) : UseCaseOutcome<D>
 }
 ```
+
+---
 
 ## API Design
 
@@ -181,7 +252,7 @@ class ExampleController(
         return when (val result = useCase.execute(request.toDomain())) {
             is Success -> ResponseEntity.ok(result.data.toDto())
             is Failure -> ResponseEntity.badRequest().body(
-                HttpErrorDto(result.error, result.message)
+                HttpErrorDto(result.errorCode, result.errorMessage)
             )
         }
     }
@@ -194,6 +265,8 @@ class ExampleController(
 - Implement proper HTTP status codes
 - Return structured error responses with `HttpErrorDto`
 - Support streaming responses for large data with `StreamingResponseBody`
+
+---
 
 ## Configuration & Feature Flags
 
@@ -223,6 +296,8 @@ data class ModuleConfiguration(
 )
 ```
 
+---
+
 ## Message Queue Integration
 
 ### RabbitMQ Patterns
@@ -242,6 +317,8 @@ fun handleMessage(
 }
 ```
 
+---
+
 ## Database Integration
 
 ### CouchDB Integration
@@ -253,10 +330,12 @@ fun handleMessage(
 
 ### JPA Integration
 
-- Use Spring Data JPA for relational data
+- Use Spring Data JPA for relational data (PostgreSQL)
 - Implement proper transaction boundaries
 - Use `@Transactional` appropriately
 - Follow repository pattern for data access
+
+---
 
 ## Documentation Requirements
 
@@ -273,12 +352,14 @@ fun handleMessage(
 - This README is for administrators to understand module purpose, configuration and deployment
 - Developer documentation about the implementation should be separate under the module's code folder
 
-#### API Documentation
+### API Documentation
 
 - Generate OpenAPI specifications for REST endpoints
 - Include example requests and responses
 - Document error codes and their meanings
-- Keep API specifications in `/docs/api-specs/`
+- Keep API specifications in `docs/api-specs/`
+
+---
 
 ## Performance & Monitoring
 
@@ -296,6 +377,8 @@ fun handleMessage(
 - Handle large data sets with streaming or pagination
 - Monitor memory usage and garbage collection
 
+---
+
 ## Deployment & Environment
 
 ### Docker Support
@@ -312,6 +395,8 @@ fun handleMessage(
 - Provide sensible defaults for development
 - Document required environment variables
 
+---
+
 ## Common Pitfalls to Avoid
 
 1. **Blocking Operations**: Don't perform blocking I/O in reactive contexts
@@ -321,6 +406,19 @@ fun handleMessage(
 5. **Error Handling**: Don't swallow exceptions without proper logging
 6. **Performance**: Avoid N+1 queries and unnecessary database calls
 
+---
+
+## Common Commands
+
+- `./gradlew build` — Full build (compile, test, checks)
+- `./gradlew test` — Run all tests
+- `./gradlew jacocoTestReport` — Run tests with coverage report
+- `./gradlew detekt` — Run static analysis
+
+All Gradle commands should be run from `application/aam-backend-service/`.
+
+For local development setup (databases, queues, Keycloak), see `docs/developer/README.md` and the docker-compose files there.
+
 ## Examples and Templates
 
 When generating code, refer to existing patterns in the codebase:
@@ -328,6 +426,4 @@ When generating code, refer to existing patterns in the codebase:
 - Controllers: `TemplateExportController.kt`
 - Use Cases: `CreateTemplateUseCase.kt`
 - Tests: `BasicDomainUseCaseTest.kt`
-- Configuration: Application configuration in `application.yml`
-
-Follow these guidelines to maintain consistency, quality, and maintainability across the Aam Services codebase.
+- Configuration: `application.yaml`
