@@ -132,7 +132,10 @@ class CouchDbFileStorage(
                         code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
                     )
                 }
-            }!!
+            } ?: throw ExternalSystemException(
+                message = "Exchange returned null HttpHeaders for path: $path",
+                code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
+            )
 
         val etag = fileHeaders.eTag?.replace("\"", "")
 

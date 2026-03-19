@@ -134,7 +134,10 @@ class DefaultCouchDbClient(
                         code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
                     )
                 }
-            }!!
+            } ?: throw ExternalSystemException(
+                message = "Received null response when retrieving headers for document $documentId in database $database",
+                code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
+            )
     }
 
     /**

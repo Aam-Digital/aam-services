@@ -75,19 +75,16 @@ dependencies {
     testImplementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 
-    testImplementation("org.testcontainers:junit-jupiter:1.21.4") {
-        constraints {
-            testImplementation("org.apache.commons:commons-compress:1.28.0") {
-                because("previous versions have security issues")
-            }
-        }
-    }
+    testImplementation("org.testcontainers:junit-jupiter:1.21.4")
     testImplementation("org.testcontainers:rabbitmq:1.21.4")
-    testImplementation("com.github.dasniko:testcontainers-keycloak:3.9.1") {
-        constraints {
-            testImplementation("org.apache.james:apache-mime4j-core:0.8.13") {
-                because("previous versions have security issues")
-            }
+    testImplementation("com.github.dasniko:testcontainers-keycloak:3.9.1")
+
+    constraints {
+        testImplementation("org.apache.commons:commons-compress:1.28.0") {
+            because("previous versions have security issues")
+        }
+        testImplementation("org.apache.james:apache-mime4j-core:0.8.13") {
+            because("previous versions have security issues")
         }
     }
 

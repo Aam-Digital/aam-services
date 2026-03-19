@@ -5,7 +5,10 @@
         "group:allNonMajor"
     ],
     "enabledManagers": [
-        "gradle"
+        "gradle",
+        "github-actions",
+        "dockerfile",
+        "docker-compose"
     ],
     "timezone": "Etc/UTC",
     "schedule": [

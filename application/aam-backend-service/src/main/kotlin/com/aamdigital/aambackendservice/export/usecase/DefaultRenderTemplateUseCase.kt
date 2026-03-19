@@ -165,7 +165,11 @@ class DefaultRenderTemplateUseCase(
                         file = buffer.inputStream(),
                         headers = forwardHeaders
                     )
-                }!!
+                } ?: throw ExternalSystemException(
+                    cause = null,
+                    message = "Could not fetch render response from template engine.",
+                    code = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+                )
         } catch (ex: Exception) {
             throw when (ex) {
                 is ResourceAccessException -> NetworkException(

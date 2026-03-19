@@ -113,7 +113,10 @@ class SkillLabClient(
                     )
 
                 }
-            }!!
+            } ?: throw ExternalSystemException(
+                message = "Exchange returned null response when fetching user profile",
+                code = SkillLabUserProfileStorageAamErrorCode.EMPTY_RESPONSE
+            )
     }
 
     fun fetchUserProfiles(pageable: Pageable, updatedFrom: String?): List<DomainReference> {
@@ -148,6 +151,9 @@ class SkillLabClient(
                     )
 
                 }
-            }!!
+            } ?: throw ExternalSystemException(
+                message = "Exchange returned null response when fetching user profiles",
+                code = SkillLabUserProfileStorageAamErrorCode.EMPTY_RESPONSE
+            )
     }
 }

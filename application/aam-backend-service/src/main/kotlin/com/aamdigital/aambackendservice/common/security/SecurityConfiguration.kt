@@ -21,11 +21,11 @@ import org.springframework.security.web.SecurityFilterChain
 @EnableWebSecurity
 class SecurityConfiguration(
     @Value("\${aam-security.allowed-issuers:#{null}}")
-    private val configuredAllowedIssuers: List<String>?,
+    private val configuredAllowedIssuers: List<String>?
 ) {
-
     private val allowedIssuers: List<String>
-        get() = configuredAllowedIssuers ?: listOf(
+        get() =
+            configuredAllowedIssuers ?: listOf(
             "https://keycloak.aam-digital.net",
             "https://keycloak.aam-digital.com",
             "https://auth.aam-digital.app",
@@ -40,7 +40,7 @@ class SecurityConfiguration(
         aamAuthenticationConverter: AamAuthenticationConverter,
         aamAccessDeniedHandler: AamAccessDeniedHandler,
         objectMapper: ObjectMapper,
-        jwtIssuerAuthenticationManagerResolver: JwtIssuerAuthenticationManagerResolver,
+        jwtIssuerAuthenticationManagerResolver: JwtIssuerAuthenticationManagerResolver
     ): SecurityFilterChain {
         http {
             authorizeRequests {
@@ -87,7 +87,12 @@ class SecurityConfiguration(
         aamAuthenticationConverter: AamAuthenticationConverter
     ): JwtIssuerAuthenticationManagerResolver {
         return JwtIssuerAuthenticationManagerResolver { issuer ->
-            if (allowedIssuers.any { issuer.startsWith(it) }.not()) {
+            val normalizedIssuer = issuer.trimEnd('/')
+            val isTrusted = allowedIssuers.any { allowed ->
+                val normalizedAllowed = allowed.trimEnd('/')
+                normalizedIssuer == normalizedAllowed || normalizedIssuer.startsWith("$normalizedAllowed/")
+            }
+            if (!isTrusted) {
                 throw BadCredentialsException("Untrusted issuer: $issuer")
             }
 
