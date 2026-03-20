@@ -57,7 +57,7 @@ class DefaultCouchDbClient(
         return response
     }
 
-    override fun changes(
+    override fun getDatabaseChanges(
         database: String,
         queryParams: MultiValueMap<String, String>
     ): CouchDbChangesResponse {
@@ -82,7 +82,7 @@ class DefaultCouchDbClient(
         return response
     }
 
-    override fun <T : Any> find(
+    override fun <T : Any> findDatabaseDocuments(
         database: String,
         body: Map<String, Any>,
         queryParams: MultiValueMap<String, String>,
@@ -239,7 +239,7 @@ class DefaultCouchDbClient(
             }!!
     }
 
-    override fun <T : Any> getPreviousDocRev(
+    override fun <T : Any> getPreviousDocumentRevision(
         database: String,
         documentId: String,
         rev: String,

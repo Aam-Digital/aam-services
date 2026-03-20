@@ -68,7 +68,7 @@ class CouchDbDatabaseChangeDetection(
         queryParams.set("include_docs", "true")
 
         val changes =
-            couchDbClient.changes(
+            couchDbClient.getDatabaseChanges(
                 database = database,
                 queryParams = queryParams
             )
@@ -125,7 +125,7 @@ class CouchDbDatabaseChangeDetection(
         val previousDoc: ObjectNode =
             try {
                 couchDbClient
-                    .getPreviousDocRev(
+                    .getPreviousDocumentRevision(
                         database = database,
                         documentId = documentId,
                         rev = rev,

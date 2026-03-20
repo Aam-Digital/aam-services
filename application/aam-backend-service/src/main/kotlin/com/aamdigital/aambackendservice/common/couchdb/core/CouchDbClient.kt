@@ -14,12 +14,12 @@ import kotlin.reflect.KClass
 interface CouchDbClient {
     fun allDatabases(): List<String>
 
-    fun changes(
+    fun getDatabaseChanges(
         database: String,
         queryParams: MultiValueMap<String, String>
     ): CouchDbChangesResponse
 
-    fun <T : Any> find(
+    fun <T : Any> findDatabaseDocuments(
         database: String,
         body: Map<String, Any>,
         queryParams: MultiValueMap<String, String> = getEmptyQueryParams(),
@@ -54,7 +54,7 @@ interface CouchDbClient {
         documentId: String
     ): DocSuccess
 
-    fun <T : Any> getPreviousDocRev(
+    fun <T : Any> getPreviousDocumentRevision(
         database: String,
         documentId: String,
         rev: String,
