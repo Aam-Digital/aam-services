@@ -11,6 +11,11 @@ import java.io.InterruptedIOException
 import java.util.*
 import kotlin.reflect.KClass
 
+/**
+ * HTTP client abstraction for CouchDB operations.
+ * Provides methods for CRUD, querying (`_find`), change feeds (`_changes`),
+ * and revision history. See [DefaultCouchDbClient] for the implementation.
+ */
 interface CouchDbClient {
     fun allDatabases(): List<String>
 

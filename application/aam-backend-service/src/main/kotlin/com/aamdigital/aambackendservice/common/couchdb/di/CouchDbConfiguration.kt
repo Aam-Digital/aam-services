@@ -13,6 +13,10 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.client.RestClient
 
+/**
+ * Spring configuration that creates the CouchDB [RestClient], [CouchDbClient],
+ * [FileStorage], and [CouchDbInitializer] beans.
+ */
 @Configuration
 class CouchDbConfiguration {
     @Bean
@@ -57,6 +61,7 @@ class CouchDbConfiguration {
     }
 }
 
+/** Externalized connection properties for the CouchDB HTTP client. */
 @ConfigurationProperties("couch-db-client-configuration")
 class CouchDbClientConfiguration(
     val basePath: String,

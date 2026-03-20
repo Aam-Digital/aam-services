@@ -6,6 +6,11 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
+/**
+ * Declares the RabbitMQ fanout exchange (`document.changes`) and the
+ * [DefaultChangeEventPublisher] bean that sends events to it.
+ * Feature modules bind their own queues to this exchange to receive events.
+ */
 @Configuration
 class ChangesQueueConfiguration {
     companion object {

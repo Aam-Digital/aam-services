@@ -3,10 +3,12 @@ package com.aamdigital.aambackendservice.common.couchdb.dto
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.node.ObjectNode
 
+/** A single revision reference (leaf) within a CouchDB changes result. */
 data class CouchDbChange(
     val rev: String
 )
 
+/** A row in a CouchDB `_all_docs` response, containing the document and metadata. */
 data class CouchDbRow<T>(
     val id: String,
     val key: String,
@@ -14,6 +16,7 @@ data class CouchDbRow<T>(
     val doc: T
 )
 
+/** Paginated response from a CouchDB `_all_docs` view query. */
 data class CouchDbSearchResponse(
     @JsonProperty("total_rows")
     val totalRows: Int,
@@ -21,12 +24,14 @@ data class CouchDbSearchResponse(
     val rows: List<CouchDbRow<ObjectNode>>
 )
 
+/** CouchDB success response for write operations (PUT, DELETE). */
 data class DocSuccess(
     val ok: Boolean,
     val id: String,
     val rev: String
 )
 
+/** Metadata for a CouchDB document attachment (returned as part of the document JSON). */
 data class AttachmentMetaData(
     @JsonProperty("content_type")
     val contentType: String,
@@ -36,6 +41,7 @@ data class AttachmentMetaData(
     val stub: Boolean
 )
 
+/** Response from CouchDB `_find` (Mango query), containing the matched documents. */
 data class FindResponse<T>(
     val docs: List<T>
 )

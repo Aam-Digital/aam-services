@@ -18,6 +18,11 @@ import java.io.InterruptedIOException
 import java.util.*
 import kotlin.reflect.KClass
 
+/**
+ * [CouchDbClient] implementation backed by Spring [RestClient].
+ * Handles JSON serialization, error mapping, and ETag-based optimistic concurrency
+ * for PUT/DELETE operations.
+ */
 class DefaultCouchDbClient(
     private val httpClient: RestClient,
     private val objectMapper: ObjectMapper

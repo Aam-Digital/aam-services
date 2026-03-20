@@ -13,6 +13,11 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.*
 
+/**
+ * RabbitMQ implementation of [ChangeEventPublisher].
+ * Wraps each [DocumentChangeEvent] in a [QueueMessage] envelope and sends it
+ * to the specified fanout exchange.
+ */
 class DefaultChangeEventPublisher(
     private val objectMapper: ObjectMapper,
     private val rabbitTemplate: RabbitTemplate

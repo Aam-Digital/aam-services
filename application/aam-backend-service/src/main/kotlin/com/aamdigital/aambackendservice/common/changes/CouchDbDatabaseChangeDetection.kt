@@ -10,6 +10,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
 import kotlin.jvm.optionals.getOrDefault
 
+/**
+ * Polls CouchDB `_changes` feeds for all databases, enriches each change with
+ * the current and previous document revision, and publishes a [DocumentChangeEvent]
+ * to the RabbitMQ fanout exchange.
+ *
+ * Triggered periodically by [CouchDbChangeDetectionJob].
+ */
 class CouchDbDatabaseChangeDetection(
     private val couchDbClient: CouchDbClient,
     private val documentChangeEventPublisher: ChangeEventPublisher,

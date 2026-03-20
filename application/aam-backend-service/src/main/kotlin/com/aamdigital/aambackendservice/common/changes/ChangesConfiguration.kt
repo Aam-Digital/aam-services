@@ -6,6 +6,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
+/**
+ * Spring configuration that wires up the change-detection beans.
+ * The [CouchDbDatabaseChangeDetection] bean is only created when
+ * `database-change-detection.enabled` is true (default).
+ */
 @Configuration
 class ChangesConfiguration {
     @Bean
