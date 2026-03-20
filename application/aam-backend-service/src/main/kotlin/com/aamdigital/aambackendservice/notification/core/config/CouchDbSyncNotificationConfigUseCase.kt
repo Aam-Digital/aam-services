@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.AamException
@@ -11,6 +12,7 @@ import com.aamdigital.aambackendservice.notification.repository.NotificationConf
 import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
 import com.aamdigital.aambackendservice.notification.repository.NotificationRuleEntity
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.JsonNode
 import org.springframework.util.LinkedMultiValueMap
 import java.util.*
 
@@ -26,7 +28,7 @@ data class NotificationRuleDto(
     val notificationType: NotificationType,
     val entityType: String,
     val changeType: List<String>,
-    val conditions: Map<String, Map<String, String>>,
+    val conditions: JsonNode,
     val enabled: Boolean
 )
 
@@ -40,9 +42,11 @@ enum class CouchDbSyncNotificationConfigErrorCode : AamErrorCode {
     IO_EXCEPTION
 }
 
+/** Synchronizes one user's notification configuration document from CouchDB into relational storage. */
 class CouchDbSyncNotificationConfigUseCase(
     private val couchDbClient: CouchDbClient,
-    private val notificationConfigRepository: NotificationConfigRepository
+    private val notificationConfigRepository: NotificationConfigRepository,
+    private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
 ) : SyncNotificationConfigUseCase() {
     override fun apply(request: SyncNotificationConfigRequest): UseCaseOutcome<SyncNotificationConfigData> {
         val userIdentifier =
@@ -159,28 +163,28 @@ class CouchDbSyncNotificationConfigUseCase(
 
     private fun mapToNotificationRules(notificationConfig: NotificationConfigDto): List<NotificationRuleEntity> =
         notificationConfig.notificationRules.flatMap { rule ->
-            rule.changeType.map {
-                NotificationRuleEntity(
-                    notificationType = rule.notificationType,
-                    label = rule.label,
-                    externalIdentifier = UUID.randomUUID().toString(),
-                    entityType = rule.entityType,
-                    changeType = it,
-                    enabled = rule.enabled,
-                    conditions =
-                        rule.conditions.mapNotNull { condition ->
-                            if (condition.value.isEmpty()) return@mapNotNull null
-
-                            val firstKey = condition.value.keys.first()
-                            val firstValue = condition.value[firstKey] ?: return@mapNotNull null
-
-                            NotificationConditionEntity(
-                                field = condition.key,
-                                operator = firstKey,
-                                value = firstValue
-                            )
-                        }
-                )
+            val conditionGroups =
+                documentConditionEngine.parseConditionGroups(rule.conditions).map { conditions ->
+                    conditions.map {
+                        NotificationConditionEntity(
+                            field = it.field,
+                            operator = it.operator,
+                            value = it.value
+                        )
+                    }
+                }
+            rule.changeType.flatMap { changeType ->
+                conditionGroups.map { conditions ->
+                    NotificationRuleEntity(
+                        notificationType = rule.notificationType,
+                        label = rule.label,
+                        externalIdentifier = UUID.randomUUID().toString(),
+                        entityType = rule.entityType,
+                        changeType = changeType,
+                        enabled = rule.enabled,
+                        conditions = conditions
+                    )
+                }
             }
         }
 }
