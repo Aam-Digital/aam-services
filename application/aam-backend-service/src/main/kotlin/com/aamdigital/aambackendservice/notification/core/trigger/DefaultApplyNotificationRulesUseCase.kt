@@ -1,24 +1,23 @@
 package com.aamdigital.aambackendservice.notification.core.trigger
 
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
-import com.aamdigital.aambackendservice.common.condition.DocumentCondition
 import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
+import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
+import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
 import com.aamdigital.aambackendservice.notification.domain.EntityNotificationContext
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
-import com.aamdigital.aambackendservice.notification.repository.NotificationConfigEntity
-import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
-import com.aamdigital.aambackendservice.notification.repository.NotificationRuleEntity
 
 /** Applies persisted notification rules to a document change event and publishes matching notifications. */
 class DefaultApplyNotificationRulesUseCase(
-    val notificationConfigRepository: NotificationConfigRepository,
-    val userNotificationPublisher: UserNotificationPublisher,
-    val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
+    private val notificationConfigCache: NotificationConfigCache,
+    private val userNotificationPublisher: UserNotificationPublisher,
+    private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
 ) : ApplyNotificationRulesUseCase() {
     override fun apply(request: ApplyNotificationRulesRequest): UseCaseOutcome<ApplyNotificationRulesData> {
         val changedEntity =
@@ -27,21 +26,14 @@ class DefaultApplyNotificationRulesUseCase(
                 .first()
         val changeType = extractChangeType(request.documentChangeEvent)
 
-        val notificationConfigurations = notificationConfigRepository.findAll() // todo database access optimization
+        val notificationConfigurations = notificationConfigCache.findAll()
 
         val triggeredEvents =
             prefilterRules(notificationConfigurations, changedEntity, changeType)
                 .filter { (notificationConfig, rule) ->
                     logger.trace("{} -> {}", notificationConfig.userIdentifier, rule)
                     documentConditionEngine.matchesAll(
-                        conditions =
-                            rule.conditions.map {
-                                DocumentCondition(
-                                    field = it.field,
-                                    operator = it.operator,
-                                    value = it.value
-                                )
-                            },
+                        conditions = rule.conditions,
                         document = request.documentChangeEvent.currentVersion
                     )
                 }.map { (notificationConfig, rule) ->
@@ -81,19 +73,19 @@ class DefaultApplyNotificationRulesUseCase(
      * and flatten the list of rules for further processing.
      */
     private fun prefilterRules(
-        notificationConfigurations: MutableIterable<NotificationConfigEntity>,
+        notificationConfigurations: List<NotificationConfigCacheEntry>,
         changedEntity: String,
         changeType: String
-    ): List<Pair<NotificationConfigEntity, NotificationRuleEntity>> =
+    ): List<Pair<NotificationConfigCacheEntry, NotificationRuleCacheEntry>> =
         notificationConfigurations.flatMap { notificationConfig ->
-            notificationConfig.notificationRules
+            notificationConfig.rules
                 .filter { it.enabled && it.entityType == changedEntity && it.changeType == changeType }
                 .map { rule -> Pair(notificationConfig, rule) }
         }
 
     private fun publishNotificationEventForUser(
-        notificationConfig: NotificationConfigEntity,
-        rule: NotificationRuleEntity,
+        notificationConfig: NotificationConfigCacheEntry,
+        rule: NotificationRuleCacheEntry,
         documentChangeEvent: DocumentChangeEvent
     ): NotificationDetails {
         val notificationDetails =

@@ -1,13 +1,13 @@
 package com.aamdigital.aambackendservice.notification.core.trigger
 
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
+import com.aamdigital.aambackendservice.common.condition.DocumentCondition
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
+import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
+import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
-import com.aamdigital.aambackendservice.notification.repository.NotificationConditionEntity
-import com.aamdigital.aambackendservice.notification.repository.NotificationConfigEntity
-import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
-import com.aamdigital.aambackendservice.notification.repository.NotificationRuleEntity
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
@@ -17,8 +17,6 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
-import java.time.Instant
-import java.time.ZoneOffset
 import kotlin.test.assertEquals
 
 @ExtendWith(MockitoExtension::class)
@@ -26,7 +24,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
     private lateinit var service: DefaultApplyNotificationRulesUseCase
 
     @Mock
-    lateinit var notificationConfigRepository: NotificationConfigRepository
+    lateinit var notificationConfigCache: NotificationConfigCache
 
     @Mock
     lateinit var userNotificationPublisher: UserNotificationPublisher
@@ -34,13 +32,13 @@ class DefaultApplyNotificationRulesUseCaseTest {
     @BeforeEach
     fun setUp() {
         reset(
-            notificationConfigRepository,
+            notificationConfigCache,
             userNotificationPublisher
         )
 
         service =
             DefaultApplyNotificationRulesUseCase(
-                notificationConfigRepository = notificationConfigRepository,
+                notificationConfigCache = notificationConfigCache,
                 userNotificationPublisher = userNotificationPublisher
             )
     }
@@ -148,31 +146,26 @@ class DefaultApplyNotificationRulesUseCaseTest {
 
     private fun generateNotificationConfig(
         changeType: String,
-        conditions: List<NotificationConditionEntity> = emptyList(),
+        conditions: List<DocumentCondition> = emptyList(),
         entityType: String = "Child",
         enabled: Boolean = true
-    ): NotificationConfigEntity =
-        NotificationConfigEntity(
-            id = 1,
+    ): NotificationConfigCacheEntry =
+        NotificationConfigCacheEntry(
             channelPush = true,
             channelEmail = true,
-            revision = "rev-1",
             userIdentifier = "user-1",
-            notificationRules =
+            rules =
                 listOf(
-                    NotificationRuleEntity(
-                        notificationType = NotificationType.ENTITY_CHANGE,
-                        id = 2,
+                    NotificationRuleCacheEntry(
                         label = "Notification Rule 1",
                         externalIdentifier = "external-identifier-1",
+                        notificationType = NotificationType.ENTITY_CHANGE,
                         entityType = entityType,
                         changeType = changeType,
                         conditions = conditions,
                         enabled = enabled
                     )
-                ),
-            createdAt = Instant.parse("2025-03-14T15:37:09.855Z").atOffset(ZoneOffset.UTC),
-            updatedAt = Instant.parse("2025-03-14T15:37:09.855Z").atOffset(ZoneOffset.UTC)
+                )
         )
 
     @ParameterizedTest
@@ -187,7 +180,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
         notificationsSendCount: Int
     ) {
         // given
-        whenever(notificationConfigRepository.findAll()).thenReturn(
+        whenever(notificationConfigCache.findAll()).thenReturn(
             listOf(
                 generateNotificationConfig(changeType = "created")
             )
@@ -218,7 +211,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
         notificationsSendCount: Int
     ) {
         // given
-        whenever(notificationConfigRepository.findAll()).thenReturn(
+        whenever(notificationConfigCache.findAll()).thenReturn(
             listOf(
                 generateNotificationConfig(
                     changeType = "updated"
@@ -262,7 +255,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
         notificationsSendCount: Int
     ) {
         // given
-        whenever(notificationConfigRepository.findAll()).thenReturn(
+        whenever(notificationConfigCache.findAll()).thenReturn(
             listOf(
                 generateNotificationConfig(changeType = "deleted")
             )
@@ -293,14 +286,14 @@ class DefaultApplyNotificationRulesUseCaseTest {
         notificationsSendCount: Int
     ) {
         // given
-        whenever(notificationConfigRepository.findAll()).thenReturn(
+        whenever(notificationConfigCache.findAll()).thenReturn(
             listOf(
                 // condition $eq matching:
                 generateNotificationConfig(
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "name",
                                 operator = "\$eq",
                                 value = "Bert"
@@ -312,7 +305,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "name",
                                 operator = "\$eq",
                                 value = "Clark"
@@ -324,7 +317,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "name",
                                 operator = "\$nq",
                                 value = "XYZ"
@@ -336,7 +329,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "name",
                                 operator = "\$nq",
                                 value = "Bert"
@@ -348,7 +341,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "categories",
                                 operator = "\$elemMatch",
                                 value = "X"
@@ -360,7 +353,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "categories",
                                 operator = "\$elemMatch",
                                 value = "ABC"
@@ -372,7 +365,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "age",
                                 operator = "\$gt",
                                 value = "19"
@@ -384,7 +377,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "age",
                                 operator = "\$gt",
                                 value = "18"
@@ -396,7 +389,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "age",
                                 operator = "\$gte",
                                 value = "18"
@@ -408,7 +401,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "age",
                                 operator = "\$gte",
                                 value = "17"
@@ -420,7 +413,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "age",
                                 operator = "\$lt",
                                 value = "17"
@@ -432,7 +425,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "age",
                                 operator = "\$lt",
                                 value = "18"
@@ -444,7 +437,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "age",
                                 operator = "\$lte",
                                 value = "18"
@@ -456,7 +449,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     changeType = "updated",
                     conditions =
                         listOf(
-                            NotificationConditionEntity(
+                            DocumentCondition(
                                 field = "age",
                                 operator = "\$lte",
                                 value = "19"
@@ -491,7 +484,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
         notificationsSendCount: Int
     ) {
         // given
-        whenever(notificationConfigRepository.findAll()).thenReturn(
+        whenever(notificationConfigCache.findAll()).thenReturn(
             listOf(
                 generateNotificationConfig(changeType = ruleChangeType)
             )

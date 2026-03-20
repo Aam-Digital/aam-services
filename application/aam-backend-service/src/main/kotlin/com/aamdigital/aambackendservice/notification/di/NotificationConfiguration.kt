@@ -2,8 +2,8 @@ package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
-import com.aamdigital.aambackendservice.notification.core.config.CouchDbSyncNotificationConfigUseCase
-import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigUseCase
+import com.aamdigital.aambackendservice.notification.core.config.DefaultNotificationConfigCache
+import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationUseCase
 import com.aamdigital.aambackendservice.notification.core.create.DefaultCreateNotificationUseCase
@@ -12,8 +12,8 @@ import com.aamdigital.aambackendservice.notification.core.create.push.PushCreate
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.core.trigger.DefaultApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
-import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.firebase.messaging.FirebaseMessaging
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -28,22 +28,22 @@ import org.springframework.context.annotation.Configuration
 )
 class NotificationConfiguration {
     @Bean
-    fun defaultSyncNotificationConfigUseCase(
+    fun notificationConfigCache(
         couchDbClient: CouchDbClient,
-        notificationConfigRepository: NotificationConfigRepository
-    ): SyncNotificationConfigUseCase =
-        CouchDbSyncNotificationConfigUseCase(
+        objectMapper: ObjectMapper
+    ): NotificationConfigCache =
+        DefaultNotificationConfigCache(
             couchDbClient = couchDbClient,
-            notificationConfigRepository = notificationConfigRepository
+            objectMapper = objectMapper
         )
 
     @Bean
     fun defaultApplyNotificationRulesUseCase(
-        notificationConfigRepository: NotificationConfigRepository,
+        notificationConfigCache: NotificationConfigCache,
         userNotificationPublisher: UserNotificationPublisher
     ): ApplyNotificationRulesUseCase =
         DefaultApplyNotificationRulesUseCase(
-            notificationConfigRepository = notificationConfigRepository,
+            notificationConfigCache = notificationConfigCache,
             userNotificationPublisher = userNotificationPublisher
         )
 
