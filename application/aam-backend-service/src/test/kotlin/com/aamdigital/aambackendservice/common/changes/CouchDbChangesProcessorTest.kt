@@ -46,11 +46,6 @@ class CouchDbChangesProcessorTest {
             syncRepository = syncRepository,
             objectMapper = objectMapper,
         )
-
-        // getLatestRef() is eagerly evaluated by getOrDefault(), so always stub it
-        val dbInfoNode = objectMapper.createObjectNode().put("update_seq", "0")
-        whenever(couchDbClient.getDatabaseDocument(any(), eq(""), any(), eq(ObjectNode::class)))
-            .thenReturn(dbInfoNode)
     }
 
     @Test

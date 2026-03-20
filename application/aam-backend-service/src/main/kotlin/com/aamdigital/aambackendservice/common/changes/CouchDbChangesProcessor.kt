@@ -8,7 +8,6 @@ import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
-import kotlin.jvm.optionals.getOrDefault
 
 /**
  * Polls CouchDB `_changes` feeds for all databases, enriches each change with
@@ -63,7 +62,11 @@ class CouchDbChangesProcessor(
         val syncEntry =
             syncRepository
                 .findByDatabase(database)
-                .getOrDefault(SyncEntry(database = database, latestRef = getLatestRef(database)))
+                .orElseGet {
+                    // On first run we intentionally skip historic changes and start from "now"
+                    // to avoid replaying the full backlog into downstream consumers.
+                    SyncEntry(database = database, latestRef = getLatestRef(database))
+                }
 
         val queryParams = getEmptyQueryParams()
 
@@ -137,9 +140,9 @@ class CouchDbChangesProcessor(
                         documentId = documentId,
                         rev = rev,
                         kClass = ObjectNode::class
-                    ).getOrDefault(
+                    ).orElseGet {
                         objectMapper.createObjectNode()
-                    )
+                    }
             } catch (ex: AamException) {
                 logger.debug(ex.message, ex)
                 objectMapper.createObjectNode()
