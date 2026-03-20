@@ -1,6 +1,8 @@
 package com.aamdigital.aambackendservice.notification.core.trigger
 
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
+import com.aamdigital.aambackendservice.common.condition.DocumentCondition
+import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
@@ -8,15 +10,15 @@ import com.aamdigital.aambackendservice.notification.domain.EntityNotificationCo
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
-import com.aamdigital.aambackendservice.notification.repository.NotificationConditionEntity
 import com.aamdigital.aambackendservice.notification.repository.NotificationConfigEntity
 import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
 import com.aamdigital.aambackendservice.notification.repository.NotificationRuleEntity
-import org.apache.commons.lang3.StringUtils
 
+/** Applies persisted notification rules to a document change event and publishes matching notifications. */
 class DefaultApplyNotificationRulesUseCase(
     val notificationConfigRepository: NotificationConfigRepository,
-    val userNotificationPublisher: UserNotificationPublisher
+    val userNotificationPublisher: UserNotificationPublisher,
+    val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
 ) : ApplyNotificationRulesUseCase() {
     override fun apply(request: ApplyNotificationRulesRequest): UseCaseOutcome<ApplyNotificationRulesData> {
         val changedEntity =
@@ -31,9 +33,17 @@ class DefaultApplyNotificationRulesUseCase(
             prefilterRules(notificationConfigurations, changedEntity, changeType)
                 .filter { (notificationConfig, rule) ->
                     logger.trace("{} -> {}", notificationConfig.userIdentifier, rule)
-                    rule.conditions.all { condition ->
-                        checkConditionForDocument(condition, request.documentChangeEvent)
-                    }
+                    documentConditionEngine.matchesAll(
+                        conditions =
+                            rule.conditions.map {
+                                DocumentCondition(
+                                    field = it.field,
+                                    operator = it.operator,
+                                    value = it.value
+                                )
+                            },
+                        document = request.documentChangeEvent.currentVersion
+                    )
                 }.map { (notificationConfig, rule) ->
                     publishNotificationEventForUser(
                         notificationConfig,
@@ -58,12 +68,9 @@ class DefaultApplyNotificationRulesUseCase(
         // Revisions have format "<generation>-<hash>" where generation 1 = created, 2+ = updated.
         // This is more reliable than checking previousVersion which may be empty even for updates
         // (e.g. when the previous revision has been purged).
-        val rev = documentChangeEvent.rev
-        if (rev != null) {
-            val generation = rev.substringBefore("-").toIntOrNull()
-            if (generation != null && generation > 1) {
-                return "updated"
-            }
+        val generation = documentChangeEvent.rev.substringBefore("-").toIntOrNull()
+        if (generation != null && generation > 1) {
+            return "updated"
         }
 
         return "created"
@@ -83,15 +90,6 @@ class DefaultApplyNotificationRulesUseCase(
                 .filter { it.enabled && it.entityType == changedEntity && it.changeType == changeType }
                 .map { rule -> Pair(notificationConfig, rule) }
         }
-
-    private fun checkConditionForDocument(
-        condition: NotificationConditionEntity,
-        documentChangeEvent: DocumentChangeEvent
-    ): Boolean {
-        val conditionOutcome = _checkConditionForDocument(condition, documentChangeEvent)
-        logger.trace("condition {} outcome {} for doc {}", condition, conditionOutcome, documentChangeEvent.documentId)
-        return conditionOutcome
-    }
 
     private fun publishNotificationEventForUser(
         notificationConfig: NotificationConfigEntity,
@@ -152,105 +150,4 @@ class DefaultApplyNotificationRulesUseCase(
         return notificationDetails
     }
 
-    /**
-     * todo: move this to an separate class with extended testing
-     */
-    private fun _checkConditionForDocument(
-        condition: NotificationConditionEntity,
-        documentChangeEvent: DocumentChangeEvent
-    ): Boolean {
-        val currentValue = documentChangeEvent.currentVersion[condition.field]
-        val conditionValue = condition.value
-
-        return when (condition.operator) {
-            "\$eq" -> {
-                return when (currentValue) {
-                    is String -> currentValue == conditionValue
-                    is List<*> ->
-                        currentValue.size == 1 && currentValue.first() == conditionValue
-
-                    else -> false
-                }
-            }
-
-            "\$nq" -> {
-                return when (currentValue) {
-                    is String -> currentValue != conditionValue
-                    is List<*> ->
-                        currentValue.size == 1 && currentValue.first() != conditionValue
-
-                    else -> false
-                }
-            }
-
-            "\$elemMatch" -> {
-                return when (currentValue) {
-                    is String -> currentValue == conditionValue
-                    is List<*> -> currentValue.contains(conditionValue)
-                    else -> false
-                }
-            }
-
-            "\$gt" -> {
-                return when (currentValue) {
-                    is Number -> {
-                        if (!StringUtils.isNumeric(conditionValue)) {
-                            return false
-                        } else {
-                            currentValue.toFloat() < conditionValue.toFloat()
-                        }
-                    }
-
-                    else -> false
-                }
-            }
-
-            "\$gte" -> {
-                return when (currentValue) {
-                    is Number -> {
-                        if (!StringUtils.isNumeric(conditionValue)) {
-                            return false
-                        } else {
-                            currentValue.toFloat() <= conditionValue.toFloat()
-                        }
-                    }
-
-                    else -> false
-                }
-            }
-
-            "\$lt" -> {
-                return when (currentValue) {
-                    is Number -> {
-                        if (!StringUtils.isNumeric(conditionValue)) {
-                            return false
-                        } else {
-                            currentValue.toFloat() > conditionValue.toFloat()
-                        }
-                    }
-
-                    else -> false
-                }
-            }
-
-            "\$lte" -> {
-                return when (currentValue) {
-                    is Number -> {
-                        if (!StringUtils.isNumeric(conditionValue)) {
-                            return false
-                        } else {
-                            currentValue.toFloat() >= conditionValue.toFloat()
-                        }
-                    }
-
-                    else -> false
-                }
-            }
-
-            else -> {
-                logger.warn("Unknown condition operator: ${condition.operator}")
-                true
-            }
-        }
-    }
 }
