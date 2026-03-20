@@ -5,7 +5,7 @@ Generic HTTP client and supporting infrastructure for interacting with CouchDB.
 ## Key Classes
 
 | Class / File | Purpose |
-|---|---|
+| --- | --- |
 | `CouchDbClient` | Interface defining all CouchDB operations (CRUD, `_find`, `_changes`, revisions) |
 | `DefaultCouchDbClient` | `RestClient`-based implementation with JSON parsing, error mapping, and ETag concurrency |
 | `CouchDbFileStorage` | `FileStorage` implementation using CouchDB document attachments |

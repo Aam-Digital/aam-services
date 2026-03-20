@@ -23,6 +23,6 @@ data class SyncEntry(
 )
 
 @Repository
-interface SyncRepository : CrudRepository<SyncEntry, String> {
+interface SyncRepository : CrudRepository<SyncEntry, Long> {
     fun findByDatabase(database: String): Optional<SyncEntry>
 }

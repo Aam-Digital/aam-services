@@ -44,11 +44,12 @@ class DefaultChangeEventPublisher(
                         .atOffset(ZoneOffset.UTC)
                         .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
             )
+        val payload = objectMapper.writeValueAsString(message)
         try {
             rabbitTemplate.convertAndSend(
                 exchange,
                 "",
-                objectMapper.writeValueAsString(message)
+                payload
             )
         } catch (ex: AmqpException) {
             throw InternalServerException(
@@ -61,7 +62,7 @@ class DefaultChangeEventPublisher(
         logger.trace(
             "[DefaultChangeEventPublisher]: publish message to exchange '{}' Payload: {}",
             exchange,
-            objectMapper.writeValueAsString(message)
+            payload
         )
         return message
     }

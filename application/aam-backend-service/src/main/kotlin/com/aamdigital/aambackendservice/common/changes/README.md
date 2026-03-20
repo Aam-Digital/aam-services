@@ -4,7 +4,7 @@ Polls the CouchDB `_changes` feed and publishes enriched `DocumentChangeEvent`s 
 
 ## Flow
 
-```
+```text
 CouchDB _changes feed
         │  (polled every 8 s by CouchDbChangesPollingJob)
         ▼
@@ -31,7 +31,7 @@ Feature modules receive changes by:
 ## Key Classes
 
 | Class | Purpose |
-|---|---|
+| --- | --- |
 | `CouchDbChangesPollingJob` | Scheduled trigger (every 8 s), error counting with auto-stop |
 | `CouchDbChangesProcessor` | Core logic: poll changes, enrich with doc revisions, publish |
 | `DocumentChangeEvent` | Event payload: database, documentId, current/previous doc |
@@ -44,9 +44,7 @@ Feature modules receive changes by:
 ## Configuration
 
 ```yaml
-aam-backend:
-  changes:
-    polling-interval: 8000   # ms between polls
-    databases:               # list of CouchDB databases to watch
-      - app
+database-change-detection:
+        enabled: true
+        fixed-delay: 8000
 ```
