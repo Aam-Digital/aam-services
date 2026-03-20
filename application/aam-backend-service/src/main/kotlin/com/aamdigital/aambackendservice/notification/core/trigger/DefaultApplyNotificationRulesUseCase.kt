@@ -51,15 +51,22 @@ class DefaultApplyNotificationRulesUseCase(
 
     private fun extractChangeType(documentChangeEvent: DocumentChangeEvent): String {
         if (documentChangeEvent.deleted) {
-            // "delete" is not relevant for active notifications currently (no rules for this will exist)
             return "deleted"
         }
 
-        if (documentChangeEvent.previousVersion.isEmpty()) {
-            return "created"
+        // Parse CouchDB revision prefix to determine change type.
+        // Revisions have format "<generation>-<hash>" where generation 1 = created, 2+ = updated.
+        // This is more reliable than checking previousVersion which may be empty even for updates
+        // (e.g. when the previous revision has been purged).
+        val rev = documentChangeEvent.rev
+        if (rev != null) {
+            val generation = rev.substringBefore("-").toIntOrNull()
+            if (generation != null && generation > 1) {
+                return "updated"
+            }
         }
 
-        return "updated"
+        return "created"
     }
 
     /**
