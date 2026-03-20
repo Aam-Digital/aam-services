@@ -15,9 +15,9 @@ import kotlin.jvm.optionals.getOrDefault
  * the current and previous document revision, and publishes a [DocumentChangeEvent]
  * to the RabbitMQ fanout exchange.
  *
- * Triggered periodically by [CouchDbChangeDetectionJob].
+ * Triggered periodically by [CouchDbChangesPollingJob].
  */
-class CouchDbDatabaseChangeDetection(
+class CouchDbChangesProcessor(
     private val couchDbClient: CouchDbClient,
     private val documentChangeEventPublisher: ChangeEventPublisher,
     private val syncRepository: SyncRepository,

@@ -5,13 +5,13 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Scheduled
 
 /**
- * Scheduled job that invokes [CouchDbDatabaseChangeDetection.checkForChanges] on a fixed interval.
+ * Scheduled job that invokes [CouchDbChangesProcessor.checkForChanges] on a fixed interval.
  * Stops polling after [maxErrorCount] consecutive failures to avoid flooding logs.
  * Resets the error counter on each successful run.
  */
 @Configuration
-class CouchDbChangeDetectionJob(
-    private val databaseChangeDetection: CouchDbDatabaseChangeDetection
+class CouchDbChangesPollingJob(
+    private val databaseChangeDetection: CouchDbChangesProcessor
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -21,7 +21,7 @@ class CouchDbChangeDetectionJob(
     @Scheduled(fixedDelayString = "\${database-change-detection.fixed-delay:8000}")
     fun checkForCouchDbChanges() {
         if (errorCounter >= maxErrorCount) {
-            logger.trace("[CouchDbChangeDetectionJob]: maxErrorCount reached. Not starting job again.")
+            logger.trace("[CouchDbChangesPollingJob]: maxErrorCount reached. Not starting job again.")
             return
         }
 
@@ -30,10 +30,10 @@ class CouchDbChangeDetectionJob(
             errorCounter = 0
         } catch (ex: Exception) {
             logger.error(
-                "[CouchDbChangeDetectionJob] An error occurred (count: $errorCounter): {}",
+                "[CouchDbChangesPollingJob] An error occurred (count: $errorCounter): {}",
                 ex.localizedMessage
             )
-            logger.debug("[CouchDbChangeDetectionJob] Debug information", ex)
+            logger.debug("[CouchDbChangesPollingJob] Debug information", ex)
             errorCounter += 1
         }
     }

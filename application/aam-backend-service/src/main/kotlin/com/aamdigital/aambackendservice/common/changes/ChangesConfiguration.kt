@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration
 
 /**
  * Spring configuration that wires up the change-detection beans.
- * The [CouchDbDatabaseChangeDetection] bean is only created when
+ * The [CouchDbChangesProcessor] bean is only created when
  * `database-change-detection.enabled` is true (default).
  */
 @Configuration
@@ -24,8 +24,8 @@ class ChangesConfiguration {
         changeEventPublisher: ChangeEventPublisher,
         syncRepository: SyncRepository,
         objectMapper: ObjectMapper,
-    ): CouchDbDatabaseChangeDetection =
-        CouchDbDatabaseChangeDetection(
+    ): CouchDbChangesProcessor =
+        CouchDbChangesProcessor(
             couchDbClient,
             changeEventPublisher,
             syncRepository,

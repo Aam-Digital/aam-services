@@ -6,9 +6,9 @@ Polls the CouchDB `_changes` feed and publishes enriched `DocumentChangeEvent`s 
 
 ```
 CouchDB _changes feed
-        │  (polled every 8 s by CouchDbChangeDetectionJob)
+        │  (polled every 8 s by CouchDbChangesPollingJob)
         ▼
-CouchDbDatabaseChangeDetection
+CouchDbChangesProcessor
    • fetches current + previous document revision
    • builds DocumentChangeEvent (database, documentId, before/after)
         │
@@ -32,8 +32,8 @@ Feature modules receive changes by:
 
 | Class | Purpose |
 |---|---|
-| `CouchDbChangeDetectionJob` | Scheduled trigger (every 8 s), error counting with auto-stop |
-| `CouchDbDatabaseChangeDetection` | Core logic: poll changes, enrich with doc revisions, publish |
+| `CouchDbChangesPollingJob` | Scheduled trigger (every 8 s), error counting with auto-stop |
+| `CouchDbChangesProcessor` | Core logic: poll changes, enrich with doc revisions, publish |
 | `DocumentChangeEvent` | Event payload: database, documentId, current/previous doc |
 | `ChangeEventPublisher` | Interface for publishing events to the exchange |
 | `DefaultChangeEventPublisher` | RabbitMQ implementation of `ChangeEventPublisher` |
