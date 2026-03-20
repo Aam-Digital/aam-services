@@ -15,7 +15,7 @@ class CouchDbDatabaseChangeDetection(
     private val documentChangeEventPublisher: ChangeEventPublisher,
     private val syncRepository: SyncRepository,
     private val objectMapper: ObjectMapper,
-) : DatabaseChangeDetection {
+) {
     companion object {
         private const val CHANGES_LIMIT: Int = 100
     }
@@ -26,7 +26,7 @@ class CouchDbDatabaseChangeDetection(
         COULD_NOT_FETCH_LATEST_REF
     }
 
-    override fun checkForChanges() {
+    fun checkForChanges() {
         couchDbClient
             .allDatabases()
             .filter { !it.startsWith("_") }

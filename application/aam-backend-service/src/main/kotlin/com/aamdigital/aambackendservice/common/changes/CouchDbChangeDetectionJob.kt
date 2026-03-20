@@ -6,33 +6,30 @@ import org.springframework.scheduling.annotation.Scheduled
 
 @Configuration
 class CouchDbChangeDetectionJob(
-    private val databaseChangeDetection: DatabaseChangeDetection
+    private val databaseChangeDetection: CouchDbDatabaseChangeDetection
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    companion object {
-        private var ERROR_COUNTER: Int = 0
-        private var MAX_ERROR_COUNT: Int = 5
-    }
+    private var errorCounter: Int = 0
+    private val maxErrorCount: Int = 5
 
     @Scheduled(fixedDelayString = "\${database-change-detection.fixed-delay:8000}")
     fun checkForCouchDbChanges() {
-        if (ERROR_COUNTER >= MAX_ERROR_COUNT) {
-            logger.trace("[CouchDbChangeDetectionJob]: MAX_ERROR_COUNT reached. Not starting job again.")
+        if (errorCounter >= maxErrorCount) {
+            logger.trace("[CouchDbChangeDetectionJob]: maxErrorCount reached. Not starting job again.")
             return
         }
 
         try {
             databaseChangeDetection.checkForChanges()
-            // Reset error counter on successful execution
-            ERROR_COUNTER = 0
+            errorCounter = 0
         } catch (ex: Exception) {
             logger.error(
-                "[CouchDbChangeDetectionJob] An error occurred (count: $ERROR_COUNTER): {}",
+                "[CouchDbChangeDetectionJob] An error occurred (count: $errorCounter): {}",
                 ex.localizedMessage
             )
             logger.debug("[CouchDbChangeDetectionJob] Debug information", ex)
-            ERROR_COUNTER += 1
+            errorCounter += 1
         }
     }
 }

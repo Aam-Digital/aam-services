@@ -12,14 +12,6 @@ class ChangesConfiguration {
     @ConditionalOnProperty(
         prefix = "database-change-detection",
         name = ["enabled"],
-        havingValue = "false"
-    )
-    fun noopDatabaseChangeDetection(): DatabaseChangeDetection = NoopDatabaseChangeDetection()
-
-    @Bean
-    @ConditionalOnProperty(
-        prefix = "database-change-detection",
-        name = ["enabled"],
         matchIfMissing = true
     )
     fun couchDatabaseChangeDetection(
@@ -27,7 +19,7 @@ class ChangesConfiguration {
         changeEventPublisher: ChangeEventPublisher,
         syncRepository: SyncRepository,
         objectMapper: ObjectMapper,
-    ): DatabaseChangeDetection =
+    ): CouchDbDatabaseChangeDetection =
         CouchDbDatabaseChangeDetection(
             couchDbClient,
             changeEventPublisher,
