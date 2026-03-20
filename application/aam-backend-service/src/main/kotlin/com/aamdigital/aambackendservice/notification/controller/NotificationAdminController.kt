@@ -21,8 +21,8 @@ data class TestMessageResponse(
 @RequestMapping("/v1/notification")
 @ConditionalOnProperty(
     prefix = "features.notification-api",
-    name = ["enabled"],
-    havingValue = "true",
+    name = ["mode"],
+    havingValue = "firebase",
     matchIfMissing = false
 )
 class NotificationAdminController(

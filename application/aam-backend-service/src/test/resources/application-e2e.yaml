@@ -76,11 +76,10 @@ notification-firebase-configuration:
 features:
   export-api:
     enabled: true
+  notification-api:
+    enabled: true
   skill-api:
     mode: disabled
-  notification-api:
-    enabled: false
-    mode: firebase
 
 crypto-configuration:
   secret: super-duper-secret
@@ -91,7 +90,7 @@ events:
       enabled: true
 
 database-change-detection:
-  enabled: false
+  enabled: true
   fixed-delay: 1000
 
 keycloak:

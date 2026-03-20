@@ -194,13 +194,15 @@ class DefaultCouchDbClient(
             )
 
         val etag = documentHeaders.eTag?.replace("\"", "")
+        val requestBody = serializeBody(body)
 
         return httpClient
             .put()
             .uri {
                 it.path("/$database/$documentId")
                 it.build()
-            }.body(body)
+            }.contentType(MediaType.APPLICATION_JSON)
+            .body(requestBody)
             .headers {
                 if (etag.isNullOrBlank().not()) {
                     it.set("If-Match", etag)
@@ -295,6 +297,7 @@ class DefaultCouchDbClient(
         response: RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse,
         typeReference: KClass<T>
     ): T {
+        val statusCode = response.statusCode
         val rawResponse =
             try {
                 response.bodyTo(String::class.java) ?: throw ExternalSystemException(
@@ -312,6 +315,20 @@ class DefaultCouchDbClient(
                     code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
                 )
             }
+
+        if (!statusCode.is2xxSuccessful) {
+            val errorCode =
+                when {
+                    statusCode.value() == 404 -> DefaultCouchDbClientErrorCode.NOT_FOUND
+                    statusCode.is4xxClientError -> DefaultCouchDbClientErrorCode.CLIENT_ERROR
+                    else -> DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR
+                }
+
+            throw ExternalSystemException(
+                message = "[DefaultCouchDbClient] CouchDB request failed with status ${statusCode.value()}: $rawResponse",
+                code = errorCode
+            )
+        }
 
         if (typeReference == String::class) {
             @Suppress("UNCHECKED_CAST")
@@ -364,4 +381,18 @@ class DefaultCouchDbClient(
                 return@exchange clientResponse.statusCode.is2xxSuccessful
             }!!
     }
+
+
+    private fun serializeBody(body: Any): ByteArray {
+        return try {
+            objectMapper.writeValueAsBytes(body)
+        } catch (ex: Exception) {
+            throw ExternalSystemException(
+                message = "[DefaultCouchDbClient] Could not serialize request body for CouchDB PUT: ${ex.localizedMessage}",
+                cause = ex,
+                code = DefaultCouchDbClientErrorCode.PARSING_ERROR
+            )
+        }
+    }
+
 }

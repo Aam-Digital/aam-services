@@ -419,6 +419,32 @@ All Gradle commands should be run from `application/aam-backend-service/`.
 
 For local development setup (databases, queues, Keycloak), see `docs/developer/README.md` and the docker-compose files there.
 
+### Running a Single Unit Test Class
+
+```bash
+./gradlew test --tests "com.aamdigital.aambackendservice.export.usecase.DefaultCreateTemplateUseCaseTest"
+```
+
+### Running Specific Cucumber (E2E) Tests
+
+Use environment variables to filter Cucumber scenarios. Always combine with `--tests "*CucumberTestRunner"` to skip unit tests.
+
+```bash
+# By tag — add e.g. @Focus to the scenario in the .feature file, then filter
+CUCUMBER_FILTER_TAGS="@Focus" ./gradlew test --tests "*CucumberTestRunner"
+
+# By existing tag (e.g. @Notification)
+CUCUMBER_FILTER_TAGS="@Notification" ./gradlew test --tests "*CucumberTestRunner"
+
+# By scenario name (regex match)
+CUCUMBER_FILTER_NAME="client makes call to start a report calculation" ./gradlew test --tests "*CucumberTestRunner"
+
+# By feature file path (optionally with :line to target a single scenario)
+CUCUMBER_FEATURES="src/test/resources/cucumber/features/notification/notification-change-type.feature:8" ./gradlew test --tests "*CucumberTestRunner"
+```
+
+Note: Cucumber E2E tests use Testcontainers, so Docker must be running. Container startup adds ~30-60s overhead regardless of how many scenarios run.
+
 ### Working with Test Results
 
 Gradle generates structured test reports that persist after each run. To avoid re-running tests for further analysis, read the existing report files:

@@ -121,12 +121,29 @@ class DefaultApplyNotificationRulesUseCaseTest {
             deleted = false
         )
 
+    // Simulates an update where the previous revision was purged (empty previousVersion)
+    private val documentUpdateWithPurgedPreviousEvent =
+        DocumentChangeEvent(
+            database = "app",
+            documentId = "Child:14b69515-1d64-449a-802e-6eee0591021b",
+            rev = "2-e5d65d1843b97422aaaa29ad3bfba900",
+            currentVersion =
+                mapOf(
+                    "_id" to "Child:1",
+                    "_rev" to "2-e5d65d1843b97422aaaa29ad3bfba900",
+                    "name" to "Updated Doc"
+                ),
+            previousVersion = emptyMap<String, Any>(),
+            deleted = false
+        )
+
     private val documentChangeEvents =
         mapOf(
             "created" to documentCreateEvent,
             "updated" to documentUpdateEvent,
             "deleted" to documentDeleteEvent,
-            "other" to documentOtherUpdateEvent
+            "other" to documentOtherUpdateEvent,
+            "updatedPurged" to documentUpdateWithPurgedPreviousEvent
         )
 
     private fun generateNotificationConfig(
@@ -446,6 +463,37 @@ class DefaultApplyNotificationRulesUseCaseTest {
                             )
                         )
                 )
+            )
+        )
+
+        // when
+        val result =
+            service.run(
+                ApplyNotificationRulesRequest(
+                    documentChangeEvent = documentChangeEvents[documentEventType]!!
+                )
+            )
+
+        // then
+        assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
+        assertEquals(notificationsSendCount, (result as UseCaseOutcome.Success).data.notificationsSendCount)
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "created,created,1",
+        "created,updatedPurged,0",
+        "updated,updatedPurged,1"
+    )
+    fun `should correctly classify update with purged previous version`(
+        ruleChangeType: String,
+        documentEventType: String,
+        notificationsSendCount: Int
+    ) {
+        // given
+        whenever(notificationConfigRepository.findAll()).thenReturn(
+            listOf(
+                generateNotificationConfig(changeType = ruleChangeType)
             )
         )
 
