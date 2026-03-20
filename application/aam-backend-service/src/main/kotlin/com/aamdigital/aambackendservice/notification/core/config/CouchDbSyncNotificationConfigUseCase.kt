@@ -14,6 +14,7 @@ import com.aamdigital.aambackendservice.notification.repository.NotificationRule
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.JsonNode
 import org.springframework.util.LinkedMultiValueMap
+import java.nio.charset.StandardCharsets
 import java.util.*
 
 data class NotificationConfigDto(
@@ -162,7 +163,7 @@ class CouchDbSyncNotificationConfigUseCase(
     }
 
     private fun mapToNotificationRules(notificationConfig: NotificationConfigDto): List<NotificationRuleEntity> =
-        notificationConfig.notificationRules.flatMap { rule ->
+        notificationConfig.notificationRules.withIndex().flatMap { (ruleIndex, rule) ->
             val conditionGroups =
                 documentConditionEngine.parseConditionGroups(rule.conditions).map { conditions ->
                     conditions.map {
@@ -174,11 +175,20 @@ class CouchDbSyncNotificationConfigUseCase(
                     }
                 }
             rule.changeType.flatMap { changeType ->
-                conditionGroups.map { conditions ->
+                conditionGroups.withIndex().map { (conditionGroupIndex, conditions) ->
                     NotificationRuleEntity(
                         notificationType = rule.notificationType,
                         label = rule.label,
-                        externalIdentifier = UUID.randomUUID().toString(),
+                        externalIdentifier =
+                            buildExternalIdentifier(
+                                notificationConfigId = notificationConfig.id,
+                                ruleIndex = ruleIndex,
+                                label = rule.label,
+                                entityType = rule.entityType,
+                                changeType = changeType,
+                                conditionGroupIndex = conditionGroupIndex,
+                                conditions = conditions
+                            ),
                         entityType = rule.entityType,
                         changeType = changeType,
                         enabled = rule.enabled,
@@ -187,4 +197,29 @@ class CouchDbSyncNotificationConfigUseCase(
                 }
             }
         }
+
+    private fun buildExternalIdentifier(
+        notificationConfigId: String,
+        ruleIndex: Int,
+        label: String,
+        entityType: String,
+        changeType: String,
+        conditionGroupIndex: Int,
+        conditions: List<NotificationConditionEntity>
+    ): String {
+        val conditionSignature =
+            conditions.joinToString(separator = "|") { "${it.field}:${it.operator}:${it.value}" }
+        val stableIdentifier =
+            listOf(
+                notificationConfigId,
+                ruleIndex.toString(),
+                label,
+                entityType,
+                changeType,
+                conditionGroupIndex.toString(),
+                conditionSignature
+            ).joinToString("#")
+
+        return UUID.nameUUIDFromBytes(stableIdentifier.toByteArray(StandardCharsets.UTF_8)).toString()
+    }
 }

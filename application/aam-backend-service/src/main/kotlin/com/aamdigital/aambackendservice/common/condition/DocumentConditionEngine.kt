@@ -1,7 +1,6 @@
 package com.aamdigital.aambackendservice.common.condition
 
 import com.fasterxml.jackson.databind.JsonNode
-import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 
 /** Represents one atomic field comparison used in a document condition tree. */
@@ -87,13 +86,7 @@ class DocumentConditionEngine {
 
             "\$gt" -> {
                 when (currentValue) {
-                    is Number -> {
-                        if (!StringUtils.isNumeric(conditionValue)) {
-                            false
-                        } else {
-                            currentValue.toFloat() < conditionValue.toFloat()
-                        }
-                    }
+                    is Number -> conditionValue.toFloatOrNull()?.let { currentValue.toFloat() > it } ?: false
 
                     else -> false
                 }
@@ -101,13 +94,7 @@ class DocumentConditionEngine {
 
             "\$gte" -> {
                 when (currentValue) {
-                    is Number -> {
-                        if (!StringUtils.isNumeric(conditionValue)) {
-                            false
-                        } else {
-                            currentValue.toFloat() <= conditionValue.toFloat()
-                        }
-                    }
+                    is Number -> conditionValue.toFloatOrNull()?.let { currentValue.toFloat() >= it } ?: false
 
                     else -> false
                 }
@@ -115,13 +102,7 @@ class DocumentConditionEngine {
 
             "\$lt" -> {
                 when (currentValue) {
-                    is Number -> {
-                        if (!StringUtils.isNumeric(conditionValue)) {
-                            false
-                        } else {
-                            currentValue.toFloat() > conditionValue.toFloat()
-                        }
-                    }
+                    is Number -> conditionValue.toFloatOrNull()?.let { currentValue.toFloat() < it } ?: false
 
                     else -> false
                 }
@@ -129,13 +110,7 @@ class DocumentConditionEngine {
 
             "\$lte" -> {
                 when (currentValue) {
-                    is Number -> {
-                        if (!StringUtils.isNumeric(conditionValue)) {
-                            false
-                        } else {
-                            currentValue.toFloat() >= conditionValue.toFloat()
-                        }
-                    }
+                    is Number -> conditionValue.toFloatOrNull()?.let { currentValue.toFloat() <= it } ?: false
 
                     else -> false
                 }
@@ -143,7 +118,7 @@ class DocumentConditionEngine {
 
             else -> {
                 logger.warn("Unknown condition operator: {}", condition.operator)
-                true
+                false
             }
         }
     }

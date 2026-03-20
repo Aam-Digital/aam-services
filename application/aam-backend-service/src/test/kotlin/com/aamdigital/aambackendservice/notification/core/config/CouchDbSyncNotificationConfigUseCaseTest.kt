@@ -103,10 +103,32 @@ class CouchDbSyncNotificationConfigUseCaseTest {
 
         val importedConfig = configCaptor.firstValue
         assertThat(importedConfig.notificationRules).hasSize(2)
+        assertThat(importedConfig.notificationRules.map { it.externalIdentifier })
+            .doesNotContainNull()
+            .doesNotHaveDuplicates()
         assertThat(importedConfig.notificationRules.map { it.conditions }).allSatisfy { conditions ->
             assertThat(conditions).hasSize(1)
         }
         assertThat(importedConfig.notificationRules.flatMap { it.conditions.map { c -> c.field } })
             .containsExactlyInAnyOrder("name", "age")
+
+        val firstRunExternalIdentifiers = importedConfig.notificationRules.map { it.externalIdentifier }.sorted()
+
+        // when running import with same payload again
+        val secondResult =
+            service.run(
+                SyncNotificationConfigRequest(
+                    notificationConfigDatabase = "config-db",
+                    notificationConfigId = "notifications:user-1",
+                    notificationConfigRev = "1-abc"
+                )
+            )
+
+        // then external identifiers remain stable
+        assertThat(secondResult).isInstanceOf(UseCaseOutcome.Success::class.java)
+        val secondConfigCaptor = argumentCaptor<NotificationConfigEntity>()
+        org.mockito.kotlin.verify(notificationConfigRepository, org.mockito.kotlin.times(2)).save(secondConfigCaptor.capture())
+        val secondRunExternalIdentifiers = secondConfigCaptor.allValues.last().notificationRules.map { it.externalIdentifier }.sorted()
+        assertThat(secondRunExternalIdentifiers).containsExactlyElementsOf(firstRunExternalIdentifiers)
     }
 }
