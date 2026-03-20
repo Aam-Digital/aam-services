@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.e2e
 
-import com.aamdigital.aambackendservice.common.changes.repository.SyncRepository
+import com.aamdigital.aambackendservice.common.changes.SyncRepository
 import com.aamdigital.aambackendservice.container.TestContainers
 import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent

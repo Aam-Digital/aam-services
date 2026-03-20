@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.report.usecase
 
-import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEvent
+import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.core.ReportQueryAnalyser

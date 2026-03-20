@@ -1,9 +1,5 @@
-package com.aamdigital.aambackendservice.common.changes.core
+package com.aamdigital.aambackendservice.common.changes
 
-import com.aamdigital.aambackendservice.common.changes.di.ChangesQueueConfiguration.Companion.DOCUMENT_CHANGES_EXCHANGE
-import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEvent
-import com.aamdigital.aambackendservice.common.changes.repository.SyncEntry
-import com.aamdigital.aambackendservice.common.changes.repository.SyncRepository
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
@@ -91,7 +87,9 @@ class CouchDbDatabaseChangeDetection(
                     currentDoc = couchDbChangeResult.doc,
                 )
 
-                documentChangeEventPublisher.publish(DOCUMENT_CHANGES_EXCHANGE, changeEvent)
+                documentChangeEventPublisher.publish(
+                    ChangesQueueConfiguration.DOCUMENT_CHANGES_EXCHANGE, changeEvent
+                )
             }
 
             latestSeq = couchDbChangeResult.seq

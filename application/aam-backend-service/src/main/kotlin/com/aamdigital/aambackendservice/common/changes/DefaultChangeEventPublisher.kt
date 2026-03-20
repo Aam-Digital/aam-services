@@ -1,7 +1,5 @@
-package com.aamdigital.aambackendservice.common.changes.queue
+package com.aamdigital.aambackendservice.common.changes
 
-import com.aamdigital.aambackendservice.common.changes.core.ChangeEventPublisher
-import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.InternalServerException

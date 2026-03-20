@@ -1,7 +1,5 @@
-package com.aamdigital.aambackendservice.common.changes.di
+package com.aamdigital.aambackendservice.common.changes
 
-import com.aamdigital.aambackendservice.common.changes.core.ChangeEventPublisher
-import com.aamdigital.aambackendservice.common.changes.queue.DefaultChangeEventPublisher
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.amqp.core.FanoutExchange
 import org.springframework.amqp.rabbit.core.RabbitTemplate

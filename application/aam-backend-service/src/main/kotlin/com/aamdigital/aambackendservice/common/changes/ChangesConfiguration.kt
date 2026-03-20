@@ -1,10 +1,5 @@
-package com.aamdigital.aambackendservice.common.changes.di
+package com.aamdigital.aambackendservice.common.changes
 
-import com.aamdigital.aambackendservice.common.changes.core.ChangeEventPublisher
-import com.aamdigital.aambackendservice.common.changes.core.CouchDbDatabaseChangeDetection
-import com.aamdigital.aambackendservice.common.changes.core.DatabaseChangeDetection
-import com.aamdigital.aambackendservice.common.changes.core.NoopDatabaseChangeDetection
-import com.aamdigital.aambackendservice.common.changes.repository.SyncRepository
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty

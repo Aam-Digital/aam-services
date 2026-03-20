@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.common.changes.core
+package com.aamdigital.aambackendservice.common.changes
 
 interface DatabaseChangeDetection {
     fun checkForChanges()

@@ -1,6 +1,5 @@
-package com.aamdigital.aambackendservice.common.changes.jobs
+package com.aamdigital.aambackendservice.common.changes
 
-import com.aamdigital.aambackendservice.common.changes.core.DatabaseChangeDetection
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Scheduled

@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.notification.core.trigger
 
-import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEvent
+import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.domain.DomainUseCase
 import com.aamdigital.aambackendservice.common.domain.UseCaseData
 import com.aamdigital.aambackendservice.common.domain.UseCaseRequest

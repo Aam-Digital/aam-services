@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.common.changes.domain
+package com.aamdigital.aambackendservice.common.changes
 
 import com.aamdigital.aambackendservice.common.events.DomainEvent
 

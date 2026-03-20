@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.common.changes.repository
+package com.aamdigital.aambackendservice.common.changes
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
