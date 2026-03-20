@@ -56,7 +56,8 @@ jobs:
       - uses: qltysh/qlty-action/coverage@v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
-          files: application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml:jacoco
+          files: "**/build/reports/jacoco/test/jacocoTestReport.xml"
+          format: jacoco
 
   build:
     strategy:
