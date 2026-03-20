@@ -8,7 +8,7 @@ import java.time.format.DateTimeFormatter
  * Events are normally consumed and written to a message broker queue and are processed asynchronously.
  * Each event has a unique, ascending identifier. This enables event duplication at message broker level.
  *
- * e.g. ReportCalculationEvent, DatabaseChangeEvent
+ * e.g. ReportCalculationEvent, DocumentChangeEvent
  *
  * @param id uniq, incrementing number
  * @param createdAt ISO_DATE_TIME string, created when even is initialised

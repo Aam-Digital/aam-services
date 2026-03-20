@@ -18,6 +18,11 @@ import java.io.InterruptedIOException
 import java.util.*
 import kotlin.reflect.KClass
 
+/**
+ * [CouchDbClient] implementation backed by Spring [RestClient].
+ * Handles JSON serialization, error mapping, and ETag-based optimistic concurrency
+ * for PUT/DELETE operations.
+ */
 class DefaultCouchDbClient(
     private val httpClient: RestClient,
     private val objectMapper: ObjectMapper
@@ -57,7 +62,7 @@ class DefaultCouchDbClient(
         return response
     }
 
-    override fun changes(
+    override fun getDatabaseChanges(
         database: String,
         queryParams: MultiValueMap<String, String>
     ): CouchDbChangesResponse {
@@ -82,7 +87,7 @@ class DefaultCouchDbClient(
         return response
     }
 
-    override fun <T : Any> find(
+    override fun <T : Any> findDatabaseDocuments(
         database: String,
         body: Map<String, Any>,
         queryParams: MultiValueMap<String, String>,
@@ -107,11 +112,17 @@ class DefaultCouchDbClient(
             )
         }
 
-        // todo refactor to string parsing
-        val data =
-            (objectMapper.convertValue(response, Map::class.java)["docs"] as Iterable<*>).map { entry ->
-                objectMapper.convertValue(entry, kClass.java)
-            }
+        val docsNode = response.get("docs")
+        if (docsNode == null || !docsNode.isArray) {
+            throw ExternalSystemException(
+                message = "Could not parse response.docs to array",
+                code = DefaultCouchDbClientErrorCode.PARSING_ERROR
+            )
+        }
+
+        val data = docsNode.map { entry ->
+            objectMapper.convertValue(entry, kClass.java)
+        }
 
         return FindResponse(docs = data)
     }
@@ -239,7 +250,7 @@ class DefaultCouchDbClient(
             }!!
     }
 
-    override fun <T : Any> getPreviousDocRev(
+    override fun <T : Any> getPreviousDocumentRevision(
         database: String,
         documentId: String,
         rev: String,
@@ -378,10 +389,22 @@ class DefaultCouchDbClient(
                 it.path("/$name")
                 it.build()
             }.exchange { _, clientResponse ->
-                return@exchange clientResponse.statusCode.is2xxSuccessful
+                val statusCode = clientResponse.statusCode
+                return@exchange when {
+                    statusCode.is2xxSuccessful -> true
+                    statusCode.value() == 404 -> false
+                    statusCode.is4xxClientError -> throw ExternalSystemException(
+                        message = "Could not determine existence of CouchDB database $name: status ${statusCode.value()}",
+                        code = DefaultCouchDbClientErrorCode.CLIENT_ERROR
+                    )
+
+                    else -> throw ExternalSystemException(
+                        message = "Could not determine existence of CouchDB database $name: status ${statusCode.value()}",
+                        code = DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR
+                    )
+                }
             }!!
     }
-
 
     private fun serializeBody(body: Any): ByteArray {
         return try {

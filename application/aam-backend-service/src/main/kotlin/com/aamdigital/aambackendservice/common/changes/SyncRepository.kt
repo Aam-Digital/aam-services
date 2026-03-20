@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.common.changes.repository
+package com.aamdigital.aambackendservice.common.changes
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -23,6 +23,6 @@ data class SyncEntry(
 )
 
 @Repository
-interface SyncRepository : CrudRepository<SyncEntry, String> {
+interface SyncRepository : CrudRepository<SyncEntry, Long> {
     fun findByDatabase(database: String): Optional<SyncEntry>
 }

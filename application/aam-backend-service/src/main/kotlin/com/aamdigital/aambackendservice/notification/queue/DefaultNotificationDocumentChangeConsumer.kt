@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.notification.queue
 
-import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEvent
+import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigRequest

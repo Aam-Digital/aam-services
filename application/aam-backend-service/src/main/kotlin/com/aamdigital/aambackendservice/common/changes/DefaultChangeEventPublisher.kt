@@ -1,8 +1,5 @@
-package com.aamdigital.aambackendservice.common.changes.queue
+package com.aamdigital.aambackendservice.common.changes
 
-import com.aamdigital.aambackendservice.common.changes.core.ChangeEventPublisher
-import com.aamdigital.aambackendservice.common.changes.domain.DatabaseChangeEvent
-import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.InternalServerException
@@ -16,6 +13,11 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.*
 
+/**
+ * RabbitMQ implementation of [ChangeEventPublisher].
+ * Wraps each [DocumentChangeEvent] in a [QueueMessage] envelope and sends it
+ * to the specified fanout exchange.
+ */
 class DefaultChangeEventPublisher(
     private val objectMapper: ObjectMapper,
     private val rabbitTemplate: RabbitTemplate
@@ -25,38 +27,6 @@ class DefaultChangeEventPublisher(
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
-
-    @Throws(AamException::class)
-    override fun publish(
-        channel: String,
-        event: DatabaseChangeEvent
-    ): QueueMessage {
-        val message =
-            QueueMessage(
-                id = UUID.randomUUID(),
-                eventType = DatabaseChangeEvent::class.java.canonicalName,
-                event = event,
-                createdAt =
-                    Instant
-                        .now()
-                        .atOffset(ZoneOffset.UTC)
-                        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-            )
-
-        try {
-            rabbitTemplate.convertAndSend(
-                channel,
-                objectMapper.writeValueAsString(message)
-            )
-        } catch (ex: AmqpException) {
-            throw InternalServerException(
-                message = "Could not publish DatabaseChangeEvent: $event",
-                code = DefaultChangeEventPublisherErrorCode.EVENT_PUBLISH_ERROR,
-                cause = ex
-            )
-        }
-        return message
-    }
 
     @Throws(AamException::class)
     override fun publish(
@@ -74,11 +44,12 @@ class DefaultChangeEventPublisher(
                         .atOffset(ZoneOffset.UTC)
                         .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
             )
+        val payload = objectMapper.writeValueAsString(message)
         try {
             rabbitTemplate.convertAndSend(
                 exchange,
                 "",
-                objectMapper.writeValueAsString(message)
+                payload
             )
         } catch (ex: AmqpException) {
             throw InternalServerException(
@@ -89,9 +60,9 @@ class DefaultChangeEventPublisher(
         }
 
         logger.trace(
-            "[DefaultDocumentChangeEventPublisher]: publish message to channel '{}' Payload: {}",
+            "[DefaultChangeEventPublisher]: publish message to exchange '{}' Payload: {}",
             exchange,
-            objectMapper.writeValueAsString(message)
+            payload
         )
         return message
     }
