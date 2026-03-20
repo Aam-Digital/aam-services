@@ -1,9 +1,12 @@
 package com.aamdigital.aambackendservice.e2e
 
+import com.aamdigital.aambackendservice.common.changes.repository.SyncRepository
 import com.aamdigital.aambackendservice.container.TestContainers
+import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
 import io.cucumber.java.After
+import io.cucumber.java.Before
 import io.cucumber.java.en.Given
 import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
@@ -11,17 +14,31 @@ import io.cucumber.spring.CucumberContextConfiguration
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
+import org.slf4j.LoggerFactory
 import org.springframework.core.io.ClassPathResource
 import org.springframework.http.HttpMethod
 import java.io.File
 
 @CucumberContextConfiguration
 class CucumberIntegrationTest(
-    val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher
+    val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher,
+    val notificationConfigRepository: NotificationConfigRepository,
+    val syncRepository: SyncRepository
 ) : SpringIntegrationTest() {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
+    @Before
+    fun `log scenario start`() {
+        logger.info("[CucumberTest] === Scenario starting ===")
+        logger.info("[CucumberTest] SyncEntries before scenario: {}", syncRepository.findAll().map { "${it.database}=${it.latestRef.take(20)}" })
+        logger.info("[CucumberTest] NotificationConfigs before scenario: {}", notificationConfigRepository.count())
+    }
+
     @After
     fun `reset all databases`() {
+        logger.info("[CucumberTest] === Scenario cleanup ===")
         couchDbTestingService.reset()
+        notificationConfigRepository.deleteAll()
     }
 
     @Given("signed in as client {} with secret {} in realm {}")
@@ -178,4 +195,57 @@ class CucumberIntegrationTest(
         runBlocking {
             delay(milliseconds)
         }
+
+    @Given("document {} is updated in database {}")
+    fun `update document in database`(
+        document: String,
+        database: String
+    ) {
+        System.err.println("[CucumberTest] Updating document $document in database $database")
+        couchDbTestingService.updateDocument(
+            database = database,
+            documentName = document,
+            documentContent = java.io.File("src/test/resources/database/documents/$document.json").readText()
+        )
+        // Verify the update by fetching the document rev
+        val docId = document.replaceFirst("_", ":")
+        val docRev = couchDbTestingService.getDocumentRev(database, docId)
+        System.err.println("[CucumberTest] After update, document $docId rev=$docRev")
+    }
+
+    @Then("user {word} has {int} notification(s) in CouchDB")
+    fun `user has n notifications in CouchDB`(
+        userId: String,
+        expectedCount: Int
+    ) {
+        val maxWaitMs = 10_000L
+        val pollIntervalMs = 500L
+        val deadline = System.currentTimeMillis() + maxWaitMs
+        var actualCount: Int
+
+        val configs = notificationConfigRepository.findAll().map {
+            "user=${it.userIdentifier}, rules=${it.notificationRules.map { r -> "changeType=${r.changeType},entity=${r.entityType},enabled=${r.enabled}" }}"
+        }
+        val syncEntries = syncRepository.findAll().map { "${it.database}=${it.latestRef.take(30)}" }
+        System.err.println("[CucumberTest] Waiting for $expectedCount notifications for user $userId (timeout: ${maxWaitMs}ms)")
+        System.err.println("[CucumberTest] NotificationConfigs: $configs")
+        System.err.println("[CucumberTest] SyncEntries: $syncEntries")
+
+        do {
+            actualCount = couchDbTestingService.countDocuments("notifications_$userId")
+            if (actualCount == expectedCount) break
+            if (System.currentTimeMillis() >= deadline) break
+            Thread.sleep(pollIntervalMs)
+        } while (true)
+
+        val syncEntriesAfter = syncRepository.findAll().map { "${it.database}=${it.latestRef.take(30)}" }
+        System.err.println("[CucumberTest] SyncEntries after polling: $syncEntriesAfter")
+        System.err.println("[CucumberTest] Final count for user $userId: $actualCount (expected: $expectedCount)")
+
+        Assert.assertEquals(
+            "Expected $expectedCount notifications for user $userId",
+            expectedCount,
+            actualCount
+        )
+    }
 }

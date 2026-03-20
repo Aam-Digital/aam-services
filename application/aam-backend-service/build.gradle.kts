@@ -133,4 +133,7 @@ ktlint {
 tasks.withType<Test> {
     useJUnitPlatform()
     systemProperty("cucumber.junit-platform.naming-strategy", "long")
+    testLogging {
+        showStandardStreams = true
+    }
 }

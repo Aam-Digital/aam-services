@@ -2,6 +2,11 @@
 .run
 aam-services.iml
 
+
+### VisualStudioCode template
+.vs/*
+.vscode/*
+
 *~
 .fuse_hidden*
 .directory

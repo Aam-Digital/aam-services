@@ -74,6 +74,49 @@ class CouchDbTestingService(
         logger.info("[CouchDbSetup] create Document: $database, $documentName, ${response.statusCode}")
     }
 
+    fun updateDocument(
+        database: String,
+        documentName: String,
+        documentContent: String
+    ) {
+        val docId = documentName.replaceFirst("_", ":")
+        val responseHeaders = restTemplate.headForHeaders("/$database/$docId")
+        val etag = responseHeaders.eTag?.replace("\"", "")
+
+        val headers = LinkedMultiValueMap<String, String>()
+        headers.set("If-Match", etag)
+
+        val response =
+            restTemplate
+                .exchange(
+                    "/$database/$docId",
+                    HttpMethod.PUT,
+                    HttpEntity(documentContent, headers),
+                    ObjectNode::class.java
+                )
+        logger.info("[CouchDbSetup] update Document: $database, $documentName, ${response.statusCode}")
+    }
+
+    fun countDocuments(database: String): Int {
+        return try {
+            val response =
+                restTemplate
+                    .exchange("/$database/_all_docs", HttpMethod.GET, HttpEntity.EMPTY, ObjectNode::class.java)
+            response.body?.get("total_rows")?.intValue() ?: 0
+        } catch (e: HttpClientErrorException) {
+            if (e.statusCode.value() == 404) 0 else throw e
+        }
+    }
+
+    fun getDocumentRev(database: String, docId: String): String? {
+        return try {
+            val headers = restTemplate.headForHeaders("/$database/$docId")
+            headers.eTag?.replace("\"", "")
+        } catch (e: HttpClientErrorException) {
+            "ERROR: ${e.statusCode}"
+        }
+    }
+
     fun addAttachment(
         database: String,
         documentName: String,

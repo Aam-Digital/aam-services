@@ -56,6 +56,12 @@ class NotificationConfiguration {
         )
 
     @Bean("push-create-notification-handler")
+    @ConditionalOnProperty(
+        prefix = "features.notification-api",
+        name = ["mode"],
+        havingValue = "firebase",
+        matchIfMissing = false
+    )
     fun pushCreateNotificationHandler(
         firebaseMessaging: FirebaseMessaging,
         userDeviceRepository: UserDeviceRepository,

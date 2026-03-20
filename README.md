@@ -89,6 +89,24 @@ The test suite includes:
 
 Both run together with `./gradlew test` — Docker must be available for the e2e tests.
 
+### Running a specific Cucumber scenario
+
+You can run individual Cucumber scenarios using environment variables to filter by tag, feature file, or scenario name:
+
+```shell
+# By tag (add e.g. @Focus to the scenario in the .feature file)
+CUCUMBER_FILTER_TAGS="@Focus" ./gradlew test --tests "*CucumberTestRunner"
+
+# By feature file path
+CUCUMBER_FILTER_TAGS="@Notification" ./gradlew test --tests "*CucumberTestRunner"
+
+# By scenario name (regex)
+CUCUMBER_FILTER_NAME="client makes call to start a report calculation" ./gradlew test --tests "*CucumberTestRunner"
+
+# By feature file path with line number for a single scenario
+CUCUMBER_FEATURES="src/test/resources/cucumber/features/notification/notification-change-type.feature:8" ./gradlew test --tests "*CucumberTestRunner"
+```
+
 **VS Code:** Install the [Gradle for Java](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-gradle) extension to discover and run tests from the Test Explorer sidebar.
 
 ## Running the Application Locally

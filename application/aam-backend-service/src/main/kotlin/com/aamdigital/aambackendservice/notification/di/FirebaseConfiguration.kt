@@ -13,8 +13,8 @@ import java.util.*
 @ConfigurationProperties("notification-firebase-configuration")
 @ConditionalOnProperty(
     prefix = "features.notification-api",
-    name = ["enabled"],
-    havingValue = "true",
+    name = ["mode"],
+    havingValue = "firebase",
     matchIfMissing = false
 )
 class NotificationFirebaseClientConfiguration(

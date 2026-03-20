@@ -1,0 +1,17 @@
+{
+  "_id": "NotificationConfig:test-user-updated",
+  "notificationRules": [
+    {
+      "label": "Child updated",
+      "notificationType": "ENTITY_CHANGE",
+      "entityType": "Child",
+      "changeType": ["updated"],
+      "conditions": {},
+      "enabled": true
+    }
+  ],
+  "channels": {
+    "push": false,
+    "email": false
+  }
+}
