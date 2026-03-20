@@ -1,34 +1,35 @@
 package com.aamdigital.aambackendservice.common.changes.core
 
-import com.aamdigital.aambackendservice.common.changes.di.ChangesQueueConfiguration.Companion.DB_CHANGES_QUEUE
-import com.aamdigital.aambackendservice.common.changes.domain.DatabaseChangeEvent
+import com.aamdigital.aambackendservice.common.changes.di.ChangesQueueConfiguration.Companion.DOCUMENT_CHANGES_EXCHANGE
+import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.changes.repository.SyncEntry
 import com.aamdigital.aambackendservice.common.changes.repository.SyncRepository
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import java.util.*
+import org.slf4j.LoggerFactory
 import kotlin.jvm.optionals.getOrDefault
 
 class CouchDbDatabaseChangeDetection(
     private val couchDbClient: CouchDbClient,
     private val documentChangeEventPublisher: ChangeEventPublisher,
-    private val syncRepository: SyncRepository
+    private val syncRepository: SyncRepository,
+    private val objectMapper: ObjectMapper,
 ) : DatabaseChangeDetection {
     companion object {
-        private val LATEST_REFS: MutableMap<String, String> = Collections.synchronizedMap(hashMapOf())
         private const val CHANGES_LIMIT: Int = 100
     }
+
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     enum class CouchDbChangeDetectionError : AamErrorCode {
         COULD_NOT_FETCH_LATEST_REF
     }
 
-    /**
-     * Will reach out to CouchDb and convert _changes to  Domain.DocumentChangeEvent's
-     */
     override fun checkForChanges() {
         couchDbClient
             .allDatabases()
@@ -56,17 +57,15 @@ class CouchDbDatabaseChangeDetection(
         }
 
     private fun fetchChangesForDatabase(database: String) {
-        var syncEntry =
+        val syncEntry =
             syncRepository
                 .findByDatabase(database)
                 .getOrDefault(SyncEntry(database = database, latestRef = getLatestRef(database)))
 
-        LATEST_REFS[database] = syncEntry.latestRef
-
         val queryParams = getEmptyQueryParams()
 
-        if (LATEST_REFS.containsKey(database) && LATEST_REFS.getValue(database).isNotEmpty()) {
-            queryParams.set("last-event-id", LATEST_REFS.getValue(database))
+        if (syncEntry.latestRef.isNotEmpty()) {
+            queryParams.set("last-event-id", syncEntry.latestRef)
         }
 
         queryParams.set("limit", CHANGES_LIMIT.toString())
@@ -78,30 +77,76 @@ class CouchDbDatabaseChangeDetection(
                 queryParams = queryParams
             )
 
-        changes.results.forEachIndexed { _, couchDbChangeResult ->
+        var latestSeq = syncEntry.latestRef
+
+        changes.results.forEach { couchDbChangeResult ->
             val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
 
-            if (!couchDbChangeResult.id.startsWith("_design")) {
-                documentChangeEventPublisher.publish(
-                    channel = DB_CHANGES_QUEUE,
-                    DatabaseChangeEvent(
-                        documentId = couchDbChangeResult.id,
-                        database = database,
-                        rev = rev,
-                        deleted = couchDbChangeResult.deleted == true
-                    )
+            if (!couchDbChangeResult.id.startsWith("_design") && rev != null) {
+                val changeEvent = enrichChange(
+                    database = database,
+                    documentId = couchDbChangeResult.id,
+                    rev = rev,
+                    deleted = couchDbChangeResult.deleted == true,
+                    currentDoc = couchDbChangeResult.doc,
                 )
+
+                documentChangeEventPublisher.publish(DOCUMENT_CHANGES_EXCHANGE, changeEvent)
             }
 
-            LATEST_REFS[database] = couchDbChangeResult.seq
+            latestSeq = couchDbChangeResult.seq
         }
 
-        syncEntry =
-            syncRepository
-                .findByDatabase(database)
-                .getOrDefault(SyncEntry(database = database, latestRef = getLatestRef(database)))
-
-        syncEntry.latestRef = LATEST_REFS[database].orEmpty()
+        syncEntry.latestRef = latestSeq
         syncRepository.save(syncEntry)
+    }
+
+    private fun enrichChange(
+        database: String,
+        documentId: String,
+        rev: String,
+        deleted: Boolean,
+        currentDoc: ObjectNode?,
+    ): DocumentChangeEvent {
+        val isDeleted = deleted ||
+            (currentDoc?.has("_deleted") == true &&
+                currentDoc.get("_deleted").isBoolean &&
+                currentDoc.get("_deleted").booleanValue())
+
+        if (isDeleted) {
+            return DocumentChangeEvent(
+                database = database,
+                documentId = documentId,
+                rev = rev,
+                currentVersion = emptyMap<String, Any>(),
+                previousVersion = emptyMap<String, Any>(),
+                deleted = true
+            )
+        }
+
+        val previousDoc: ObjectNode =
+            try {
+                couchDbClient
+                    .getPreviousDocRev(
+                        database = database,
+                        documentId = documentId,
+                        rev = rev,
+                        kClass = ObjectNode::class
+                    ).getOrDefault(
+                        objectMapper.createObjectNode()
+                    )
+            } catch (ex: AamException) {
+                logger.debug(ex.message, ex)
+                objectMapper.createObjectNode()
+            }
+
+        return DocumentChangeEvent(
+            database = database,
+            documentId = documentId,
+            rev = rev,
+            currentVersion = objectMapper.convertValue(currentDoc, Map::class.java),
+            previousVersion = objectMapper.convertValue(previousDoc, Map::class.java),
+            deleted = false
+        )
     }
 }

@@ -2,9 +2,7 @@ package com.aamdigital.aambackendservice.common.changes.di
 
 import com.aamdigital.aambackendservice.common.changes.core.ChangeEventPublisher
 import com.aamdigital.aambackendservice.common.changes.core.CouchDbDatabaseChangeDetection
-import com.aamdigital.aambackendservice.common.changes.core.CreateDocumentChangeUseCase
 import com.aamdigital.aambackendservice.common.changes.core.DatabaseChangeDetection
-import com.aamdigital.aambackendservice.common.changes.core.DefaultCreateDocumentChangeUseCase
 import com.aamdigital.aambackendservice.common.changes.core.NoopDatabaseChangeDetection
 import com.aamdigital.aambackendservice.common.changes.repository.SyncRepository
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
@@ -32,23 +30,13 @@ class ChangesConfiguration {
     fun couchDatabaseChangeDetection(
         couchDbClient: CouchDbClient,
         changeEventPublisher: ChangeEventPublisher,
-        syncRepository: SyncRepository
+        syncRepository: SyncRepository,
+        objectMapper: ObjectMapper,
     ): DatabaseChangeDetection =
         CouchDbDatabaseChangeDetection(
             couchDbClient,
             changeEventPublisher,
-            syncRepository
-        )
-
-    @Bean
-    fun defaultAnalyseDocumentChangeUseCase(
-        couchDbClient: CouchDbClient,
-        objectMapper: ObjectMapper,
-        changeEventPublisher: ChangeEventPublisher
-    ): CreateDocumentChangeUseCase =
-        DefaultCreateDocumentChangeUseCase(
-            couchDbClient = couchDbClient,
-            objectMapper = objectMapper,
-            documentChangeEventPublisher = changeEventPublisher
+            syncRepository,
+            objectMapper,
         )
 }

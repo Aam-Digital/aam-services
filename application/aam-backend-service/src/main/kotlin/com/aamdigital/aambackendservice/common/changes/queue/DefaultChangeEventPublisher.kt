@@ -1,7 +1,6 @@
 package com.aamdigital.aambackendservice.common.changes.queue
 
 import com.aamdigital.aambackendservice.common.changes.core.ChangeEventPublisher
-import com.aamdigital.aambackendservice.common.changes.domain.DatabaseChangeEvent
 import com.aamdigital.aambackendservice.common.changes.domain.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.AamException
@@ -25,38 +24,6 @@ class DefaultChangeEventPublisher(
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
-
-    @Throws(AamException::class)
-    override fun publish(
-        channel: String,
-        event: DatabaseChangeEvent
-    ): QueueMessage {
-        val message =
-            QueueMessage(
-                id = UUID.randomUUID(),
-                eventType = DatabaseChangeEvent::class.java.canonicalName,
-                event = event,
-                createdAt =
-                    Instant
-                        .now()
-                        .atOffset(ZoneOffset.UTC)
-                        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-            )
-
-        try {
-            rabbitTemplate.convertAndSend(
-                channel,
-                objectMapper.writeValueAsString(message)
-            )
-        } catch (ex: AmqpException) {
-            throw InternalServerException(
-                message = "Could not publish DatabaseChangeEvent: $event",
-                code = DefaultChangeEventPublisherErrorCode.EVENT_PUBLISH_ERROR,
-                cause = ex
-            )
-        }
-        return message
-    }
 
     @Throws(AamException::class)
     override fun publish(
@@ -89,7 +56,7 @@ class DefaultChangeEventPublisher(
         }
 
         logger.trace(
-            "[DefaultDocumentChangeEventPublisher]: publish message to channel '{}' Payload: {}",
+            "[DefaultChangeEventPublisher]: publish message to exchange '{}' Payload: {}",
             exchange,
             objectMapper.writeValueAsString(message)
         )
