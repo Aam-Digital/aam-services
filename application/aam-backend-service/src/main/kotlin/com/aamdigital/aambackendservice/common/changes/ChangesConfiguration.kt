@@ -12,13 +12,13 @@ import org.springframework.context.annotation.Configuration
  * `database-change-detection.enabled` is true (default).
  */
 @Configuration
+@ConditionalOnProperty(
+    prefix = "database-change-detection",
+    name = ["enabled"],
+    matchIfMissing = true
+)
 class ChangesConfiguration {
     @Bean
-    @ConditionalOnProperty(
-        prefix = "database-change-detection",
-        name = ["enabled"],
-        matchIfMissing = true
-    )
     fun couchDatabaseChangeDetection(
         couchDbClient: CouchDbClient,
         changeEventPublisher: ChangeEventPublisher,

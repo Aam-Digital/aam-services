@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.common.changes
 
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Scheduled
 
@@ -10,8 +11,13 @@ import org.springframework.scheduling.annotation.Scheduled
  * Resets the error counter on each successful run.
  */
 @Configuration
+@ConditionalOnProperty(
+    prefix = "database-change-detection",
+    name = ["enabled"],
+    matchIfMissing = true
+)
 class CouchDbChangesPollingJob(
-    private val databaseChangeDetection: CouchDbChangesProcessor
+    private val changesProcessor: CouchDbChangesProcessor
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -26,7 +32,7 @@ class CouchDbChangesPollingJob(
         }
 
         try {
-            databaseChangeDetection.checkForChanges()
+            changesProcessor.checkForChanges()
             errorCounter = 0
         } catch (ex: Exception) {
             logger.error(
