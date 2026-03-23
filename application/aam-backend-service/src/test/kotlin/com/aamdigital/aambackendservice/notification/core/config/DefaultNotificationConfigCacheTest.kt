@@ -192,7 +192,7 @@ class DefaultNotificationConfigCacheTest {
         // given
         whenever(
             couchDbClient.getDatabaseDocument(
-                database = any(),
+                database = eq("tenant-db"),
                 documentId = eq("NotificationConfig:user-1"),
                 queryParams = any(),
                 kClass = eq(NotificationConfigDto::class)
@@ -207,7 +207,7 @@ class DefaultNotificationConfigCacheTest {
         )
 
         cache.refreshConfig(
-            database = "app",
+            database = "tenant-db",
             notificationConfigId = "NotificationConfig:user-1",
             deleted = false
         )
@@ -215,7 +215,7 @@ class DefaultNotificationConfigCacheTest {
 
         whenever(
             couchDbClient.getDatabaseDocument(
-                database = any(),
+                database = eq("tenant-db"),
                 documentId = eq("NotificationConfig:user-1"),
                 queryParams = any(),
                 kClass = eq(NotificationConfigDto::class)
@@ -224,7 +224,7 @@ class DefaultNotificationConfigCacheTest {
 
         // when
         cache.refreshConfig(
-            database = "app",
+            database = "tenant-db",
             notificationConfigId = "NotificationConfig:user-1",
             deleted = false
         )

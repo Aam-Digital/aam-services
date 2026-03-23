@@ -43,6 +43,7 @@ class DefaultNotificationConfigCache(
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val cache = ConcurrentHashMap<String, NotificationConfigCacheEntry>()
+    private val cacheLock = Any()
     private val initStarted = AtomicBoolean(false)
     private val initLastException = AtomicReference<Exception?>(null)
 
@@ -92,7 +93,10 @@ class DefaultNotificationConfigCache(
         return (INIT_INITIAL_RETRY_DELAY_MS * multiplier).coerceAtMost(INIT_MAX_RETRY_DELAY_MS)
     }
 
-    override fun findAll(): List<NotificationConfigCacheEntry> = cache.values.toList()
+    override fun findAll(): List<NotificationConfigCacheEntry> =
+        synchronized(cacheLock) {
+            cache.values.toList()
+        }
 
     override fun refreshAll() {
         val response =
@@ -108,8 +112,10 @@ class DefaultNotificationConfigCache(
                 parseConfigFromDoc(doc = row.doc)
             }.associateBy { it.userIdentifier }
 
-        cache.keys.retainAll(nextCache.keys)
-        cache.putAll(nextCache)
+        synchronized(cacheLock) {
+            cache.clear()
+            cache.putAll(nextCache)
+        }
 
         logger.debug("Loaded {} notification configs into memory cache", cache.size)
     }
@@ -122,7 +128,9 @@ class DefaultNotificationConfigCache(
         val userIdentifier = extractUserIdentifier(notificationConfigId) ?: return
 
         if (deleted) {
-            cache.remove(userIdentifier)
+            synchronized(cacheLock) {
+                cache.remove(userIdentifier)
+            }
             logger.debug("Removed notification config from cache: {}", notificationConfigId)
             return
         }
@@ -138,7 +146,9 @@ class DefaultNotificationConfigCache(
             } catch (
                 @Suppress("SwallowedException") ex: NotFoundException
             ) {
-                cache.remove(userIdentifier)
+                synchronized(cacheLock) {
+                    cache.remove(userIdentifier)
+                }
                 logger.debug(
                     "Notification config not found during refresh, removed from cache: {}",
                     notificationConfigId
@@ -147,11 +157,20 @@ class DefaultNotificationConfigCache(
             }
 
         try {
-            cache[userIdentifier] = toCacheEntry(notificationConfig)
+            synchronized(cacheLock) {
+                cache[userIdentifier] = toCacheEntry(notificationConfig)
+            }
             logger.debug("Refreshed notification config in cache: {}", notificationConfigId)
-        } catch (ex: IllegalArgumentException) {
-            cache.remove(userIdentifier)
-            logger.warn("Skipping invalid NotificationConfig during refresh: {}", notificationConfigId, ex)
+        } catch (ex: Exception) {
+            synchronized(cacheLock) {
+                cache.remove(userIdentifier)
+            }
+            logger.error(
+                "Skipping invalid NotificationConfig during refresh: notificationConfigId={}, userIdentifier={}",
+                notificationConfigId,
+                userIdentifier,
+                ex
+            )
         }
     }
 
@@ -193,18 +212,20 @@ class DefaultNotificationConfigCache(
 
             rule.changeType.flatMap { changeType ->
                 conditionGroups.withIndex().map { (conditionGroupIndex, conditions) ->
+                    val externalIdentifierInput =
+                        ExternalIdentifierInput(
+                            notificationConfigId = notificationConfig.id,
+                            ruleIndex = ruleIndex,
+                            label = rule.label,
+                            entityType = rule.entityType,
+                            changeType = changeType,
+                            conditionGroupIndex = conditionGroupIndex,
+                            conditions = conditions
+                        )
+
                     NotificationRuleCacheEntry(
                         label = rule.label,
-                        externalIdentifier =
-                            buildExternalIdentifier(
-                                notificationConfigId = notificationConfig.id,
-                                ruleIndex = ruleIndex,
-                                label = rule.label,
-                                entityType = rule.entityType,
-                                changeType = changeType,
-                                conditionGroupIndex = conditionGroupIndex,
-                                conditions = conditions
-                            ),
+                        externalIdentifier = buildExternalIdentifier(externalIdentifierInput),
                         notificationType = rule.notificationType,
                         entityType = rule.entityType,
                         changeType = changeType,
@@ -215,25 +236,27 @@ class DefaultNotificationConfigCache(
             }
         }
 
-    private fun buildExternalIdentifier(
-        notificationConfigId: String,
-        ruleIndex: Int,
-        label: String,
-        entityType: String,
-        changeType: String,
-        conditionGroupIndex: Int,
-        conditions: List<DocumentCondition>
-    ): String {
+    private data class ExternalIdentifierInput(
+        val notificationConfigId: String,
+        val ruleIndex: Int,
+        val label: String,
+        val entityType: String,
+        val changeType: String,
+        val conditionGroupIndex: Int,
+        val conditions: List<DocumentCondition>
+    )
+
+    private fun buildExternalIdentifier(input: ExternalIdentifierInput): String {
         val conditionSignature =
-            conditions.joinToString(separator = "|") { "${it.field}:${it.operator}:${it.value}" }
+            input.conditions.joinToString(separator = "|") { "${it.field}:${it.operator}:${it.value}" }
         val stableIdentifier =
             listOf(
-                notificationConfigId,
-                ruleIndex.toString(),
-                label,
-                entityType,
-                changeType,
-                conditionGroupIndex.toString(),
+                input.notificationConfigId,
+                input.ruleIndex.toString(),
+                input.label,
+                input.entityType,
+                input.changeType,
+                input.conditionGroupIndex.toString(),
                 conditionSignature
             ).joinToString("#")
 
