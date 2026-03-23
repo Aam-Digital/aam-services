@@ -232,4 +232,83 @@ class DefaultNotificationConfigCacheTest {
         // then
         assertThat(cache.findAll()).isEmpty()
     }
+
+    @Test
+    fun `should retry init with exponential backoff until successful`() {
+        // given
+        val sleepCalls = mutableListOf<Long>()
+        cache =
+            DefaultNotificationConfigCache(
+                couchDbClient = couchDbClient,
+                objectMapper = objectMapper,
+                sleep = { delayMs -> sleepCalls.add(delayMs) }
+            )
+
+        var attempts = 0
+        whenever(
+            couchDbClient.getDatabaseDocument(
+                database = eq("app"),
+                documentId = eq("_all_docs"),
+                queryParams = eq(getQueryParamsAllDocs("NotificationConfig")),
+                kClass = eq(CouchDbSearchResponse::class)
+            )
+        ).thenAnswer {
+            attempts += 1
+            if (attempts <= 2) {
+                throw RuntimeException("temporary startup issue")
+            }
+
+            CouchDbSearchResponse(
+                totalRows = 0,
+                offset = 0,
+                rows = emptyList()
+            )
+        }
+
+        // when
+        cache.init()
+
+        // then
+        assertThat(sleepCalls).containsExactly(5000L, 10000L)
+    }
+
+    @Test
+    fun `should cap init retry delay to one day`() {
+        // given
+        val sleepCalls = mutableListOf<Long>()
+        cache =
+            DefaultNotificationConfigCache(
+                couchDbClient = couchDbClient,
+                objectMapper = objectMapper,
+                sleep = { delayMs -> sleepCalls.add(delayMs) }
+            )
+
+        var attempts = 0
+        whenever(
+            couchDbClient.getDatabaseDocument(
+                database = eq("app"),
+                documentId = eq("_all_docs"),
+                queryParams = eq(getQueryParamsAllDocs("NotificationConfig")),
+                kClass = eq(CouchDbSearchResponse::class)
+            )
+        ).thenAnswer {
+            attempts += 1
+            if (attempts <= 20) {
+                throw RuntimeException("temporary startup issue")
+            }
+
+            CouchDbSearchResponse(
+                totalRows = 0,
+                offset = 0,
+                rows = emptyList()
+            )
+        }
+
+        // when
+        cache.init()
+
+        // then
+        assertThat(sleepCalls).isNotEmpty
+        assertThat(sleepCalls.maxOrNull()).isEqualTo(86_400_000L)
+    }
 }

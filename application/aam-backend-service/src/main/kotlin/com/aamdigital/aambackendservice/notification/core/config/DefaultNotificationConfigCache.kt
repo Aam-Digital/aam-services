@@ -24,13 +24,14 @@ import java.util.concurrent.ConcurrentHashMap
 class DefaultNotificationConfigCache(
     private val couchDbClient: CouchDbClient,
     private val objectMapper: ObjectMapper,
-    private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
+    private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine(),
+    private val sleep: (Long) -> Unit = Thread::sleep
 ) : NotificationConfigCache {
     companion object {
         private const val DATABASE = "app"
         private const val DOCUMENT_PREFIX = "NotificationConfig"
-        private const val INIT_MAX_RETRIES = 5
-        private const val INIT_RETRY_DELAY_MS = 5000L
+        private const val INIT_INITIAL_RETRY_DELAY_MS = 5000L
+        private const val INIT_MAX_RETRY_DELAY_MS = 24 * 60 * 60 * 1000L
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -38,28 +39,29 @@ class DefaultNotificationConfigCache(
 
     @PostConstruct
     fun init() {
-        var lastException: Exception? = null
-        for (attempt in 1..INIT_MAX_RETRIES) {
+        var attempt = 1
+        var retryDelayMs = INIT_INITIAL_RETRY_DELAY_MS
+        while (true) {
             try {
                 refreshAll()
                 return
             } catch (ex: Exception) {
-                lastException = ex
                 logger.warn(
-                    "Failed to load notification configs on startup (attempt {}/{}): {}",
+                    "Failed to load notification configs on startup (attempt {}). Retrying in {} ms: {}",
                     attempt,
-                    INIT_MAX_RETRIES,
+                    retryDelayMs,
                     ex.message
                 )
-                if (attempt < INIT_MAX_RETRIES) {
-                    Thread.sleep(INIT_RETRY_DELAY_MS)
+                try {
+                    sleep(retryDelayMs)
+                } catch (interrupted: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    throw IllegalStateException("NotificationConfigCache initialization interrupted", interrupted)
                 }
+                retryDelayMs = (retryDelayMs * 2).coerceAtMost(INIT_MAX_RETRY_DELAY_MS)
+                attempt += 1
             }
         }
-        throw IllegalStateException(
-            "Failed to initialize NotificationConfigCache after $INIT_MAX_RETRIES attempts",
-            lastException
-        )
     }
 
     override fun findAll(): List<NotificationConfigCacheEntry> = cache.values.toList()
