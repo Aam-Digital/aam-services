@@ -67,10 +67,15 @@ class DefaultNotificationConfigCache(
                 if (attempt >= INIT_MAX_RETRIES) {
                     val initializationError =
                         IllegalStateException(
-                            "Failed to initialize NotificationConfigCache after $INIT_MAX_RETRIES attempts",
+                            "Failed to initialize NotificationConfigCache after $INIT_MAX_RETRIES attempts; continuing background retries",
                             initLastException.get()
                         )
                     logger.error(initializationError.message, initializationError)
+
+                    scheduleInitAttempt(
+                        attempt = attempt + 1,
+                        delayMs = INIT_MAX_RETRY_DELAY_MS
+                    )
                     return@scheduleRetry
                 }
 
