@@ -46,7 +46,13 @@ class DefaultNotificationDocumentChangeConsumer(
                     )
 
                 if (payload.documentId.startsWith("NotificationConfig:")) {
-                    logger.trace(payload.toString())
+                    logger.trace(
+                        "Refreshing notification config cache for db={}, documentId={}, rev={}, deleted={}",
+                        payload.database,
+                        payload.documentId,
+                        payload.rev,
+                        payload.deleted
+                    )
 
                     notificationConfigCache.refreshConfig(
                         database = payload.database,

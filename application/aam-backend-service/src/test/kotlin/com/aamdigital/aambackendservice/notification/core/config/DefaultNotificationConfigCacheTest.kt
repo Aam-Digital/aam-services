@@ -42,9 +42,9 @@ class DefaultNotificationConfigCacheTest {
     fun `should load notification configs from couchdb and expand rule conditions`() {
         // given
         val configDoc =
-                        objectMapper
-                                .readTree(
-                                        """
+            objectMapper
+                .readTree(
+                    """
                                         {
                                             "_id": "NotificationConfig:user-1",
                                             "_rev": "1-abc",
@@ -69,7 +69,7 @@ class DefaultNotificationConfigCacheTest {
                                             ]
                                         }
                                         """.trimIndent()
-                                ).deepCopy<ObjectNode>()
+                ).deepCopy<ObjectNode>()
 
         whenever(
             couchDbClient.getDatabaseDocument(
@@ -155,7 +155,7 @@ class DefaultNotificationConfigCacheTest {
         // given
         whenever(
             couchDbClient.getDatabaseDocument(
-                database = any(),
+                database = eq("tenant-db"),
                 documentId = eq("NotificationConfig:user-1"),
                 queryParams = any(),
                 kClass = eq(NotificationConfigDto::class)
@@ -170,7 +170,7 @@ class DefaultNotificationConfigCacheTest {
         )
 
         cache.refreshConfig(
-            database = "app",
+            database = "tenant-db",
             notificationConfigId = "NotificationConfig:user-1",
             deleted = false
         )
@@ -178,7 +178,7 @@ class DefaultNotificationConfigCacheTest {
 
         // when
         cache.refreshConfig(
-            database = "app",
+            database = "tenant-db",
             notificationConfigId = "NotificationConfig:user-1",
             deleted = true
         )

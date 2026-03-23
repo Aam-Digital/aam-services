@@ -100,7 +100,7 @@ class DefaultNotificationConfigCache(
         val notificationConfig =
             try {
                 couchDbClient.getDatabaseDocument(
-                    database = DATABASE,
+                    database = database,
                     documentId = notificationConfigId,
                     queryParams = getEmptyQueryParams(),
                     kClass = NotificationConfigDto::class
@@ -109,12 +109,20 @@ class DefaultNotificationConfigCache(
                 @Suppress("SwallowedException") ex: NotFoundException
             ) {
                 cache.remove(userIdentifier)
-                logger.debug("Notification config not found during refresh, removed from cache: {}", notificationConfigId)
+                logger.debug(
+                    "Notification config not found during refresh, removed from cache: {}",
+                    notificationConfigId
+                )
                 return
             }
 
-        cache[userIdentifier] = toCacheEntry(notificationConfig)
-        logger.debug("Refreshed notification config in cache: {}", notificationConfigId)
+        try {
+            cache[userIdentifier] = toCacheEntry(notificationConfig)
+            logger.debug("Refreshed notification config in cache: {}", notificationConfigId)
+        } catch (ex: IllegalArgumentException) {
+            cache.remove(userIdentifier)
+            logger.warn("Skipping invalid NotificationConfig during refresh: {}", notificationConfigId, ex)
+        }
     }
 
     private fun parseConfigFromDoc(doc: ObjectNode): NotificationConfigCacheEntry? =
