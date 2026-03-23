@@ -54,11 +54,26 @@ class DefaultNotificationDocumentChangeConsumer(
                         payload.deleted
                     )
 
-                    notificationConfigCache.refreshConfig(
-                        database = payload.database,
-                        notificationConfigId = payload.documentId,
-                        deleted = payload.deleted
-                    )
+                    try {
+                        notificationConfigCache.refreshConfig(
+                            database = payload.database,
+                            notificationConfigId = payload.documentId,
+                            deleted = payload.deleted
+                        )
+                    } catch (ex: Exception) {
+                        logger.error(
+                            "Failed to refresh notification config cache for db={}, documentId={}, rev={}, deleted={}",
+                            payload.database,
+                            payload.documentId,
+                            payload.rev,
+                            payload.deleted,
+                            ex
+                        )
+                        throw AmqpRejectAndDontRequeueException(
+                            "[NOTIFICATION_CONFIG_REFRESH_FAILED] Failed to refresh notification config cache for documentId=${payload.documentId}",
+                            ex
+                        )
+                    }
 
                     return
                 }
