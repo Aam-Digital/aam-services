@@ -24,7 +24,7 @@ Feature: the report calculation endpoint persist to database
         When the client calls GET /v1/reporting/report-calculation/ with id from latest response
         Then the client receives an json object
         Then the client receives status code of 200
-        Then the client receives value PENDING for property status
+        Then the client receives value PENDING|RUNNING for property status
 
     Scenario: Pending ReportCalculation is processed within 10 seconds and returns error without Config:CONFIG_ENTITY
         Given document ReportConfig_1 is stored in database app

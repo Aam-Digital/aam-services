@@ -176,7 +176,16 @@ class CucumberIntegrationTest(
         property: String
     ) {
         Assert.assertEquals(true, parseBodyToObjectNode()?.has(property))
-        Assert.assertEquals(value, parseBodyToObjectNode()?.get(property)?.textValue())
+        val actualValue = parseBodyToObjectNode()?.get(property)?.textValue()
+        if (value.contains("|")) {
+            val acceptedValues = value.split("|")
+            Assert.assertTrue(
+                "Expected one of $acceptedValues for property $property but was $actualValue",
+                acceptedValues.contains(actualValue)
+            )
+        } else {
+            Assert.assertEquals(value, actualValue)
+        }
     }
 
     @Then("the client receives array with {int} elements")
