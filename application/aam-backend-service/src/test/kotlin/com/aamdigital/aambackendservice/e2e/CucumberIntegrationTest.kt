@@ -178,7 +178,10 @@ class CucumberIntegrationTest(
         Assert.assertEquals(true, parseBodyToObjectNode()?.has(property))
         val actualValue = parseBodyToObjectNode()?.get(property)?.textValue()
         if (value.contains("|")) {
-            val acceptedValues = value.split("|")
+            val acceptedValues = value
+                .split("|")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
             Assert.assertTrue(
                 "Expected one of $acceptedValues for property $property but was $actualValue",
                 acceptedValues.contains(actualValue)
