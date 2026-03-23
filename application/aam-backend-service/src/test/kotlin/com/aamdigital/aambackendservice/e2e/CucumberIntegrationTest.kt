@@ -2,7 +2,6 @@ package com.aamdigital.aambackendservice.e2e
 
 import com.aamdigital.aambackendservice.common.changes.SyncRepository
 import com.aamdigital.aambackendservice.container.TestContainers
-import com.aamdigital.aambackendservice.notification.repository.NotificationConfigRepository
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
 import io.cucumber.java.After
@@ -22,7 +21,6 @@ import java.io.File
 @CucumberContextConfiguration
 class CucumberIntegrationTest(
     val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher,
-    val notificationConfigRepository: NotificationConfigRepository,
     val syncRepository: SyncRepository
 ) : SpringIntegrationTest() {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -31,14 +29,12 @@ class CucumberIntegrationTest(
     fun `log scenario start`() {
         logger.info("[CucumberTest] === Scenario starting ===")
         logger.info("[CucumberTest] SyncEntries before scenario: {}", syncRepository.findAll().map { "${it.database}=${it.latestRef.take(20)}" })
-        logger.info("[CucumberTest] NotificationConfigs before scenario: {}", notificationConfigRepository.count())
     }
 
     @After
     fun `reset all databases`() {
         logger.info("[CucumberTest] === Scenario cleanup ===")
         couchDbTestingService.reset()
-        notificationConfigRepository.deleteAll()
     }
 
     @Given("signed in as client {} with secret {} in realm {}")
@@ -180,7 +176,19 @@ class CucumberIntegrationTest(
         property: String
     ) {
         Assert.assertEquals(true, parseBodyToObjectNode()?.has(property))
-        Assert.assertEquals(value, parseBodyToObjectNode()?.get(property)?.textValue())
+        val actualValue = parseBodyToObjectNode()?.get(property)?.textValue()
+        if (value.contains("|")) {
+            val acceptedValues = value
+                .split("|")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+            Assert.assertTrue(
+                "Expected one of $acceptedValues for property $property but was $actualValue",
+                acceptedValues.contains(actualValue)
+            )
+        } else {
+            Assert.assertEquals(value, actualValue)
+        }
     }
 
     @Then("the client receives array with {int} elements")
@@ -223,12 +231,8 @@ class CucumberIntegrationTest(
         val deadline = System.currentTimeMillis() + maxWaitMs
         var actualCount: Int
 
-        val configs = notificationConfigRepository.findAll().map {
-            "user=${it.userIdentifier}, rules=${it.notificationRules.map { r -> "changeType=${r.changeType},entity=${r.entityType},enabled=${r.enabled}" }}"
-        }
         val syncEntries = syncRepository.findAll().map { "${it.database}=${it.latestRef.take(30)}" }
         System.err.println("[CucumberTest] Waiting for $expectedCount notifications for user $userId (timeout: ${maxWaitMs}ms)")
-        System.err.println("[CucumberTest] NotificationConfigs: $configs")
         System.err.println("[CucumberTest] SyncEntries: $syncEntries")
 
         do {

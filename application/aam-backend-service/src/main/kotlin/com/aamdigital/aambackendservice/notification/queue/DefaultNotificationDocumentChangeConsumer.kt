@@ -3,8 +3,7 @@ package com.aamdigital.aambackendservice.notification.queue
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
-import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigRequest
-import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigUseCase
+import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesRequest
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.DOCUMENT_CHANGES_NOTIFICATION_QUEUE
@@ -16,7 +15,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener
 
 class DefaultNotificationDocumentChangeConsumer(
     private val messageParser: QueueMessageParser,
-    private val syncNotificationConfigUseCase: SyncNotificationConfigUseCase,
+    private val notificationConfigCache: NotificationConfigCache,
     private val applyNotificationRulesUseCase: ApplyNotificationRulesUseCase
 ) : NotificationDocumentChangeConsumer {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -47,16 +46,34 @@ class DefaultNotificationDocumentChangeConsumer(
                     )
 
                 if (payload.documentId.startsWith("NotificationConfig:")) {
-                    logger.trace(payload.toString())
-
-                    syncNotificationConfigUseCase.run(
-                        request =
-                            SyncNotificationConfigRequest(
-                                notificationConfigDatabase = "app", // todo: configurable
-                                notificationConfigId = payload.documentId,
-                                notificationConfigRev = payload.rev
-                            )
+                    logger.trace(
+                        "Refreshing notification config cache for db={}, documentId={}, rev={}, deleted={}",
+                        payload.database,
+                        payload.documentId,
+                        payload.rev,
+                        payload.deleted
                     )
+
+                    try {
+                        notificationConfigCache.refreshConfig(
+                            database = payload.database,
+                            notificationConfigId = payload.documentId,
+                            deleted = payload.deleted
+                        )
+                    } catch (ex: Exception) {
+                        logger.error(
+                            "Failed to refresh notification config cache for db={}, documentId={}, rev={}, deleted={}",
+                            payload.database,
+                            payload.documentId,
+                            payload.rev,
+                            payload.deleted,
+                            ex
+                        )
+                        throw AmqpRejectAndDontRequeueException(
+                            "[NOTIFICATION_CONFIG_REFRESH_FAILED] Failed to refresh notification config cache for documentId=${payload.documentId}",
+                            ex
+                        )
+                    }
 
                     return
                 }

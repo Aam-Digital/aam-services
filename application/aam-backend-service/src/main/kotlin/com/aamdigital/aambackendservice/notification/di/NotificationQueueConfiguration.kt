@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
-import com.aamdigital.aambackendservice.notification.core.config.SyncNotificationConfigUseCase
+import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationUseCase
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.queue.DefaultNotificationDocumentChangeConsumer
@@ -50,12 +50,12 @@ class NotificationQueueConfiguration {
     @Bean("notification-document-changes-consumer")
     fun notificationDocumentChangeEventConsumer(
         messageParser: QueueMessageParser,
-        syncNotificationConfigUseCase: SyncNotificationConfigUseCase,
+        notificationConfigCache: NotificationConfigCache,
         applyNotificationRulesUseCase: ApplyNotificationRulesUseCase
     ): NotificationDocumentChangeConsumer =
         DefaultNotificationDocumentChangeConsumer(
             messageParser,
-            syncNotificationConfigUseCase,
+            notificationConfigCache,
             applyNotificationRulesUseCase
         )
 
