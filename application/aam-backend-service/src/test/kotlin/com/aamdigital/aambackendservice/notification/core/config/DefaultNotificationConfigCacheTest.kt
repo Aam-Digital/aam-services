@@ -234,14 +234,17 @@ class DefaultNotificationConfigCacheTest {
     }
 
     @Test
-    fun `should retry init with exponential backoff until successful`() {
+    fun `should schedule init retries with exponential backoff until successful`() {
         // given
-        val sleepCalls = mutableListOf<Long>()
+        val scheduledDelays = mutableListOf<Long>()
         cache =
             DefaultNotificationConfigCache(
                 couchDbClient = couchDbClient,
                 objectMapper = objectMapper,
-                sleep = { delayMs -> sleepCalls.add(delayMs) }
+                scheduleRetry = { delayMs, task ->
+                    scheduledDelays.add(delayMs)
+                    task()
+                }
             )
 
         var attempts = 0
@@ -269,18 +272,21 @@ class DefaultNotificationConfigCacheTest {
         cache.init()
 
         // then
-        assertThat(sleepCalls).containsExactly(5000L, 10000L)
+        assertThat(scheduledDelays).containsExactly(0L, 5000L, 10000L)
     }
 
     @Test
-    fun `should cap init retry delay to one day`() {
+    fun `should stop retrying after max init retries`() {
         // given
-        val sleepCalls = mutableListOf<Long>()
+        val scheduledDelays = mutableListOf<Long>()
         cache =
             DefaultNotificationConfigCache(
                 couchDbClient = couchDbClient,
                 objectMapper = objectMapper,
-                sleep = { delayMs -> sleepCalls.add(delayMs) }
+                scheduleRetry = { delayMs, task ->
+                    scheduledDelays.add(delayMs)
+                    task()
+                }
             )
 
         var attempts = 0
@@ -293,22 +299,14 @@ class DefaultNotificationConfigCacheTest {
             )
         ).thenAnswer {
             attempts += 1
-            if (attempts <= 20) {
-                throw RuntimeException("temporary startup issue")
-            }
-
-            CouchDbSearchResponse(
-                totalRows = 0,
-                offset = 0,
-                rows = emptyList()
-            )
+            throw RuntimeException("temporary startup issue")
         }
 
         // when
         cache.init()
 
         // then
-        assertThat(sleepCalls).isNotEmpty
-        assertThat(sleepCalls.maxOrNull()).isEqualTo(86_400_000L)
+        assertThat(attempts).isEqualTo(5)
+        assertThat(scheduledDelays).containsExactly(0L, 5000L, 10000L, 20000L, 40000L)
     }
 }

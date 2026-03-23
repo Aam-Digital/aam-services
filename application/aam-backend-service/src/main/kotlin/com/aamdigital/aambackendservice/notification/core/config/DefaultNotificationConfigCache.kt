@@ -13,7 +13,11 @@ import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * CouchDB-backed in-memory implementation of [NotificationConfigCache].
@@ -25,43 +29,67 @@ class DefaultNotificationConfigCache(
     private val couchDbClient: CouchDbClient,
     private val objectMapper: ObjectMapper,
     private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine(),
-    private val sleep: (Long) -> Unit = Thread::sleep
+    private val scheduleRetry: (Long, () -> Unit) -> Unit = { delayMs, task ->
+        CompletableFuture.delayedExecutor(delayMs, TimeUnit.MILLISECONDS).execute(task)
+    }
 ) : NotificationConfigCache {
     companion object {
         private const val DATABASE = "app"
         private const val DOCUMENT_PREFIX = "NotificationConfig"
+        private const val INIT_MAX_RETRIES = 5
         private const val INIT_INITIAL_RETRY_DELAY_MS = 5000L
         private const val INIT_MAX_RETRY_DELAY_MS = 24 * 60 * 60 * 1000L
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val cache = ConcurrentHashMap<String, NotificationConfigCacheEntry>()
+    private val initStarted = AtomicBoolean(false)
+    private val initLastException = AtomicReference<Exception?>(null)
 
     @PostConstruct
     fun init() {
-        var attempt = 1
-        var retryDelayMs = INIT_INITIAL_RETRY_DELAY_MS
-        while (true) {
+        if (!initStarted.compareAndSet(false, true)) {
+            return
+        }
+
+        scheduleInitAttempt(attempt = 1, delayMs = 0)
+    }
+
+    private fun scheduleInitAttempt(attempt: Int, delayMs: Long) {
+        scheduleRetry(delayMs) {
             try {
                 refreshAll()
-                return
+                logger.debug("Notification config cache warmup completed")
             } catch (ex: Exception) {
+                initLastException.set(ex)
+
+                if (attempt >= INIT_MAX_RETRIES) {
+                    val initializationError =
+                        IllegalStateException(
+                            "Failed to initialize NotificationConfigCache after $INIT_MAX_RETRIES attempts",
+                            initLastException.get()
+                        )
+                    logger.error(initializationError.message, initializationError)
+                    return@scheduleRetry
+                }
+
+                val retryDelayMs = calculateBackoffDelayMs(attempt)
                 logger.warn(
-                    "Failed to load notification configs on startup (attempt {}). Retrying in {} ms: {}",
+                    "Failed to load notification configs on startup (attempt {}/{}). Retrying in {} ms: {}",
                     attempt,
+                    INIT_MAX_RETRIES,
                     retryDelayMs,
                     ex.message
                 )
-                try {
-                    sleep(retryDelayMs)
-                } catch (interrupted: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    throw IllegalStateException("NotificationConfigCache initialization interrupted", interrupted)
-                }
-                retryDelayMs = (retryDelayMs * 2).coerceAtMost(INIT_MAX_RETRY_DELAY_MS)
-                attempt += 1
+
+                scheduleInitAttempt(attempt = attempt + 1, delayMs = retryDelayMs)
             }
         }
+    }
+
+    private fun calculateBackoffDelayMs(attempt: Int): Long {
+        val multiplier = 1L shl (attempt - 1)
+        return (INIT_INITIAL_RETRY_DELAY_MS * multiplier).coerceAtMost(INIT_MAX_RETRY_DELAY_MS)
     }
 
     override fun findAll(): List<NotificationConfigCacheEntry> = cache.values.toList()
