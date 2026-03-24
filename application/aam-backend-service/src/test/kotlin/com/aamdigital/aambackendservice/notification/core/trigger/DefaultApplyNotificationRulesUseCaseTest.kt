@@ -3,19 +3,28 @@ package com.aamdigital.aambackendservice.notification.core.trigger
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.condition.DocumentCondition
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
+import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
 import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
+import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.reset
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import kotlin.test.assertEquals
 
@@ -501,5 +510,143 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // then
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
         assertEquals(notificationsSendCount, (result as UseCaseOutcome.Success).data.notificationsSendCount)
+    }
+
+    @Test
+    fun `should always publish APP notification for every matched rule`() {
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(
+            listOf(
+                NotificationConfigCacheEntry(
+                    channelPush = false,
+                    channelEmail = false,
+                    userIdentifier = "user-1",
+                    rules = listOf(
+                        NotificationRuleCacheEntry(
+                            label = "Rule 1",
+                            externalIdentifier = "ext-1",
+                            notificationType = NotificationType.ENTITY_CHANGE,
+                            entityType = "Child",
+                            changeType = "created",
+                            conditions = emptyList(),
+                            enabled = true
+                        )
+                    )
+                )
+            )
+        )
+
+        // when
+        val result = service.run(
+            ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
+        )
+
+        // then
+        assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
+
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, times(2)).publish(
+            eq(USER_NOTIFICATION_QUEUE),
+            eventCaptor.capture()
+        )
+        assertThat(eventCaptor.allValues.map { it.notificationChannelType })
+            .containsExactlyInAnyOrder(
+                NotificationChannelType.APP,
+                NotificationChannelType.PUSH // currently always sent regardless of the channelPush config flag, see TODO in use case
+            )
+    }
+
+    @Test
+    fun `should always publish PUSH notification regardless of channelPush flag`() {
+        // Note: push is currently always sent regardless of the channelPush config flag.
+        // This is because we currently only have device-level registration for push notifications, not globally for all devices of one user.
+        // TODO: replace with per-device registration check (see TODO in use case).
+
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(
+            listOf(
+                NotificationConfigCacheEntry(
+                    channelPush = false,
+                    channelEmail = false,
+                    userIdentifier = "user-1",
+                    rules = listOf(
+                        NotificationRuleCacheEntry(
+                            label = "Rule 1",
+                            externalIdentifier = "ext-1",
+                            notificationType = NotificationType.ENTITY_CHANGE,
+                            entityType = "Child",
+                            changeType = "created",
+                            conditions = emptyList(),
+                            enabled = true
+                        )
+                    )
+                )
+            )
+        )
+
+        // when
+        val result = service.run(
+            ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
+        )
+
+        // then
+        assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
+
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, times(2)).publish(
+            eq(USER_NOTIFICATION_QUEUE),
+            eventCaptor.capture()
+        )
+        val channelTypes = eventCaptor.allValues.map { it.notificationChannelType }
+        assertThat(channelTypes).containsExactlyInAnyOrder(
+            NotificationChannelType.APP,
+            NotificationChannelType.PUSH
+        )
+    }
+
+    @Disabled("Email channel not yet implemented")
+    @Test
+    fun `should also publish EMAIL notification when channelEmail flag is enabled`() {
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(
+            listOf(
+                NotificationConfigCacheEntry(
+                    channelPush = false,
+                    channelEmail = true,
+                    userIdentifier = "user-1",
+                    rules = listOf(
+                        NotificationRuleCacheEntry(
+                            label = "Rule 1",
+                            externalIdentifier = "ext-1",
+                            notificationType = NotificationType.ENTITY_CHANGE,
+                            entityType = "Child",
+                            changeType = "created",
+                            conditions = emptyList(),
+                            enabled = true
+                        )
+                    )
+                )
+            )
+        )
+
+        // when
+        val result = service.run(
+            ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
+        )
+
+        // then
+        assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
+
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, times(3)).publish(
+            eq(USER_NOTIFICATION_QUEUE),
+            eventCaptor.capture()
+        )
+        val channelTypes = eventCaptor.allValues.map { it.notificationChannelType }
+        assertThat(channelTypes).containsExactlyInAnyOrder(
+            NotificationChannelType.APP,
+            NotificationChannelType.PUSH, // currently always sent regardless of the channelPush config flag, see TODO in use case
+            NotificationChannelType.EMAIL
+        )
     }
 }
