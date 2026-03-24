@@ -7,6 +7,7 @@ import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.couchdb.core.getQueryParamsAllDocs
 import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbSearchResponse
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import jakarta.annotation.PostConstruct
@@ -17,7 +18,6 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * CouchDB-backed in-memory implementation of [NotificationConfigCache].
@@ -36,16 +36,12 @@ class DefaultNotificationConfigCache(
     companion object {
         private const val DATABASE = "app"
         private const val DOCUMENT_PREFIX = "NotificationConfig"
-        private const val INIT_MAX_RETRIES = 5
-        private const val INIT_INITIAL_RETRY_DELAY_MS = 5000L
-        private const val INIT_MAX_RETRY_DELAY_MS = 24 * 60 * 60 * 1000L
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val cache = ConcurrentHashMap<String, NotificationConfigCacheEntry>()
     private val cacheLock = Any()
     private val initStarted = AtomicBoolean(false)
-    private val initLastException = AtomicReference<Exception?>(null)
 
     @PostConstruct
     fun init() {
@@ -62,40 +58,29 @@ class DefaultNotificationConfigCache(
                 refreshAll()
                 logger.debug("Notification config cache warmup completed")
             } catch (ex: Exception) {
-                initLastException.set(ex)
+                val retryDelayMs = ScheduledJobBackoff.calculateBackoffMs(attempt)
 
-                if (attempt >= INIT_MAX_RETRIES) {
-                    val initializationError =
-                        IllegalStateException(
-                            "Failed to initialize NotificationConfigCache after $INIT_MAX_RETRIES attempts; continuing background retries",
-                            initLastException.get()
-                        )
-                    logger.error(initializationError.message, initializationError)
-
-                    scheduleInitAttempt(
-                        attempt = attempt + 1,
-                        delayMs = INIT_MAX_RETRY_DELAY_MS
+                if (retryDelayMs >= ScheduledJobBackoff.MAX_BACKOFF_MS) {
+                    logger.error(
+                        "[NotificationConfigCache] Init failed (attempt {}). " +
+                            "Max backoff reached, retrying in {} ms: {}",
+                        attempt,
+                        retryDelayMs,
+                        ex.message
                     )
-                    return@scheduleRetry
+                } else {
+                    logger.warn(
+                        "[NotificationConfigCache] Init failed (attempt {}). Retrying in {} ms: {}",
+                        attempt,
+                        retryDelayMs,
+                        ex.message
+                    )
                 }
-
-                val retryDelayMs = calculateBackoffDelayMs(attempt)
-                logger.warn(
-                    "Failed to load notification configs on startup (attempt {}/{}). Retrying in {} ms: {}",
-                    attempt,
-                    INIT_MAX_RETRIES,
-                    retryDelayMs,
-                    ex.message
-                )
+                logger.debug("[NotificationConfigCache] Debug information", ex)
 
                 scheduleInitAttempt(attempt = attempt + 1, delayMs = retryDelayMs)
             }
         }
-    }
-
-    private fun calculateBackoffDelayMs(attempt: Int): Long {
-        val multiplier = 1L shl (attempt - 1)
-        return (INIT_INITIAL_RETRY_DELAY_MS * multiplier).coerceAtMost(INIT_MAX_RETRY_DELAY_MS)
     }
 
     override fun findAll(): List<NotificationConfigCacheEntry> =

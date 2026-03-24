@@ -1,145 +1,152 @@
-package com.aamdigital.aambackendservice.common.changes
+package com.aamdigital.aambackendservice.skill.job
 
 import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
+import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
+import com.aamdigital.aambackendservice.skill.di.SkillLabApiClientConfiguration
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
 import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.reset
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 @ExtendWith(MockitoExtension::class)
-class CouchDbChangesPollingJobTest {
+class SyncSkillsJobTest {
 
-    private lateinit var job: CouchDbChangesPollingJob
+    private lateinit var job: SyncSkillsJob
 
     @Mock
-    lateinit var databaseChangeDetection: CouchDbChangesProcessor
+    lateinit var fetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase
 
     private var currentTime: Long = 0L
 
+    private val skillLabApiClientConfiguration = SkillLabApiClientConfiguration(
+        basePath = "https://example.com",
+        apiKey = "test-key",
+        projectId = "test-project",
+    )
+
     @BeforeEach
     fun setUp() {
-        reset(databaseChangeDetection)
+        reset(fetchUserProfileUpdatesUseCase)
         currentTime = 0L
-        job = CouchDbChangesPollingJob(
-            changesProcessor = databaseChangeDetection,
+        job = SyncSkillsJob(
+            skillLabFetchUserProfileUpdatesUseCase = fetchUserProfileUpdatesUseCase,
+            skillLabApiClientConfiguration = skillLabApiClientConfiguration,
         )
         job.backoff.clock = { currentTime }
     }
 
     @Test
-    fun `should delegate to checkForChanges on each invocation`() {
-        job.checkForCouchDbChanges()
+    fun `should delegate to use case on each invocation`() {
+        job.checkForSkillLabChanges()
 
-        verify(databaseChangeDetection).checkForChanges()
+        verify(fetchUserProfileUpdatesUseCase).run(any())
     }
 
     @Test
     fun `should skip execution during backoff period and resume after`() {
-        doThrow(RuntimeException("error")).whenever(databaseChangeDetection).checkForChanges()
+        doThrow(RuntimeException("error")).whenever(fetchUserProfileUpdatesUseCase).run(any())
 
         // First failure sets nextRetryAt = currentTime + 5000
-        job.checkForCouchDbChanges()
-        verify(databaseChangeDetection, org.mockito.kotlin.times(1)).checkForChanges()
+        job.checkForSkillLabChanges()
+        verify(fetchUserProfileUpdatesUseCase, times(1)).run(any())
 
         // Still within backoff — should be skipped
         currentTime = 4999L
-        job.checkForCouchDbChanges()
-        verify(databaseChangeDetection, org.mockito.kotlin.times(1)).checkForChanges()
+        job.checkForSkillLabChanges()
+        verify(fetchUserProfileUpdatesUseCase, times(1)).run(any())
 
         // Backoff elapsed — should retry
         currentTime = 5000L
-        job.checkForCouchDbChanges()
-        verify(databaseChangeDetection, org.mockito.kotlin.times(2)).checkForChanges()
+        job.checkForSkillLabChanges()
+        verify(fetchUserProfileUpdatesUseCase, times(2)).run(any())
     }
 
     @Test
     fun `should increase backoff delay on consecutive failures`() {
-        doThrow(RuntimeException("error")).whenever(databaseChangeDetection).checkForChanges()
+        doThrow(RuntimeException("error")).whenever(fetchUserProfileUpdatesUseCase).run(any())
 
         // 1st failure: backoff = 5000ms
-        job.checkForCouchDbChanges()
+        job.checkForSkillLabChanges()
 
         // Advance past first backoff
         currentTime = 5000L
         // 2nd failure: backoff = 10000ms
-        job.checkForCouchDbChanges()
+        job.checkForSkillLabChanges()
 
         // Advance past second backoff
         currentTime = 15000L
         // 3rd failure: backoff = 20000ms
-        job.checkForCouchDbChanges()
+        job.checkForSkillLabChanges()
 
         // At 34999ms — still within third backoff (15000 + 20000 = 35000)
         currentTime = 34999L
-        job.checkForCouchDbChanges()
-        verify(databaseChangeDetection, org.mockito.kotlin.times(3)).checkForChanges()
+        job.checkForSkillLabChanges()
+        verify(fetchUserProfileUpdatesUseCase, times(3)).run(any())
 
         // At 35000ms — backoff elapsed, should retry
         currentTime = 35000L
-        job.checkForCouchDbChanges()
-        verify(databaseChangeDetection, org.mockito.kotlin.times(4)).checkForChanges()
+        job.checkForSkillLabChanges()
+        verify(fetchUserProfileUpdatesUseCase, times(4)).run(any())
     }
 
     @Test
     fun `should cap backoff delay at 24 hours`() {
-        doThrow(RuntimeException("error")).whenever(databaseChangeDetection).checkForChanges()
+        doThrow(RuntimeException("error")).whenever(fetchUserProfileUpdatesUseCase).run(any())
 
         // Trigger enough failures to exceed 24h cap
-        // backoff = 5000 * 2^(attempt-1), cap at 86_400_000
         repeat(20) {
-            job.checkForCouchDbChanges()
+            job.checkForSkillLabChanges()
             currentTime += ScheduledJobBackoff.MAX_BACKOFF_MS
         }
 
         // After 20 failures, next backoff should be capped at MAX_BACKOFF_MS
         val timeBefore = currentTime
-        job.checkForCouchDbChanges()
+        job.checkForSkillLabChanges()
 
         // Verify the job resumes at exactly timeBefore + MAX_BACKOFF_MS
         currentTime = timeBefore + ScheduledJobBackoff.MAX_BACKOFF_MS
-        job.checkForCouchDbChanges()
-
-        // But IS skipped just before that
-        // (already validated by the exponential test pattern)
+        job.checkForSkillLabChanges()
     }
 
     @Test
     fun `should reset backoff on success after failures`() {
-        whenever(databaseChangeDetection.checkForChanges())
+        whenever(fetchUserProfileUpdatesUseCase.run(any()))
             .thenThrow(RuntimeException("error"))
             .thenThrow(RuntimeException("error"))
             .thenThrow(RuntimeException("error"))
-            .thenAnswer { }
+            .thenAnswer { null }
             .thenThrow(RuntimeException("error"))
-            .thenAnswer { }
+            .thenAnswer { null }
 
         // 3 consecutive failures with increasing backoff
-        job.checkForCouchDbChanges() // fail 1: backoff 5s
+        job.checkForSkillLabChanges() // fail 1: backoff 5s
         currentTime = 5000L
-        job.checkForCouchDbChanges() // fail 2: backoff 10s
+        job.checkForSkillLabChanges() // fail 2: backoff 10s
         currentTime = 15000L
-        job.checkForCouchDbChanges() // fail 3: backoff 20s
+        job.checkForSkillLabChanges() // fail 3: backoff 20s
         currentTime = 35000L
 
         // Success — resets counter
-        job.checkForCouchDbChanges()
+        job.checkForSkillLabChanges()
 
         // Next failure should start backoff from scratch (5000ms, not 40000ms)
-        job.checkForCouchDbChanges()
+        job.checkForSkillLabChanges()
 
         // Should skip at currentTime + 4999
         currentTime = 35000L + 4999L
-        job.checkForCouchDbChanges()
-        verify(databaseChangeDetection, org.mockito.kotlin.times(5)).checkForChanges()
+        job.checkForSkillLabChanges()
+        verify(fetchUserProfileUpdatesUseCase, times(5)).run(any())
 
         // Should retry at currentTime = 35000 + 5000
         currentTime = 35000L + 5000L
-        job.checkForCouchDbChanges()
-        verify(databaseChangeDetection, org.mockito.kotlin.times(6)).checkForChanges()
+        job.checkForSkillLabChanges()
+        verify(fetchUserProfileUpdatesUseCase, times(6)).run(any())
     }
 }

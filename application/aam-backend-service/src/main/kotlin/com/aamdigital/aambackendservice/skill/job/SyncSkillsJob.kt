@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.skill.job
 
+import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.di.SkillLabApiClientConfiguration
@@ -9,7 +10,9 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Scheduled
 
 /**
- * Configures cron job for scheduled sync all SkillLab changes
+ * Configures cron job for scheduled sync all SkillLab changes.
+ * Uses exponential backoff on consecutive failures (capped at one retry per day).
+ * Resets the error counter on each successful run.
  */
 @Configuration
 @ConditionalOnProperty(
@@ -20,36 +23,22 @@ import org.springframework.scheduling.annotation.Scheduled
 )
 class SyncSkillsJob(
     private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase,
-    private val skillLabApiClientConfiguration: SkillLabApiClientConfiguration
+    private val skillLabApiClientConfiguration: SkillLabApiClientConfiguration,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-
-    companion object {
-        private var ERROR_COUNTER: Int = 0
-        private var MAX_ERROR_COUNT: Int = 5
-    }
+    internal val backoff = ScheduledJobBackoff(logger, "SyncSkillsJob")
 
     @Scheduled(fixedDelay = (60000 * 10)) // every 10 minutes
     fun checkForSkillLabChanges() {
-        if (ERROR_COUNTER >= MAX_ERROR_COUNT) {
-            logger.trace("${this.javaClass.name}: MAX_ERROR_COUNT reached. Not starting job again.")
-            return
-        }
+        if (backoff.shouldSkip()) return
 
-        try {
+        backoff.execute {
             skillLabFetchUserProfileUpdatesUseCase.run(
                 request =
                     FetchUserProfileUpdatesRequest(
                         projectId = skillLabApiClientConfiguration.projectId
                     )
             )
-        } catch (ex: Exception) {
-            logger.error(
-                "[${this.javaClass.name}] An error occurred (count: $ERROR_COUNTER): {}",
-                ex.localizedMessage
-            )
-            logger.debug("[${this.javaClass.name}] Debug information", ex)
-            ERROR_COUNTER += 1
         }
     }
 }

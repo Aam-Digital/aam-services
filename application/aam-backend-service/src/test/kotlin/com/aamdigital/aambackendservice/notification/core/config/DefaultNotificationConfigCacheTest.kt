@@ -276,10 +276,10 @@ class DefaultNotificationConfigCacheTest {
     }
 
     @Test
-    fun `should continue retrying with capped delay after max init retries`() {
+    fun `should continue retrying with capped delay after many failures`() {
         // given
         val scheduledDelays = mutableListOf<Long>()
-        val maxScheduledTasksToExecute = 8
+        val maxScheduledTasksToExecute = 18
         cache =
             DefaultNotificationConfigCache(
                 couchDbClient = couchDbClient,
@@ -310,7 +310,9 @@ class DefaultNotificationConfigCacheTest {
 
         // then
         assertThat(attempts).isEqualTo(maxScheduledTasksToExecute)
-        assertThat(scheduledDelays)
-            .containsExactly(0L, 5000L, 10000L, 20000L, 40000L, 86400000L, 86400000L, 86400000L, 86400000L)
+        // Exponential backoff: 5000, 10000, 20000, 40000, 80000, 160000, 320000, 640000,
+        // 1280000, 2560000, 5120000, 10240000, 20480000, 40960000, 81920000, 86400000 (capped), ...
+        assertThat(scheduledDelays).startsWith(0L, 5000L, 10000L, 20000L, 40000L)
+        assertThat(scheduledDelays.last()).isEqualTo(86400000L)
     }
 }
