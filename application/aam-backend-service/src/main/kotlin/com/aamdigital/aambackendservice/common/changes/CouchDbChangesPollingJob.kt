@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.common.changes
 
+import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
@@ -7,7 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled
 
 /**
  * Scheduled job that invokes [CouchDbChangesProcessor.checkForChanges] on a fixed interval.
- * Stops polling after [maxErrorCount] consecutive failures to avoid flooding logs.
+ * Uses exponential backoff on consecutive failures (capped at one retry per day).
  * Resets the error counter on each successful run.
  */
 @Configuration
@@ -17,30 +18,17 @@ import org.springframework.scheduling.annotation.Scheduled
     matchIfMissing = true
 )
 class CouchDbChangesPollingJob(
-    private val changesProcessor: CouchDbChangesProcessor
+    private val changesProcessor: CouchDbChangesProcessor,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-
-    private var errorCounter: Int = 0
-    private val maxErrorCount: Int = 5
+    internal val backoff = ScheduledJobBackoff(logger, "CouchDbChangesPollingJob")
 
     @Scheduled(fixedDelayString = "\${database-change-detection.fixed-delay:8000}")
     fun checkForCouchDbChanges() {
-        if (errorCounter >= maxErrorCount) {
-            logger.trace("[CouchDbChangesPollingJob]: maxErrorCount reached. Not starting job again.")
-            return
-        }
+        if (backoff.shouldSkip()) return
 
-        try {
+        backoff.execute {
             changesProcessor.checkForChanges()
-            errorCounter = 0
-        } catch (ex: Exception) {
-            logger.error(
-                "[CouchDbChangesPollingJob] An error occurred (count: $errorCounter): {}",
-                ex.localizedMessage
-            )
-            logger.debug("[CouchDbChangesPollingJob] Debug information", ex)
-            errorCounter += 1
         }
     }
 }
