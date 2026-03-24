@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.notification.core.trigger
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.condition.DocumentCondition
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
@@ -19,16 +20,20 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.mockito.Mock
+import org.mockito.junit.jupiter.MockitoSettings
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.mockito.quality.Strictness
 import kotlin.test.assertEquals
 
 @ExtendWith(MockitoExtension::class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class DefaultApplyNotificationRulesUseCaseTest {
     private lateinit var service: DefaultApplyNotificationRulesUseCase
 
@@ -38,18 +43,27 @@ class DefaultApplyNotificationRulesUseCaseTest {
     @Mock
     lateinit var userNotificationPublisher: UserNotificationPublisher
 
+    @Mock
+    lateinit var permissionCheckClient: PermissionCheckClient
+
     @BeforeEach
     fun setUp() {
         reset(
             notificationConfigCache,
-            userNotificationPublisher
+            userNotificationPublisher,
+            permissionCheckClient
         )
 
         service =
             DefaultApplyNotificationRulesUseCase(
                 notificationConfigCache = notificationConfigCache,
-                userNotificationPublisher = userNotificationPublisher
+                userNotificationPublisher = userNotificationPublisher,
+                permissionCheckClient = permissionCheckClient
             )
+
+        whenever(permissionCheckClient.checkPermissions(any(), any(), any())).thenReturn(
+            mapOf("user-1" to true)
+        )
     }
 
     private val documentUpdateEvent =
@@ -648,5 +662,51 @@ class DefaultApplyNotificationRulesUseCaseTest {
             NotificationChannelType.PUSH, // currently always sent regardless of the channelPush config flag, see TODO in use case
             NotificationChannelType.EMAIL
         )
+    }
+
+    @Test
+    fun `should not publish notification when permission check denies user access`() {
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(
+            listOf(
+                generateNotificationConfig(changeType = "created")
+            )
+        )
+        whenever(permissionCheckClient.checkPermissions(any(), any(), any())).thenReturn(
+            mapOf("user-1" to false)
+        )
+
+        // when
+        val result = service.run(
+            ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
+        )
+
+        // then
+        assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
+        assertEquals(0, (result as UseCaseOutcome.Success).data.notificationsSendCount)
+        verify(userNotificationPublisher, times(0)).publish(any(), any())
+    }
+
+    @Test
+    fun `should not publish notification when permission check fails`() {
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(
+            listOf(
+                generateNotificationConfig(changeType = "created")
+            )
+        )
+        whenever(permissionCheckClient.checkPermissions(any(), any(), any())).thenThrow(
+            RuntimeException("replication-backend unavailable")
+        )
+
+        // when
+        val result = service.run(
+            ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
+        )
+
+        // then
+        assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
+        assertEquals(0, (result as UseCaseOutcome.Success).data.notificationsSendCount)
+        verify(userNotificationPublisher, times(0)).publish(any(), any())
     }
 }

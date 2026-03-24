@@ -57,6 +57,19 @@ APPLICATION_BASEURL=<your-instance>.aam-digital.com
 NOTIFICATIONFIREBASECONFIGURATION_LINKBASEURL=https://<your-instance>.aam-digital.com
 ```
 
+### Permission-Aware Notifications (optional)
+
+To filter notifications based on entity-level permissions (so users only receive notifications for entities they can access),
+configure the connection to the replication-backend:
+
+```dotenv
+AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH=http://replication-backend:3000
+AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASICAUTHUSERNAME=<admin-username>
+AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASICAUTHPASSWORD=<admin-password>
+```
+
+If these variables are not set, notifications are sent without permission filtering (all users matching a notification rule receive the notification regardless of entity access).
+
 ### Firebase Configuration (for Push Notifications)
 
 If you want to send Push Notifications, we rely on Firebase Cloud Messaging (FCM).

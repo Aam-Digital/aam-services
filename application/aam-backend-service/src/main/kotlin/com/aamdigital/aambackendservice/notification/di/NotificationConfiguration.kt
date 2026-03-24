@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
+import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
 import com.aamdigital.aambackendservice.notification.core.config.DefaultNotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
@@ -40,11 +41,13 @@ class NotificationConfiguration {
     @Bean
     fun defaultApplyNotificationRulesUseCase(
         notificationConfigCache: NotificationConfigCache,
-        userNotificationPublisher: UserNotificationPublisher
+        userNotificationPublisher: UserNotificationPublisher,
+        permissionCheckClient: PermissionCheckClient
     ): ApplyNotificationRulesUseCase =
         DefaultApplyNotificationRulesUseCase(
             notificationConfigCache = notificationConfigCache,
-            userNotificationPublisher = userNotificationPublisher
+            userNotificationPublisher = userNotificationPublisher,
+            permissionCheckClient = permissionCheckClient
         )
 
     @Bean

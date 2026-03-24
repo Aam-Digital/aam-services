@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.notification.core.trigger
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
 import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
@@ -17,6 +18,7 @@ import com.aamdigital.aambackendservice.notification.queue.UserNotificationPubli
 class DefaultApplyNotificationRulesUseCase(
     private val notificationConfigCache: NotificationConfigCache,
     private val userNotificationPublisher: UserNotificationPublisher,
+    private val permissionCheckClient: PermissionCheckClient,
     private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
 ) : ApplyNotificationRulesUseCase() {
     override fun apply(request: ApplyNotificationRulesRequest): UseCaseOutcome<ApplyNotificationRulesData> {
@@ -28,7 +30,7 @@ class DefaultApplyNotificationRulesUseCase(
 
         val notificationConfigurations = notificationConfigCache.findAll()
 
-        val triggeredEvents =
+        val matchedRules =
             prefilterRules(notificationConfigurations, changedEntity, changeType)
                 .filter { (notificationConfig, rule) ->
                     logger.trace("{} -> {}", notificationConfig.userIdentifier, rule)
@@ -36,7 +38,28 @@ class DefaultApplyNotificationRulesUseCase(
                         conditions = rule.conditions,
                         document = request.documentChangeEvent.currentVersion
                     )
-                }.map { (notificationConfig, rule) ->
+                }
+
+        if (matchedRules.isEmpty()) {
+            return UseCaseOutcome.Success(ApplyNotificationRulesData(0))
+        }
+
+        val permissionMap =
+            runCatching {
+                permissionCheckClient.checkPermissions(
+                    userIds = matchedRules.map { it.first.userIdentifier }.distinct(),
+                    entityDoc = toStringKeyMap(request.documentChangeEvent.currentVersion),
+                    action = "read"
+                )
+            }.getOrElse {
+                logger.warn("Permission check failed; denying notifications for changed document")
+                emptyMap()
+            }
+
+        val triggeredEvents =
+            matchedRules
+                .filter { (notificationConfig, _) -> permissionMap[notificationConfig.userIdentifier] == true }
+                .map { (notificationConfig, rule) ->
                     publishNotificationEventForUser(
                         notificationConfig,
                         rule,
@@ -141,5 +164,10 @@ class DefaultApplyNotificationRulesUseCase(
 
         return notificationDetails
     }
+
+    private fun toStringKeyMap(source: Map<*, *>): Map<String, Any?> =
+        source.entries
+            .filter { it.key is String }
+            .associate { (key, value) -> key as String to value }
 
 }
