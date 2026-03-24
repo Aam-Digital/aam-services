@@ -157,6 +157,7 @@ class CucumberIntegrationTest(
     @Given("the client stores the id from latest response")
     fun `store id from latest response`() {
         storedId = parseBodyToObjectNode()?.get("id")?.textValue()
+            ?: throw AssertionError("Expected 'id' field in response but was not found")
     }
 
     @When("the client calls GET {} with stored id")
