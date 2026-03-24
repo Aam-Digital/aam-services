@@ -112,8 +112,9 @@ class DefaultApplyNotificationRulesUseCase(
                 )
         )
 
-//        todo refactor channelPush settings here
-//        if (notificationConfig.channelPush) {
+        // notificationConfig.channelPush is currently ignored
+        // because we don't have a global push registration for users, but only device-level registrations.
+        // the consumer only sends notification out to whatever devices are registered.
         userNotificationPublisher.publish(
             channel = USER_NOTIFICATION_QUEUE,
             event =
@@ -124,7 +125,6 @@ class DefaultApplyNotificationRulesUseCase(
                     details = notificationDetails
                 )
         )
-//        }
 
         if (notificationConfig.channelEmail) {
             userNotificationPublisher.publish(
