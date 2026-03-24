@@ -1,0 +1,19 @@
+{
+    "_id": "NotificationConfig:test-user-disabled",
+    "notificationRules": [
+        {
+            "label": "New Child created (disabled)",
+            "notificationType": "ENTITY_CHANGE",
+            "entityType": "Child",
+            "changeType": [
+                "created"
+            ],
+            "conditions": {},
+            "enabled": false
+        }
+    ],
+    "channels": {
+        "push": false,
+        "email": false
+    }
+}

@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.e2e
 
 import com.aamdigital.aambackendservice.common.changes.SyncRepository
 import com.aamdigital.aambackendservice.container.TestContainers
+import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
 import io.cucumber.java.After
@@ -21,9 +22,12 @@ import java.io.File
 @CucumberContextConfiguration
 class CucumberIntegrationTest(
     val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher,
-    val syncRepository: SyncRepository
+    val syncRepository: SyncRepository,
+    val userDeviceRepository: UserDeviceRepository
 ) : SpringIntegrationTest() {
     private val logger = LoggerFactory.getLogger(javaClass)
+
+    private var storedId: String? = null
 
     @Before
     fun `log scenario start`() {
@@ -35,6 +39,9 @@ class CucumberIntegrationTest(
     fun `reset all databases`() {
         logger.info("[CucumberTest] === Scenario cleanup ===")
         couchDbTestingService.reset()
+        userDeviceRepository.deleteAll()
+        storedId = null
+        authToken = null
     }
 
     @Given("signed in as client {} with secret {} in realm {}")
@@ -141,6 +148,35 @@ class CucumberIntegrationTest(
         exchangeMultipart(endpoint, ClassPathResource("files/$file"))
     }
 
+    @When("the client calls DELETE {word}")
+    @Throws(Throwable::class)
+    fun `the client issues DELETE endpoint`(endpoint: String) {
+        exchange(endpoint, HttpMethod.DELETE)
+    }
+
+    @Given("the client stores the id from latest response")
+    fun `store id from latest response`() {
+        storedId = parseBodyToObjectNode()?.get("id")?.textValue()
+    }
+
+    @When("the client calls GET {} with stored id")
+    @Throws(Throwable::class)
+    fun `the client issues GET endpoint with stored id`(endpoint: String) {
+        exchange(endpoint + storedId, HttpMethod.GET)
+    }
+
+    @When("the client calls POST {} with stored id and suffix {}")
+    @Throws(Throwable::class)
+    fun `the client issues POST endpoint with stored id and suffix`(prefix: String, suffix: String) {
+        exchange("$prefix$storedId$suffix", HttpMethod.POST)
+    }
+
+    @When("the client calls DELETE {} with stored id and suffix {}")
+    @Throws(Throwable::class)
+    fun `the client issues DELETE endpoint with stored id and suffix`(prefix: String, suffix: String) {
+        exchange("$prefix$storedId$suffix", HttpMethod.DELETE)
+    }
+
     @Then("the client receives a json array")
     @Throws(Throwable::class)
     fun `the client receives list of values`() {
@@ -195,6 +231,14 @@ class CucumberIntegrationTest(
     @Throws(Throwable::class)
     fun `the client receives array with n elements`(numberOfElements: Int) {
         Assert.assertEquals(numberOfElements, parseBodyToArrayNode()?.size())
+    }
+
+    @Then("the client receives property {} as array with {int} elements")
+    @Throws(Throwable::class)
+    fun `the client receives property as array with n elements`(property: String, numberOfElements: Int) {
+        val arrayNode = parseBodyToObjectNode()?.get(property)
+        Assert.assertNotNull("Property $property not found in response", arrayNode)
+        Assert.assertEquals(numberOfElements, arrayNode?.size())
     }
 
     @Then("the client waits for {long} milliseconds")

@@ -1,0 +1,11 @@
+{
+  "label": "Test Webhook",
+  "target": {
+    "method": "GET",
+    "url": "https://example.com/hook/{reportId}"
+  },
+  "authentication": {
+    "type": "API_KEY",
+    "apiKey": "test-api-key"
+  }
+}
