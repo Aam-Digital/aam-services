@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.skill.job
 
 import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.di.SkillLabApiClientConfiguration
@@ -33,12 +34,16 @@ class SyncSkillsJob(
         if (backoff.shouldSkip()) return
 
         backoff.execute {
-            skillLabFetchUserProfileUpdatesUseCase.run(
+            val outcome = skillLabFetchUserProfileUpdatesUseCase.run(
                 request =
                     FetchUserProfileUpdatesRequest(
                         projectId = skillLabApiClientConfiguration.projectId
                     )
             )
+
+            if (outcome is UseCaseOutcome.Failure) {
+                throw RuntimeException(outcome.errorMessage, outcome.cause)
+            }
         }
     }
 }

@@ -1,6 +1,9 @@
 package com.aamdigital.aambackendservice.skill.job
 
+import com.aamdigital.aambackendservice.common.domain.DomainUseCase
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
+import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesData
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.di.SkillLabApiClientConfiguration
 import org.junit.jupiter.api.BeforeEach
@@ -9,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
-import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -24,6 +26,12 @@ class SyncSkillsJobTest {
     lateinit var fetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase
 
     private var currentTime: Long = 0L
+    private val successOutcome = UseCaseOutcome.Success(FetchUserProfileUpdatesData(emptyList()))
+    private val failureOutcome =
+        UseCaseOutcome.Failure<FetchUserProfileUpdatesData>(
+            errorCode = DomainUseCase.DomainError.UNHANDLED_EXCEPTION_IN_USE_CASE,
+            errorMessage = "error"
+        )
 
     private val skillLabApiClientConfiguration = SkillLabApiClientConfiguration(
         basePath = "https://example.com",
@@ -44,6 +52,8 @@ class SyncSkillsJobTest {
 
     @Test
     fun `should delegate to use case on each invocation`() {
+        whenever(fetchUserProfileUpdatesUseCase.run(any())).thenReturn(successOutcome)
+
         job.checkForSkillLabChanges()
 
         verify(fetchUserProfileUpdatesUseCase).run(any())
@@ -51,7 +61,7 @@ class SyncSkillsJobTest {
 
     @Test
     fun `should skip execution during backoff period and resume after`() {
-        doThrow(RuntimeException("error")).whenever(fetchUserProfileUpdatesUseCase).run(any())
+        whenever(fetchUserProfileUpdatesUseCase.run(any())).thenReturn(failureOutcome)
 
         // First failure sets nextRetryAt = currentTime + 5000
         job.checkForSkillLabChanges()
@@ -70,7 +80,7 @@ class SyncSkillsJobTest {
 
     @Test
     fun `should increase backoff delay on consecutive failures`() {
-        doThrow(RuntimeException("error")).whenever(fetchUserProfileUpdatesUseCase).run(any())
+        whenever(fetchUserProfileUpdatesUseCase.run(any())).thenReturn(failureOutcome)
 
         // 1st failure: backoff = 5000ms
         job.checkForSkillLabChanges()
@@ -98,7 +108,7 @@ class SyncSkillsJobTest {
 
     @Test
     fun `should cap backoff delay at 24 hours`() {
-        doThrow(RuntimeException("error")).whenever(fetchUserProfileUpdatesUseCase).run(any())
+        whenever(fetchUserProfileUpdatesUseCase.run(any())).thenReturn(failureOutcome)
 
         // Trigger enough failures to exceed 24h cap
         repeat(20) {
@@ -118,12 +128,12 @@ class SyncSkillsJobTest {
     @Test
     fun `should reset backoff on success after failures`() {
         whenever(fetchUserProfileUpdatesUseCase.run(any()))
-            .thenThrow(RuntimeException("error"))
-            .thenThrow(RuntimeException("error"))
-            .thenThrow(RuntimeException("error"))
-            .thenAnswer { null }
-            .thenThrow(RuntimeException("error"))
-            .thenAnswer { null }
+            .thenReturn(failureOutcome)
+            .thenReturn(failureOutcome)
+            .thenReturn(failureOutcome)
+            .thenReturn(successOutcome)
+            .thenReturn(failureOutcome)
+            .thenReturn(successOutcome)
 
         // 3 consecutive failures with increasing backoff
         job.checkForSkillLabChanges() // fail 1: backoff 5s
