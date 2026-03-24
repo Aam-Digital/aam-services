@@ -154,25 +154,26 @@ class CucumberIntegrationTest(
         exchange(endpoint, HttpMethod.DELETE)
     }
 
-    @Given("the client stores the id from latest response")
+    `@Given`("the client stores the id from latest response")
     fun `store id from latest response`() {
         storedId = parseBodyToObjectNode()?.get("id")?.textValue()
+            ?: throw AssertionError("Expected 'id' field in response but was not found")
     }
 
-    @When("the client calls GET {} with stored id")
-    @Throws(Throwable::class)
+    `@When`("the client calls GET {} with stored id")
+    `@Throws`(Throwable::class)
     fun `the client issues GET endpoint with stored id`(endpoint: String) {
         exchange(endpoint + storedId, HttpMethod.GET)
     }
 
-    @When("the client calls POST {} with stored id and suffix {}")
-    @Throws(Throwable::class)
+    `@When`("the client calls POST {} with stored id and suffix {}")
+    `@Throws`(Throwable::class)
     fun `the client issues POST endpoint with stored id and suffix`(prefix: String, suffix: String) {
         exchange("$prefix$storedId$suffix", HttpMethod.POST)
     }
 
-    @When("the client calls DELETE {} with stored id and suffix {}")
-    @Throws(Throwable::class)
+    `@When`("the client calls DELETE {} with stored id and suffix {}")
+    `@Throws`(Throwable::class)
     fun `the client issues DELETE endpoint with stored id and suffix`(prefix: String, suffix: String) {
         exchange("$prefix$storedId$suffix", HttpMethod.DELETE)
     }
