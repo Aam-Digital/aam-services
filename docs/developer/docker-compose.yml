@@ -150,6 +150,10 @@ services:
       DATABASE_NAME: app
       DATABASE_USER: admin
       DATABASE_PASSWORD: docker
+      KEYCLOAK_ADMIN_BASE_URL: https://keycloak.localhost
+      KEYCLOAK_REALM: dummy-realm
+      KEYCLOAK_ADMIN_CLIENT_ID: ${REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_ID:-replication-backend}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_SECRET:?REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_SECRET is not set}
       JWT_SECRET: someJwtSecret
       JWT_PUBLIC_KEY: "-----BEGIN PUBLIC KEY-----\n${REPLICATION_BACKEND_PUBLIC_KEY:?REPLICATION_BACKEND_PUBLIC_KEY is not set}\n-----END PUBLIC KEY-----"
       SENTRY_DSN: ""
@@ -166,6 +170,10 @@ services:
     image: ghcr.io/aam-digital/aam-backend-service:${AAM_BACKEND_SERVICE_VERSION:-latest}
     networks:
       - aam-digital
+    extra_hosts:
+      - "keycloak.localhost:host-gateway" # (linux only) resolve host reverse-proxy from inside container
+    volumes:
+      - ./container-data/caddy-authorities/root.crt:/opt/app/reverse-proxy.crt:ro
     external_links:
       - reverse-proxy:aam.localhost
     depends_on:
@@ -175,6 +183,14 @@ services:
       - .env
     environment:
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-} # (macOS only) bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
+      # In container, use Docker service DNS for postgres instead of localhost
+      SPRING_DATASOURCE_URL: jdbc:postgresql://aam-backend-service-db:5432/aam-backend-service
+      # In container, use Docker service DNS for RabbitMQ instead of localhost
+      SPRING_RABBITMQ_HOST: rabbitmq
+      # Use mounted Caddy CA cert instead of classpath resource in prebuilt Docker image
+      SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE: file:/opt/app/reverse-proxy.crt
+      # Override to use Docker-internal DNS (the .env default uses the Caddy proxy for local development)
+      AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH: http://replication-backend:3000
 
   aam-backend-service-db:
     image: postgres:16.6-bookworm
