@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.common.queue.core
 
+import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.fasterxml.jackson.core.JacksonException
@@ -24,6 +25,10 @@ class DefaultQueueMessageParser(
     companion object {
         private const val TYPE_FIELD = "eventType"
         private const val PAYLOAD_FIELD = "event"
+
+        // Legacy/foreign producers may publish an outdated FQCN for this event.
+        // Resolve by simple name to keep message processing backwards compatible.
+        private const val DOCUMENT_CHANGE_EVENT_SIMPLE_NAME = "DocumentChangeEvent"
     }
 
     private fun getJsonNode(body: ByteArray): JsonNode =
@@ -53,11 +58,20 @@ class DefaultQueueMessageParser(
 
     @Throws(InvalidArgumentException::class)
     override fun getTypeKClass(body: ByteArray): KClass<*> {
-        val typeString = getType(body)
+        val typeString = getType(body).trim()
 
         try {
             return Class.forName(typeString).kotlin
         } catch (ex: ClassNotFoundException) {
+            if (typeString.endsWith(".$DOCUMENT_CHANGE_EVENT_SIMPLE_NAME") || typeString == DOCUMENT_CHANGE_EVENT_SIMPLE_NAME) {
+                logger.debug(
+                    "Resolved legacy eventType '{}' to '{}'",
+                    typeString,
+                    DocumentChangeEvent::class.qualifiedName
+                )
+                return DocumentChangeEvent::class
+            }
+
             logger.debug("INVALID_CLASS_NAME_DEBUG_EX", ex)
             throw InvalidArgumentException(
                 message = "Could not find Class for this type.",
