@@ -30,10 +30,10 @@ class ReplicationBackendClientConfiguration(
 class PermissionConfiguration {
     @Bean(name = ["replication-backend-client"])
     fun replicationBackendClient(
+        restClientBuilder: RestClient.Builder = RestClient.builder(),
         configuration: ReplicationBackendClientConfiguration
     ): RestClient {
-        return RestClient
-            .builder()
+        return restClientBuilder
             .baseUrl(configuration.basePath)
             .defaultHeaders { headers ->
                 headers.setBasicAuth(

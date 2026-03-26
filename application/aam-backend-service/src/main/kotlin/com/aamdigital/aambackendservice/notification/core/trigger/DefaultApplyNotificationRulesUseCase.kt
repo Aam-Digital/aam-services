@@ -30,6 +30,13 @@ class DefaultApplyNotificationRulesUseCase(
 
         val notificationConfigurations = notificationConfigCache.findAll()
 
+        logger.trace(
+            "Processing change: entity={}, changeType={}, configCount={}",
+            changedEntity,
+            changeType,
+            notificationConfigurations.size
+        )
+
         val matchedRules =
             prefilterRules(notificationConfigurations, changedEntity, changeType)
                 .filter { (notificationConfig, rule) ->
@@ -41,24 +48,54 @@ class DefaultApplyNotificationRulesUseCase(
                 }
 
         if (matchedRules.isEmpty()) {
+            logger.trace(
+                "No matching notification rules for entity={}, changeType={}",
+                changedEntity,
+                changeType
+            )
             return UseCaseOutcome.Success(ApplyNotificationRulesData(0))
         }
+
+        logger.trace(
+            "Found {} matched notification rules for entity={}, changeType={}",
+            matchedRules.size,
+            changedEntity,
+            changeType
+        )
 
         val permissionMap =
             runCatching {
                 permissionCheckClient.checkPermissions(
                     userIds = matchedRules.map { it.first.userIdentifier }.distinct(),
-                    entityDoc = toStringKeyMap(request.documentChangeEvent.currentVersion),
+                    entityId = request.documentChangeEvent.documentId,
                     action = "read"
                 )
-            }.getOrElse {
-                logger.warn("Permission check failed; denying notifications for changed document")
+            }.getOrElse { ex ->
+                logger.warn("Permission check failed; denying notifications for changed document", ex)
                 emptyMap()
             }
 
+        logger.trace(
+            "Permission check results: {}",
+            permissionMap
+        )
+
         val triggeredEvents =
             matchedRules
-                .filter { (notificationConfig, _) -> permissionMap[notificationConfig.userIdentifier] == true }
+                .mapNotNull { (notificationConfig, rule) ->
+                    val hasPermission = permissionMap[notificationConfig.userIdentifier] == true
+                    if (!hasPermission) {
+                        logger.trace(
+                            "Skipped notification event due to missing permissions: user={}, rule={}, entityId={}",
+                            notificationConfig.userIdentifier,
+                            rule.externalIdentifier,
+                            request.documentChangeEvent.documentId
+                        )
+                        null
+                    } else {
+                        Pair(notificationConfig, rule)
+                    }
+                }
                 .map { (notificationConfig, rule) ->
                     publishNotificationEventForUser(
                         notificationConfig,
@@ -164,10 +201,4 @@ class DefaultApplyNotificationRulesUseCase(
 
         return notificationDetails
     }
-
-    private fun toStringKeyMap(source: Map<*, *>): Map<String, Any?> =
-        source.entries
-            .filter { it.key is String }
-            .associate { (key, value) -> key as String to value }
-
 }

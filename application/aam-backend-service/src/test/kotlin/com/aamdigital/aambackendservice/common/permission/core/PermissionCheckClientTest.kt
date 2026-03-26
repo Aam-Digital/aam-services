@@ -27,7 +27,7 @@ class PermissionCheckClientTest {
         val result =
             client.checkPermissions(
                 userIds = listOf("user-1", "user-2"),
-                entityDoc = mapOf("_id" to "Child:1"),
+                entityId = "Child:1",
                 action = "read"
             )
 
@@ -47,7 +47,7 @@ class PermissionCheckClientTest {
         val result =
             client.checkPermissions(
                 userIds = listOf("user-1"),
-                entityDoc = mapOf("_id" to "Child:1"),
+                entityId = "Child:1",
                 action = "read"
             )
 

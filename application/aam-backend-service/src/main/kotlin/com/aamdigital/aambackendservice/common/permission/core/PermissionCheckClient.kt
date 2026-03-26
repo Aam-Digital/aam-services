@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.common.permission.core
 
 import org.slf4j.LoggerFactory
+import org.springframework.http.MediaType
 import org.springframework.web.client.RestClient
 
 /**
@@ -16,7 +17,7 @@ class PermissionCheckClient(
 
     fun checkPermissions(
         userIds: List<String>,
-        entityDoc: Map<String, Any?>,
+        entityId: String,
         action: String = "read"
     ): Map<String, Boolean> {
         if (userIds.isEmpty()) {
@@ -28,28 +29,46 @@ class PermissionCheckClient(
             return userIds.associateWith { true }
         }
 
+        val request = PermissionCheckRequest(
+            userIds = userIds,
+            entityId = entityId,
+            action = action
+        )
+        logger.debug(
+            "Sending permission check: userIds={}, entityId={}, action={}",
+            request.userIds,
+            request.entityId,
+            request.action
+        )
+
         return try {
             val responseBody =
                 replicationBackendClient
                     .post()
                     .uri("/permissions/check")
-                    .body(
-                        PermissionCheckRequest(
-                            userIds = userIds,
-                            entityDoc = entityDoc,
-                            action = action
-                        )
-                    ).retrieve()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
                     .body(Map::class.java)
                     ?: emptyMap<String, Any>()
 
             responseBody.entries
                 .filter { it.key is String }
                 .associate { entry ->
-                    val permissionValue = (entry.value as? Map<*, *>)?.get("permitted") as? Boolean
-                    if (permissionValue == null) {
+                    val resultMap = entry.value as? Map<*, *>
+                    val permissionValue = resultMap?.get("permitted") as? Boolean
+                    val errorCode = resultMap?.get("error") as? String
+
+                    if (errorCode != null) {
+                        logger.warn(
+                            "Permission check for user {} returned error: {}",
+                            entry.key,
+                            errorCode
+                        )
+                    } else if (permissionValue == null) {
                         logger.warn("Unexpected permission check response payload for entry {}", entry.value)
                     }
+
                     (entry.key as String) to (permissionValue ?: false)
                 }
         } catch (exception: Exception) {
@@ -64,6 +83,6 @@ class PermissionCheckClient(
  */
 data class PermissionCheckRequest(
     val userIds: List<String>,
-    val entityDoc: Map<String, Any?>,
+    val entityId: String,
     val action: String
 )

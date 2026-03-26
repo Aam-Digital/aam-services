@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesRequest
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.DOCUMENT_CHANGES_NOTIFICATION_QUEUE
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
@@ -78,12 +79,31 @@ class DefaultNotificationDocumentChangeConsumer(
                     return
                 }
 
-                applyNotificationRulesUseCase.run(
+                val result = applyNotificationRulesUseCase.run(
                     request =
                         ApplyNotificationRulesRequest(
                             documentChangeEvent = payload
                         )
                 )
+
+                when (result) {
+                    is UseCaseOutcome.Failure -> {
+                        logger.warn(
+                            "ApplyNotificationRules failed for documentId={}: [{}] {}",
+                            payload.documentId,
+                            result.errorCode,
+                            result.errorMessage,
+                            result.cause
+                        )
+                    }
+                    is UseCaseOutcome.Success -> {
+                        logger.trace(
+                            "ApplyNotificationRules completed for documentId={}: {} notifications triggered",
+                            payload.documentId,
+                            result.data.notificationsSendCount
+                        )
+                    }
+                }
 
                 return
             }
