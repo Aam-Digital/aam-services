@@ -56,9 +56,9 @@ class PermissionConfiguration {
  * replication-backend connection is configured.
  */
 @Configuration
-@ConditionalOnMissingBean(PermissionCheckClient::class)
 class PermissionFallbackConfiguration {
     @Bean
+    @ConditionalOnMissingBean(PermissionCheckClient::class)
     fun permissionCheckClientFallback(): PermissionCheckClient =
         PermissionCheckClient()
 }

@@ -18,6 +18,9 @@ class PermissionCheckClientTest {
     lateinit var requestBodyUriSpec: RestClient.RequestBodyUriSpec
 
     @Mock
+    lateinit var requestBodySpec: RestClient.RequestBodySpec
+
+    @Mock
     lateinit var responseSpec: RestClient.ResponseSpec
 
     @Test
@@ -37,9 +40,10 @@ class PermissionCheckClientTest {
     @Test
     fun `should return empty map when request fails`() {
         whenever(restClient.post()).thenReturn(requestBodyUriSpec)
-        whenever(requestBodyUriSpec.uri(any<String>())).thenReturn(requestBodyUriSpec)
-        whenever(requestBodyUriSpec.body(any<Any>())).thenReturn(requestBodyUriSpec)
-        whenever(requestBodyUriSpec.retrieve()).thenReturn(responseSpec)
+        whenever(requestBodyUriSpec.uri(any<String>())).thenReturn(requestBodySpec)
+        whenever(requestBodySpec.contentType(any())).thenReturn(requestBodySpec)
+        whenever(requestBodySpec.body(any<Any>())).thenReturn(requestBodySpec)
+        whenever(requestBodySpec.retrieve()).thenReturn(responseSpec)
         whenever(responseSpec.body(Map::class.java)).thenThrow(RuntimeException("connection failure"))
 
         val client = PermissionCheckClient(restClient)

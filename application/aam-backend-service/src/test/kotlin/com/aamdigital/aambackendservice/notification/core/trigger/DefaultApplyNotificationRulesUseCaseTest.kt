@@ -20,7 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.mockito.Mock
-import org.mockito.junit.jupiter.MockitoSettings
+import org.mockito.Mockito
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
@@ -29,11 +29,9 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.mockito.quality.Strictness
 import kotlin.test.assertEquals
 
 @ExtendWith(MockitoExtension::class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class DefaultApplyNotificationRulesUseCaseTest {
     private lateinit var service: DefaultApplyNotificationRulesUseCase
 
@@ -61,7 +59,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                 permissionCheckClient = permissionCheckClient
             )
 
-        whenever(permissionCheckClient.checkPermissions(any(), any(), any())).thenReturn(
+        Mockito.lenient().`when`(permissionCheckClient.checkPermissions(any(), any(), any())).thenReturn(
             mapOf("user-1" to true)
         )
     }
@@ -695,8 +693,8 @@ class DefaultApplyNotificationRulesUseCaseTest {
                 generateNotificationConfig(changeType = "created")
             )
         )
-        whenever(permissionCheckClient.checkPermissions(any(), any(), any())).thenThrow(
-            RuntimeException("replication-backend unavailable")
+        whenever(permissionCheckClient.checkPermissions(any(), any(), any())).thenReturn(
+            emptyMap()
         )
 
         // when

@@ -152,7 +152,7 @@ services:
       DATABASE_PASSWORD: docker
       KEYCLOAK_ADMIN_BASE_URL: https://keycloak.localhost
       KEYCLOAK_REALM: dummy-realm
-      KEYCLOAK_ADMIN_CLIENT_ID: ${REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_ID:-replication-backend}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_ID:-aam-backend}
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_SECRET:?REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_SECRET is not set}
       JWT_SECRET: someJwtSecret
       JWT_PUBLIC_KEY: "-----BEGIN PUBLIC KEY-----\n${REPLICATION_BACKEND_PUBLIC_KEY:?REPLICATION_BACKEND_PUBLIC_KEY is not set}\n-----END PUBLIC KEY-----"
@@ -190,7 +190,7 @@ services:
       # Use mounted Caddy CA cert instead of classpath resource in prebuilt Docker image
       SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE: file:/opt/app/reverse-proxy.crt
       # Override to use Docker-internal DNS (the .env default uses the Caddy proxy for local development)
-      AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH: http://replication-backend:3000
+      AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH: http://replication-backend:5984
 
   aam-backend-service-db:
     image: postgres:16.6-bookworm

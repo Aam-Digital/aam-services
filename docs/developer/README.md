@@ -313,8 +313,7 @@ In your local repository of [ndb-core](https://github.com/Aam-Digital/ndb-core):
 
 ```
 session_type: "synced",
-demo_mode: false,
-account_url: "https://aam.localhost/accounts-backend"
+demo_mode: false
 ```
 
 2. Update `assets/keycloak.json` with the following settings

@@ -64,16 +64,11 @@ class DefaultApplyNotificationRulesUseCase(
         )
 
         val permissionMap =
-            runCatching {
-                permissionCheckClient.checkPermissions(
-                    userIds = matchedRules.map { it.first.userIdentifier }.distinct(),
-                    entityId = request.documentChangeEvent.documentId,
-                    action = "read"
-                )
-            }.getOrElse { ex ->
-                logger.warn("Permission check failed; denying notifications for changed document", ex)
-                emptyMap()
-            }
+            permissionCheckClient.checkPermissions(
+                userIds = matchedRules.map { it.first.userIdentifier }.distinct(),
+                entityId = request.documentChangeEvent.documentId,
+                action = "read"
+            )
 
         logger.trace(
             "Permission check results: {}",

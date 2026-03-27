@@ -25,7 +25,7 @@ class PermissionCheckClient(
         }
 
         if (replicationBackendClient == null) {
-            logger.warn("PermissionCheckClient is not configured; allowing all permissions by default")
+            logger.debug("PermissionCheckClient is not configured; allowing all permissions by default")
             return userIds.associateWith { true }
         }
 
