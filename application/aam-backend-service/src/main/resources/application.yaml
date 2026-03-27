@@ -70,7 +70,7 @@ aam-render-api-client-configuration:
     scope: ""
 
 aam-replication-backend-client-configuration:
-  base-path: http://replication-backend:5984
+  base-path: ""
 
 
 logging:

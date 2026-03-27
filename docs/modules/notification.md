@@ -63,6 +63,7 @@ To filter notifications based on entity-level permissions (so users only receive
 configure the connection to the replication-backend:
 
 ```dotenv
+AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH=http://replication-backend:3000
 AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASICAUTHUSERNAME=<admin-username>
 AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASICAUTHPASSWORD=<admin-password>
 ```
