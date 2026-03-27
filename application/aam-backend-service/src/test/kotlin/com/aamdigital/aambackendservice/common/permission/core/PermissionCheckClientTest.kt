@@ -7,6 +7,7 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
+import org.springframework.core.ParameterizedTypeReference
 import org.springframework.web.client.RestClient
 
 @ExtendWith(MockitoExtension::class)
@@ -44,7 +45,9 @@ class PermissionCheckClientTest {
         whenever(requestBodySpec.contentType(any())).thenReturn(requestBodySpec)
         whenever(requestBodySpec.body(any<Any>())).thenReturn(requestBodySpec)
         whenever(requestBodySpec.retrieve()).thenReturn(responseSpec)
-        whenever(responseSpec.body(Map::class.java)).thenThrow(RuntimeException("connection failure"))
+        whenever(
+            responseSpec.body(any<ParameterizedTypeReference<Map<String, PermissionCheckResult>>>())
+        ).thenThrow(RuntimeException("connection failure"))
 
         val client = PermissionCheckClient(restClient)
 

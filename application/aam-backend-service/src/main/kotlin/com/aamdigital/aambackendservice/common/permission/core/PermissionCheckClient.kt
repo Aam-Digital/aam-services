@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.common.permission.core
 
 import org.slf4j.LoggerFactory
+import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.MediaType
 import org.springframework.web.client.RestClient
 
@@ -51,15 +52,13 @@ class PermissionCheckClient(
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
-                    .body(Map::class.java)
-                    ?: emptyMap<String, Any>()
+                    .body(object : ParameterizedTypeReference<Map<String, PermissionCheckResult>>() {})
+                    ?: emptyMap()
 
             responseBody.entries
-                .filter { it.key is String }
                 .associate { entry ->
-                    val resultMap = entry.value as? Map<*, *>
-                    val permissionValue = resultMap?.get("permitted") as? Boolean
-                    val errorCode = resultMap?.get("error") as? String
+                    val permissionValue = entry.value.permitted
+                    val errorCode = entry.value.error
 
                     if (errorCode != null) {
                         logger.warn(
@@ -68,10 +67,10 @@ class PermissionCheckClient(
                             errorCode
                         )
                     } else if (permissionValue == null) {
-                        logger.warn("Unexpected permission check response payload for entry {}", entry.value)
+                        logger.warn("Unexpected permission check response payload for user {}", entry.key)
                     }
 
-                    (entry.key as String) to (permissionValue ?: false)
+                    entry.key to (permissionValue ?: false)
                 }
         } catch (exception: Exception) {
             logger.warn("Permission check request failed; denying notifications by default", exception)
@@ -87,4 +86,9 @@ data class PermissionCheckRequest(
     val userIds: List<String>,
     val entityId: String,
     val action: String
+)
+
+data class PermissionCheckResult(
+    val permitted: Boolean? = null,
+    val error: String? = null
 )

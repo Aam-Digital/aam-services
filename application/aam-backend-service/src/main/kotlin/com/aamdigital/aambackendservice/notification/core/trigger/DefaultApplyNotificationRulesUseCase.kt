@@ -76,28 +76,24 @@ class DefaultApplyNotificationRulesUseCase(
         )
 
         val triggeredEvents =
-            matchedRules
-                .mapNotNull { (notificationConfig, rule) ->
-                    val hasPermission = permissionMap[notificationConfig.userIdentifier] == true
-                    if (!hasPermission) {
-                        logger.trace(
-                            "Skipped notification event due to missing permissions: user={}, rule={}, entityId={}",
-                            notificationConfig.userIdentifier,
-                            rule.externalIdentifier,
-                            request.documentChangeEvent.documentId
-                        )
-                        null
-                    } else {
-                        Pair(notificationConfig, rule)
-                    }
-                }
-                .map { (notificationConfig, rule) ->
-                    publishNotificationEventForUser(
-                        notificationConfig,
-                        rule,
-                        request.documentChangeEvent
+            matchedRules.mapNotNull { (notificationConfig, rule) ->
+                val hasPermission = permissionMap[notificationConfig.userIdentifier] == true
+                if (!hasPermission) {
+                    logger.trace(
+                        "Skipped notification event due to missing permissions: user={}, rule={}, entityId={}",
+                        notificationConfig.userIdentifier,
+                        rule.externalIdentifier,
+                        request.documentChangeEvent.documentId
                     )
+                    return@mapNotNull null
                 }
+
+                publishNotificationEventForUser(
+                    notificationConfig,
+                    rule,
+                    request.documentChangeEvent
+                )
+            }
 
         return UseCaseOutcome.Success(
             ApplyNotificationRulesData(
@@ -156,38 +152,24 @@ class DefaultApplyNotificationRulesUseCase(
                 notificationType = rule.notificationType
             )
 
-        userNotificationPublisher.publish(
-            channel = USER_NOTIFICATION_QUEUE,
-            event =
-                CreateUserNotificationEvent(
-                    userIdentifier = notificationConfig.userIdentifier,
-                    notificationChannelType = NotificationChannelType.APP,
-                    notificationRule = rule.externalIdentifier,
-                    details = notificationDetails
-                )
-        )
-
         // notificationConfig.channelPush is currently ignored
         // because we don't have a global push registration for users, but only device-level registrations.
         // the consumer only sends notification out to whatever devices are registered.
-        userNotificationPublisher.publish(
-            channel = USER_NOTIFICATION_QUEUE,
-            event =
-                CreateUserNotificationEvent(
-                    userIdentifier = notificationConfig.userIdentifier,
-                    notificationChannelType = NotificationChannelType.PUSH,
-                    notificationRule = rule.externalIdentifier,
-                    details = notificationDetails
-                )
+        val channelTypes = mutableListOf(
+            NotificationChannelType.APP,
+            NotificationChannelType.PUSH
         )
-
         if (notificationConfig.channelEmail) {
+            channelTypes.add(NotificationChannelType.EMAIL)
+        }
+
+        channelTypes.forEach { channelType ->
             userNotificationPublisher.publish(
                 channel = USER_NOTIFICATION_QUEUE,
                 event =
                     CreateUserNotificationEvent(
                         userIdentifier = notificationConfig.userIdentifier,
-                        notificationChannelType = NotificationChannelType.EMAIL,
+                        notificationChannelType = channelType,
                         notificationRule = rule.externalIdentifier,
                         details = notificationDetails
                     )
