@@ -199,8 +199,6 @@ services:
       SPRING_RABBITMQ_HOST: rabbitmq
       # Use mounted Caddy CA cert instead of classpath resource in prebuilt Docker image
       SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE: file:/opt/app/reverse-proxy.crt
-      # Override to use Docker-internal DNS (the .env default uses the Caddy proxy for local development)
-      AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH: ${AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH:-http://replication-backend:5984}
 
   aam-backend-service-db:
     image: postgres:16.6-bookworm

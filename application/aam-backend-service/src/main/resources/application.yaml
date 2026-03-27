@@ -69,6 +69,9 @@ aam-render-api-client-configuration:
     grant-type: client_credentials
     scope: ""
 
+aam-replication-backend-client-configuration:
+  base-path: http://replication-backend:5984
+
 
 logging:
   logback:

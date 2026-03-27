@@ -63,12 +63,17 @@ To filter notifications based on entity-level permissions (so users only receive
 configure the connection to the replication-backend:
 
 ```dotenv
-AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH=http://replication-backend:5984
 AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASICAUTHUSERNAME=<admin-username>
 AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASICAUTHPASSWORD=<admin-password>
 ```
 
-If these variables are not set, notifications are sent without permission filtering (all users matching a notification rule receive the notification regardless of entity access).
+If these variables are not set, notifications are sent without permission filtering
+(all users matching a notification rule receive the notification regardless of entity access).
+This is the expected default for systems without access control (no `Config:Permissions` document configured).
+To explicitly disable permission filtering set `AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH=` (empty value).
+
+When the replication-backend is configured but temporarily unavailable, notifications are **not** sent
+(fail-closed) to avoid leaking data to unauthorized users.
 
 ### Firebase Configuration (for Push Notifications)
 

@@ -7,8 +7,10 @@ import org.springframework.web.client.RestClient
 /**
  * Client for checking entity-level permissions via the replication-backend API.
  *
- * When no [RestClient] is configured (e.g. missing environment config),
+ * When no [RestClient] is provided (no replication-backend configured),
  * all permission checks permit by default (allow-all).
+ * This is expected when the system runs without access control
+ * (i.e. no Config:Permissions doc / all users have "manage all").
  */
 class PermissionCheckClient(
     private val replicationBackendClient: RestClient? = null
