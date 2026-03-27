@@ -145,7 +145,12 @@ services:
       - db-couch
     networks:
       - aam-digital
+    extra_hosts:
+      - "keycloak.localhost:host-gateway" # resolve host reverse-proxy from inside container
+    volumes:
+      - ./container-data/caddy-authorities/root.crt:/opt/app/reverse-proxy.crt:ro
     environment:
+      NODE_EXTRA_CA_CERTS: /opt/app/reverse-proxy.crt
       DATABASE_URL: http://db-couch:5984
       DATABASE_NAME: app
       DATABASE_USER: admin
@@ -168,6 +173,11 @@ services:
 
   aam-backend-service:
     image: ghcr.io/aam-digital/aam-backend-service:${AAM_BACKEND_SERVICE_VERSION:-latest}
+    restart: on-failure
+    command:
+      - sh
+      - -c
+      - "keytool -importcert -trustcacerts -alias caddy-local -file /opt/app/reverse-proxy.crt -cacerts -storepass changeit -noprompt 2>/dev/null || true; ./bin/aam-backend-service"
     networks:
       - aam-digital
     extra_hosts:
@@ -190,7 +200,7 @@ services:
       # Use mounted Caddy CA cert instead of classpath resource in prebuilt Docker image
       SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE: file:/opt/app/reverse-proxy.crt
       # Override to use Docker-internal DNS (the .env default uses the Caddy proxy for local development)
-      AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH: http://replication-backend:5984
+      AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH: ${AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH:-http://replication-backend:5984}
 
   aam-backend-service-db:
     image: postgres:16.6-bookworm
