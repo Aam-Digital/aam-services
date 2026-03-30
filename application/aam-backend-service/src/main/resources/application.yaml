@@ -69,6 +69,9 @@ aam-render-api-client-configuration:
     grant-type: client_credentials
     scope: ""
 
+aam-replication-backend-client-configuration:
+  base-path: ""
+
 
 logging:
   logback:
@@ -137,6 +140,11 @@ aam-render-api-client-configuration:
     client-id: aam-backend-pdf-client
 #   client-secret: <needs-environment-configuration>
     token-endpoint: https://keycloak.localhost/realms/aam-digital/protocol/openid-connect/token
+
+aam-replication-backend-client-configuration:
+  base-path: https://aam.localhost/db
+  basic-auth-username: admin
+  basic-auth-password: docker
 
 couch-db-client-configuration:
   base-path: https://aam.localhost/db/couchdb

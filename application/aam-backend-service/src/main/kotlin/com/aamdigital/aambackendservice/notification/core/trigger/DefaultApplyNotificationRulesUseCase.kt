@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.notification.core.trigger
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
 import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
@@ -17,6 +18,7 @@ import com.aamdigital.aambackendservice.notification.queue.UserNotificationPubli
 class DefaultApplyNotificationRulesUseCase(
     private val notificationConfigCache: NotificationConfigCache,
     private val userNotificationPublisher: UserNotificationPublisher,
+    private val permissionCheckClient: PermissionCheckClient,
     private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
 ) : ApplyNotificationRulesUseCase() {
     override fun apply(request: ApplyNotificationRulesRequest): UseCaseOutcome<ApplyNotificationRulesData> {
@@ -28,7 +30,14 @@ class DefaultApplyNotificationRulesUseCase(
 
         val notificationConfigurations = notificationConfigCache.findAll()
 
-        val triggeredEvents =
+        logger.trace(
+            "Processing change: entity={}, changeType={}, configCount={}",
+            changedEntity,
+            changeType,
+            notificationConfigurations.size
+        )
+
+        val matchedRules =
             prefilterRules(notificationConfigurations, changedEntity, changeType)
                 .filter { (notificationConfig, rule) ->
                     logger.trace("{} -> {}", notificationConfig.userIdentifier, rule)
@@ -36,13 +45,55 @@ class DefaultApplyNotificationRulesUseCase(
                         conditions = rule.conditions,
                         document = request.documentChangeEvent.currentVersion
                     )
-                }.map { (notificationConfig, rule) ->
-                    publishNotificationEventForUser(
-                        notificationConfig,
-                        rule,
-                        request.documentChangeEvent
-                    )
                 }
+
+        if (matchedRules.isEmpty()) {
+            logger.trace(
+                "No matching notification rules for entity={}, changeType={}",
+                changedEntity,
+                changeType
+            )
+            return UseCaseOutcome.Success(ApplyNotificationRulesData(0))
+        }
+
+        logger.trace(
+            "Found {} matched notification rules for entity={}, changeType={}",
+            matchedRules.size,
+            changedEntity,
+            changeType
+        )
+
+        val permissionMap =
+            permissionCheckClient.checkPermissions(
+                userIds = matchedRules.map { it.first.userIdentifier }.distinct(),
+                entityId = request.documentChangeEvent.documentId,
+                action = "read"
+            )
+
+        logger.trace(
+            "Permission check results: {}",
+            permissionMap
+        )
+
+        val triggeredEvents =
+            matchedRules.mapNotNull { (notificationConfig, rule) ->
+                val hasPermission = permissionMap[notificationConfig.userIdentifier] == true
+                if (!hasPermission) {
+                    logger.trace(
+                        "Skipped notification event due to missing permissions: user={}, rule={}, entityId={}",
+                        notificationConfig.userIdentifier,
+                        rule.externalIdentifier,
+                        request.documentChangeEvent.documentId
+                    )
+                    return@mapNotNull null
+                }
+
+                publishNotificationEventForUser(
+                    notificationConfig,
+                    rule,
+                    request.documentChangeEvent
+                )
+            }
 
         return UseCaseOutcome.Success(
             ApplyNotificationRulesData(
@@ -101,38 +152,24 @@ class DefaultApplyNotificationRulesUseCase(
                 notificationType = rule.notificationType
             )
 
-        userNotificationPublisher.publish(
-            channel = USER_NOTIFICATION_QUEUE,
-            event =
-                CreateUserNotificationEvent(
-                    userIdentifier = notificationConfig.userIdentifier,
-                    notificationChannelType = NotificationChannelType.APP,
-                    notificationRule = rule.externalIdentifier,
-                    details = notificationDetails
-                )
-        )
-
         // notificationConfig.channelPush is currently ignored
         // because we don't have a global push registration for users, but only device-level registrations.
         // the consumer only sends notification out to whatever devices are registered.
-        userNotificationPublisher.publish(
-            channel = USER_NOTIFICATION_QUEUE,
-            event =
-                CreateUserNotificationEvent(
-                    userIdentifier = notificationConfig.userIdentifier,
-                    notificationChannelType = NotificationChannelType.PUSH,
-                    notificationRule = rule.externalIdentifier,
-                    details = notificationDetails
-                )
+        val channelTypes = mutableListOf(
+            NotificationChannelType.APP,
+            NotificationChannelType.PUSH
         )
-
         if (notificationConfig.channelEmail) {
+            channelTypes.add(NotificationChannelType.EMAIL)
+        }
+
+        channelTypes.forEach { channelType ->
             userNotificationPublisher.publish(
                 channel = USER_NOTIFICATION_QUEUE,
                 event =
                     CreateUserNotificationEvent(
                         userIdentifier = notificationConfig.userIdentifier,
-                        notificationChannelType = NotificationChannelType.EMAIL,
+                        notificationChannelType = channelType,
                         notificationRule = rule.externalIdentifier,
                         details = notificationDetails
                     )
@@ -141,5 +178,4 @@ class DefaultApplyNotificationRulesUseCase(
 
         return notificationDetails
     }
-
 }

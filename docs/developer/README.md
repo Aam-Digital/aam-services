@@ -128,6 +128,21 @@ You can copy the certificate to the resources directory of the `aam-backend-serv
 cp docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
 ```
 
+##### link certificate to replication-backend
+
+When running the `replication-backend` locally (outside Docker), Node.js must trust the Caddy CA for HTTPS calls to `keycloak.localhost`.  
+Set the `NODE_EXTRA_CA_CERTS` environment variable before starting the service:
+
+```shell
+export NODE_EXTRA_CA_CERTS=/absolute/path/to/aam-services/docs/developer/container-data/caddy-authorities/root.crt
+```
+
+The certificate file is created by Docker as root, so you may need to make it readable first:
+
+```shell
+sudo chmod 644 docs/developer/container-data/caddy-authorities/root.crt
+```
+
 ##### MacOS
 
 1. Open Keychain Access (`Cmd` + `Space` and search for it)
@@ -298,8 +313,7 @@ In your local repository of [ndb-core](https://github.com/Aam-Digital/ndb-core):
 
 ```
 session_type: "synced",
-demo_mode: false,
-account_url: "https://aam.localhost/accounts-backend"
+demo_mode: false
 ```
 
 2. Update `assets/keycloak.json` with the following settings

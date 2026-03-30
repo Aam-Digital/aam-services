@@ -73,6 +73,9 @@ skilllab-api-client-configuration:
 notification-firebase-configuration:
   credential-file-base64: ""
 
+aam-replication-backend-client-configuration:
+  base-path: ""
+
 features:
   export-api:
     enabled: true
