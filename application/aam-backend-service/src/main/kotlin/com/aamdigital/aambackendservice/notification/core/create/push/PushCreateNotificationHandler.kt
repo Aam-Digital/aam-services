@@ -12,17 +12,14 @@ import com.google.firebase.messaging.WebpushConfig
 import com.google.firebase.messaging.WebpushFcmOptions
 import com.google.firebase.messaging.WebpushNotification
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.data.domain.Pageable
-import org.springframework.stereotype.Service
 
-@Service
-@ConditionalOnProperty(
-    prefix = "features.notification-api",
-    name = ["mode"],
-    havingValue = "firebase",
-    matchIfMissing = false
-)
+/**
+ * Sends push notifications via Firebase Cloud Messaging to registered user devices.
+ *
+ * Instantiated as a bean in [com.aamdigital.aambackendservice.notification.di.NotificationConfiguration]
+ * only when `features.notification-api.mode=firebase`.
+ */
 class PushCreateNotificationHandler(
     private val firebaseMessaging: FirebaseMessaging,
     private val userDeviceRepository: UserDeviceRepository,
