@@ -21,6 +21,12 @@ class FeatureConfigurationSkillApi(
 @ConfigurationProperties("skilllab-api-client-configuration")
 @ConditionalOnProperty(
     prefix = "features.skill-api",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
+@ConditionalOnProperty(
+    prefix = "features.skill-api",
     name = ["mode"],
     havingValue = "skilllab",
     matchIfMissing = false
