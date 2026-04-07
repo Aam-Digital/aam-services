@@ -69,7 +69,7 @@ class NotificationConfiguration {
         firebaseMessaging: FirebaseMessaging,
         userDeviceRepository: UserDeviceRepository,
         notificationFirebaseClientConfiguration: NotificationFirebaseClientConfiguration
-    ): CreateNotificationHandler =
+    ): PushCreateNotificationHandler =
         PushCreateNotificationHandler(
             firebaseMessaging = firebaseMessaging,
             userDeviceRepository = userDeviceRepository,
