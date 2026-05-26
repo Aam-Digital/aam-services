@@ -15,6 +15,7 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateR
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -37,6 +38,12 @@ import java.util.*
 
 @RestController
 @RequestMapping("/v1/reporting/report-calculation")
+@ConditionalOnProperty(
+    prefix = "features.reporting",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 @Validated
 class ReportCalculationController(
     private val reportStorage: ReportStorage,

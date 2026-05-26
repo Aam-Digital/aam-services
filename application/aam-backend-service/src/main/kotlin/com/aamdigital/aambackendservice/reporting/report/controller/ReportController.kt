@@ -8,6 +8,7 @@ import com.aamdigital.aambackendservice.common.error.NetworkException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.report.ReportSchema
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -27,6 +28,12 @@ data class ReportDto(
 
 @RestController
 @RequestMapping("/v1/reporting/report")
+@ConditionalOnProperty(
+    prefix = "features.reporting",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 @Validated
 class ReportController(
     private val reportStorage: ReportStorage

@@ -12,11 +12,18 @@ import com.aamdigital.aambackendservice.reporting.report.storage.DefaultReportSt
 import com.aamdigital.aambackendservice.reporting.report.usecase.DefaultIdentifyAffectedReportsUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.client.RestClient
 
 @Configuration
+@ConditionalOnProperty(
+    prefix = "features.reporting",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 class ReportConfiguration {
     @Bean
     fun defaultReportStorage(

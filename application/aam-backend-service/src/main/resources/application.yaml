@@ -45,6 +45,8 @@ management:
       probability: 1
 
 features:
+  reporting:
+    enabled: true
   export-api:
     enabled: false
   skill-api:
@@ -53,12 +55,6 @@ features:
     enabled: false
   third-party-authentication:
     enabled: false
-
-# enable/disables event processing for each queue
-events:
-  listener:
-    report-calculation:
-      enabled: true
 
 notification-firebase-configuration:
   link-base-url: ${application.base-url}
@@ -181,11 +177,6 @@ keycloak:
 
 crypto-configuration:
   secret: super-duper-secret
-
-events:
-  listener:
-    report-calculation:
-      enabled: true
 
 database-change-detection:
   enabled: true

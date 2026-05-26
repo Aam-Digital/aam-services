@@ -10,6 +10,7 @@ import com.aamdigital.aambackendservice.reporting.webhook.core.AddWebhookSubscri
 import com.aamdigital.aambackendservice.reporting.webhook.storage.CreateWebhookRequest
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookOwner
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -48,6 +49,12 @@ data class CreateWebhookRequestDto(
 
 @RestController
 @RequestMapping("/v1/reporting/webhook")
+@ConditionalOnProperty(
+    prefix = "features.reporting",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 @Validated
 class WebhookController(
     private val webhookStorage: WebhookStorage,

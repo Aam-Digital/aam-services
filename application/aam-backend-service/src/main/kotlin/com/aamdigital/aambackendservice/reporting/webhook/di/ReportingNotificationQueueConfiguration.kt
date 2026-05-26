@@ -12,10 +12,17 @@ import org.springframework.amqp.core.Queue
 import org.springframework.amqp.core.QueueBuilder
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
+@ConditionalOnProperty(
+    prefix = "features.reporting",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 class ReportingNotificationQueueConfiguration {
     companion object {
         const val NOTIFICATION_QUEUE = "notification.webhook"

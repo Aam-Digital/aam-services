@@ -17,11 +17,18 @@ import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookReposit
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.client.RestClient
 
 @Configuration
+@ConditionalOnProperty(
+    prefix = "features.reporting",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 class ReportingNotificationConfiguration {
     @Bean
     fun defaultAddWebhookSubscription(
