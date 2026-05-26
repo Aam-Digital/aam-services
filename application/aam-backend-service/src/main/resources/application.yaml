@@ -178,9 +178,6 @@ keycloak:
 crypto-configuration:
   secret: super-duper-secret
 
-database-change-detection:
-  enabled: true
-
 sentry:
   logging:
     enabled: false
