@@ -27,6 +27,7 @@ You can make a request to the API to check if a certain feature is currently ena
 
 // response:
 {
+  "reporting": { "enabled": true },
   "notification": { "enabled": true },
   "export": { "enabled": true },
   "skill": { "enabled": true },

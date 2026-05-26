@@ -47,7 +47,8 @@ The following environment variables are required:
 
 ```dotenv
 FEATURES_NOTIFICATIONAPI_ENABLED=true
-DATABASECHANGEDETECTION_ENABLED=true
+FEATURES_NOTIFICATIONAPI_MODE=firebase    # delivery mode for push notifications
+FEATURES_NOTIFICATIONAPI_EMAIL_ENABLED=false  # set true and configure SPRING_MAIL_* to send email notifications
 
 # Firebase Configuration: Confidential (!)
 NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64=<base-64-encoded-firebase-credential-file>
@@ -56,6 +57,9 @@ APPLICATION_BASEURL=<your-instance>.aam-digital.com
 # if necessary, you can also override the linkBaseUrl (prefer to use the shared APPLICATION_BASEURL however)
 NOTIFICATIONFIREBASECONFIGURATION_LINKBASEURL=https://<your-instance>.aam-digital.com
 ```
+
+Database change-detection is activated automatically when notification (or reporting) is enabled;
+no separate flag needs to be set.
 
 ### Permission-Aware Notifications (optional)
 
