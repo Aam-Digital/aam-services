@@ -10,6 +10,10 @@ import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.FetchTemplateError
 import com.aamdigital.aambackendservice.export.core.FetchTemplateRequest
 import com.aamdigital.aambackendservice.export.core.FetchTemplateUseCase
+import com.aamdigital.aambackendservice.export.core.RenderTemplateBatchError
+import com.aamdigital.aambackendservice.export.core.RenderTemplateBatchMode
+import com.aamdigital.aambackendservice.export.core.RenderTemplateBatchRequest
+import com.aamdigital.aambackendservice.export.core.RenderTemplateBatchUseCase
 import com.aamdigital.aambackendservice.export.core.RenderTemplateError
 import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
@@ -27,6 +31,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
@@ -52,6 +57,13 @@ sealed interface TemplateExportControllerResponse {
      * StreamingResponse of the template, rendered with passed data as binary file
      */
     fun interface RenderTemplateControllerResponse :
+        StreamingResponseBody,
+        TemplateExportControllerResponse
+
+    /**
+     * StreamingResponse of a bulk render (ZIP archive of N files, or a single combined file).
+     */
+    fun interface RenderTemplateBatchControllerResponse :
         StreamingResponseBody,
         TemplateExportControllerResponse
 
@@ -88,6 +100,7 @@ class TemplateExportController(
     private val createTemplateUseCase: CreateTemplateUseCase,
     private val fetchTemplateUseCase: FetchTemplateUseCase,
     private val renderTemplateUseCase: RenderTemplateUseCase,
+    private val renderTemplateBatchUseCase: RenderTemplateBatchUseCase,
     private val objectMapper: ObjectMapper
 ) {
     companion object {
@@ -309,6 +322,107 @@ class TemplateExportController(
                     }
 
                 return responseEntity
+            }
+        }
+    }
+
+    /**
+     * Render a template for an array of records and return either a ZIP of N independently
+     * rendered files (default, `mode=zip`) or a single document produced by Carbone with the
+     * array forwarded as-is (`mode=combined` — requires a template that uses array placeholders).
+     */
+    @PostMapping("/render-batch/{templateId}")
+    fun renderTemplateBatch(
+        @PathVariable templateId: String,
+        @RequestParam(name = "mode", required = false, defaultValue = "zip") mode: String,
+        @RequestBody templateData: JsonNode
+    ): ResponseEntity<StreamingResponseBody> {
+        val parsedMode =
+            when (mode.lowercase()) {
+                "zip" -> RenderTemplateBatchMode.ZIP
+                "combined" -> RenderTemplateBatchMode.COMBINED
+                else -> {
+                    val headers = HttpHeaders()
+                    headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    return ResponseEntity(
+                        StreamingResponseBody { outputStream: OutputStream ->
+                            outputStream.write(
+                                objectMapper
+                                    .writeValueAsString(
+                                        TemplateExportControllerResponse.ErrorControllerResponse(
+                                            errorCode = "INVALID_MODE",
+                                            errorMessage =
+                                                "Unsupported mode '$mode'. Allowed values: zip, combined."
+                                        )
+                                    ).toByteArray()
+                            )
+                        },
+                        headers,
+                        HttpStatus.BAD_REQUEST
+                    )
+                }
+            }
+
+        val result =
+            renderTemplateBatchUseCase.run(
+                RenderTemplateBatchRequest(
+                    templateRef = DomainReference(templateId),
+                    bodyData = templateData,
+                    mode = parsedMode
+                )
+            )
+
+        return when (result) {
+            is Success -> {
+                val responseHeaders = HttpHeaders().apply { putAll(result.data.responseHeaders) }
+                if (result.data.failedIndices.isNotEmpty()) {
+                    responseHeaders.set(
+                        "X-Failed-Record-Indices",
+                        result.data.failedIndices.joinToString(",")
+                    )
+                }
+
+                val responseBody =
+                    TemplateExportControllerResponse.RenderTemplateBatchControllerResponse { outputStream: OutputStream ->
+                        val buffer = ByteArray(BYTE_ARRAY_BUFFER_LENGTH)
+                        var bytesRead: Int
+                        while ((
+                                result.data.file
+                                    .read(buffer)
+                                    .also { bytesRead = it }
+                            ) != -1
+                        ) {
+                            outputStream.write(buffer, 0, bytesRead)
+                        }
+                    }
+
+                logger.trace(
+                    "[TemplateExportController.renderTemplateBatch()] success response: " +
+                        "(RenderTemplateBatchControllerResponse, failedIndices={})",
+                    result.data.failedIndices
+                )
+
+                ResponseEntity(
+                    responseBody,
+                    responseHeaders,
+                    HttpStatus.OK
+                )
+            }
+
+            is Failure -> {
+                val errorStreamingBody = getErrorStreamingBody(result)
+                val headers = HttpHeaders()
+                headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+
+                val status =
+                    when (result.errorCode as RenderTemplateBatchError) {
+                        RenderTemplateBatchError.NOT_FOUND_ERROR -> HttpStatus.NOT_FOUND
+                        RenderTemplateBatchError.EMPTY_DATA_LIST_ERROR,
+                        RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR -> HttpStatus.BAD_REQUEST
+                        else -> HttpStatus.INTERNAL_SERVER_ERROR
+                    }
+
+                ResponseEntity(errorStreamingBody, headers, status)
             }
         }
     }
