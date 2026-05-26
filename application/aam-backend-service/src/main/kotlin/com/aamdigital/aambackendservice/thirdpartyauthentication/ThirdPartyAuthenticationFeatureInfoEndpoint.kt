@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 
 @Component
 @ConditionalOnProperty(
-    prefix = "features.third-party-authentication-api",
+    prefix = "features.third-party-authentication",
     name = ["enabled"],
     havingValue = "true",
     matchIfMissing = false
