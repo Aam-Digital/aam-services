@@ -8,7 +8,6 @@ import com.aamdigital.aambackendservice.common.domain.EntityType
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
 import java.security.MessageDigest
 
@@ -69,7 +68,6 @@ data class SqsSchema(
     }
 }
 
-@Service
 class SqsSchemaService(
     private val couchDbClient: CouchDbClient
 ) {

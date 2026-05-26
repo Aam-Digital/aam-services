@@ -11,20 +11,11 @@ import io.micrometer.observation.ObservationRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.rabbit.annotation.RabbitListener
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.stereotype.Component
 
 /**
- * Process ReportCalculationEvents from RabbitMQ
- * When enabled, an RabbitListener is registered which will handle incoming events.
- * When disabled, ReportCalculations will not be calculated.
+ * Process ReportCalculationEvents from RabbitMQ.
+ * When the reporting module is enabled, a RabbitListener is registered which handles incoming events.
  */
-@Component
-@ConditionalOnProperty(
-    prefix = "events.listener.report-calculation",
-    name = ["enabled"],
-    havingValue = "true"
-)
 class ReportCalculationEventListener(
     val observationRegistry: ObservationRegistry,
     val reportCalculationUseCase: DefaultReportCalculationUseCase,

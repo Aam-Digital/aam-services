@@ -3,18 +3,22 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.di
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.common.domain.FileStorage
+import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
+import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
 import com.aamdigital.aambackendservice.reporting.reportcalculation.storage.DefaultReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultCreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationChangeUseCase
+import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.transformation.DataTransformation
 import com.aamdigital.aambackendservice.reporting.transformation.SqlFromDateTransformation
 import com.aamdigital.aambackendservice.reporting.transformation.SqlToDateTransformation
 import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationService
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -54,4 +58,25 @@ class ReportCalculationConfiguration {
 
     @Bean
     fun getJsonFactory(objectMapper: ObjectMapper): JsonFactory = JsonFactory().setCodec(objectMapper)
+
+    @Bean
+    fun rabbitMqReportCalculationEventPublisher(
+        objectMapper: ObjectMapper,
+        rabbitTemplate: RabbitTemplate
+    ): RabbitMqReportCalculationEventPublisher =
+        RabbitMqReportCalculationEventPublisher(objectMapper, rabbitTemplate)
+
+    @Bean
+    fun defaultReportCalculationUseCase(
+        reportCalculationStorage: ReportCalculationStorage,
+        reportStorage: ReportStorage,
+        transformations: List<DataTransformation<String>>,
+        queryStorage: QueryStorage
+    ): DefaultReportCalculationUseCase =
+        DefaultReportCalculationUseCase(
+            reportCalculationStorage,
+            reportStorage,
+            transformations,
+            queryStorage
+        )
 }

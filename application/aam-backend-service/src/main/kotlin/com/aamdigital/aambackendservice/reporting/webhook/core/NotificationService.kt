@@ -6,9 +6,7 @@ import com.aamdigital.aambackendservice.reporting.webhook.di.ReportingNotificati
 import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventPublisher
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Service
 
-@Service
 class NotificationService(
     private val webhookStorage: WebhookStorage,
     private val webhookEventPublisher: WebhookEventPublisher
