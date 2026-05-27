@@ -1,12 +1,13 @@
 package com.aamdigital.aambackendservice.notification.controller
 
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationFirebaseMode
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
 import com.aamdigital.aambackendservice.notification.core.create.push.PushCreateNotificationHandler
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.web.bind.annotation.PostMapping
@@ -19,18 +20,8 @@ data class TestMessageResponse(
 
 @RestController
 @RequestMapping("/v1/notification")
-@ConditionalOnProperty(
-    prefix = "features.notification-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
-@ConditionalOnProperty(
-    prefix = "features.notification-api",
-    name = ["mode"],
-    havingValue = "firebase",
-    matchIfMissing = false
-)
+@ConditionalOnNotificationApiEnabled
+@ConditionalOnNotificationFirebaseMode
 class NotificationAdminController(
     private val pushCreateNotificationHandler: PushCreateNotificationHandler
 ) {

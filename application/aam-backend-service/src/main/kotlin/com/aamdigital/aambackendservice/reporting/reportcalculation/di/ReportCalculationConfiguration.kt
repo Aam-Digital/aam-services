@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.di
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.common.domain.FileStorage
+import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
@@ -19,17 +20,11 @@ import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationServi
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.amqp.rabbit.core.RabbitTemplate
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty(
-    prefix = "features.reporting",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnReportingEnabled
 class ReportCalculationConfiguration {
     @Bean("report-calculation-database-request")
     fun reportCalculationDatabaseRequest(): DatabaseRequest = DatabaseRequest("report-calculation")

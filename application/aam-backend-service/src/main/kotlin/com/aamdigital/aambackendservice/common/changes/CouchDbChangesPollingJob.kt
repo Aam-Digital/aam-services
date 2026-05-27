@@ -2,7 +2,7 @@ package com.aamdigital.aambackendservice.common.changes
 
 import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Scheduled
 
@@ -14,9 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled
  * Active whenever change-detection itself is active (see [ChangesConfiguration]).
  */
 @Configuration
-@ConditionalOnExpression(
-    "\${features.reporting.enabled:false} or \${features.notification-api.enabled:false}"
-)
+@ConditionalOnBean(CouchDbChangesProcessor::class)
 class CouchDbChangesPollingJob(
     private val changesProcessor: CouchDbChangesProcessor,
 ) {

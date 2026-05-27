@@ -2,11 +2,12 @@ package com.aamdigital.aambackendservice.skill.job
 
 import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
+import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.di.SkillLabApiClientConfiguration
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.Scheduled
 
@@ -16,18 +17,8 @@ import org.springframework.scheduling.annotation.Scheduled
  * Resets the error counter on each successful run.
  */
 @Configuration
-@ConditionalOnProperty(
-    prefix = "features.skill-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
-@ConditionalOnProperty(
-    prefix = "features.skill-api",
-    name = ["mode"],
-    havingValue = "skilllab",
-    matchIfMissing = false
-)
+@ConditionalOnSkillApiEnabled
+@ConditionalOnSkillLabMode
 class SyncSkillsJob(
     private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase,
     private val skillLabApiClientConfiguration: SkillLabApiClientConfiguration,

@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.reporting.webhook.controller
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.webhook.Webhook
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthenticationType
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookTarget
@@ -10,7 +11,6 @@ import com.aamdigital.aambackendservice.reporting.webhook.core.AddWebhookSubscri
 import com.aamdigital.aambackendservice.reporting.webhook.storage.CreateWebhookRequest
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookOwner
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -49,12 +49,7 @@ data class CreateWebhookRequestDto(
 
 @RestController
 @RequestMapping("/v1/reporting/webhook")
-@ConditionalOnProperty(
-    prefix = "features.reporting",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnReportingEnabled
 @Validated
 class WebhookController(
     private val webhookStorage: WebhookStorage,

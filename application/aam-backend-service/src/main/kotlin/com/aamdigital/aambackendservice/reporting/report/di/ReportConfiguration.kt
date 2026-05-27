@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.report.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
 import com.aamdigital.aambackendservice.reporting.report.core.ReportQueryAnalyser
@@ -12,18 +13,12 @@ import com.aamdigital.aambackendservice.reporting.report.storage.DefaultReportSt
 import com.aamdigital.aambackendservice.reporting.report.usecase.DefaultIdentifyAffectedReportsUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.client.RestClient
 
 @Configuration
-@ConditionalOnProperty(
-    prefix = "features.reporting",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnReportingEnabled
 class ReportConfiguration {
     @Bean
     fun defaultReportStorage(

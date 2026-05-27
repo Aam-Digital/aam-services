@@ -10,11 +10,15 @@ import kotlin.test.Test
 /**
  * Verifies that change-detection auto-activates whenever at least one consumer feature
  * (reporting or notification) is enabled, and turns off when both are disabled.
+ * Also verifies that [CouchDbChangesPollingJob] follows the processor (via @ConditionalOnBean).
  */
 class ChangesConfigurationConditionalTest {
     private val runner =
         ApplicationContextRunner()
-            .withUserConfiguration(ChangesConfiguration::class.java)
+            .withUserConfiguration(
+                ChangesConfiguration::class.java,
+                CouchDbChangesPollingJob::class.java,
+            )
             .withBean(CouchDbClient::class.java, { mock<CouchDbClient>() })
             .withBean(ChangeEventPublisher::class.java, { mock<ChangeEventPublisher>() })
             .withBean(SyncRepository::class.java, { mock<SyncRepository>() })
@@ -29,6 +33,7 @@ class ChangesConfigurationConditionalTest {
             )
             .run { context ->
                 assertThat(context).hasSingleBean(CouchDbChangesProcessor::class.java)
+                assertThat(context).hasSingleBean(CouchDbChangesPollingJob::class.java)
             }
     }
 
@@ -41,6 +46,7 @@ class ChangesConfigurationConditionalTest {
             )
             .run { context ->
                 assertThat(context).hasSingleBean(CouchDbChangesProcessor::class.java)
+                assertThat(context).hasSingleBean(CouchDbChangesPollingJob::class.java)
             }
     }
 
@@ -53,6 +59,7 @@ class ChangesConfigurationConditionalTest {
             )
             .run { context ->
                 assertThat(context).doesNotHaveBean(CouchDbChangesProcessor::class.java)
+                assertThat(context).doesNotHaveBean(CouchDbChangesPollingJob::class.java)
             }
     }
 
@@ -60,6 +67,7 @@ class ChangesConfigurationConditionalTest {
     fun `change-detection is inactive when no flags are set`() {
         runner.run { context ->
             assertThat(context).doesNotHaveBean(CouchDbChangesProcessor::class.java)
+            assertThat(context).doesNotHaveBean(CouchDbChangesPollingJob::class.java)
         }
     }
 }

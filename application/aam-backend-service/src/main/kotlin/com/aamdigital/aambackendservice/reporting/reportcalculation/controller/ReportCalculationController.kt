@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.stream.handleInputStreamToOutputStream
 import com.aamdigital.aambackendservice.export.controller.TemplateExportControllerResponse
+import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
@@ -15,7 +16,6 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateR
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -38,12 +38,7 @@ import java.util.*
 
 @RestController
 @RequestMapping("/v1/reporting/report-calculation")
-@ConditionalOnProperty(
-    prefix = "features.reporting",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnReportingEnabled
 @Validated
 class ReportCalculationController(
     private val reportStorage: ReportStorage,

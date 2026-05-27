@@ -1,11 +1,12 @@
 package com.aamdigital.aambackendservice.skill.controller
 
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
+import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
+import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
@@ -29,18 +30,8 @@ enum class SyncModeDto {
 
 @RestController
 @RequestMapping("/v1/skill")
-@ConditionalOnProperty(
-    prefix = "features.skill-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
-@ConditionalOnProperty(
-    prefix = "features.skill-api",
-    name = ["mode"],
-    havingValue = "skilllab",
-    matchIfMissing = false
-)
+@ConditionalOnSkillApiEnabled
+@ConditionalOnSkillLabMode
 class SkillAdminController(
     private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase,
     private val skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository

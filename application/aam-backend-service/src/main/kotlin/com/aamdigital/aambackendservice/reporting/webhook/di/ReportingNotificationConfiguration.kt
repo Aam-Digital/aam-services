@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.reporting.webhook.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.crypto.core.CryptoService
+import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.webhook.core.AddWebhookSubscriptionUseCase
@@ -17,18 +18,12 @@ import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookReposit
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.client.RestClient
 
 @Configuration
-@ConditionalOnProperty(
-    prefix = "features.reporting",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnReportingEnabled
 class ReportingNotificationConfiguration {
     @Bean
     fun defaultAddWebhookSubscription(

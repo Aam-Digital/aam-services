@@ -3,6 +3,8 @@ package com.aamdigital.aambackendservice.notification.di
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationFirebaseMode
 import com.aamdigital.aambackendservice.notification.core.config.DefaultNotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
@@ -16,17 +18,11 @@ import com.aamdigital.aambackendservice.notification.queue.UserNotificationPubli
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.firebase.messaging.FirebaseMessaging
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty(
-    prefix = "features.notification-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnNotificationApiEnabled
 class NotificationConfiguration {
     @Bean
     fun notificationConfigCache(
@@ -59,12 +55,7 @@ class NotificationConfiguration {
         )
 
     @Bean("push-create-notification-handler")
-    @ConditionalOnProperty(
-        prefix = "features.notification-api",
-        name = ["mode"],
-        havingValue = "firebase",
-        matchIfMissing = false
-    )
+    @ConditionalOnNotificationFirebaseMode
     fun pushCreateNotificationHandler(
         firebaseMessaging: FirebaseMessaging,
         userDeviceRepository: UserDeviceRepository,
