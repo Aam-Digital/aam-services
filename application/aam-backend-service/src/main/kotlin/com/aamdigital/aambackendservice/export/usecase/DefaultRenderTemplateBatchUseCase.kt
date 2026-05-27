@@ -24,7 +24,6 @@ import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClient
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.InputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -129,11 +128,12 @@ class DefaultRenderTemplateBatchUseCase(
         }
 
         return Success(
-            data = RenderTemplateBatchData(
-                file = ByteArrayInputStream(zipBuffer.toByteArray()),
-                responseHeaders = zipHeaders,
-                failedIndices = failedIndices
-            )
+            data =
+                RenderTemplateBatchData(
+                    file = ByteArrayInputStream(zipBuffer.toByteArray()),
+                    responseHeaders = zipHeaders,
+                    failedIndices = failedIndices
+                )
         )
     }
 
@@ -147,11 +147,12 @@ class DefaultRenderTemplateBatchUseCase(
         val renderId = parseRenderRequestResponse(raw)
         val pdf = fetchRenderIdRequest(renderId)
         return Success(
-            data = RenderTemplateBatchData(
-                file = ByteArrayInputStream(pdf.file),
-                responseHeaders = pdf.headers,
-                failedIndices = emptyList()
-            )
+            data =
+                RenderTemplateBatchData(
+                    file = ByteArrayInputStream(pdf.file),
+                    responseHeaders = pdf.headers,
+                    failedIndices = emptyList()
+                )
         )
     }
 

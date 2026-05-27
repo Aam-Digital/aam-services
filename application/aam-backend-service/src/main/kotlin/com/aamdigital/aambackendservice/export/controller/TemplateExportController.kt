@@ -383,17 +383,8 @@ class TemplateExportController(
                 }
 
                 val responseBody =
-                    TemplateExportControllerResponse.RenderTemplateBatchControllerResponse { outputStream: OutputStream ->
-                        val buffer = ByteArray(BYTE_ARRAY_BUFFER_LENGTH)
-                        var bytesRead: Int
-                        while ((
-                                result.data.file
-                                    .read(buffer)
-                                    .also { bytesRead = it }
-                            ) != -1
-                        ) {
-                            outputStream.write(buffer, 0, bytesRead)
-                        }
+                    TemplateExportControllerResponse.RenderTemplateBatchControllerResponse {
+                        result.data.file.copyTo(it, BYTE_ARRAY_BUFFER_LENGTH)
                     }
 
                 logger.trace(
