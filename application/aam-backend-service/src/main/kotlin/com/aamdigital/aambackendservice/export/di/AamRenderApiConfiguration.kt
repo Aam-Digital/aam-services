@@ -2,8 +2,8 @@ package com.aamdigital.aambackendservice.export.di
 
 import com.aamdigital.aambackendservice.common.auth.core.AuthConfig
 import com.aamdigital.aambackendservice.common.auth.core.AuthProvider
+import com.aamdigital.aambackendservice.export.ConditionalOnExportApiEnabled
 import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -12,12 +12,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestClient
 
 @ConfigurationProperties("aam-render-api-client-configuration")
-@ConditionalOnProperty(
-    prefix = "features.export-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnExportApiEnabled
 class AamRenderApiClientConfiguration(
     val basePath: String,
     val authConfig: AuthConfig? = null,
@@ -25,12 +20,7 @@ class AamRenderApiClientConfiguration(
 )
 
 @Configuration
-@ConditionalOnProperty(
-    prefix = "features.export-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnExportApiEnabled
 class AamRenderApiConfiguration {
     @Bean(name = ["aam-render-api-client"])
     fun aamRenderApiClient(

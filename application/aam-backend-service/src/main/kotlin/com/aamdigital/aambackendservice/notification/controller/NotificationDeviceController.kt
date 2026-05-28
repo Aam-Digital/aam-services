@@ -1,10 +1,10 @@
 package com.aamdigital.aambackendservice.notification.controller
 
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
@@ -30,12 +30,7 @@ data class DeviceRegistrationDto(
  */
 @RestController
 @RequestMapping("/v1/notification/device")
-@ConditionalOnProperty(
-    prefix = "features.notification-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnNotificationApiEnabled
 @Transactional
 class NotificationDeviceController(
     private val userDeviceRepository: UserDeviceRepository

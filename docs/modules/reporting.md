@@ -18,7 +18,24 @@ script ([ndb-setup](https://github.com/Aam-Digital/ndb-setup)) also)_
 1. Set up necessary environment variables (e.g. using an `application.env` file for docker compose under
    `config/aam-backend-service/application.env` from the root folder where the "docker-compose.yml" exists):
     - see [example .env](/templates/aam-backend-service/application.template.env)
-    - CRYPTO_CONFIGURATION_SECRET: _a random secret used to encrypt data_
+    - `FEATURES_REPORTING_ENABLED=true` — enables this module (default `true` in the template)
+    - `CRYPTO_CONFIGURATION_SECRET` — a random secret used to encrypt data
+
+### Check if feature is enabled
+
+You can make a request to the API to check if the reporting feature is currently enabled and available:
+
+```
+> GET /actuator/features
+
+// response:
+{
+  "reporting": { "enabled": true }
+}
+```
+
+If the _aam-services backend_ is not deployed at all, such a request will usually return a HTTP 504 error.
+You should also account for that possibility.
 2. Enable the backend in the overall docker compose setup as described in the ndb-setup
    README [here](https://github.com/Aam-Digital/ndb-setup?tab=readme-ov-file#set-up-api-integration)
     - or, if it was already enabled, re-up the docker compose and confirm the new containers and environment are running

@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.export.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.export.ConditionalOnExportApiEnabled
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.FetchTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
@@ -11,18 +12,12 @@ import com.aamdigital.aambackendservice.export.usecase.DefaultFetchTemplateUseCa
 import com.aamdigital.aambackendservice.export.usecase.DefaultRenderTemplateUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.client.RestClient
 
 @Configuration
-@ConditionalOnProperty(
-    prefix = "features.export-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnExportApiEnabled
 class UseCaseConfiguration {
     @Bean(name = ["default-template-storage"])
     fun defaultTemplateStorage(couchDbClient: CouchDbClient): TemplateStorage = DefaultTemplateStorage(couchDbClient)

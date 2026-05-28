@@ -1,5 +1,7 @@
 package com.aamdigital.aambackendservice.skill.di
 
+import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
+import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.core.SqlSearchUserProfileUseCase
@@ -12,7 +14,6 @@ import com.aamdigital.aambackendservice.skill.skilllab.SkillLabFetchUserProfileU
 import com.aamdigital.aambackendservice.skill.skilllab.SkillLabSyncUserProfileUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpHeaders
@@ -20,18 +21,8 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestClient
 
 @Configuration
-@ConditionalOnProperty(
-    prefix = "features.skill-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
-@ConditionalOnProperty(
-    prefix = "features.skill-api",
-    name = ["mode"],
-    havingValue = "skilllab",
-    matchIfMissing = false
-)
+@ConditionalOnSkillApiEnabled
+@ConditionalOnSkillLabMode
 class SkillConfigurationSkillLab {
     @Bean(name = ["skilllab-api-client"])
     fun skillLabApiClient(configuration: SkillLabApiClientConfiguration): RestClient {

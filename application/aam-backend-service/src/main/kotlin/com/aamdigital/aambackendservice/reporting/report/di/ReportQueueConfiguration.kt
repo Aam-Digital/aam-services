@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.report.di
 
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
+@ConditionalOnReportingEnabled
 class ReportQueueConfiguration {
     companion object {
         const val DOCUMENT_CHANGES_REPORT_QUEUE = "document.changes.report"

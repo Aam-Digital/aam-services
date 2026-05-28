@@ -9,10 +9,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpException
 import org.springframework.amqp.core.MessageProperties
 import org.springframework.amqp.rabbit.core.RabbitTemplate
-import org.springframework.stereotype.Service
 
-// todo conditional bean creation
-@Service
 class RabbitMqReportCalculationEventPublisher(
     private val objectMapper: ObjectMapper,
     private val rabbitTemplate: RabbitTemplate
