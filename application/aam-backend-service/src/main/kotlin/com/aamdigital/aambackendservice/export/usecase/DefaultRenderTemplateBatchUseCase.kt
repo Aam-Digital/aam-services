@@ -180,8 +180,13 @@ class DefaultRenderTemplateBatchUseCase(
             disposition
                 ?.let { Regex("""filename="?([^";]+)"?""").find(it)?.groupValues?.getOrNull(1) }
                 ?.trim()
-        return fromHeader?.takeIf { it.isNotBlank() }
-            ?: "${targetFileName.substringBeforeLast('.', targetFileName)}-${index + 1}.pdf"
+        val fallback = "${targetFileName.substringBeforeLast('.', targetFileName)}-${index + 1}.pdf"
+        val candidate = fromHeader?.takeIf { it.isNotBlank() } ?: fallback
+        return candidate
+            .replace(Regex("""[\\/:*?"<>|]"""), "_")
+            .substringAfterLast('/')
+            .substringAfterLast('\\')
+    }
     }
 
     private fun sanitizedZipFileName(targetFileName: String): String {
