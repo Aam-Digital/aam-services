@@ -53,11 +53,19 @@ features:
     mode: disabled
   notification-api:
     enabled: false
+    email:
+      enabled: false
   third-party-authentication:
     enabled: false
 
 notification-firebase-configuration:
   link-base-url: ${application.base-url}
+
+notification:
+  email:
+    from: ""
+    subject-prefix: Aam Digital
+    manage-settings-url: "${application.base-url}/user-account?tabIndex=1"
 
 aam-render-api-client-configuration:
   auth-config:
@@ -108,6 +116,15 @@ spring:
         observation-enabled: true
     username: local-spring
     password: docker
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
   datasource:
     url: jdbc:postgresql://localhost:5402/aam-backend-service
     username: admin
@@ -166,6 +183,8 @@ features:
   notification-api:
     enabled: true
     mode: firebase
+    email:
+      enabled: true
   third-party-authentication:
     enabled: true
 

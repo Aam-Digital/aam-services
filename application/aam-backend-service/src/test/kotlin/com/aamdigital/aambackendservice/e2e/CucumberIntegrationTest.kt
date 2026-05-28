@@ -1,7 +1,11 @@
 package com.aamdigital.aambackendservice.e2e
 
 import com.aamdigital.aambackendservice.common.changes.SyncRepository
+import com.aamdigital.aambackendservice.common.mail.MailSenderRequest
+import com.aamdigital.aambackendservice.common.mail.MailSenderResponse
+import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.container.TestContainers
+import com.aamdigital.aambackendservice.notification.core.create.email.UserEmailProvider
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
@@ -14,7 +18,14 @@ import io.cucumber.spring.CucumberContextConfiguration
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
+import org.mockito.kotlin.any
+import org.mockito.kotlin.reset
+import org.mockito.kotlin.timeout
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
+import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.core.io.ClassPathResource
 import org.springframework.http.HttpMethod
 import java.io.File
@@ -27,10 +38,20 @@ class CucumberIntegrationTest(
 ) : SpringIntegrationTest() {
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    @MockBean
+    lateinit var mailSenderService: MailSenderService
+
+    @MockBean
+    lateinit var userEmailProvider: UserEmailProvider
+
     private var storedId: String? = null
 
     @Before
     fun `log scenario start`() {
+        reset(mailSenderService, userEmailProvider)
+        whenever(userEmailProvider.lookupEmail(any())).thenReturn("integration-test-user@example.com")
+        whenever(mailSenderService.sendMail(any<MailSenderRequest>())).thenReturn(MailSenderResponse(success = true))
+
         logger.info("[CucumberTest] === Scenario starting ===")
         logger.info("[CucumberTest] SyncEntries before scenario: {}", syncRepository.findAll().map { "${it.database}=${it.latestRef.take(20)}" })
     }
@@ -296,5 +317,10 @@ class CucumberIntegrationTest(
             expectedCount,
             actualCount
         )
+    }
+
+    @Then("email notification is sent {int} times")
+    fun `email notification is sent n times`(expectedCount: Int) {
+        verify(mailSenderService, timeout(10_000).times(expectedCount)).sendMail(any())
     }
 }

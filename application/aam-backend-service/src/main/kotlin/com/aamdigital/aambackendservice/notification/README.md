@@ -13,7 +13,7 @@ _for details about setup & usage of this module [see README in docs folder](../.
     2. `ApplyNotificationRulesUseCase` checks if a notification rule is triggered.
 4. `ApplyNotificationRulesUseCase` runs on consumed `DocumentChangeEvent` and checks if any notification rule is triggered. In that case, it publishes a `CreateUserNotificationEvent` in the queue.
 5. `CreateNotificationUseCase` runs on consumed `CreateUserNotificationEvent` and passes the event on to all applicable handlers for different notification channels.
-6. `CreateNotificationHandler` implementations (for push, in-app) send the actual notification to the user.
+6. `CreateNotificationHandler` implementations (for push, in-app, email) send the actual notification to the user.
 
 ## Folder Structure
 

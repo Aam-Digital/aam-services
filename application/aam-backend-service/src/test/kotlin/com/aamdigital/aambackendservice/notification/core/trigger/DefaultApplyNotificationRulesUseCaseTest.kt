@@ -2,19 +2,19 @@ package com.aamdigital.aambackendservice.notification.core.trigger
 
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.condition.DocumentCondition
+import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
-import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
 import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
+import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
@@ -56,7 +56,9 @@ class DefaultApplyNotificationRulesUseCaseTest {
             DefaultApplyNotificationRulesUseCase(
                 notificationConfigCache = notificationConfigCache,
                 userNotificationPublisher = userNotificationPublisher,
-                permissionCheckClient = permissionCheckClient
+                permissionCheckClient = permissionCheckClient,
+                applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
+                emailEnabled = true
             )
 
         Mockito.lenient().`when`(permissionCheckClient.checkPermissions(any(), any(), any())).thenReturn(
@@ -533,25 +535,27 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     channelPush = false,
                     channelEmail = false,
                     userIdentifier = "user-1",
-                    rules = listOf(
-                        NotificationRuleCacheEntry(
-                            label = "Rule 1",
-                            externalIdentifier = "ext-1",
-                            notificationType = NotificationType.ENTITY_CHANGE,
-                            entityType = "Child",
-                            changeType = "created",
-                            conditions = emptyList(),
-                            enabled = true
+                    rules =
+                        listOf(
+                            NotificationRuleCacheEntry(
+                                label = "Rule 1",
+                                externalIdentifier = "ext-1",
+                                notificationType = NotificationType.ENTITY_CHANGE,
+                                entityType = "Child",
+                                changeType = "created",
+                                conditions = emptyList(),
+                                enabled = true
+                            )
                         )
-                    )
                 )
             )
         )
 
         // when
-        val result = service.run(
-            ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
-        )
+        val result =
+            service.run(
+                ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
+            )
 
         // then
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -581,25 +585,27 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     channelPush = false,
                     channelEmail = false,
                     userIdentifier = "user-1",
-                    rules = listOf(
-                        NotificationRuleCacheEntry(
-                            label = "Rule 1",
-                            externalIdentifier = "ext-1",
-                            notificationType = NotificationType.ENTITY_CHANGE,
-                            entityType = "Child",
-                            changeType = "created",
-                            conditions = emptyList(),
-                            enabled = true
+                    rules =
+                        listOf(
+                            NotificationRuleCacheEntry(
+                                label = "Rule 1",
+                                externalIdentifier = "ext-1",
+                                notificationType = NotificationType.ENTITY_CHANGE,
+                                entityType = "Child",
+                                changeType = "created",
+                                conditions = emptyList(),
+                                enabled = true
+                            )
                         )
-                    )
                 )
             )
         )
 
         // when
-        val result = service.run(
-            ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
-        )
+        val result =
+            service.run(
+                ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
+            )
 
         // then
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -616,7 +622,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
         )
     }
 
-    @Disabled("Email channel not yet implemented")
     @Test
     fun `should also publish EMAIL notification when channelEmail flag is enabled`() {
         // given
@@ -626,25 +631,27 @@ class DefaultApplyNotificationRulesUseCaseTest {
                     channelPush = false,
                     channelEmail = true,
                     userIdentifier = "user-1",
-                    rules = listOf(
-                        NotificationRuleCacheEntry(
-                            label = "Rule 1",
-                            externalIdentifier = "ext-1",
-                            notificationType = NotificationType.ENTITY_CHANGE,
-                            entityType = "Child",
-                            changeType = "created",
-                            conditions = emptyList(),
-                            enabled = true
+                    rules =
+                        listOf(
+                            NotificationRuleCacheEntry(
+                                label = "Rule 1",
+                                externalIdentifier = "ext-1",
+                                notificationType = NotificationType.ENTITY_CHANGE,
+                                entityType = "Child",
+                                changeType = "created",
+                                conditions = emptyList(),
+                                enabled = true
+                            )
                         )
-                    )
                 )
             )
         )
 
         // when
-        val result = service.run(
-            ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
-        )
+        val result =
+            service.run(
+                ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
+            )
 
         // then
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -675,9 +682,10 @@ class DefaultApplyNotificationRulesUseCaseTest {
         )
 
         // when
-        val result = service.run(
-            ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
-        )
+        val result =
+            service.run(
+                ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
+            )
 
         // then
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
@@ -698,13 +706,123 @@ class DefaultApplyNotificationRulesUseCaseTest {
         )
 
         // when
-        val result = service.run(
-            ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
-        )
+        val result =
+            service.run(
+                ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
+            )
 
         // then
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
         assertEquals(0, (result as UseCaseOutcome.Success).data.notificationsSendCount)
         verify(userNotificationPublisher, times(0)).publish(any(), any())
+    }
+
+    @Test
+    fun `should not publish EMAIL notification when email feature is disabled`() {
+        // given
+        val serviceWithEmailDisabled =
+            DefaultApplyNotificationRulesUseCase(
+                notificationConfigCache = notificationConfigCache,
+                userNotificationPublisher = userNotificationPublisher,
+                permissionCheckClient = permissionCheckClient,
+                applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
+                emailEnabled = false
+            )
+        whenever(notificationConfigCache.findAll()).thenReturn(
+            listOf(
+                NotificationConfigCacheEntry(
+                    channelPush = false,
+                    channelEmail = true,
+                    userIdentifier = "user-1",
+                    rules =
+                        listOf(
+                            NotificationRuleCacheEntry(
+                                label = "Rule 1",
+                                externalIdentifier = "ext-1",
+                                notificationType = NotificationType.ENTITY_CHANGE,
+                                entityType = "Child",
+                                changeType = "created",
+                                conditions = emptyList(),
+                                enabled = true
+                            )
+                        )
+                )
+            )
+        )
+
+        // when
+        val result =
+            serviceWithEmailDisabled.run(
+                ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent)
+            )
+
+        // then
+        assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, times(2)).publish(
+            eq(USER_NOTIFICATION_QUEUE),
+            eventCaptor.capture()
+        )
+        assertThat(eventCaptor.allValues.map { it.notificationChannelType })
+            .doesNotContain(NotificationChannelType.EMAIL)
+    }
+
+    @Test
+    fun `should populate actionUrl with base url and notification id`() {
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(
+            listOf(generateNotificationConfig(changeType = "created"))
+        )
+
+        // when
+        service.run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+
+        // then
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, Mockito.atLeastOnce()).publish(
+            eq(USER_NOTIFICATION_QUEUE),
+            eventCaptor.capture()
+        )
+        val firstEvent = eventCaptor.firstValue
+        assertThat(firstEvent.details.actionUrl).startsWith("https://app.test/notification/")
+        assertThat(firstEvent.details.actionUrl).doesNotContain("?")
+    }
+
+    @Test
+    fun `should use same notification id across all channel events for the same rule match`() {
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(
+            listOf(
+                NotificationConfigCacheEntry(
+                    channelPush = false,
+                    channelEmail = true,
+                    userIdentifier = "user-1",
+                    rules =
+                        listOf(
+                            NotificationRuleCacheEntry(
+                                label = "Rule 1",
+                                externalIdentifier = "ext-1",
+                                notificationType = NotificationType.ENTITY_CHANGE,
+                                entityType = "Child",
+                                changeType = "created",
+                                conditions = emptyList(),
+                                enabled = true
+                            )
+                        )
+                )
+            )
+        )
+
+        // when
+        service.run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+
+        // then
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, times(3)).publish(
+            eq(USER_NOTIFICATION_QUEUE),
+            eventCaptor.capture()
+        )
+        val ids = eventCaptor.allValues.map { it.details.id }.distinct()
+        assertThat(ids).hasSize(1)
     }
 }

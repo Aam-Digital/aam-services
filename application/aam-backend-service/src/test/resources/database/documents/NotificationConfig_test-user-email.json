@@ -1,0 +1,19 @@
+{
+    "_id": "NotificationConfig:test-user-email",
+    "notificationRules": [
+        {
+            "label": "New Child created (email)",
+            "notificationType": "ENTITY_CHANGE",
+            "entityType": "Child",
+            "changeType": [
+                "created"
+            ],
+            "conditions": {},
+            "enabled": true
+        }
+    ],
+    "channels": {
+        "push": false,
+        "email": true
+    }
+}

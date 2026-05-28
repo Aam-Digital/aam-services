@@ -21,6 +21,9 @@ services:
     image: maildev/maildev:2.2.1
     networks:
       - aam-digital
+    ports:
+      - "1025:1025"
+      - "1080:1080"
 
   # ***************************************************************
   # couchdb
