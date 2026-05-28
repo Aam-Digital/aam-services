@@ -9,6 +9,7 @@ import com.aamdigital.aambackendservice.notification.di.NotificationEmailPropert
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import org.slf4j.LoggerFactory
 import org.springframework.web.util.HtmlUtils
+import java.nio.charset.StandardCharsets
 
 class EmailCreateNotificationHandler(
     private val mailSenderService: MailSenderService,
@@ -16,6 +17,7 @@ class EmailCreateNotificationHandler(
     private val notificationEmailProperties: NotificationEmailProperties
 ) : CreateNotificationHandler {
     private val logger = LoggerFactory.getLogger(javaClass)
+    private val emailBodyTemplate: String = loadEmailBodyTemplate()
 
     override fun canHandle(notificationChannelType: NotificationChannelType): Boolean =
         NotificationChannelType.EMAIL == notificationChannelType
@@ -59,14 +61,19 @@ class EmailCreateNotificationHandler(
         title: String,
         actionUrl: String,
         manageSettingsUrl: String
-    ): String =
-        """
-        <p>${HtmlUtils.htmlEscape(title)}</p>
-        <p><a href="${HtmlUtils.htmlEscape(actionUrl)}">Open in Aam Digital</a></p>
-        <hr>
-        <p style="font-size:smaller;color:#666">
-          You received this email because email notifications are enabled in your Aam Digital account.
-          <a href="${HtmlUtils.htmlEscape(manageSettingsUrl)}">Manage notification settings</a>.
-        </p>
-        """.trimIndent()
+        ): String =
+                emailBodyTemplate
+                        .replace("{{TITLE}}", HtmlUtils.htmlEscape(title))
+                        .replace("{{ACTION_URL}}", HtmlUtils.htmlEscape(actionUrl))
+                        .replace("{{MANAGE_SETTINGS_URL}}", HtmlUtils.htmlEscape(manageSettingsUrl))
+
+        private fun loadEmailBodyTemplate(): String {
+                val templatePath = "/notification/email/create-notification-email-template.html"
+                val resource = javaClass.getResourceAsStream(templatePath)
+                        ?: throw IllegalStateException("Missing email template resource: $templatePath")
+
+                return resource
+                        .bufferedReader(StandardCharsets.UTF_8)
+                        .use { it.readText() }
+        }
 }
