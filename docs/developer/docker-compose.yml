@@ -176,7 +176,6 @@ services:
 
   aam-backend-service:
     image: ghcr.io/aam-digital/aam-backend-service:${AAM_BACKEND_SERVICE_VERSION:-latest}
-    restart: on-failure
     command:
       - sh
       - -c
