@@ -24,7 +24,6 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
 import java.io.File
-import java.util.zip.ZipInputStream
 
 @ExtendWith(MockitoExtension::class)
 class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
@@ -55,45 +54,26 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
             applicableForEntityTypes = emptyList()
         )
 
-    private fun enqueueSuccessfulRender(renderId: String) {
+    private fun enqueueRenderAndFile(
+        renderId: String,
+        contentType: String
+    ) {
         mockWebServer.enqueue(
             MockResponse().setBody(
-                """
-                {
-                    "success": true,
-                    "data": {
-                        "renderId": "$renderId"
-                    }
-                }
-                """.trimIndent()
+                """{"success":true,"data":{"renderId":"$renderId"}}"""
             )
         )
-
         val buffer = Buffer()
         buffer.writeAll(File("src/test/resources/files/pdf-test-file-1.pdf").source())
-
         mockWebServer.enqueue(
             MockResponse()
                 .setHeaders(
                     mapOf(
-                        "Content-Type" to "application/pdf",
-                        "Content-Disposition" to "attachment; filename=\"$renderId.pdf\"",
+                        "Content-Type" to contentType,
+                        "Content-Disposition" to "attachment; filename=\"$renderId\"",
                         "Content-Length" to buffer.size.toString()
                     ).toHeaders()
                 ).setBody(buffer)
-        )
-    }
-
-    private fun enqueueRenderFailure() {
-        mockWebServer.enqueue(
-            MockResponse().setBody(
-                """
-                {
-                    "success": false,
-                    "error": "boom"
-                }
-                """.trimIndent()
-            )
         )
     }
 
@@ -138,16 +118,14 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
     }
 
     @Test
-    fun `ZIP mode should return a ZIP containing one entry per successful record`() {
+    fun `ZIP mode should forward batchSplitBy and batchOutput zip to Carbone and stream result`() {
         val templateRef = DomainReference("some-id")
         val bodyData: JsonNode =
             objectMapper.readValue(
                 """{"convertTo":"pdf","data":[{"name":"Alice"},{"name":"Bob"}]}"""
             )
-
         whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template())
-        enqueueSuccessfulRender("render-1")
-        enqueueSuccessfulRender("render-2")
+        enqueueRenderAndFile(renderId = "render-zip-1", contentType = "application/zip")
 
         val response =
             service.run(
@@ -160,93 +138,27 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
 
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
         val data = (response as UseCaseOutcome.Success).data
-        assertThat(data.failedIndices).isEmpty()
         assertThat(data.responseHeaders.contentType?.toString()).isEqualTo("application/zip")
 
-        val zipEntries = mutableListOf<String>()
-        ZipInputStream(data.file).use { zis ->
-            var entry = zis.nextEntry
-            while (entry != null) {
-                zipEntries.add(entry.name)
-                entry = zis.nextEntry
-            }
-        }
-        assertThat(zipEntries).hasSize(2)
-        assertThat(zipEntries).contains("render-1.pdf", "render-2.pdf")
+        // first recorded request is POST /render/{templateId} with our injected batch options
+        val renderRequest = mockWebServer.takeRequest()
+        assertThat(renderRequest.path).isEqualTo("/render/export-template-id")
+        val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
+        assertThat(sentBody["batchSplitBy"]).isEqualTo("d")
+        assertThat(sentBody["batchOutput"]).isEqualTo("zip")
+        assertThat(sentBody["reportName"]).isEqualTo("child-report.pdf")
+        assertThat(sentBody["data"]).isInstanceOf(List::class.java)
     }
 
     @Test
-    fun `ZIP mode should skip failed records and report them in failedIndices plus a failures-txt entry`() {
+    fun `COMBINED mode should forward batchOutput pdf to Carbone`() {
         val templateRef = DomainReference("some-id")
         val bodyData: JsonNode =
             objectMapper.readValue(
-                """{"data":[{"name":"Alice"},{"name":"Broken"},{"name":"Carla"}]}"""
+                """{"data":[{"name":"Alice"},{"name":"Bob"}]}"""
             )
-
         whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template())
-        enqueueSuccessfulRender("render-A")
-        enqueueRenderFailure()
-        enqueueSuccessfulRender("render-C")
-
-        val response =
-            service.run(
-                RenderTemplateBatchRequest(
-                    templateRef = templateRef,
-                    bodyData = bodyData,
-                    mode = RenderTemplateBatchMode.ZIP
-                )
-            )
-
-        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
-        val data = (response as UseCaseOutcome.Success).data
-        assertThat(data.failedIndices).containsExactly(1)
-
-        val zipEntries = mutableListOf<String>()
-        ZipInputStream(data.file).use { zis ->
-            var entry = zis.nextEntry
-            while (entry != null) {
-                zipEntries.add(entry.name)
-                entry = zis.nextEntry
-            }
-        }
-        assertThat(zipEntries).hasSize(3)
-        assertThat(zipEntries).contains("render-A.pdf", "render-C.pdf", "failures.txt")
-    }
-
-    @Test
-    fun `ZIP mode should return ALL_RECORDS_FAILED_ERROR when every record fails`() {
-        val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode =
-            objectMapper.readValue("""{"data":[{"name":"X"},{"name":"Y"}]}""")
-
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template())
-        enqueueRenderFailure()
-        enqueueRenderFailure()
-
-        val response =
-            service.run(
-                RenderTemplateBatchRequest(
-                    templateRef = templateRef,
-                    bodyData = bodyData,
-                    mode = RenderTemplateBatchMode.ZIP
-                )
-            )
-
-        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
-        assertEquals(
-            RenderTemplateBatchError.ALL_RECORDS_FAILED_ERROR,
-            (response as UseCaseOutcome.Failure).errorCode
-        )
-    }
-
-    @Test
-    fun `COMBINED mode should forward the array as-is and return Carbone's single file response`() {
-        val templateRef = DomainReference("some-id")
-        val bodyData: JsonNode =
-            objectMapper.readValue("""{"data":[{"name":"Alice"},{"name":"Bob"}]}""")
-
-        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template())
-        enqueueSuccessfulRender("combined-render")
+        enqueueRenderAndFile(renderId = "render-pdf-1", contentType = "application/pdf")
 
         val response =
             service.run(
@@ -259,7 +171,71 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
 
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
         val data = (response as UseCaseOutcome.Success).data
-        assertThat(data.failedIndices).isEmpty()
         assertThat(data.responseHeaders.contentType?.toString()).isEqualTo("application/pdf")
+
+        val renderRequest = mockWebServer.takeRequest()
+        val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
+        assertThat(sentBody["batchSplitBy"]).isEqualTo("d")
+        assertThat(sentBody["batchOutput"]).isEqualTo("pdf")
+    }
+
+    @Test
+    fun `should return BATCH_REJECTED_ERROR with Carbone's message when batch is over the limit`() {
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue("""{"data":[{"name":"X"},{"name":"Y"}]}""")
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template())
+
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(500)
+                .setBody(
+                    """{"success":false,"error":"Unable to generate the document. Cannot process more than 200 documents","code":"w101","data":{"renderId":""}}"""
+                )
+        )
+
+        val response =
+            service.run(
+                RenderTemplateBatchRequest(
+                    templateRef = templateRef,
+                    bodyData = bodyData,
+                    mode = RenderTemplateBatchMode.ZIP
+                )
+            )
+
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        val failure = response as UseCaseOutcome.Failure
+        assertEquals(RenderTemplateBatchError.BATCH_REJECTED_ERROR, failure.errorCode)
+        assertThat(failure.errorMessage).contains("Cannot process more than 200 documents")
+    }
+
+    @Test
+    fun `should return BATCH_REJECTED_ERROR when batch processing is deactivated on the Carbone instance`() {
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue("""{"data":[{"name":"X"}]}""")
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template())
+
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(500)
+                .setBody(
+                    """{"success":false,"error":"Unable to generate the document. Batch processing deactivated. nbReportMaxPerBatch = 0","code":"w101","data":{"renderId":""}}"""
+                )
+        )
+
+        val response =
+            service.run(
+                RenderTemplateBatchRequest(
+                    templateRef = templateRef,
+                    bodyData = bodyData,
+                    mode = RenderTemplateBatchMode.ZIP
+                )
+            )
+
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        val failure = response as UseCaseOutcome.Failure
+        assertEquals(RenderTemplateBatchError.BATCH_REJECTED_ERROR, failure.errorCode)
+        assertThat(failure.errorMessage).contains("Batch processing deactivated")
     }
 }

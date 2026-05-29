@@ -375,12 +375,6 @@ class TemplateExportController(
         return when (result) {
             is Success -> {
                 val responseHeaders = HttpHeaders().apply { putAll(result.data.responseHeaders) }
-                if (result.data.failedIndices.isNotEmpty()) {
-                    responseHeaders.set(
-                        "X-Failed-Record-Indices",
-                        result.data.failedIndices.joinToString(",")
-                    )
-                }
 
                 val responseBody =
                     TemplateExportControllerResponse.RenderTemplateBatchControllerResponse {
@@ -389,8 +383,7 @@ class TemplateExportController(
 
                 logger.trace(
                     "[TemplateExportController.renderTemplateBatch()] success response: " +
-                        "(RenderTemplateBatchControllerResponse, failedIndices={})",
-                    result.data.failedIndices
+                        "(RenderTemplateBatchControllerResponse)"
                 )
 
                 ResponseEntity(
@@ -410,6 +403,7 @@ class TemplateExportController(
                         RenderTemplateBatchError.NOT_FOUND_ERROR -> HttpStatus.NOT_FOUND
                         RenderTemplateBatchError.EMPTY_DATA_LIST_ERROR,
                         RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR -> HttpStatus.BAD_REQUEST
+                        RenderTemplateBatchError.BATCH_REJECTED_ERROR -> HttpStatus.UNPROCESSABLE_ENTITY
                         else -> HttpStatus.INTERNAL_SERVER_ERROR
                     }
 

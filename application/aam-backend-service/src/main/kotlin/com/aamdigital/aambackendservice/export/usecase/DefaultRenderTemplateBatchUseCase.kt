@@ -2,7 +2,6 @@ package com.aamdigital.aambackendservice.export.usecase
 
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome.Failure
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome.Success
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NetworkException
@@ -23,42 +22,44 @@ import org.springframework.http.MediaType
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClient
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 /**
  * Default implementation of [RenderTemplateBatchUseCase].
  *
- * Handles two modes:
- *  - [RenderTemplateBatchMode.ZIP]: render each record independently and bundle the
- *    resulting files into a single ZIP. Existing single-record templates work without
- *    modification.
- *  - [RenderTemplateBatchMode.COMBINED]: forward the array as-is to the template engine
- *    and return its output (typically one multi-page file when the template uses array
- *    placeholders like `{d[i].field}`).
+ * Forwards the request to Carbone's native batch rendering (`batchSplitBy` + `batchOutput`).
+ * Carbone splits the `data` array, renders each record with the existing single-record template,
+ * and aggregates the result into a single response:
+ *
+ *  - [RenderTemplateBatchMode.ZIP]      -> `batchOutput: "zip"`  -> ZIP of N PDFs
+ *  - [RenderTemplateBatchMode.COMBINED] -> `batchOutput: "pdf"`  -> one merged multi-page PDF
+ *
+ * The Carbone instance must have `nbReportMaxPerBatch > 0` in its config to enable batch.
+ * If the array exceeds the configured limit, Carbone returns an error message which is propagated
+ * verbatim to the caller as [RenderTemplateBatchError.BATCH_REJECTED_ERROR].
  */
 class DefaultRenderTemplateBatchUseCase(
     private val renderClient: RestClient,
     private val objectMapper: ObjectMapper,
     private val templateStorage: TemplateStorage
 ) : RenderTemplateBatchUseCase() {
-    private data class FileResponse(
-        val file: ByteArray,
-        val headers: HttpHeaders
-    )
-
     override fun apply(request: RenderTemplateBatchRequest): UseCaseOutcome<RenderTemplateBatchData> {
+        val bodyData = request.bodyData
+        if (bodyData !is ObjectNode) {
+            return UseCaseOutcome.Failure(
+                errorCode = RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR,
+                errorMessage = "Request body must be a JSON object.",
+                cause = null
+            )
+        }
         val dataArray =
-            (request.bodyData.get("data") as? ArrayNode)
-                ?: return Failure(
+            bodyData.get("data") as? ArrayNode
+                ?: return UseCaseOutcome.Failure(
                     errorCode = RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR,
                     errorMessage = "Request body must contain a 'data' field of type array.",
                     cause = null
                 )
-
         if (dataArray.isEmpty) {
-            return Failure(
+            return UseCaseOutcome.Failure(
                 errorCode = RenderTemplateBatchError.EMPTY_DATA_LIST_ERROR,
                 errorMessage = "Request 'data' array must not be empty.",
                 cause = null
@@ -68,140 +69,32 @@ class DefaultRenderTemplateBatchUseCase(
         val template = fetchTemplate(request.templateRef)
         val targetFileName = template.targetFileName.replace(Regex("[\\\\/*?\"<>|]"), "_")
 
-        return when (request.mode) {
-            RenderTemplateBatchMode.ZIP -> renderAsZip(template, dataArray, targetFileName, request.bodyData)
-            RenderTemplateBatchMode.COMBINED -> renderAsCombined(template, request.bodyData, targetFileName)
-        }
-    }
+        bodyData.put("batchSplitBy", "d")
+        bodyData.put("batchOutput", carboneBatchOutput(request.mode))
+        bodyData.put("reportName", targetFileName)
 
-    private fun renderAsZip(
-        template: TemplateExport,
-        dataArray: ArrayNode,
-        targetFileName: String,
-        envelope: JsonNode
-    ): UseCaseOutcome<RenderTemplateBatchData> {
-        val zipBuffer = ByteArrayOutputStream()
-        val failedIndices = mutableListOf<Int>()
-        val zipHeaders = HttpHeaders()
-        zipHeaders.contentType = MediaType.parseMediaType("application/zip")
-        zipHeaders.set(
-            HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=\"${sanitizedZipFileName(targetFileName)}\""
-        )
-
-        ZipOutputStream(zipBuffer).use { zip ->
-            dataArray.forEachIndexed { index, record ->
-                try {
-                    val perRecordBody = perRecordEnvelope(envelope, record, targetFileName)
-                    val pdf = renderSingleRecord(template.templateId, perRecordBody)
-                    val entryName = chooseEntryName(pdf.headers, targetFileName, index)
-                    zip.putNextEntry(ZipEntry(entryName))
-                    zip.write(pdf.file)
-                    zip.closeEntry()
-                } catch (ex: Exception) {
-                    logger.warn(
-                        "[DefaultRenderTemplateBatchUseCase] Skipping record index $index after render failure",
-                        ex
-                    )
-                    failedIndices.add(index)
-                }
-            }
-
-            if (failedIndices.isNotEmpty()) {
-                zip.putNextEntry(ZipEntry("failures.txt"))
-                zip.write(
-                    buildString {
-                        appendLine("The following record indices failed to render and were not included:")
-                        failedIndices.forEach { appendLine("- $it") }
-                    }.toByteArray(Charsets.UTF_8)
-                )
-                zip.closeEntry()
-            }
-        }
-
-        if (failedIndices.size == dataArray.size()) {
-            return Failure(
-                errorCode = RenderTemplateBatchError.ALL_RECORDS_FAILED_ERROR,
-                errorMessage = "All ${dataArray.size()} records failed to render.",
-                cause = null
-            )
-        }
-
-        return Success(
-            data =
-                RenderTemplateBatchData(
-                    file = ByteArrayInputStream(zipBuffer.toByteArray()),
-                    responseHeaders = zipHeaders,
-                    failedIndices = failedIndices
-                )
-        )
-    }
-
-    private fun renderAsCombined(
-        template: TemplateExport,
-        bodyData: JsonNode,
-        targetFileName: String
-    ): UseCaseOutcome<RenderTemplateBatchData> {
-        (bodyData as ObjectNode).put("reportName", targetFileName)
         val raw = createRenderRequest(template.templateId, bodyData)
         val renderId = parseRenderRequestResponse(raw)
-        val pdf = fetchRenderIdRequest(renderId)
+        val file = fetchRenderIdRequest(renderId)
         return Success(
             data =
                 RenderTemplateBatchData(
-                    file = ByteArrayInputStream(pdf.file),
-                    responseHeaders = pdf.headers,
-                    failedIndices = emptyList()
+                    file = ByteArrayInputStream(file.file),
+                    responseHeaders = file.headers
                 )
         )
     }
 
-    private fun perRecordEnvelope(
-        envelope: JsonNode,
-        record: JsonNode,
-        targetFileName: String
-    ): ObjectNode {
-        val perRecord = objectMapper.createObjectNode()
-        envelope.fields().forEach { (key, value) ->
-            if (key != "data") perRecord.set<JsonNode>(key, value)
+    private fun carboneBatchOutput(mode: RenderTemplateBatchMode): String =
+        when (mode) {
+            RenderTemplateBatchMode.ZIP -> "zip"
+            RenderTemplateBatchMode.COMBINED -> "pdf"
         }
-        perRecord.set<JsonNode>("data", record)
-        perRecord.put("reportName", targetFileName)
-        return perRecord
-    }
 
-    private fun chooseEntryName(
-        responseHeaders: HttpHeaders,
-        targetFileName: String,
-        index: Int
-    ): String {
-        val disposition = responseHeaders.getFirst(HttpHeaders.CONTENT_DISPOSITION)
-        val fromHeader =
-            disposition
-                ?.let { Regex("""filename="?([^";]+)"?""").find(it)?.groupValues?.getOrNull(1) }
-                ?.trim()
-        val fallback = "${targetFileName.substringBeforeLast('.', targetFileName)}-${index + 1}.pdf"
-        val candidate = fromHeader?.takeIf { it.isNotBlank() } ?: fallback
-        return candidate
-            .replace(Regex("""[\\/:*?"<>|]"""), "_")
-            .substringAfterLast('/')
-            .substringAfterLast('\\')
-    }
-    }
-
-    private fun sanitizedZipFileName(targetFileName: String): String {
-        val base = targetFileName.substringBeforeLast('.', targetFileName)
-        return "$base.zip"
-    }
-
-    private fun renderSingleRecord(
-        templateId: String,
-        body: JsonNode
-    ): FileResponse {
-        val raw = createRenderRequest(templateId, body)
-        val renderId = parseRenderRequestResponse(raw)
-        return fetchRenderIdRequest(renderId)
-    }
+    private data class FileResponse(
+        val file: ByteArray,
+        val headers: HttpHeaders
+    )
 
     private fun fetchTemplate(templateRef: DomainReference): TemplateExport =
         try {
@@ -246,6 +139,16 @@ class DefaultRenderTemplateBatchUseCase(
                     .retrieve()
                     .body(String::class.java)
             } catch (ex: Exception) {
+                // Carbone returns HTTP 5xx with a structured JSON body for batch rejections
+                // (e.g. exceeding nbReportMaxPerBatch). Try to surface that error message.
+                val carboneMessage = extractCarboneErrorMessage(ex)
+                if (carboneMessage != null) {
+                    throw ExternalSystemException(
+                        cause = ex,
+                        message = carboneMessage,
+                        code = RenderTemplateBatchError.BATCH_REJECTED_ERROR
+                    )
+                }
                 throw ExternalSystemException(
                     cause = ex,
                     message = ex.localizedMessage,
@@ -262,6 +165,33 @@ class DefaultRenderTemplateBatchUseCase(
         }
 
         return response
+    }
+
+    /**
+     * Pull the structured `error` message out of a Carbone HTTP error response if present.
+     * Expected body shape: `{"success":false,"error":"...","code":"w101","data":{"renderId":""}}`.
+     *
+     * The exception thrown by [RestClient] for HTTP 5xx may be the
+     * [org.springframework.web.client.RestClientResponseException] directly or a wrapping
+     * cause, so we walk the cause chain.
+     */
+    private fun extractCarboneErrorMessage(ex: Throwable): String? {
+        var current: Throwable? = ex
+        var body: String? = null
+        while (current != null) {
+            if (current is org.springframework.web.client.RestClientResponseException) {
+                body = current.responseBodyAsString
+                break
+            }
+            current = current.cause
+        }
+        if (body.isNullOrBlank()) return null
+        return try {
+            val parsed = objectMapper.readValue(body, RenderRequestErrorResponseDto::class.java)
+            parsed.error.takeIf { it.isNotBlank() }
+        } catch (ignored: Exception) {
+            null
+        }
     }
 
     private fun fetchRenderIdRequest(renderId: String): FileResponse =

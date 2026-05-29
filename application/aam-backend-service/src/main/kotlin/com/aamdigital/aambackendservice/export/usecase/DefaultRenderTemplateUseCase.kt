@@ -17,21 +17,25 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.springframework.http.HttpHeaders
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import org.springframework.http.MediaType
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClient
 import java.io.InputStream
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class RenderRequestResponseDto(
     val success: Boolean,
     val data: RenderRequestResponseDataDto
 )
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class RenderRequestErrorResponseDto(
     val success: Boolean,
     val error: String
 )
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class RenderRequestResponseDataDto(
     val renderId: String
 )
