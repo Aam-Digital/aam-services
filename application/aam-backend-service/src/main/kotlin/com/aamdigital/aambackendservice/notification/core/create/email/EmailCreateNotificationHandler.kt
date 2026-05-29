@@ -41,7 +41,8 @@ class EmailCreateNotificationHandler(
                 manageSettingsUrl = notificationEmailProperties.manageSettingsUrl
             )
 
-        mailSenderService.sendMail(
+        val mailSenderResponse =
+            mailSenderService.sendMail(
             MailSenderRequest(
                 to = email,
                 subject = subject,
@@ -54,7 +55,11 @@ class EmailCreateNotificationHandler(
             )
         )
 
-        return CreateNotificationData(success = true, messageCreated = true, messageReference = null)
+        return CreateNotificationData(
+            success = mailSenderResponse.success,
+            messageCreated = mailSenderResponse.success,
+            messageReference = mailSenderResponse.messageReference
+        )
     }
 
     private fun buildEmailBody(

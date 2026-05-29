@@ -21,7 +21,7 @@ open class KeycloakUserEmailProvider(
                 .toRepresentation()
                 ?.email
         } catch (ex: Exception) {
-            logger.warn("Failed to lookup email for user {}: {}", userIdentifier, ex.message)
+            logger.warn("Failed to lookup email for user {}.", userIdentifier, ex)
             null
         }
 }

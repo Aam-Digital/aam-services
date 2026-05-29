@@ -5,6 +5,7 @@ import com.aamdigital.aambackendservice.common.mail.MailSenderRequest
 import com.aamdigital.aambackendservice.common.mail.MailSenderResponse
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.container.TestContainers
+import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.email.UserEmailProvider
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
@@ -34,7 +35,8 @@ import java.io.File
 class CucumberIntegrationTest(
     val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher,
     val syncRepository: SyncRepository,
-    val userDeviceRepository: UserDeviceRepository
+    val userDeviceRepository: UserDeviceRepository,
+    val notificationConfigCache: NotificationConfigCache
 ) : SpringIntegrationTest() {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -45,6 +47,7 @@ class CucumberIntegrationTest(
     lateinit var userEmailProvider: UserEmailProvider
 
     private var storedId: String? = null
+    private var latestNotificationConfigUserIdentifier: String? = null
 
     @Before
     fun `log scenario start`() {
@@ -62,6 +65,7 @@ class CucumberIntegrationTest(
         couchDbTestingService.reset()
         userDeviceRepository.deleteAll()
         storedId = null
+        latestNotificationConfigUserIdentifier = null
         authToken = null
     }
 
@@ -108,6 +112,10 @@ class CucumberIntegrationTest(
             documentName = document,
             documentContent = File("src/test/resources/database/documents/$document.json").readText()
         )
+
+        if (document.startsWith("NotificationConfig_")) {
+            latestNotificationConfigUserIdentifier = document.removePrefix("NotificationConfig_")
+        }
     }
 
     @Given("template {} is stored in template engine")
@@ -270,6 +278,22 @@ class CucumberIntegrationTest(
             delay(milliseconds)
         }
 
+    @Then("the client waits until the notification config is applied")
+    fun `the client waits until the notification config is applied`() {
+        val userIdentifier = latestNotificationConfigUserIdentifier
+            ?: throw AssertionError("Expected a NotificationConfig document to be stored before waiting for config application")
+
+        waitUntil(
+            timeoutMs = 20_000L,
+            pollIntervalMs = 250L,
+            description = "notification config for user $userIdentifier to be applied"
+        ) {
+            notificationConfigCache.findAll().any {
+                it.userIdentifier == userIdentifier && it.channelEmail
+            }
+        }
+    }
+
     @Given("document {} is updated in database {}")
     fun `update document in database`(
         document: String,
@@ -322,5 +346,24 @@ class CucumberIntegrationTest(
     @Then("email notification is sent {int} times")
     fun `email notification is sent n times`(expectedCount: Int) {
         verify(mailSenderService, timeout(10_000).times(expectedCount)).sendMail(any())
+    }
+
+    private fun waitUntil(
+        timeoutMs: Long,
+        pollIntervalMs: Long,
+        description: String,
+        condition: () -> Boolean
+    ) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+
+        while (System.currentTimeMillis() < deadline) {
+            if (condition()) {
+                return
+            }
+
+            Thread.sleep(pollIntervalMs)
+        }
+
+        Assert.fail("Timed out after ${timeoutMs}ms while waiting for $description")
     }
 }

@@ -101,6 +101,23 @@ class EmailCreateNotificationHandlerTest {
     }
 
     @Test
+    fun `should reflect failure when mail sender reports unsuccessful response`() {
+        // Given
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(
+            MailSenderResponse(success = false, messageReference = "mail-123")
+        )
+
+        // When
+        val result = handler.createMessage(notificationEvent)
+
+        // Then
+        assertThat(result.success).isFalse()
+        assertThat(result.messageCreated).isFalse()
+        assertThat(result.messageReference).isEqualTo("mail-123")
+    }
+
+    @Test
     fun `should skip sending when user has no email address`() {
         // Given
         val logger = LoggerFactory.getLogger(EmailCreateNotificationHandler::class.java) as LogbackLogger
