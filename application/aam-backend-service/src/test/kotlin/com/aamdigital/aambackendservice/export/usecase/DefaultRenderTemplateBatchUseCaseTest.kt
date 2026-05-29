@@ -23,7 +23,13 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
+import java.util.zip.CRC32
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 @ExtendWith(MockitoExtension::class)
 class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
@@ -44,11 +50,11 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
             )
     }
 
-    private fun template() =
+    private fun template(targetFileName: String = "child-report.pdf") =
         TemplateExport(
             id = "export-id",
             templateId = "export-template-id",
-            targetFileName = "child-report.pdf",
+            targetFileName = targetFileName,
             title = "Child Report",
             description = "report",
             applicableForEntityTypes = emptyList()
@@ -75,6 +81,147 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
                     ).toHeaders()
                 ).setBody(buffer)
         )
+    }
+
+    private fun enqueueRenderAndZip(
+        renderId: String,
+        entries: List<String>
+    ) {
+        enqueueRenderAndZipBytes(
+            renderId,
+            zipBytes =
+                ByteArrayOutputStream()
+                    .also { zipBuffer ->
+                        ZipOutputStream(zipBuffer).use { zip ->
+                            entries.forEach { entryName ->
+                                zip.putNextEntry(ZipEntry(entryName))
+                                zip.write("content for $entryName".toByteArray())
+                                zip.closeEntry()
+                            }
+                        }
+                    }.toByteArray()
+        )
+    }
+
+    private fun enqueueRenderAndZipBytes(
+        renderId: String,
+        zipBytes: ByteArray
+    ) {
+        mockWebServer.enqueue(
+            MockResponse().setBody(
+                """{"success":true,"data":{"renderId":"$renderId"}}"""
+            )
+        )
+        val responseBuffer = Buffer().write(zipBytes)
+        mockWebServer.enqueue(
+            MockResponse()
+                .setHeaders(
+                    mapOf(
+                        "Content-Type" to "application/zip",
+                        "Content-Disposition" to "attachment; filename=\"$renderId.zip\"",
+                        "Content-Length" to responseBuffer.size.toString()
+                    ).toHeaders()
+                ).setBody(responseBuffer)
+        )
+    }
+
+    private fun zipEntryNames(file: InputStream): List<String> {
+        val names = mutableListOf<String>()
+        ZipInputStream(file).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                names.add(entry.name)
+                entry = zip.nextEntry
+            }
+        }
+        return names
+    }
+
+    private fun storedZipWithDataDescriptors(entries: List<Pair<String, ByteArray>>): ByteArray {
+        data class CentralDirectoryEntry(
+            val name: String,
+            val content: ByteArray,
+            val crc32: Long,
+            val localHeaderOffset: Int
+        )
+
+        val output = ByteArrayOutputStream()
+        val centralDirectoryEntries = mutableListOf<CentralDirectoryEntry>()
+
+        entries.forEach { (entryName, content) ->
+            val nameBytes = entryName.toByteArray()
+            val crc32 = CRC32().also { it.update(content) }.value
+            val localHeaderOffset = output.size()
+
+            output.writeIntLe(0x04034b50)
+            output.writeShortLe(20)
+            output.writeShortLe(0x0008)
+            output.writeShortLe(0)
+            output.writeShortLe(0)
+            output.writeShortLe(0)
+            output.writeIntLe(0)
+            output.writeIntLe(0)
+            output.writeIntLe(0)
+            output.writeShortLe(nameBytes.size)
+            output.writeShortLe(0)
+            output.write(nameBytes)
+            output.write(content)
+            output.writeIntLe(0x08074b50)
+            output.writeIntLe(crc32)
+            output.writeIntLe(content.size.toLong())
+            output.writeIntLe(content.size.toLong())
+
+            centralDirectoryEntries.add(
+                CentralDirectoryEntry(entryName, content, crc32, localHeaderOffset)
+            )
+        }
+
+        val centralDirectoryOffset = output.size()
+        centralDirectoryEntries.forEach { entry ->
+            val nameBytes = entry.name.toByteArray()
+            output.writeIntLe(0x02014b50)
+            output.writeShortLe(20)
+            output.writeShortLe(20)
+            output.writeShortLe(0x0008)
+            output.writeShortLe(0)
+            output.writeShortLe(0)
+            output.writeShortLe(0)
+            output.writeIntLe(entry.crc32)
+            output.writeIntLe(entry.content.size.toLong())
+            output.writeIntLe(entry.content.size.toLong())
+            output.writeShortLe(nameBytes.size)
+            output.writeShortLe(0)
+            output.writeShortLe(0)
+            output.writeShortLe(0)
+            output.writeShortLe(0)
+            output.writeIntLe(0)
+            output.writeIntLe(entry.localHeaderOffset.toLong())
+            output.write(nameBytes)
+        }
+
+        val centralDirectorySize = output.size() - centralDirectoryOffset
+        output.writeIntLe(0x06054b50)
+        output.writeShortLe(0)
+        output.writeShortLe(0)
+        output.writeShortLe(entries.size)
+        output.writeShortLe(entries.size)
+        output.writeIntLe(centralDirectorySize.toLong())
+        output.writeIntLe(centralDirectoryOffset.toLong())
+        output.writeShortLe(0)
+
+        return output.toByteArray()
+    }
+
+    private fun ByteArrayOutputStream.writeShortLe(value: Int) {
+        write(value and 0xff)
+        write((value ushr 8) and 0xff)
+    }
+
+    private fun ByteArrayOutputStream.writeIntLe(value: Long) {
+        write((value ushr 0).toInt() and 0xff)
+        write((value ushr 8).toInt() and 0xff)
+        write((value ushr 16).toInt() and 0xff)
+        write((value ushr 24).toInt() and 0xff)
     }
 
     @Test
@@ -148,6 +295,119 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
         assertThat(sentBody["batchOutput"]).isEqualTo("zip")
         assertThat(sentBody["reportName"]).isEqualTo("child-report.pdf")
         assertThat(sentBody["data"]).isInstanceOf(List::class.java)
+    }
+
+    @Test
+    fun `ZIP mode should rewrite archive entries from target file name pattern`() {
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """
+                {
+                  "convertTo": "pdf",
+                  "data": [
+                    {"name": "Alice Smith", "center": {"name": "North"}},
+                    {"name": "Bob/Builder", "center": {"name": "South"}}
+                  ]
+                }
+                """.trimIndent()
+            )
+        whenever(templateStorage.fetchTemplate(templateRef))
+            .thenReturn(template("test_letter_{d.name}_{d.center.name}.pdf"))
+        enqueueRenderAndZip(
+            renderId = "render-zip-1",
+            entries =
+                listOf(
+                    "NkHyoRAYgddfsHJzWquB1QcmVwb3J0.pdf",
+                    "hs_LeLHx09drWJ04KlERywcmVwb3J0.pdf"
+                )
+        )
+
+        val response =
+            service.run(
+                RenderTemplateBatchRequest(
+                    templateRef = templateRef,
+                    bodyData = bodyData,
+                    mode = RenderTemplateBatchMode.ZIP
+                )
+            )
+
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        val data = (response as UseCaseOutcome.Success).data
+        assertThat(zipEntryNames(data.file)).containsExactly(
+            "test_letter_Alice Smith_North.pdf",
+            "test_letter_Bob_Builder_South.pdf"
+        )
+    }
+
+    @Test
+    fun `ZIP mode should make static target file names readable and unique`() {
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """{"convertTo":"pdf","data":[{"name":"Alice"},{"name":"Bob"}]}"""
+            )
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template("test_letter"))
+        enqueueRenderAndZip(
+            renderId = "render-zip-1",
+            entries =
+                listOf(
+                    "NkHyoRAYgddfsHJzWquB1QcmVwb3J0.pdf",
+                    "hs_LeLHx09drWJ04KlERywcmVwb3J0.pdf"
+                )
+        )
+
+        val response =
+            service.run(
+                RenderTemplateBatchRequest(
+                    templateRef = templateRef,
+                    bodyData = bodyData,
+                    mode = RenderTemplateBatchMode.ZIP
+                )
+            )
+
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        val data = (response as UseCaseOutcome.Success).data
+        assertThat(zipEntryNames(data.file)).containsExactly(
+            "test_letter.pdf",
+            "test_letter_2.pdf"
+        )
+    }
+
+    @Test
+    fun `ZIP mode should rewrite Carbone stored archive entries with data descriptors`() {
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """{"convertTo":"pdf","data":[{"name":"Alice"},{"name":"Bob"}]}"""
+            )
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template("test_letter_{d.name}.pdf"))
+        enqueueRenderAndZipBytes(
+            renderId = "render-zip-1",
+            zipBytes =
+                storedZipWithDataDescriptors(
+                    listOf(
+                        "NkHyoRAYgddfsHJzWquB1QcmVwb3J0.pdf" to "alice".toByteArray(),
+                        "hs_LeLHx09drWJ04KlERywcmVwb3J0.pdf" to "bob".toByteArray()
+                    )
+                )
+        )
+
+        val response =
+            service.run(
+                RenderTemplateBatchRequest(
+                    templateRef = templateRef,
+                    bodyData = bodyData,
+                    mode = RenderTemplateBatchMode.ZIP
+                )
+            )
+
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        val data = (response as UseCaseOutcome.Success).data
+        assertThat(zipEntryNames(data.file)).containsExactly(
+            "test_letter_Alice.pdf",
+            "test_letter_Bob.pdf"
+        )
     }
 
     @Test

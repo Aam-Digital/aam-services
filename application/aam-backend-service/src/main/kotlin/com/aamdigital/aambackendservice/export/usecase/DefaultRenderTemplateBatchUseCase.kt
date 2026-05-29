@@ -22,6 +22,11 @@ import org.springframework.http.MediaType
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClient
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.nio.file.Files
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 
 /**
  * Default implementation of [RenderTemplateBatchUseCase].
@@ -76,10 +81,17 @@ class DefaultRenderTemplateBatchUseCase(
         val raw = createRenderRequest(template.templateId, bodyData)
         val renderId = parseRenderRequestResponse(raw)
         val file = fetchRenderIdRequest(renderId)
+        val fileBytes =
+            if (request.mode == RenderTemplateBatchMode.ZIP) {
+                rewriteZipEntries(file.file, dataArray, targetFileName)
+            } else {
+                file.file
+            }
+
         return Success(
             data =
                 RenderTemplateBatchData(
-                    file = ByteArrayInputStream(file.file),
+                    file = ByteArrayInputStream(fileBytes),
                     responseHeaders = file.headers
                 )
         )
@@ -94,6 +106,11 @@ class DefaultRenderTemplateBatchUseCase(
     private data class FileResponse(
         val file: ByteArray,
         val headers: HttpHeaders
+    )
+
+    private data class ZipEntryData(
+        val name: String,
+        val content: ByteArray
     )
 
     private fun fetchTemplate(templateRef: DomainReference): TemplateExport =
@@ -263,5 +280,128 @@ class DefaultRenderTemplateBatchUseCase(
                 code = RenderTemplateBatchError.PARSE_RESPONSE_ERROR
             )
         }
+    }
+
+    private fun rewriteZipEntries(
+        zipBytes: ByteArray,
+        dataArray: ArrayNode,
+        targetFileNamePattern: String
+    ): ByteArray {
+        val entries =
+            try {
+                readZipEntries(zipBytes)
+            } catch (ex: Exception) {
+                return zipBytes
+            }
+        if (entries.isEmpty()) return zipBytes
+
+        val usedNames = mutableSetOf<String>()
+        val rewrittenZip = ByteArrayOutputStream()
+        ZipOutputStream(rewrittenZip).use { zip ->
+            entries.forEachIndexed { index, entry ->
+                val record = dataArray.get(index)
+                val resolvedName =
+                    if (record == null) {
+                        sanitizeFileName(entry.name)
+                    } else {
+                        renderTargetFileName(targetFileNamePattern, record, entry.name, index)
+                    }
+                zip.putNextEntry(ZipEntry(uniqueFileName(resolvedName, usedNames)))
+                zip.write(entry.content)
+                zip.closeEntry()
+            }
+        }
+        return rewrittenZip.toByteArray()
+    }
+
+    private fun readZipEntries(zipBytes: ByteArray): List<ZipEntryData> {
+        val tempZip = Files.createTempFile("render-batch-", ".zip")
+        return try {
+            Files.write(tempZip, zipBytes)
+            ZipFile(tempZip.toFile()).use { zip ->
+                zip.entries().asSequence().filter { !it.isDirectory }.map { entry ->
+                    ZipEntryData(
+                        name = entry.name,
+                        content = zip.getInputStream(entry).use { it.readBytes() }
+                    )
+                }.toList()
+            }
+        } finally {
+            Files.deleteIfExists(tempZip)
+        }
+    }
+
+    private fun <T> java.util.Enumeration<T>.asSequence(): Sequence<T> =
+        sequence {
+            while (hasMoreElements()) {
+                yield(nextElement())
+            }
+        }
+
+    private fun renderTargetFileName(
+        targetFileNamePattern: String,
+        record: JsonNode,
+        originalEntryName: String,
+        index: Int
+    ): String {
+        val resolvedName =
+            CARBONE_DATA_PLACEHOLDER.replace(targetFileNamePattern) { match ->
+                resolveDataPath(record, match.groupValues[1]) ?: ""
+            }
+        val originalExtension = fileExtension(originalEntryName)
+        val withExtension =
+            if (fileExtension(resolvedName).isBlank() && originalExtension.isNotBlank()) {
+                resolvedName + originalExtension
+            } else {
+                resolvedName
+            }
+        val sanitizedName = sanitizeFileName(withExtension)
+        return sanitizedName.takeUnless { it.isBlank() || it == originalExtension }
+            ?: "record-${index + 1}$originalExtension"
+    }
+
+    private fun resolveDataPath(
+        record: JsonNode,
+        path: String
+    ): String? {
+        var current: JsonNode = record
+        path.split(".").forEach { segment ->
+            current = current.get(segment) ?: return null
+        }
+        if (current.isNull || current.isMissingNode) return null
+        return if (current.isValueNode) current.asText() else current.toString()
+    }
+
+    private fun sanitizeFileName(fileName: String): String =
+        fileName
+            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            .trim()
+
+    private fun uniqueFileName(
+        fileName: String,
+        usedNames: MutableSet<String>
+    ): String {
+        var candidate = fileName
+        val extension = fileExtension(fileName)
+        val baseName = if (extension.isBlank()) fileName else fileName.dropLast(extension.length)
+        var suffix = 2
+        while (!usedNames.add(candidate)) {
+            candidate = "${baseName}_$suffix$extension"
+            suffix++
+        }
+        return candidate
+    }
+
+    private fun fileExtension(fileName: String): String {
+        val nameOnly = fileName.substringAfterLast("/").substringAfterLast("\\")
+        val extensionStart = nameOnly.lastIndexOf(".")
+        val extension = if (extensionStart > 0) nameOnly.substring(extensionStart) else ""
+        return extension.takeIf {
+            it.length in 2..10 && it.drop(1).all { char -> char.isLetterOrDigit() }
+        } ?: ""
+    }
+
+    companion object {
+        private val CARBONE_DATA_PLACEHOLDER = Regex("\\{d\\.([^}:]+)(?::[^}]*)?}")
     }
 }
