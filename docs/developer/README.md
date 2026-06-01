@@ -94,6 +94,70 @@ Add this to your .env file:
 JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
 ```
 
+##### (limitation) arm64 hosts: Carbone PDF rendering fails locally
+
+The `carbone/carbone-ee` image is published only for `linux/amd64`. On any `arm64` host — Apple Silicon Macs (M1 / M2 / M3 / M4), Windows on ARM (e.g. Surface Pro X, Snapdragon devices), Linux on arm64 — it runs through emulation, and the embedded Chromium process used to convert documents to PDF crashes during every render (qemu/GPU errors). The container starts and `/status` responds, but `POST /render/{templateId}` either hangs or returns an empty/failed result. The frontend's bulk-PDF action will show "Generated 0 of N files." in this state.
+
+There is no fix on the local side. You need a Carbone container running on an `x86_64` Linux host and tunnel it back to your machine, then point the local backend at the tunnel.
+
+- **External / open-source contributors:** you do **not** have access to the Aam-Digital dev server. Two options:
+  - **Recommended:** open a discussion on the PR or issue asking the maintainers for help. We can confirm your feature works on our infrastructure during review.
+  - **Self-hosted:** if you need to verify PDF rendering yourself, run an `x86_64` Linux VM (any cloud, e.g. a small Hetzner / AWS / DigitalOcean instance) and start the Carbone container there using the same steps below.
+
+Once you have an `x86_64` host you can reach over SSH, follow the workaround:
+
+Quick steps:
+
+1. On an `x86_64` Linux host you have SSH access to, start a temp Carbone container:
+   ```bash
+   NAME=<test-container>-carbone
+   WORKDIR=/tmp/$NAME
+   mkdir -p "$WORKDIR/config" "$WORKDIR/template" "$WORKDIR/render"
+   cat > "$WORKDIR/config/config.json" <<'EOF'
+   {
+     "port": 4000,
+     "bind": "127.0.0.1",
+     "factories": 1,
+     "authentication": false,
+     "jwtAudience": "carbone-ee",
+     "templatePathRetention": 0,
+     "maxDataSize": 62914560,
+     "nbReportMaxPerBatch": 200
+   }
+   EOF
+   docker run -d --name "$NAME" \
+     -p 127.0.0.1:4001:4000 \
+     -v "$WORKDIR/config":/app/config \
+     -v "$WORKDIR/template":/app/template \
+     -v "$WORKDIR/render":/app/render \
+     --restart unless-stopped \
+     carbone/carbone-ee
+   ```
+
+2. On your local machine, open the tunnel (keep this terminal open for the session). Works in macOS Terminal, Linux shells, Windows PowerShell, WSL, or Git Bash:
+   ```bash
+   ssh -N -L 0.0.0.0:4001:127.0.0.1:4001 <dev-server-host>
+   ```
+   The bind address must be `0.0.0.0` because the local backend container reaches the tunnel through `host.docker.internal`, not `localhost`.
+
+3. In `docs/developer/.env`, set the render base path to the tunnel:
+   ```env
+   AAM_RENDER_API_CLIENT_CONFIGURATION_BASE_PATH=http://host.docker.internal:4001
+   ```
+   Keep the rest of your local dummy-Keycloak auth values; do not copy any dev/prod secrets.
+
+4. Restart only the backend so it picks up the new base path:
+   ```bash
+   cd docs/developer
+   docker compose up -d --force-recreate aam-backend-service
+   ```
+
+5. Re-upload your template through the running app's Admin → Export Templates view. Carbone stores template IDs inside the engine, and the temp container starts empty.
+
+After this you can render single PDFs and bulk PDFs (ZIP or combined) from your local frontend the same way x86_64 developers can.
+
+**Note on `nbReportMaxPerBatch`:** the config field above is also required on dev / staging / prod Carbone instances if you intend to use the bulk render endpoint (`POST /v1/export/render-batch/{templateId}`). Without it set to a positive number, Carbone returns: `Unable to generate the document. Batch processing deactivated. nbReportMaxPerBatch = 0`.
+
 ---
 
 ### reverse-proxy
