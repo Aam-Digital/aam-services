@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.web.client.ResourceAccessException
@@ -118,26 +119,29 @@ class DefaultRenderTemplateBatchUseCase(
             templateStorage.fetchTemplate(templateRef)
         } catch (ex: Exception) {
             throw when (ex) {
-                is NotFoundException ->
+                is NotFoundException -> {
                     NotFoundException(
                         cause = ex.cause ?: ex,
                         message = ex.localizedMessage,
-                        code = RenderTemplateBatchError.NOT_FOUND_ERROR
+                        code = RenderTemplateBatchError.NOT_FOUND_ERROR,
                     )
+                }
 
-                is NetworkException ->
+                is NetworkException -> {
                     NetworkException(
                         cause = ex.cause ?: ex,
                         message = ex.localizedMessage,
-                        code = RenderTemplateBatchError.FETCH_TEMPLATE_FAILED_ERROR
+                        code = RenderTemplateBatchError.FETCH_TEMPLATE_FAILED_ERROR,
                     )
+                }
 
-                else ->
+                else -> {
                     ExternalSystemException(
                         cause = ex.cause ?: ex,
                         message = "Could not fetch template metadata.",
-                        code = RenderTemplateBatchError.FETCH_TEMPLATE_FAILED_ERROR
+                        code = RenderTemplateBatchError.FETCH_TEMPLATE_FAILED_ERROR,
                     )
+                }
             }
         }
 
@@ -223,8 +227,9 @@ class DefaultRenderTemplateBatchUseCase(
                     val forwardHeaders = HttpHeaders()
                     forwardHeaders.contentType = responseHeaders.contentType
 
-                    if (!responseHeaders["Content-Disposition"].isNullOrEmpty()) {
-                        forwardHeaders["Content-Disposition"] = responseHeaders["Content-Disposition"]
+                    if (!responseHeaders[HttpHeaders.CONTENT_DISPOSITION].isNullOrEmpty()) {
+                        forwardHeaders[HttpHeaders.CONTENT_DISPOSITION] =
+                            responseHeaders[HttpHeaders.CONTENT_DISPOSITION]
                     }
 
                     val buffer =
@@ -245,19 +250,21 @@ class DefaultRenderTemplateBatchUseCase(
             )
         } catch (ex: Exception) {
             throw when (ex) {
-                is ResourceAccessException ->
+                is ResourceAccessException -> {
                     NetworkException(
                         cause = ex.cause ?: ex,
                         message = ex.localizedMessage,
-                        code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+                        code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
                     )
+                }
 
-                else ->
+                else -> {
                     ExternalSystemException(
                         cause = ex.cause ?: ex,
                         message = "Could not fetch render result from template engine.",
-                        code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
+                        code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
                     )
+                }
             }
         }
 
@@ -291,6 +298,10 @@ class DefaultRenderTemplateBatchUseCase(
             try {
                 readZipEntries(zipBytes)
             } catch (ex: Exception) {
+                logger.warn(
+                    "Could not parse Carbone batch ZIP; returning archive with engine-generated entry names.",
+                    ex,
+                )
                 return zipBytes
             }
         if (entries.isEmpty()) return zipBytes
@@ -319,12 +330,16 @@ class DefaultRenderTemplateBatchUseCase(
         return try {
             Files.write(tempZip, zipBytes)
             ZipFile(tempZip.toFile()).use { zip ->
-                zip.entries().asSequence().filter { !it.isDirectory }.map { entry ->
-                    ZipEntryData(
-                        name = entry.name,
-                        content = zip.getInputStream(entry).use { it.readBytes() }
-                    )
-                }.toList()
+                zip
+                    .entries()
+                    .asSequence()
+                    .filter { !it.isDirectory }
+                    .map { entry ->
+                        ZipEntryData(
+                            name = entry.name,
+                            content = zip.getInputStream(entry).use { it.readBytes() },
+                        )
+                    }.toList()
             }
         } finally {
             Files.deleteIfExists(tempZip)
@@ -402,6 +417,7 @@ class DefaultRenderTemplateBatchUseCase(
     }
 
     companion object {
+        private val logger = LoggerFactory.getLogger(DefaultRenderTemplateBatchUseCase::class.java)
         private val CARBONE_DATA_PLACEHOLDER = Regex("\\{d\\.([^}:]+)(?::[^}]*)?}")
     }
 }

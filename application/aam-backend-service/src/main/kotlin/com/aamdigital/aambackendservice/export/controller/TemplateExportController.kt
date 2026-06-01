@@ -339,8 +339,14 @@ class TemplateExportController(
     ): ResponseEntity<StreamingResponseBody> {
         val parsedMode =
             when (mode.lowercase()) {
-                "zip" -> RenderTemplateBatchMode.ZIP
-                "combined" -> RenderTemplateBatchMode.COMBINED
+                "zip" -> {
+                    RenderTemplateBatchMode.ZIP
+                }
+
+                "combined" -> {
+                    RenderTemplateBatchMode.COMBINED
+                }
+
                 else -> {
                     val headers = HttpHeaders()
                     headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -401,9 +407,13 @@ class TemplateExportController(
                 val status =
                     when (result.errorCode as RenderTemplateBatchError) {
                         RenderTemplateBatchError.NOT_FOUND_ERROR -> HttpStatus.NOT_FOUND
+
                         RenderTemplateBatchError.EMPTY_DATA_LIST_ERROR,
-                        RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR -> HttpStatus.BAD_REQUEST
+                        RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR,
+                        -> HttpStatus.BAD_REQUEST
+
                         RenderTemplateBatchError.BATCH_REJECTED_ERROR -> HttpStatus.UNPROCESSABLE_ENTITY
+
                         else -> HttpStatus.INTERNAL_SERVER_ERROR
                     }
 
