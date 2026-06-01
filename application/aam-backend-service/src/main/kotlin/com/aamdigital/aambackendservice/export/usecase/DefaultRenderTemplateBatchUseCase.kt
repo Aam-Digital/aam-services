@@ -123,7 +123,7 @@ class DefaultRenderTemplateBatchUseCase(
                     NotFoundException(
                         cause = ex.cause ?: ex,
                         message = ex.localizedMessage,
-                        code = RenderTemplateBatchError.NOT_FOUND_ERROR,
+                        code = RenderTemplateBatchError.NOT_FOUND_ERROR
                     )
                 }
 
@@ -131,7 +131,7 @@ class DefaultRenderTemplateBatchUseCase(
                     NetworkException(
                         cause = ex.cause ?: ex,
                         message = ex.localizedMessage,
-                        code = RenderTemplateBatchError.FETCH_TEMPLATE_FAILED_ERROR,
+                        code = RenderTemplateBatchError.FETCH_TEMPLATE_FAILED_ERROR
                     )
                 }
 
@@ -139,7 +139,7 @@ class DefaultRenderTemplateBatchUseCase(
                     ExternalSystemException(
                         cause = ex.cause ?: ex,
                         message = "Could not fetch template metadata.",
-                        code = RenderTemplateBatchError.FETCH_TEMPLATE_FAILED_ERROR,
+                        code = RenderTemplateBatchError.FETCH_TEMPLATE_FAILED_ERROR
                     )
                 }
             }
@@ -254,7 +254,7 @@ class DefaultRenderTemplateBatchUseCase(
                     NetworkException(
                         cause = ex.cause ?: ex,
                         message = ex.localizedMessage,
-                        code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
+                        code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
                     )
                 }
 
@@ -262,7 +262,7 @@ class DefaultRenderTemplateBatchUseCase(
                     ExternalSystemException(
                         cause = ex.cause ?: ex,
                         message = "Could not fetch render result from template engine.",
-                        code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
+                        code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
                     )
                 }
             }
@@ -300,7 +300,7 @@ class DefaultRenderTemplateBatchUseCase(
             } catch (ex: Exception) {
                 logger.warn(
                     "Could not parse Carbone batch ZIP; returning archive with engine-generated entry names.",
-                    ex,
+                    ex
                 )
                 return zipBytes
             }
@@ -337,7 +337,7 @@ class DefaultRenderTemplateBatchUseCase(
                     .map { entry ->
                         ZipEntryData(
                             name = entry.name,
-                            content = zip.getInputStream(entry).use { it.readBytes() },
+                            content = zip.getInputStream(entry).use { it.readBytes() }
                         )
                     }.toList()
             }

@@ -409,8 +409,7 @@ class TemplateExportController(
                         RenderTemplateBatchError.NOT_FOUND_ERROR -> HttpStatus.NOT_FOUND
 
                         RenderTemplateBatchError.EMPTY_DATA_LIST_ERROR,
-                        RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR,
-                        -> HttpStatus.BAD_REQUEST
+                        RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR -> HttpStatus.BAD_REQUEST
 
                         RenderTemplateBatchError.BATCH_REJECTED_ERROR -> HttpStatus.UNPROCESSABLE_ENTITY
 
