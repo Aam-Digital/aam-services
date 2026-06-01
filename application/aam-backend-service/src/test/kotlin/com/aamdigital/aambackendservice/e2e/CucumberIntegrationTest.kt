@@ -20,8 +20,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.mockito.kotlin.any
+import org.mockito.kotlin.after
 import org.mockito.kotlin.reset
-import org.mockito.kotlin.timeout
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -345,7 +345,7 @@ class CucumberIntegrationTest(
 
     @Then("email notification is sent {int} times")
     fun `email notification is sent n times`(expectedCount: Int) {
-        verify(mailSenderService, timeout(10_000).times(expectedCount)).sendMail(any())
+        verify(mailSenderService, after(10_000).times(expectedCount)).sendMail(any())
     }
 
     private fun waitUntil(

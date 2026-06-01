@@ -51,6 +51,7 @@ FEATURES_NOTIFICATIONAPI_MODE=firebase    # delivery mode for push notifications
 FEATURES_NOTIFICATIONAPI_EMAIL_ENABLED=false  # set true to enable email notifications
 
 # Required for email notifications (SMTP)
+NOTIFICATION_EMAIL_FROM=notifications@your-instance.org
 SPRING_MAIL_HOST=<smtp-host>
 SPRING_MAIL_PORT=587
 SPRING_MAIL_USERNAME=<smtp-username>
