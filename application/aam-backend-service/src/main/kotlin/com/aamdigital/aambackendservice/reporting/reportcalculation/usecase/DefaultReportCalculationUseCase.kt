@@ -120,25 +120,14 @@ class DefaultReportCalculationUseCase(
         }
 
         val resultData =
-            if (report.version == 1) {
-                listOf(
-                    handleReportItems(
-                        queries = report.items,
-                        report = report,
-                        reportCalculation = reportCalculation
-                    )
-                )
-            } else {
-                listOf(
-                    "[".byteInputStream(),
-                    handleReportItems(
-                        queries = report.items,
-                        report = report,
-                        reportCalculation = reportCalculation
-                    ),
-                    "]".byteInputStream()
-                )
-            }
+            listOf(
+                "[".byteInputStream(),
+                handleReportItems(
+                    queries = report.items,
+                    reportCalculation = reportCalculation
+                ),
+                "]".byteInputStream()
+            )
 
         val result =
             reportCalculationStorage.addReportCalculationData(
@@ -154,7 +143,6 @@ class DefaultReportCalculationUseCase(
 
     private fun handleReportItems(
         queries: List<ReportItem>,
-        report: Report,
         reportCalculation: ReportCalculation
     ): InputStream {
         val queryStreams =
@@ -164,14 +152,14 @@ class DefaultReportCalculationUseCase(
                         is ReportItem.ReportQuery -> {
                             val queryResult =
                                 queryStorage.executeQuery(
-                                    handleReportQuery(queryItem, report, reportCalculation)
+                                    handleReportQuery(queryItem, reportCalculation)
                                 )
                             mutableListOf(queryResult)
                         }
 
                         is ReportItem.ReportGroup -> {
                             val prefix = "{\"${queryItem.title}\":[".byteInputStream()
-                            val queryResult = handleReportItems(queryItem.items, report, reportCalculation)
+                            val queryResult = handleReportItems(queryItem.items, reportCalculation)
                             val suffix = "]}".byteInputStream()
                             mutableListOf(prefix, queryResult, suffix)
                         }
@@ -197,31 +185,8 @@ class DefaultReportCalculationUseCase(
 
     private fun handleReportQuery(
         query: ReportItem.ReportQuery,
-        report: Report,
         reportCalculation: ReportCalculation
-    ): QueryRequest =
-        when (report.version) {
-            1 -> {
-                if (query.sql.contains("$")) {
-                    getQueryRequest(query, reportCalculation.args)
-                } else {
-                    QueryRequest(
-                        query = query.sql,
-                        args = reportCalculation.args.values.toList()
-                    )
-                }
-            }
-
-            2 -> {
-                getQueryRequest(query, reportCalculation.args)
-            }
-
-            else ->
-                throw InvalidArgumentException(
-                    message = "Reports with version ${report.version} are not supported yet",
-                    code = ReportCalculationError.UNSUPPORTED_REPORT_VERSION
-                )
-        }
+    ): QueryRequest = getQueryRequest(query, reportCalculation.args)
 
     private fun getQueryRequest(
         query: ReportItem.ReportQuery,
