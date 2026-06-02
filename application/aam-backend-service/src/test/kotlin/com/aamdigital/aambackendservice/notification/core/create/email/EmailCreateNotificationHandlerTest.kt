@@ -16,6 +16,7 @@ import ch.qos.logback.core.read.ListAppender
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
@@ -25,10 +26,16 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
 
 @ExtendWith(MockitoExtension::class)
 class EmailCreateNotificationHandlerTest {
     private lateinit var handler: EmailCreateNotificationHandler
+
+    @TempDir
+    lateinit var tempDir: Path
 
     @Mock
     lateinit var mailSenderService: MailSenderService
@@ -59,13 +66,16 @@ class EmailCreateNotificationHandlerTest {
 
     @BeforeEach
     fun setUp() {
-        handler =
-            EmailCreateNotificationHandler(
-                mailSenderService = mailSenderService,
-                userEmailProvider = userEmailProvider,
-                notificationEmailProperties = emailProperties
-            )
+        handler = createHandler()
     }
+
+    private fun createHandler(templateOverridePath: Path = tempDir.resolve("does-not-exist.html")) =
+        EmailCreateNotificationHandler(
+            mailSenderService = mailSenderService,
+            userEmailProvider = userEmailProvider,
+            notificationEmailProperties = emailProperties,
+            templateOverridePath = templateOverridePath
+        )
 
     @Test
     fun `canHandle returns true for EMAIL channel type`() {
@@ -198,5 +208,45 @@ class EmailCreateNotificationHandlerTest {
         verify(mailSenderService).sendMail(requestCaptor.capture())
         assertThat(requestCaptor.firstValue.body).contains("href=\"https://app.test/notification/abc\"")
         assertThat(requestCaptor.firstValue.body).contains("Open in Aam Digital")
+    }
+
+    @Test
+    fun `should load template from mounted templates folder when file exists`() {
+        // Given
+        val templatePath = tempDir.resolve("create-notification-email-template.html")
+        Files.writeString(
+            templatePath,
+            "Template title: {{TITLE}}",
+            StandardCharsets.UTF_8
+        )
+        handler = createHandler(templatePath)
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.body).contains("Template title: A new record was added")
+        assertThat(requestCaptor.firstValue.body).doesNotContain("Open in Aam Digital")
+    }
+
+    @Test
+    fun `should fall back to classpath template when mounted template file is missing`() {
+        // Given
+        handler = createHandler(tempDir.resolve("missing-template.html"))
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.body).contains("Open in Aam Digital")
+        assertThat(requestCaptor.firstValue.body).contains("A new record was added")
     }
 }

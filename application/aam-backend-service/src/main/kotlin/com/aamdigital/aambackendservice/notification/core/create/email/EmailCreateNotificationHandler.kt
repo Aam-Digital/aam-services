@@ -9,12 +9,16 @@ import com.aamdigital.aambackendservice.notification.di.NotificationEmailPropert
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import org.slf4j.LoggerFactory
 import org.springframework.web.util.HtmlUtils
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.nio.charset.StandardCharsets
 
 class EmailCreateNotificationHandler(
     private val mailSenderService: MailSenderService,
     private val userEmailProvider: UserEmailProvider,
-    private val notificationEmailProperties: NotificationEmailProperties
+    private val notificationEmailProperties: NotificationEmailProperties,
+    private val templateOverridePath: Path = DEFAULT_TEMPLATE_OVERRIDE_PATH
 ) : CreateNotificationHandler {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val emailBodyTemplate: String = loadEmailBodyTemplate()
@@ -66,19 +70,33 @@ class EmailCreateNotificationHandler(
         title: String,
         actionUrl: String,
         manageSettingsUrl: String
-        ): String =
-                emailBodyTemplate
-                        .replace("{{TITLE}}", HtmlUtils.htmlEscape(title))
-                        .replace("{{ACTION_URL}}", HtmlUtils.htmlEscape(actionUrl))
-                        .replace("{{MANAGE_SETTINGS_URL}}", HtmlUtils.htmlEscape(manageSettingsUrl))
+    ): String =
+        emailBodyTemplate
+            .replace("{{TITLE}}", HtmlUtils.htmlEscape(title))
+            .replace("{{ACTION_URL}}", HtmlUtils.htmlEscape(actionUrl))
+            .replace("{{MANAGE_SETTINGS_URL}}", HtmlUtils.htmlEscape(manageSettingsUrl))
 
-        private fun loadEmailBodyTemplate(): String {
-                val templatePath = "/notification/email/create-notification-email-template.html"
-                val resource = javaClass.getResourceAsStream(templatePath)
-                        ?: throw IllegalStateException("Missing email template resource: $templatePath")
-
-                return resource
-                        .bufferedReader(StandardCharsets.UTF_8)
-                        .use { it.readText() }
+    private fun loadEmailBodyTemplate(): String {
+        if (Files.isRegularFile(templateOverridePath)) {
+            logger.info("Loading notification email template from {}", templateOverridePath)
+            return Files.readString(templateOverridePath, StandardCharsets.UTF_8)
         }
+
+        val resource = javaClass.getResourceAsStream(DEFAULT_TEMPLATE_CLASSPATH_PATH)
+            ?: throw IllegalStateException(
+                "Missing email template resource: $DEFAULT_TEMPLATE_CLASSPATH_PATH"
+            )
+
+        logger.info("Loading notification email template from classpath fallback")
+        return resource
+            .bufferedReader(StandardCharsets.UTF_8)
+            .use { it.readText() }
+    }
+
+    companion object {
+        private const val DEFAULT_TEMPLATE_CLASSPATH_PATH =
+            "/notification/email/create-notification-email-template.html"
+        private val DEFAULT_TEMPLATE_OVERRIDE_PATH: Path =
+            Paths.get("/opt/app/templates/notification/email/create-notification-email-template.html")
+    }
 }

@@ -37,9 +37,10 @@ If the _aam-services backend_ is not deployed at all, such a request will usuall
 You should also account for that possibility.
 
 ## Usage
+
 ![notifications.drawio.png](../assets/notifications.drawio.png)
 
------
+---
 
 ## Setup
 
@@ -87,6 +88,29 @@ Notes:
 - Email notifications are only sent for users with `channels.email=true` in their `NotificationConfig:*` document.
 - If email is enabled but a user has no email address in Keycloak, that notification is skipped for email delivery.
 
+### Runtime Email Template Override
+
+The backend loads the notification email template from a fixed runtime location first and falls back
+to the bundled classpath template if no mounted file exists.
+
+- Runtime template path in container:
+  `/opt/app/templates/notification/email/create-notification-email-template.html`
+- Classpath fallback:
+  `src/main/resources/notification/email/create-notification-email-template.html`
+
+Example volume mount:
+
+```yaml
+volumes:
+  - ./config/aam-backend-service/templates:/opt/app/templates:ro
+```
+
+Important:
+
+- Template changes require a container restart.
+- The backend does not manage logo files or inline image attachments.
+Template authors can embed images directly in the HTML template (for example as data URIs or remote image URLs).
+
 ### Permission-Aware Notifications (optional)
 
 To filter notifications based on entity-level permissions (so users only receive notifications for entities they can access),
@@ -115,20 +139,20 @@ If you want to send Push Notifications, we rely on Firebase Cloud Messaging (FCM
 3. Select "Cloud Messaging" and "Add a web app" (you can skip the second step of setup through npm)
 4. Open the "Project Settings" page
 5. Under "Your apps" copy to JSON config object
-    1. store this as `assets/firebase-config.json` in the Aam Digital
-       frontend (or overwrite the empty sample file in your ndb-setup folder in your deployment)
-    2. make sure this is proper json format (i.e. the keys are also in double quotes)
+   1. store this as `assets/firebase-config.json` in the Aam Digital
+      frontend (or overwrite the empty sample file in your ndb-setup folder in your deployment)
+   2. make sure this is proper json format (i.e. the keys are also in double quotes)
 6. Create a Service Account or new key for it
-    1. ... through the firebase
-       interface [as described here](https://firebase.google.com/docs/admin/setup#initialize_the_sdk_in_non-google_environments)
-    2. download the `firebase-credentials.json` with its key
-    3. Encode it as base64
-       run this to print the encoded file to the console:
-       ```bash
-       base64 -i firebase-credentials.json
-       ```
-    4. Copy the output (remove line breaks to make it a single line of encoded text)
-    5. Add this as an environment variable: `NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64` as described above
+   1. ... through the firebase
+      interface [as described here](https://firebase.google.com/docs/admin/setup#initialize_the_sdk_in_non-google_environments)
+   2. download the `firebase-credentials.json` with its key
+   3. Encode it as base64
+      run this to print the encoded file to the console:
+      ```bash
+      base64 -i firebase-credentials.json
+      ```
+   4. Copy the output (remove line breaks to make it a single line of encoded text)
+   5. Add this as an environment variable: `NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64` as described above
 7. To apply the config restart the container, if necessary
 
 ### Config:Permissions
@@ -143,10 +167,7 @@ the [User Permissions doc](https://aam-digital.github.io/ndb-core/documentation/
 {
   "default": [
     {
-      "subject": [
-        "NotificationConfig",
-        "NotificationEvent"
-      ],
+      "subject": ["NotificationConfig", "NotificationEvent"],
       "action": "manage"
     }
   ]
