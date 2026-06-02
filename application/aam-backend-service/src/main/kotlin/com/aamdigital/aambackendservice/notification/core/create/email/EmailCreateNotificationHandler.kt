@@ -47,17 +47,17 @@ class EmailCreateNotificationHandler(
 
         val mailSenderResponse =
             mailSenderService.sendMail(
-            MailSenderRequest(
-                to = email,
-                subject = subject,
-                body = body,
-                isHtml = true,
-                headers =
-                    mapOf(
-                        "List-Unsubscribe" to "<${notificationEmailProperties.manageSettingsUrl}>"
-                    )
+                MailSenderRequest(
+                    to = email,
+                    subject = subject,
+                    body = body,
+                    isHtml = true,
+                    headers =
+                        mapOf(
+                            "List-Unsubscribe" to "<${notificationEmailProperties.manageSettingsUrl}>"
+                        )
+                )
             )
-        )
 
         return CreateNotificationData(
             success = mailSenderResponse.success,

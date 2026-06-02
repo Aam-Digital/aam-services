@@ -123,7 +123,7 @@ class NotificationConfiguration {
 
     @Bean("email-create-notification-handler")
     @ConditionalOnNotificationEmailEnabled
-    @ConditionalOnBean(Keycloak::class, MailSenderService::class)
+    @ConditionalOnBean(Keycloak::class)
     fun emailCreateNotificationHandler(
         mailSenderService: MailSenderService,
         userEmailProvider: UserEmailProvider,
