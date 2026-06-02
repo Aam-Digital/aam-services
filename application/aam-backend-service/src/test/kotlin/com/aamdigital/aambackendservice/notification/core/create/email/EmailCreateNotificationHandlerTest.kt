@@ -173,7 +173,7 @@ class EmailCreateNotificationHandlerTest {
     }
 
     @Test
-    fun `should HTML-escape injection attempt in title in both subject and body`() {
+    fun `should HTML-escape injection attempt in title in body but keep subject unescaped`() {
         // Given
         val injectionEvent =
             notificationEvent.copy(
@@ -189,7 +189,7 @@ class EmailCreateNotificationHandlerTest {
         val requestCaptor = argumentCaptor<MailSenderRequest>()
         verify(mailSenderService).sendMail(requestCaptor.capture())
         val request = requestCaptor.firstValue
-        assertThat(request.subject).doesNotContain("<script>")
+        assertThat(request.subject).contains("<script>alert(1)</script>")
         assertThat(request.body).doesNotContain("<script>")
         assertThat(request.body).contains("&lt;script&gt;")
     }

@@ -37,7 +37,7 @@ class EmailCreateNotificationHandler(
         }
 
         val details = createUserNotificationEvent.details
-        val subject = "${notificationEmailProperties.subjectPrefix}: ${HtmlUtils.htmlEscape(details.title)}"
+        val subject = "${notificationEmailProperties.subjectPrefix}: ${details.title}"
         val body =
             buildEmailBody(
                 title = details.title,
