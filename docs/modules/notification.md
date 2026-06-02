@@ -94,9 +94,9 @@ The backend loads the notification email template from a fixed runtime location 
 to the bundled classpath template if no mounted file exists.
 
 - Runtime template path in container:
-  `/opt/app/templates/notification/email/create-notification-email-template.html`
+  `/opt/app/templates/notification/create-notification-email-template.html`
 - Classpath fallback:
-  `src/main/resources/notification/email/create-notification-email-template.html`
+  `src/main/resources/notification/create-notification-email-template.html`
 
 Example volume mount:
 

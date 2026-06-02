@@ -95,8 +95,8 @@ class EmailCreateNotificationHandler(
 
     companion object {
         private const val DEFAULT_TEMPLATE_CLASSPATH_PATH =
-            "/notification/email/create-notification-email-template.html"
+            "/notification/create-notification-email-template.html"
         private val DEFAULT_TEMPLATE_OVERRIDE_PATH: Path =
-            Paths.get("/opt/app/templates/notification/email/create-notification-email-template.html")
+            Paths.get("/opt/app/templates/notification/create-notification-email-template.html")
     }
 }
