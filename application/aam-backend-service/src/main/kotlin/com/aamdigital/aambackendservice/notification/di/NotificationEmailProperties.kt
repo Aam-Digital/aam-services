@@ -26,5 +26,20 @@ data class NotificationEmailProperties(
      * Expected format: absolute URL.
      * Default value: empty string (`""`).
      */
-    val manageSettingsUrl: String = ""
+    val manageSettingsUrl: String = "",
+    /**
+     * Language used for the boilerplate text of outgoing notification emails.
+     *
+     * Selects the bundled (or mounted override) email template under
+     * `{locale}/notification/...`. A region suffix is ignored (`de-DE` -> `de`).
+     *
+     * NOTE: This is a single, deployment-wide default and is independent of each
+     * user's UI language. Operators should keep it in sync with the site default
+     * language (`SiteSettings.defaultLanguage`); otherwise emails may be sent in a
+     * different language than the app UI.
+     *
+     * Expected format: language code such as `en`, `de`, `fr`.
+     * Default value: `"en"`.
+     */
+    val locale: String = "en"
 )

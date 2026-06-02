@@ -18,10 +18,10 @@ class EmailCreateNotificationHandler(
     private val mailSenderService: MailSenderService,
     private val userEmailProvider: UserEmailProvider,
     private val notificationEmailProperties: NotificationEmailProperties,
-    private val templateOverridePath: Path = DEFAULT_TEMPLATE_OVERRIDE_PATH
+    private val templatesBaseDir: Path = DEFAULT_TEMPLATES_BASE_DIR
 ) : CreateNotificationHandler {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val emailBodyTemplate: String = loadEmailBodyTemplate()
+    private val emailBodyTemplate: String = loadEmailBodyTemplate(normalizeLocale(notificationEmailProperties.locale))
 
     override fun canHandle(notificationChannelType: NotificationChannelType): Boolean =
         NotificationChannelType.EMAIL == notificationChannelType
@@ -76,27 +76,56 @@ class EmailCreateNotificationHandler(
             .replace("{{ACTION_URL}}", HtmlUtils.htmlEscape(actionUrl))
             .replace("{{MANAGE_SETTINGS_URL}}", HtmlUtils.htmlEscape(manageSettingsUrl))
 
-    private fun loadEmailBodyTemplate(): String {
-        if (Files.isRegularFile(templateOverridePath)) {
-            logger.info("Loading notification email template from {}", templateOverridePath)
-            return Files.readString(templateOverridePath, StandardCharsets.UTF_8)
+    /**
+     * Reduces a (possibly region-qualified) locale to the base language code used
+     * for the template folder name, e.g. `en-US` -> `en`, `de_DE` -> `de`.
+     * Falls back to [DEFAULT_LOCALE] for blank input.
+     */
+    private fun normalizeLocale(locale: String): String =
+        locale.substringBefore('-').substringBefore('_').trim().lowercase().ifBlank { DEFAULT_LOCALE }
+
+    /**
+     * Resolves the email template for the given (normalized) locale, trying, in order:
+     *  1. mounted override, localized: `{baseDir}/{locale}/notification/...`
+     *  2. mounted override, legacy unsuffixed (back-compat): `{baseDir}/notification/...`
+     *  3. bundled classpath, localized: `/templates/{locale}/notification/...`
+     *  4. bundled classpath, default English: `/templates/en/notification/...`
+     */
+    private fun loadEmailBodyTemplate(locale: String): String {
+        val localizedOverride = templatesBaseDir.resolve(locale).resolve(TEMPLATE_RELATIVE_PATH)
+        if (Files.isRegularFile(localizedOverride)) {
+            logger.info("Loading notification email template from {}", localizedOverride)
+            return Files.readString(localizedOverride, StandardCharsets.UTF_8)
         }
 
-        val resource = javaClass.getResourceAsStream(DEFAULT_TEMPLATE_CLASSPATH_PATH)
-            ?: throw IllegalStateException(
-                "Missing email template resource: $DEFAULT_TEMPLATE_CLASSPATH_PATH"
-            )
+        val legacyOverride = templatesBaseDir.resolve(TEMPLATE_RELATIVE_PATH)
+        if (Files.isRegularFile(legacyOverride)) {
+            logger.info("Loading notification email template from legacy override {}", legacyOverride)
+            return Files.readString(legacyOverride, StandardCharsets.UTF_8)
+        }
 
-        logger.info("Loading notification email template from classpath fallback")
+        val localizedClasspath = "/$TEMPLATES_CLASSPATH_ROOT/$locale/$TEMPLATE_RELATIVE_PATH"
+        javaClass.getResourceAsStream(localizedClasspath)?.use { resource ->
+            logger.info("Loading notification email template from classpath {}", localizedClasspath)
+            return resource.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
+        }
+
+        val defaultClasspath = "/$TEMPLATES_CLASSPATH_ROOT/$DEFAULT_LOCALE/$TEMPLATE_RELATIVE_PATH"
+        val resource = javaClass.getResourceAsStream(defaultClasspath)
+            ?: throw IllegalStateException("Missing email template resource: $defaultClasspath")
+
+        logger.info("Loading notification email template from classpath fallback {}", defaultClasspath)
         return resource
             .bufferedReader(StandardCharsets.UTF_8)
             .use { it.readText() }
     }
 
     companion object {
-        private const val DEFAULT_TEMPLATE_CLASSPATH_PATH =
-            "/notification/create-notification-email-template.html"
-        private val DEFAULT_TEMPLATE_OVERRIDE_PATH: Path =
-            Paths.get("/opt/app/templates/notification/create-notification-email-template.html")
+        private const val DEFAULT_LOCALE = "en"
+        private const val TEMPLATES_CLASSPATH_ROOT = "templates"
+        private const val TEMPLATE_RELATIVE_PATH =
+            "notification/create-notification-email-template.html"
+        private val DEFAULT_TEMPLATES_BASE_DIR: Path =
+            Paths.get("/opt/app/templates")
     }
 }

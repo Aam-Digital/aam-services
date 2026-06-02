@@ -62,6 +62,9 @@ SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
 
 # Recommended for email notifications (email content)
 NOTIFICATION_EMAIL_SUBJECTPREFIX=Aam Digital
+# Language of the email boilerplate (en, de, fr). Defaults to en.
+# Keep in sync with the site default language.
+NOTIFICATION_EMAIL_LOCALE=en
 
 # Required for email notifications (lookup recipient addresses in Keycloak)
 KEYCLOAK_SERVERURL=https://<your-keycloak-url>
@@ -88,21 +91,39 @@ Notes:
 - Email notifications are only sent for users with `channels.email=true` in their `NotificationConfig:*` document.
 - If email is enabled but a user has no email address in Keycloak, that notification is skipped for email delivery.
 
-### Runtime Email Template Override
+### Multi-language Email Templates & Runtime Override
 
-The backend loads the notification email template from a fixed runtime location first and falls back
-to the bundled classpath template if no mounted file exists.
+The email language is selected by `NOTIFICATION_EMAIL_LOCALE` (defaults to `en`).
+Templates are organized in a per-language folder (`{locale}/notification/...`) so a
+translator can copy a whole language folder (e.g. `en/` → `de/`) and translate the
+bundled templates. A region suffix in the configured locale is ignored
+(`de-DE` → `de`).
 
-- Runtime template path in container:
-  `/opt/app/templates/notification/create-notification-email-template.html`
-- Classpath fallback:
-  `src/main/resources/notification/create-notification-email-template.html`
+For the configured locale, the backend resolves the template in this order and uses
+the first that exists:
 
-Example volume mount:
+1. Mounted override, localized:
+   `/opt/app/templates/{locale}/notification/create-notification-email-template.html`
+2. Mounted override, legacy unsuffixed (kept for backward compatibility):
+   `/opt/app/templates/notification/create-notification-email-template.html`
+3. Bundled classpath, localized:
+   `src/main/resources/templates/{locale}/notification/create-notification-email-template.html`
+4. Bundled classpath, English fallback:
+   `src/main/resources/templates/en/notification/create-notification-email-template.html`
+
+Bundled languages: `en`, `de`, `fr`.
+
+Example volume mount and override layout:
 
 ```yaml
 volumes:
   - ./config/aam-backend-service/templates:/opt/app/templates:ro
+```
+
+```text
+config/aam-backend-service/templates/
+  de/notification/create-notification-email-template.html
+  fr/notification/create-notification-email-template.html
 ```
 
 Important:

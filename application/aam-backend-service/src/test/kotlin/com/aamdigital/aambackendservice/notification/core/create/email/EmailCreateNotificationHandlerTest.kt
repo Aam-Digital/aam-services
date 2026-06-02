@@ -69,13 +69,34 @@ class EmailCreateNotificationHandlerTest {
         handler = createHandler()
     }
 
-    private fun createHandler(templateOverridePath: Path = tempDir.resolve("does-not-exist.html")) =
+    private fun createHandler(
+        templatesBaseDir: Path = tempDir,
+        locale: String = "en"
+    ) =
         EmailCreateNotificationHandler(
             mailSenderService = mailSenderService,
             userEmailProvider = userEmailProvider,
-            notificationEmailProperties = emailProperties,
-            templateOverridePath = templateOverridePath
+            notificationEmailProperties = emailProperties.copy(locale = locale),
+            templatesBaseDir = templatesBaseDir
         )
+
+    /**
+     * Writes a template override under [baseDir]. A [locale] of `null` writes the
+     * legacy unsuffixed location `{baseDir}/notification/...`; otherwise it writes
+     * `{baseDir}/{locale}/notification/...`.
+     */
+    private fun writeTemplateOverride(baseDir: Path, locale: String?, content: String): Path {
+        val dir =
+            if (locale == null) {
+                baseDir.resolve("notification")
+            } else {
+                baseDir.resolve(locale).resolve("notification")
+            }
+        Files.createDirectories(dir)
+        val file = dir.resolve("create-notification-email-template.html")
+        Files.writeString(file, content, StandardCharsets.UTF_8)
+        return file
+    }
 
     @Test
     fun `canHandle returns true for EMAIL channel type`() {
@@ -211,15 +232,10 @@ class EmailCreateNotificationHandlerTest {
     }
 
     @Test
-    fun `should load template from mounted templates folder when file exists`() {
+    fun `should load localized override matching configured locale`() {
         // Given
-        val templatePath = tempDir.resolve("create-notification-email-template.html")
-        Files.writeString(
-            templatePath,
-            "Template title: {{TITLE}}",
-            StandardCharsets.UTF_8
-        )
-        handler = createHandler(templatePath)
+        writeTemplateOverride(tempDir, locale = "en", content = "Template title: {{TITLE}}")
+        handler = createHandler(templatesBaseDir = tempDir, locale = "en")
         whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
@@ -234,9 +250,28 @@ class EmailCreateNotificationHandlerTest {
     }
 
     @Test
-    fun `should fall back to classpath template when mounted template file is missing`() {
-        // Given
-        handler = createHandler(tempDir.resolve("missing-template.html"))
+    fun `should select the override folder for the configured locale`() {
+        // Given both an English and a German override exist, configured locale is German
+        writeTemplateOverride(tempDir, locale = "en", content = "English: {{TITLE}}")
+        writeTemplateOverride(tempDir, locale = "de", content = "Deutsch: {{TITLE}}")
+        handler = createHandler(templatesBaseDir = tempDir, locale = "de")
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.body).contains("Deutsch: A new record was added")
+        assertThat(requestCaptor.firstValue.body).doesNotContain("English:")
+    }
+
+    @Test
+    fun `should fall back to classpath template when no override exists`() {
+        // Given no override files under the base dir
+        handler = createHandler(templatesBaseDir = tempDir, locale = "en")
         whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
@@ -248,5 +283,71 @@ class EmailCreateNotificationHandlerTest {
         verify(mailSenderService).sendMail(requestCaptor.capture())
         assertThat(requestCaptor.firstValue.body).contains("Open in Aam Digital")
         assertThat(requestCaptor.firstValue.body).contains("A new record was added")
+    }
+
+    @Test
+    fun `should load bundled localized classpath template for a bundled locale without override`() {
+        // Given no override files; configured locale has a bundled (German) classpath template
+        handler = createHandler(templatesBaseDir = tempDir, locale = "de")
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.body).contains("In Aam Digital öffnen")
+        assertThat(requestCaptor.firstValue.body).doesNotContain("Open in Aam Digital")
+    }
+
+    @Test
+    fun `should fall back to English classpath template for an unsupported locale`() {
+        // Given no override files; configured locale has no bundled template
+        handler = createHandler(templatesBaseDir = tempDir, locale = "es")
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.body).contains("Open in Aam Digital")
+    }
+
+    @Test
+    fun `should normalize region-qualified locale to its base language`() {
+        // Given no override files; configured locale is region-qualified (de-DE -> de)
+        handler = createHandler(templatesBaseDir = tempDir, locale = "de-DE")
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.body).contains("In Aam Digital öffnen")
+    }
+
+    @Test
+    fun `should use legacy unsuffixed override as backward-compatible fallback`() {
+        // Given only a legacy unsuffixed override exists and the locale folder is absent
+        writeTemplateOverride(tempDir, locale = null, content = "Legacy override: {{TITLE}}")
+        handler = createHandler(templatesBaseDir = tempDir, locale = "de")
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.body).contains("Legacy override: A new record was added")
     }
 }
