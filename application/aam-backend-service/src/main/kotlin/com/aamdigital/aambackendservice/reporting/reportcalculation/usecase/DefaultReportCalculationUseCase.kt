@@ -28,22 +28,11 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 
 /**
- * Run ReportCalculation queries against SQS and store aggregate result in CouchDb attachment
+ * Run ReportCalculation queries against SQS and store aggregate result in CouchDb attachment.
  *
- * Will replace placeholder variables with values stored in ReportCalculation.args
- *
- * special handling for placeholder 'from' and 'to':
- *  There are currently several versions of data in the database. In order to support all formats,
- *  the 'from' and 'to' args are adapted to sqs before the request
- *
- *  Currently, these 'date' formats are used in our entities:
- *  - '2022-04-25'
- *  - '2022-04-25T22:00:000Z' (deprecated since some years, but still existing for old data)
- *
- *  For sqs, we will cut the 'from' date always to '2022-04-25'
- *
- *  If no date args are set, the default values are passed, to fetch all matching entities from all time
- *
+ * Replaces placeholder variables ($name) in SQL with values from ReportCalculation.args.
+ * Legacy "from"/"to" arg keys are normalized to "startDate"/"endDate" before processing so that
+ * calculations created before the v1→canonical migration continue to produce correct results.
  */
 class DefaultReportCalculationUseCase(
     private val reportCalculationStorage: ReportCalculationStorage,
@@ -115,6 +104,7 @@ class DefaultReportCalculationUseCase(
         report: Report,
         reportCalculation: ReportCalculation
     ): ReportCalculation {
+        normalizeLegacyArgs(reportCalculation.args)
         for ((argKey: String, transformationKeys: List<String>) in report.transformations) {
             handleTransformations(argKey, transformationKeys, reportCalculation.args)
         }
@@ -219,6 +209,19 @@ class DefaultReportCalculationUseCase(
             query = sqlQuery,
             args = queryArgs
         )
+    }
+
+    /**
+     * Normalize legacy "from"/"to" arg keys to canonical "startDate"/"endDate" so that
+     * ReportCalculations stored before the v1→canonical SQL migration continue to work.
+     */
+    private fun normalizeLegacyArgs(args: MutableMap<String, String>) {
+        if (!args.containsKey("startDate")) {
+            args.remove("from")?.let { args["startDate"] = it }
+        }
+        if (!args.containsKey("endDate")) {
+            args.remove("to")?.let { args["endDate"] = it }
+        }
     }
 
     private fun handleTransformations(

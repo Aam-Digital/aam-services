@@ -531,4 +531,73 @@ class DefaultReportCalculationUseCaseTest {
             )
         )
     }
+
+    @Test
+    fun `should normalize legacy from-to args to startDate-endDate before applying transformations`() {
+        // given
+        val report =
+            Report(
+                id = "Report:1",
+                title = "Report",
+                items =
+                    listOf(
+                        ReportItem.ReportQuery(
+                            sql = "SELECT * FROM foo WHERE time BETWEEN \$startDate and \$endDate"
+                        )
+                    ),
+                transformations =
+                    mapOf(
+                        "startDate" to listOf("SQL_FROM_DATE"),
+                        "endDate" to listOf("SQL_TO_DATE")
+                    )
+            )
+
+        val reportCalculation =
+            ReportCalculation(
+                id = "ReportCalculation:1",
+                report = DomainReference("Report:1"),
+                status = ReportCalculationStatus.PENDING,
+                args = mutableMapOf("from" to "2024-01-15T00:00:00Z", "to" to "2024-04-30T00:00:00Z")
+            )
+
+        whenever(
+            reportCalculationStorage.fetchReportCalculation(
+                eq(DomainReference("ReportCalculation:1"))
+            )
+        ).thenReturn(reportCalculation)
+
+        whenever(
+            reportStorage.fetchReport(
+                eq(DomainReference("Report:1"))
+            )
+        ).thenReturn(report)
+
+        whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
+
+        whenever(reportCalculationStorage.storeCalculation(any()))
+            .thenAnswer { i -> i.arguments[0] }
+
+        whenever(reportCalculationStorage.addReportCalculationData(any(), any()))
+            .thenAnswer { i -> i.arguments[0] }
+
+        // when
+        val response =
+            service.run(
+                ReportCalculationRequest(
+                    reportCalculationId = reportCalculation.id
+                )
+            )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+
+        verify(queryStorage).executeQuery(
+            eq(
+                QueryRequest(
+                    query = "SELECT * FROM foo WHERE time BETWEEN ? and ?",
+                    args = listOf("2024-01-15", "2024-04-30T23:59:59.999Z")
+                )
+            )
+        )
+    }
 }
