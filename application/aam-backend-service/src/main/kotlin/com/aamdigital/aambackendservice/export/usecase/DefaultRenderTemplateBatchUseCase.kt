@@ -25,6 +25,7 @@ import org.springframework.web.client.RestClient
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
+import java.util.Base64
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
@@ -78,13 +79,17 @@ class DefaultRenderTemplateBatchUseCase(
         bodyData.put("batchSplitBy", "d")
         bodyData.put("batchOutput", carboneBatchOutput(request.mode))
         bodyData.put("reportName", targetFileName)
+        if (request.mode == RenderTemplateBatchMode.ZIP) {
+            // Carbone v5+ substitutes {d.field} placeholders per record for each zip entry name
+            bodyData.put("batchReportName", targetFileName)
+        }
 
         val raw = createRenderRequest(template.templateId, bodyData)
         val renderId = parseRenderRequestResponse(raw)
         val file = fetchRenderIdRequest(renderId)
         val fileBytes =
             if (request.mode == RenderTemplateBatchMode.ZIP) {
-                rewriteZipEntries(file.file, dataArray, targetFileName)
+                decodeZipEntryNames(file.file)
             } else {
                 file.file
             }
@@ -113,6 +118,106 @@ class DefaultRenderTemplateBatchUseCase(
         val name: String,
         val content: ByteArray
     )
+
+    /**
+     * Carbone returns each ZIP entry as `<22-random-chars><base64-encoded-name>.<ext>` (a stable POSIX-safe
+     * format used by `decodeOutputFilename()` in the SDK). The base64 part already reflects the placeholder
+     * substitution we asked for via `batchReportName`. We just decode it so the user sees a readable filename.
+     */
+    private fun decodeZipEntryNames(zipBytes: ByteArray): ByteArray {
+        val entries =
+            try {
+                readZipEntries(zipBytes)
+            } catch (ex: Exception) {
+                logger.warn(
+                    "Could not parse Carbone batch ZIP; returning archive with engine-generated entry names.",
+                    ex
+                )
+                return zipBytes
+            }
+        if (entries.isEmpty()) return zipBytes
+
+        val usedNames = mutableSetOf<String>()
+        val rewritten = ByteArrayOutputStream()
+        ZipOutputStream(rewritten).use { zip ->
+            entries.forEach { entry ->
+                val decoded = decodeCarboneEntryName(entry.name)
+                zip.putNextEntry(ZipEntry(uniqueFileName(decoded, usedNames)))
+                zip.write(entry.content)
+                zip.closeEntry()
+            }
+        }
+        return rewritten.toByteArray()
+    }
+
+    /**
+     * Strip Carbone's 22-character random prefix and base64-decode the remaining filename.
+     *
+     * Carbone's entry name shape is `<22-random-chars><base64(originalFileName)>.<extension>`,
+     * where the base64-encoded segment already includes the extension and the trailing
+     * `.<extension>` after it is a duplicate that makes the path POSIX-safe on disk.
+     *
+     * Returns the original entry name unchanged if the input does not match this shape.
+     */
+    private fun decodeCarboneEntryName(entryName: String): String {
+        val lastDot = entryName.lastIndexOf('.')
+        val base = if (lastDot > 0) entryName.substring(0, lastDot) else entryName
+        if (base.length <= CARBONE_RANDOM_PREFIX_LEN) return entryName
+        val encoded = base.substring(CARBONE_RANDOM_PREFIX_LEN)
+        // Carbone strips the trailing `=` padding from the base64 segment; restore it before decoding.
+        val padded = encoded.padEnd(encoded.length + (4 - encoded.length % 4) % 4, '=')
+        return try {
+            val decoded = String(Base64.getDecoder().decode(padded), Charsets.UTF_8)
+            decoded.takeIf { it.isNotBlank() } ?: entryName
+        } catch (ignored: IllegalArgumentException) {
+            // entry name was not in Carbone's encoded format
+            entryName
+        }
+    }
+
+    private fun readZipEntries(zipBytes: ByteArray): List<ZipEntryData> {
+        val tempZip = Files.createTempFile("render-batch-", ".zip")
+        return try {
+            Files.write(tempZip, zipBytes)
+            ZipFile(tempZip.toFile()).use { zip ->
+                zip
+                    .entries()
+                    .asSequence()
+                    .filter { !it.isDirectory }
+                    .map { entry ->
+                        ZipEntryData(
+                            name = entry.name,
+                            content = zip.getInputStream(entry).use { it.readBytes() }
+                        )
+                    }.toList()
+            }
+        } finally {
+            Files.deleteIfExists(tempZip)
+        }
+    }
+
+    private fun <T> java.util.Enumeration<T>.asSequence(): Sequence<T> =
+        sequence {
+            while (hasMoreElements()) {
+                yield(nextElement())
+            }
+        }
+
+    private fun uniqueFileName(
+        fileName: String,
+        usedNames: MutableSet<String>
+    ): String {
+        var candidate = fileName
+        val extensionStart = fileName.lastIndexOf('.')
+        val extension = if (extensionStart > 0) fileName.substring(extensionStart) else ""
+        val baseName = if (extension.isBlank()) fileName else fileName.dropLast(extension.length)
+        var suffix = 2
+        while (!usedNames.add(candidate)) {
+            candidate = "${baseName}_$suffix$extension"
+            suffix++
+        }
+        return candidate
+    }
 
     private fun fetchTemplate(templateRef: DomainReference): TemplateExport =
         try {
@@ -289,135 +394,10 @@ class DefaultRenderTemplateBatchUseCase(
         }
     }
 
-    private fun rewriteZipEntries(
-        zipBytes: ByteArray,
-        dataArray: ArrayNode,
-        targetFileNamePattern: String
-    ): ByteArray {
-        val entries =
-            try {
-                readZipEntries(zipBytes)
-            } catch (ex: Exception) {
-                logger.warn(
-                    "Could not parse Carbone batch ZIP; returning archive with engine-generated entry names.",
-                    ex
-                )
-                return zipBytes
-            }
-        if (entries.isEmpty()) return zipBytes
-
-        val usedNames = mutableSetOf<String>()
-        val rewrittenZip = ByteArrayOutputStream()
-        ZipOutputStream(rewrittenZip).use { zip ->
-            entries.forEachIndexed { index, entry ->
-                val record = dataArray.get(index)
-                val resolvedName =
-                    if (record == null) {
-                        sanitizeFileName(entry.name)
-                    } else {
-                        renderTargetFileName(targetFileNamePattern, record, entry.name, index)
-                    }
-                zip.putNextEntry(ZipEntry(uniqueFileName(resolvedName, usedNames)))
-                zip.write(entry.content)
-                zip.closeEntry()
-            }
-        }
-        return rewrittenZip.toByteArray()
-    }
-
-    private fun readZipEntries(zipBytes: ByteArray): List<ZipEntryData> {
-        val tempZip = Files.createTempFile("render-batch-", ".zip")
-        return try {
-            Files.write(tempZip, zipBytes)
-            ZipFile(tempZip.toFile()).use { zip ->
-                zip
-                    .entries()
-                    .asSequence()
-                    .filter { !it.isDirectory }
-                    .map { entry ->
-                        ZipEntryData(
-                            name = entry.name,
-                            content = zip.getInputStream(entry).use { it.readBytes() }
-                        )
-                    }.toList()
-            }
-        } finally {
-            Files.deleteIfExists(tempZip)
-        }
-    }
-
-    private fun <T> java.util.Enumeration<T>.asSequence(): Sequence<T> =
-        sequence {
-            while (hasMoreElements()) {
-                yield(nextElement())
-            }
-        }
-
-    private fun renderTargetFileName(
-        targetFileNamePattern: String,
-        record: JsonNode,
-        originalEntryName: String,
-        index: Int
-    ): String {
-        val resolvedName =
-            CARBONE_DATA_PLACEHOLDER.replace(targetFileNamePattern) { match ->
-                resolveDataPath(record, match.groupValues[1]) ?: ""
-            }
-        val originalExtension = fileExtension(originalEntryName)
-        val withExtension =
-            if (fileExtension(resolvedName).isBlank() && originalExtension.isNotBlank()) {
-                resolvedName + originalExtension
-            } else {
-                resolvedName
-            }
-        val sanitizedName = sanitizeFileName(withExtension)
-        return sanitizedName.takeUnless { it.isBlank() || it == originalExtension }
-            ?: "record-${index + 1}$originalExtension"
-    }
-
-    private fun resolveDataPath(
-        record: JsonNode,
-        path: String
-    ): String? {
-        var current: JsonNode = record
-        path.split(".").forEach { segment ->
-            current = current.get(segment) ?: return null
-        }
-        if (current.isNull || current.isMissingNode) return null
-        return if (current.isValueNode) current.asText() else current.toString()
-    }
-
-    private fun sanitizeFileName(fileName: String): String =
-        fileName
-            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
-            .trim()
-
-    private fun uniqueFileName(
-        fileName: String,
-        usedNames: MutableSet<String>
-    ): String {
-        var candidate = fileName
-        val extension = fileExtension(fileName)
-        val baseName = if (extension.isBlank()) fileName else fileName.dropLast(extension.length)
-        var suffix = 2
-        while (!usedNames.add(candidate)) {
-            candidate = "${baseName}_$suffix$extension"
-            suffix++
-        }
-        return candidate
-    }
-
-    private fun fileExtension(fileName: String): String {
-        val nameOnly = fileName.substringAfterLast("/").substringAfterLast("\\")
-        val extensionStart = nameOnly.lastIndexOf(".")
-        val extension = if (extensionStart > 0) nameOnly.substring(extensionStart) else ""
-        return extension.takeIf {
-            it.length in 2..10 && it.drop(1).all { char -> char.isLetterOrDigit() }
-        } ?: ""
-    }
-
     companion object {
         private val logger = LoggerFactory.getLogger(DefaultRenderTemplateBatchUseCase::class.java)
-        private val CARBONE_DATA_PLACEHOLDER = Regex("\\{d\\.([^}:]+)(?::[^}]*)?}")
+
+        /** Length of the random prefix Carbone prepends to each ZIP entry filename (the SDK's `renderPrefix` slot). */
+        private const val CARBONE_RANDOM_PREFIX_LEN = 22
     }
 }
