@@ -212,8 +212,15 @@ class DefaultReportCalculationUseCase(
     }
 
     /**
-     * Normalize legacy "from"/"to" arg keys to canonical "startDate"/"endDate" so that
-     * ReportCalculations stored before the v1→canonical SQL migration continue to work.
+     * Normalize legacy "from"/"to" arg keys to canonical "startDate"/"endDate".
+     *
+     * This is independent of the ReportConfig migration in DefaultReportStorage: that migration
+     * rewrites the stored config (SQL placeholders + transformation keys) to canonical form, but
+     * it cannot touch the per-calculation runtime args. Those args are supplied by the caller —
+     * ndb-core still posts "from"/"to" — and are also already present on ReportCalculation
+     * documents created before the migration. Without this step, after the SQL is normalized to
+     * $startDate/$endDate the transformation lookup would miss the "from"/"to" values and silently
+     * fall back to all-time date defaults. Remove only once all callers send "startDate"/"endDate".
      */
     private fun normalizeLegacyArgs(args: MutableMap<String, String>) {
         if (!args.containsKey("startDate")) {

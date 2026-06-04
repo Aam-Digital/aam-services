@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.never
 import org.mockito.kotlin.reset
@@ -207,11 +208,19 @@ class DefaultReportStorageTest {
         storage.fetchReport(DomainReference("ReportConfig:legacy"))
 
         // then
+        val bodyCaptor = argumentCaptor<Any>()
         verify(couchDbClient).putDatabaseDocument(
             database = eq("app"),
             documentId = eq("ReportConfig:legacy"),
-            body = any()
+            body = bodyCaptor.capture()
         )
+
+        @Suppress("UNCHECKED_CAST")
+        val body = bodyCaptor.firstValue as Map<String, Any?>
+        // CouchDB rejects unknown underscore-prefixed top-level members (doc_validation),
+        // so the migrated body must not introduce any beyond the reserved "_id".
+        assertThat(body.keys.filter { it.startsWith("_") && it != "_id" }).isEmpty()
+        assertThat(body).containsKey("legacyOriginal")
     }
 
     @Test
@@ -241,7 +250,7 @@ class DefaultReportStorageTest {
         assertThat(report.transformations).containsKey("startDate")
     }
 
-    // --- Canonical doc with extra fields (e.g. previously migrated with _legacyOriginal or version field) ---
+    // --- Canonical doc with extra fields (e.g. previously migrated with legacyOriginal or version field) ---
 
     @Test
     fun `should parse canonical doc with extra unknown fields without triggering write-back`() {
@@ -254,7 +263,7 @@ class DefaultReportStorageTest {
               "title": "Migrated",
               "mode": "sql",
               "version": "2",
-              "_legacyOriginal": {
+              "legacyOriginal": {
                 "aggregationDefinition": "SELECT * FROM foo WHERE d BETWEEN ? AND ?",
                 "neededArgs": ["from", "to"]
               },
