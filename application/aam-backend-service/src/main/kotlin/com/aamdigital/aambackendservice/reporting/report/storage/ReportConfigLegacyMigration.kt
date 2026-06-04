@@ -118,11 +118,15 @@ class ReportConfigLegacyMigration(
 
     private fun reportItemToMap(item: ReportItem): Map<String, Any?> =
         when (item) {
-            is ReportItem.ReportQuery -> mapOf("query" to item.sql)
-            is ReportItem.ReportGroup ->
+            is ReportItem.ReportQuery -> {
+                mapOf("query" to item.sql)
+            }
+
+            is ReportItem.ReportGroup -> {
                 mapOf(
                     "groupTitle" to item.title,
                     "items" to item.items.map { reportItemToMap(it) }
                 )
+            }
         }
 }
