@@ -228,6 +228,71 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     }
 
     @Test
+    fun `should append pdf extension to reportName when targetFileName has no pdf extension`() {
+        // given
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """
+                {"foo":"bar"}
+                """.trimIndent()
+            )
+        val templateExport =
+            TemplateExport(
+                id = "export-id",
+                templateId = "export-template-id",
+                targetFileName = "target_file_name",
+                title = "export-title",
+                description = "export-description",
+                applicableForEntityTypes = emptyList()
+            )
+
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
+
+        mockWebServer.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                    "success": true,
+                    "data": {
+                        "renderId": "some-render-id"
+                    }
+                }
+                """.trimIndent()
+            )
+        )
+
+        val buffer = Buffer()
+        buffer.writeAll(File("src/test/resources/files/pdf-test-file-1.pdf").source())
+
+        mockWebServer.enqueue(
+            MockResponse()
+                .setHeaders(
+                    mapOf(
+                        "Content-Type" to "application/pdf",
+                        "Content-Length" to buffer.size.toString(),
+                        "Cache-Control" to "no-cache, no-store, max-age=0, must-revalidate"
+                    ).toHeaders()
+                ).setBody(buffer)
+        )
+
+        // when
+        val response =
+            service.run(
+                RenderTemplateRequest(
+                    templateRef,
+                    bodyData
+                )
+            )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        val renderRequest = mockWebServer.takeRequest()
+        val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
+        assertThat(sentBody["reportName"]).isEqualTo("target_file_name.pdf")
+    }
+
+    @Test
     fun `should return Failure with parsed error message`() {
         // given
         val templateRef = DomainReference("some-id")
