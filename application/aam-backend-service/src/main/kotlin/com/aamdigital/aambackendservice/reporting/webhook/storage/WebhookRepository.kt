@@ -8,10 +8,8 @@ import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
 
-@Service
 class WebhookRepository(
     private val couchDbClient: CouchDbClient,
     private val objectMapper: ObjectMapper

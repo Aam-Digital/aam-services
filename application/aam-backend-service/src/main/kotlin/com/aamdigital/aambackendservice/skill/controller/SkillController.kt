@@ -2,6 +2,8 @@ package com.aamdigital.aambackendservice.skill.controller
 
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
+import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
+import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileData
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileRequest
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileUseCase
@@ -10,7 +12,6 @@ import com.aamdigital.aambackendservice.skill.domain.SkillUsage
 import com.aamdigital.aambackendservice.skill.domain.UserProfile
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -33,18 +34,8 @@ data class FetchUserProfilesDto(
 
 @RestController
 @RequestMapping("/v1/skill")
-@ConditionalOnProperty(
-    prefix = "features.skill-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
-@ConditionalOnProperty(
-    prefix = "features.skill-api",
-    name = ["mode"],
-    havingValue = "skilllab",
-    matchIfMissing = false
-)
+@ConditionalOnSkillApiEnabled
+@ConditionalOnSkillLabMode
 class SkillController(
     private val searchUserProfileUseCase: SearchUserProfileUseCase,
     private val userProfileRepository: SkillLabUserProfileRepository,

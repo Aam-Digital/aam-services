@@ -1,6 +1,8 @@
 package com.aamdigital.aambackendservice.reporting.webhook.di
 
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.crypto.core.CryptoService
+import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.webhook.core.AddWebhookSubscriptionUseCase
@@ -10,6 +12,7 @@ import com.aamdigital.aambackendservice.reporting.webhook.core.DefaultUriParser
 import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationService
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.core.UriParser
+import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventPublisher
 import com.aamdigital.aambackendservice.reporting.webhook.storage.DefaultWebhookStorage
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookRepository
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
@@ -20,6 +23,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.web.client.RestClient
 
 @Configuration
+@ConditionalOnReportingEnabled
 class ReportingNotificationConfiguration {
     @Bean
     fun defaultAddWebhookSubscription(
@@ -59,4 +63,16 @@ class ReportingNotificationConfiguration {
         webhookRepository: WebhookRepository,
         cryptoService: CryptoService
     ): WebhookStorage = DefaultWebhookStorage(webhookRepository, cryptoService)
+
+    @Bean
+    fun webhookRepository(
+        couchDbClient: CouchDbClient,
+        objectMapper: ObjectMapper
+    ): WebhookRepository = WebhookRepository(couchDbClient, objectMapper)
+
+    @Bean
+    fun notificationService(
+        webhookStorage: WebhookStorage,
+        webhookEventPublisher: WebhookEventPublisher
+    ): NotificationService = NotificationService(webhookStorage, webhookEventPublisher)
 }

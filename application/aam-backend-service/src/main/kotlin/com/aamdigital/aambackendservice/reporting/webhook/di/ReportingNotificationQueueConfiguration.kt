@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.webhook.di
 
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventConsumer
 import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventPublisher
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
+@ConditionalOnReportingEnabled
 class ReportingNotificationQueueConfiguration {
     companion object {
         const val NOTIFICATION_QUEUE = "notification.webhook"

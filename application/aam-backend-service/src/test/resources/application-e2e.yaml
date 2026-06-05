@@ -77,6 +77,8 @@ aam-replication-backend-client-configuration:
   base-path: ""
 
 features:
+  reporting:
+    enabled: true
   export-api:
     enabled: true
   notification-api:
@@ -87,13 +89,7 @@ features:
 crypto-configuration:
   secret: super-duper-secret
 
-events:
-  listener:
-    report-calculation:
-      enabled: true
-
 database-change-detection:
-  enabled: true
   fixed-delay: 1000
 
 keycloak:

@@ -21,7 +21,6 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportC
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.transformation.DataTransformation
-import org.springframework.stereotype.Component
 import java.io.InputStream
 import java.io.SequenceInputStream
 import java.time.ZoneOffset
@@ -46,7 +45,6 @@ import java.util.*
  *  If no date args are set, the default values are passed, to fetch all matching entities from all time
  *
  */
-@Component
 class DefaultReportCalculationUseCase(
     private val reportCalculationStorage: ReportCalculationStorage,
     private val reportStorage: ReportStorage,

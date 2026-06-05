@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationUseCase
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
@@ -18,17 +19,11 @@ import org.springframework.amqp.core.Queue
 import org.springframework.amqp.core.QueueBuilder
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty(
-    prefix = "features.notification-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnNotificationApiEnabled
 class NotificationQueueConfiguration {
     companion object {
         const val DOCUMENT_CHANGES_NOTIFICATION_QUEUE = "document.changes.notification"

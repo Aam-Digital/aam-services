@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.reporting.webhook.controller
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.webhook.Webhook
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthenticationType
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookTarget
@@ -48,6 +49,7 @@ data class CreateWebhookRequestDto(
 
 @RestController
 @RequestMapping("/v1/reporting/webhook")
+@ConditionalOnReportingEnabled
 @Validated
 class WebhookController(
     private val webhookStorage: WebhookStorage,
