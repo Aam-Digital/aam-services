@@ -83,7 +83,9 @@ services:
 
 # Currently Keycloak 23 is used in production:
   keycloak_23:
-    image: quay.io/keycloak/keycloak:23.0.7
+    image: quay.io/keycloak/keycloak:26.0.7-0
+    # Bumped from 23.0.7 to test the in-place 23->26 upgrade against the existing
+    # db-keycloak_23 Postgres volume (Keycloak auto-migrates the schema on first 26 boot).
     # our actual production image (currently not available publicly, however): ghcr.io/aam-digital/aam-keycloak:23.0.7
     container_name: keycloak
     networks:
@@ -98,11 +100,11 @@ services:
       KC_DB_PASSWORD: docker
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: docker
-      KC_HOSTNAME: keycloak.localhost
-      KC_PROXY: edge
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME: https://keycloak.localhost
     depends_on:
       - db-keycloak_23
-    command: start-dev
+    command: start --proxy-headers forwarded
     # for production settings use command: start --optimized --spi-theme-login-theme=aam-theme
     volumes:
       - ./container-data/keycloak/providers:/opt/keycloak/providers
