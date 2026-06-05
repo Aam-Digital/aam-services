@@ -54,7 +54,6 @@ services:
     environment:
       KC_HTTP_ENABLED: true
       KC_HOSTNAME: https://keycloak.localhost
-      KC_FRONTEND_URL: https://keycloak.localhost
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://db-keycloak:5432/postgres
       KC_DB_SCHEMA: public
