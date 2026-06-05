@@ -240,6 +240,28 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
     }
 
     @Test
+    fun `ZIP mode should append pdf extension when target file name has none`() {
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue("""{"data":[{"name":"X"}]}""")
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template("monthly_report_{d.name}"))
+        enqueueRenderAndFile(renderId = "render-zip-1", contentType = "application/zip")
+
+        service.run(
+            RenderTemplateBatchRequest(
+                templateRef = templateRef,
+                bodyData = bodyData,
+                mode = RenderTemplateBatchMode.ZIP
+            )
+        )
+
+        val renderRequest = mockWebServer.takeRequest()
+        val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
+        assertThat(sentBody["reportName"]).isEqualTo("monthly_report_{d.name}.pdf")
+        assertThat(sentBody["batchReportName"]).isEqualTo("monthly_report_{d.name}.pdf")
+    }
+
+    @Test
     fun `ZIP mode should decode Carbone's encoded entry names into readable filenames`() {
         val templateRef = DomainReference("some-id")
         val bodyData: JsonNode =

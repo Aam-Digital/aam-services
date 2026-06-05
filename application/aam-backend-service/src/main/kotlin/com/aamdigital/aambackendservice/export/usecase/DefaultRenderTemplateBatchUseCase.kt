@@ -1,26 +1,17 @@
 package com.aamdigital.aambackendservice.export.usecase
 
-import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome.Success
-import com.aamdigital.aambackendservice.common.error.ExternalSystemException
-import com.aamdigital.aambackendservice.common.error.NetworkException
-import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.RenderTemplateBatchData
 import com.aamdigital.aambackendservice.export.core.RenderTemplateBatchError
 import com.aamdigital.aambackendservice.export.core.RenderTemplateBatchMode
 import com.aamdigital.aambackendservice.export.core.RenderTemplateBatchRequest
 import com.aamdigital.aambackendservice.export.core.RenderTemplateBatchUseCase
-import com.aamdigital.aambackendservice.export.core.TemplateExport
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
-import org.springframework.http.HttpHeaders
-import org.springframework.http.MediaType
-import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClient
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -45,17 +36,30 @@ import java.util.zip.ZipOutputStream
  * verbatim to the caller as [RenderTemplateBatchError.BATCH_REJECTED_ERROR].
  */
 class DefaultRenderTemplateBatchUseCase(
-    private val renderClient: RestClient,
-    private val objectMapper: ObjectMapper,
-    private val templateStorage: TemplateStorage
+    renderClient: RestClient,
+    objectMapper: ObjectMapper,
+    templateStorage: TemplateStorage,
 ) : RenderTemplateBatchUseCase() {
+    private val carboneClient =
+        CarboneRenderApiClient(
+            renderClient = renderClient,
+            objectMapper = objectMapper,
+            templateStorage = templateStorage,
+            notFoundCode = RenderTemplateBatchError.NOT_FOUND_ERROR,
+            fetchTemplateFailedCode = RenderTemplateBatchError.FETCH_TEMPLATE_FAILED_ERROR,
+            createRenderRequestFailedCode = RenderTemplateBatchError.CREATE_RENDER_REQUEST_FAILED_ERROR,
+            batchRejectedCode = RenderTemplateBatchError.BATCH_REJECTED_ERROR,
+            fetchRenderResultFailedCode = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
+            parseResponseCode = RenderTemplateBatchError.PARSE_RESPONSE_ERROR,
+        )
+
     override fun apply(request: RenderTemplateBatchRequest): UseCaseOutcome<RenderTemplateBatchData> {
         val bodyData = request.bodyData
         if (bodyData !is ObjectNode) {
             return UseCaseOutcome.Failure(
                 errorCode = RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR,
                 errorMessage = "Request body must be a JSON object.",
-                cause = null
+                cause = null,
             )
         }
         val dataArray =
@@ -63,18 +67,24 @@ class DefaultRenderTemplateBatchUseCase(
                 ?: return UseCaseOutcome.Failure(
                     errorCode = RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR,
                     errorMessage = "Request body must contain a 'data' field of type array.",
-                    cause = null
+                    cause = null,
                 )
         if (dataArray.isEmpty) {
             return UseCaseOutcome.Failure(
                 errorCode = RenderTemplateBatchError.EMPTY_DATA_LIST_ERROR,
                 errorMessage = "Request 'data' array must not be empty.",
-                cause = null
+                cause = null,
             )
         }
 
-        val template = fetchTemplate(request.templateRef)
-        val targetFileName = template.targetFileName.replace(Regex("[\\\\/*?\"<>|]"), "_")
+        val template = carboneClient.fetchTemplate(request.templateRef)
+        val sanitizedTargetFileName = template.targetFileName.replace(Regex("[\\\\/*?\"<>|]"), "_")
+        val targetFileName =
+            if (sanitizedTargetFileName.endsWith(".pdf", ignoreCase = true)) {
+                sanitizedTargetFileName
+            } else {
+                "$sanitizedTargetFileName.pdf"
+            }
 
         bodyData.put("batchSplitBy", "d")
         bodyData.put("batchOutput", carboneBatchOutput(request.mode))
@@ -84,22 +94,22 @@ class DefaultRenderTemplateBatchUseCase(
             bodyData.put("batchReportName", targetFileName)
         }
 
-        val raw = createRenderRequest(template.templateId, bodyData)
-        val renderId = parseRenderRequestResponse(raw)
-        val file = fetchRenderIdRequest(renderId)
+        val raw = carboneClient.createRenderRequest(template.templateId, bodyData)
+        val renderId = carboneClient.parseRenderId(raw)
+        val result = carboneClient.fetchRenderResult(renderId)
         val fileBytes =
             if (request.mode == RenderTemplateBatchMode.ZIP) {
-                decodeZipEntryNames(file.file)
+                decodeZipEntryNames(result.file)
             } else {
-                file.file
+                result.file
             }
 
         return Success(
             data =
                 RenderTemplateBatchData(
                     file = ByteArrayInputStream(fileBytes),
-                    responseHeaders = file.headers
-                )
+                    responseHeaders = result.headers,
+                ),
         )
     }
 
@@ -109,14 +119,9 @@ class DefaultRenderTemplateBatchUseCase(
             RenderTemplateBatchMode.COMBINED -> "pdf"
         }
 
-    private data class FileResponse(
-        val file: ByteArray,
-        val headers: HttpHeaders
-    )
-
     private data class ZipEntryData(
         val name: String,
-        val content: ByteArray
+        val content: ByteArray,
     )
 
     /**
@@ -131,7 +136,7 @@ class DefaultRenderTemplateBatchUseCase(
             } catch (ex: Exception) {
                 logger.warn(
                     "Could not parse Carbone batch ZIP; returning archive with engine-generated entry names.",
-                    ex
+                    ex,
                 )
                 return zipBytes
             }
@@ -187,7 +192,7 @@ class DefaultRenderTemplateBatchUseCase(
                     .map { entry ->
                         ZipEntryData(
                             name = entry.name,
-                            content = zip.getInputStream(entry).use { it.readBytes() }
+                            content = zip.getInputStream(entry).use { it.readBytes() },
                         )
                     }.toList()
             }
@@ -205,7 +210,7 @@ class DefaultRenderTemplateBatchUseCase(
 
     private fun uniqueFileName(
         fileName: String,
-        usedNames: MutableSet<String>
+        usedNames: MutableSet<String>,
     ): String {
         var candidate = fileName
         val extensionStart = fileName.lastIndexOf('.')
@@ -217,181 +222,6 @@ class DefaultRenderTemplateBatchUseCase(
             suffix++
         }
         return candidate
-    }
-
-    private fun fetchTemplate(templateRef: DomainReference): TemplateExport =
-        try {
-            templateStorage.fetchTemplate(templateRef)
-        } catch (ex: Exception) {
-            throw when (ex) {
-                is NotFoundException -> {
-                    NotFoundException(
-                        cause = ex.cause ?: ex,
-                        message = ex.localizedMessage,
-                        code = RenderTemplateBatchError.NOT_FOUND_ERROR
-                    )
-                }
-
-                is NetworkException -> {
-                    NetworkException(
-                        cause = ex.cause ?: ex,
-                        message = ex.localizedMessage,
-                        code = RenderTemplateBatchError.FETCH_TEMPLATE_FAILED_ERROR
-                    )
-                }
-
-                else -> {
-                    ExternalSystemException(
-                        cause = ex.cause ?: ex,
-                        message = "Could not fetch template metadata.",
-                        code = RenderTemplateBatchError.FETCH_TEMPLATE_FAILED_ERROR
-                    )
-                }
-            }
-        }
-
-    private fun createRenderRequest(
-        templateId: String,
-        bodyData: JsonNode
-    ): String {
-        val response =
-            try {
-                renderClient
-                    .post()
-                    .uri("/render/$templateId")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaType.APPLICATION_JSON)
-                    .body(bodyData)
-                    .retrieve()
-                    .body(String::class.java)
-            } catch (ex: Exception) {
-                // Carbone returns HTTP 5xx with a structured JSON body for batch rejections
-                // (e.g. exceeding nbReportMaxPerBatch). Try to surface that error message.
-                val carboneMessage = extractCarboneErrorMessage(ex)
-                if (carboneMessage != null) {
-                    throw ExternalSystemException(
-                        cause = ex,
-                        message = carboneMessage,
-                        code = RenderTemplateBatchError.BATCH_REJECTED_ERROR
-                    )
-                }
-                throw ExternalSystemException(
-                    cause = ex,
-                    message = ex.localizedMessage,
-                    code = RenderTemplateBatchError.CREATE_RENDER_REQUEST_FAILED_ERROR
-                )
-            }
-
-        if (response.isNullOrEmpty()) {
-            throw ExternalSystemException(
-                cause = null,
-                message = "Null or empty response from renderClient.",
-                code = RenderTemplateBatchError.CREATE_RENDER_REQUEST_FAILED_ERROR
-            )
-        }
-
-        return response
-    }
-
-    /**
-     * Pull the structured `error` message out of a Carbone HTTP error response if present.
-     * Expected body shape: `{"success":false,"error":"...","code":"w101","data":{"renderId":""}}`.
-     *
-     * The exception thrown by [RestClient] for HTTP 5xx may be the
-     * [org.springframework.web.client.RestClientResponseException] directly or a wrapping
-     * cause, so we walk the cause chain.
-     */
-    private fun extractCarboneErrorMessage(ex: Throwable): String? {
-        var current: Throwable? = ex
-        var body: String? = null
-        while (current != null) {
-            if (current is org.springframework.web.client.RestClientResponseException) {
-                body = current.responseBodyAsString
-                break
-            }
-            current = current.cause
-        }
-        if (body.isNullOrBlank()) return null
-        return try {
-            val parsed = objectMapper.readValue(body, RenderRequestErrorResponseDto::class.java)
-            parsed.error.takeIf { it.isNotBlank() }
-        } catch (ignored: Exception) {
-            null
-        }
-    }
-
-    private fun fetchRenderIdRequest(renderId: String): FileResponse =
-        try {
-            renderClient
-                .get()
-                .uri("/render/$renderId")
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange { _, clientResponse ->
-                    val responseHeaders = clientResponse.headers
-
-                    val forwardHeaders = HttpHeaders()
-                    forwardHeaders.contentType = responseHeaders.contentType
-
-                    if (!responseHeaders[HttpHeaders.CONTENT_DISPOSITION].isNullOrEmpty()) {
-                        forwardHeaders[HttpHeaders.CONTENT_DISPOSITION] =
-                            responseHeaders[HttpHeaders.CONTENT_DISPOSITION]
-                    }
-
-                    val buffer =
-                        clientResponse.bodyTo(ByteArray::class.java) ?: throw ExternalSystemException(
-                            cause = null,
-                            message = "Could not read body bytes from template engine response.",
-                            code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
-                        )
-
-                    FileResponse(
-                        file = buffer,
-                        headers = forwardHeaders
-                    )
-                } ?: throw ExternalSystemException(
-                cause = null,
-                message = "Could not fetch render response from template engine.",
-                code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
-            )
-        } catch (ex: Exception) {
-            throw when (ex) {
-                is ResourceAccessException -> {
-                    NetworkException(
-                        cause = ex.cause ?: ex,
-                        message = ex.localizedMessage,
-                        code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
-                    )
-                }
-
-                else -> {
-                    ExternalSystemException(
-                        cause = ex.cause ?: ex,
-                        message = "Could not fetch render result from template engine.",
-                        code = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR
-                    )
-                }
-            }
-        }
-
-    private fun parseRenderRequestResponse(raw: String): String {
-        try {
-            val parsed = objectMapper.readValue(raw, RenderRequestResponseDto::class.java)
-            return parsed.data.renderId
-        } catch (ex: Exception) {
-            val errorMessage =
-                try {
-                    val errorResponse = objectMapper.readValue(raw, RenderRequestErrorResponseDto::class.java)
-                    errorResponse.error
-                } catch (ignored: Exception) {
-                    ex.localizedMessage
-                }
-
-            throw ExternalSystemException(
-                cause = ex,
-                message = errorMessage,
-                code = RenderTemplateBatchError.PARSE_RESPONSE_ERROR
-            )
-        }
     }
 
     companion object {
