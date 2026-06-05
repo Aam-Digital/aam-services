@@ -91,6 +91,21 @@ Notes:
 - Email notifications are only sent for users with `channels.email=true` in their `NotificationConfig:*` document.
 - If email is enabled but a user has no email address in Keycloak, that notification is skipped for email delivery.
 
+### Email delivery retries and failure handling
+
+If sending an email fails, the service automatically retries up to 3 times before giving up.
+Failed notifications are held in a queue (technically: a dead-letter queue `notification.user.dlq`)
+so no notifications are silently lost.
+
+When the service restarts, all held notifications are automatically retried once.
+This means the recovery path for any delivery problem is always the same:
+**fix the root cause, then restart the service.**
+
+Examples:
+
+- SMTP server temporarily unreachable → retried immediately up to 3 times, then held until next restart
+- Wrong SMTP credentials → held immediately (retrying wouldn't help), fixed after updating credentials and restarting
+
 ### Multi-language Email Templates & Runtime Override
 
 The email language is selected by `NOTIFICATION_EMAIL_LOCALE` (defaults to `en`).
@@ -130,7 +145,7 @@ Important:
 
 - Template changes require a container restart.
 - The backend does not manage logo files or inline image attachments.
-Template authors can embed images directly in the HTML template (for example as data URIs or remote image URLs).
+  Template authors can embed images directly in the HTML template (for example as data URIs or remote image URLs).
 
 ### Permission-Aware Notifications (optional)
 

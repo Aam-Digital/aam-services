@@ -5,10 +5,14 @@ import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
+import com.aamdigital.aambackendservice.notification.core.create.TransientNotificationException
 import com.aamdigital.aambackendservice.notification.di.NotificationEmailProperties
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import org.slf4j.LoggerFactory
+import org.springframework.mail.MailSendException
 import org.springframework.web.util.HtmlUtils
+import java.net.ConnectException
+import java.net.SocketTimeoutException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -46,24 +50,42 @@ class EmailCreateNotificationHandler(
             )
 
         val mailSenderResponse =
-            mailSenderService.sendMail(
-                MailSenderRequest(
-                    to = email,
-                    subject = subject,
-                    body = body,
-                    isHtml = true,
-                    headers =
-                        mapOf(
-                            "List-Unsubscribe" to "<${notificationEmailProperties.manageSettingsUrl}>"
-                        )
+            try {
+                mailSenderService.sendMail(
+                    MailSenderRequest(
+                        to = email,
+                        subject = subject,
+                        body = body,
+                        isHtml = true,
+                        headers =
+                            mapOf(
+                                "List-Unsubscribe" to "<${notificationEmailProperties.manageSettingsUrl}>"
+                            )
+                    )
                 )
-            )
+            } catch (ex: MailSendException) {
+                if (isTransientMailFailure(ex)) {
+                    throw TransientNotificationException("SMTP connection failed: ${ex.localizedMessage}", ex)
+                }
+                throw ex
+            }
 
         return CreateNotificationData(
             success = mailSenderResponse.success,
             messageCreated = mailSenderResponse.success,
             messageReference = mailSenderResponse.messageReference
         )
+    }
+
+    private fun isTransientMailFailure(ex: MailSendException): Boolean {
+        val candidates = buildList {
+            add(ex as Throwable)
+            addAll(ex.failedMessages.values)
+        }
+        return candidates.any { root ->
+            generateSequence(root) { it.cause }
+                .any { it is ConnectException || it is SocketTimeoutException }
+        }
     }
 
     private fun buildEmailBody(

@@ -53,13 +53,16 @@ class DefaultUserNotificationConsumer(
 
                 when (result) {
                     is UseCaseOutcome.Failure -> {
-                        logger.warn(
-                            "CreateNotification failed for user={}, channel={}: [{}] {}",
+                        logger.error(
+                            "CreateNotification failed for user={}, channel={}: [{}] {} — sending to DLQ for retry after restart",
                             payload.userIdentifier,
                             payload.notificationChannelType,
                             result.errorCode,
                             result.errorMessage,
                             result.cause
+                        )
+                        throw AmqpRejectAndDontRequeueException(
+                            "[${result.errorCode}] ${result.errorMessage}", result.cause
                         )
                     }
                     is UseCaseOutcome.Success -> {

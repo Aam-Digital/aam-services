@@ -11,6 +11,19 @@ spring:
     listener:
       simple:
         prefetch: 1
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 10000
+          multiplier: 2.0
+          max-interval: 60000
+  mail:
+    properties:
+      mail:
+        smtp:
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
   datasource:
     driver-class-name: org.postgresql.Driver
   jpa:

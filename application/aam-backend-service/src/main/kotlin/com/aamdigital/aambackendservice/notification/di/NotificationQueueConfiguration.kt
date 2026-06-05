@@ -9,6 +9,7 @@ import com.aamdigital.aambackendservice.notification.queue.DefaultNotificationDo
 import com.aamdigital.aambackendservice.notification.queue.DefaultUserNotificationConsumer
 import com.aamdigital.aambackendservice.notification.queue.DefaultUserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.queue.NotificationDocumentChangeConsumer
+import com.aamdigital.aambackendservice.notification.queue.StartupNotificationDlqReprocessor
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationConsumer
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -28,13 +29,21 @@ class NotificationQueueConfiguration {
     companion object {
         const val DOCUMENT_CHANGES_NOTIFICATION_QUEUE = "document.changes.notification"
         const val USER_NOTIFICATION_QUEUE = "notification.user"
+        const val USER_NOTIFICATION_DLQ = "notification.user.dlq"
     }
 
     @Bean("notification-document-changes-queue")
     fun notificationDocumentChangesQueue(): Queue = QueueBuilder.durable(DOCUMENT_CHANGES_NOTIFICATION_QUEUE).build()
 
     @Bean("notification-user-notification-queue")
-    fun notificationUserNotificationQueue(): Queue = QueueBuilder.durable(USER_NOTIFICATION_QUEUE).build()
+    fun notificationUserNotificationQueue(): Queue = QueueBuilder
+        .durable(USER_NOTIFICATION_QUEUE)
+        .deadLetterExchange("")
+        .deadLetterRoutingKey(USER_NOTIFICATION_DLQ)
+        .build()
+
+    @Bean("notification-user-notification-dlq")
+    fun notificationUserNotificationDlq(): Queue = QueueBuilder.durable(USER_NOTIFICATION_DLQ).build()
 
     @Bean("notification-document-changes-exchange")
     fun notificationDocumentChangesBinding(
@@ -73,4 +82,10 @@ class NotificationQueueConfiguration {
             objectMapper = objectMapper,
             rabbitTemplate = rabbitTemplate
         )
+
+    @Bean("notification-user-dlq-reprocessor")
+    fun notificationUserDlqReprocessor(
+        rabbitTemplate: RabbitTemplate
+    ): StartupNotificationDlqReprocessor =
+        StartupNotificationDlqReprocessor(rabbitTemplate)
 }

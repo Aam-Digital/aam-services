@@ -10,6 +10,10 @@ class DefaultCreateNotificationUseCase(
         INVALID_NOTIFICATION_CHANNEL_TYPE
     }
 
+    override fun errorHandler(it: Throwable): UseCaseOutcome<CreateNotificationData> =
+        if (it is TransientNotificationException) throw it
+        else super.errorHandler(it)
+
     override fun apply(request: CreateNotificationRequest): UseCaseOutcome<CreateNotificationData> {
         for (handler in createNotificationHandler) {
             if (handler.canHandle(request.createUserNotificationEvent.notificationChannelType)) {
