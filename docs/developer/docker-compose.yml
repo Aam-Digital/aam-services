@@ -237,6 +237,7 @@ services:
     networks:
       - aam-digital
     volumes:
+      - ./carbone.config.json:/app/config/config.json:ro
       - ./container-data/carbone-io/template:/app/template
       - ./container-data/carbone-io/render:/app/render
     ports:

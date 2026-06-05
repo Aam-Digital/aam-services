@@ -4,11 +4,13 @@ import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.export.ConditionalOnExportApiEnabled
 import com.aamdigital.aambackendservice.export.core.CreateTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.FetchTemplateUseCase
+import com.aamdigital.aambackendservice.export.core.RenderTemplateBatchUseCase
 import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.aamdigital.aambackendservice.export.storage.DefaultTemplateStorage
 import com.aamdigital.aambackendservice.export.usecase.DefaultCreateTemplateUseCase
 import com.aamdigital.aambackendservice.export.usecase.DefaultFetchTemplateUseCase
+import com.aamdigital.aambackendservice.export.usecase.DefaultRenderTemplateBatchUseCase
 import com.aamdigital.aambackendservice.export.usecase.DefaultRenderTemplateUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
@@ -40,4 +42,11 @@ class UseCaseConfiguration {
         objectMapper: ObjectMapper,
         templateStorage: TemplateStorage
     ): RenderTemplateUseCase = DefaultRenderTemplateUseCase(restClient, objectMapper, templateStorage)
+
+    @Bean(name = ["default-render-template-batch-use-case"])
+    fun defaultRenderTemplateBatchUseCase(
+        @Qualifier("aam-render-api-client") restClient: RestClient,
+        objectMapper: ObjectMapper,
+        templateStorage: TemplateStorage
+    ): RenderTemplateBatchUseCase = DefaultRenderTemplateBatchUseCase(restClient, objectMapper, templateStorage)
 }
