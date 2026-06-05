@@ -42,7 +42,7 @@ services:
   # ***************************************************************
 
   keycloak_26:
-    image: quay.io/keycloak/keycloak:26.0.7-0
+    image: quay.io/keycloak/keycloak:26.4.7
     container_name: keycloak
     depends_on:
       - db-keycloak
@@ -83,7 +83,7 @@ services:
 
 # Currently Keycloak 23 is used in production:
   keycloak_23:
-    image: quay.io/keycloak/keycloak:26.0.7-0
+    image: quay.io/keycloak/keycloak:26.4.7
     # Bumped from 23.0.7 to test the in-place 23->26 upgrade against the existing
     # db-keycloak_23 Postgres volume (Keycloak auto-migrates the schema on first 26 boot).
     # our actual production image (currently not available publicly, however): ghcr.io/aam-digital/aam-keycloak:23.0.7
