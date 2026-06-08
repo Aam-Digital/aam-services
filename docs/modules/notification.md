@@ -90,6 +90,7 @@ Notes:
 
 - Email notifications are only sent for users with `channels.email=true` in their `NotificationConfig:*` document.
 - If email is enabled but a user has no email address in Keycloak, that notification is skipped for email delivery.
+- Ensure the server firewall allows outgoing traffic for the SMTP port.
 
 ### Email delivery retries and failure handling
 
