@@ -23,7 +23,7 @@ sudo cp build/keycloak-third-party-authentication.jar ../../docs/developer/conta
 
 ## Setup
 The .jar file built here (e.g. through the CI) should be built into a Keycloak image to make it available.
-We build our custom Keycloak image with necessary providers in [Aam-Digital/aam-cloud-infrastructure](https://github.com/Aam-Digital/aam-cloud-infrastructure/blob/main/application/aam-keycloak/Dockerfile).
+We build our custom Keycloak image with necessary providers in [Aam-Digital/aam-cloud-infrastructure](https://github.com/Aam-Digital/aam-cloud-infrastructure/blob/main/charts/aam-keycloak/image/Dockerfile).
 
 
 ## Development
