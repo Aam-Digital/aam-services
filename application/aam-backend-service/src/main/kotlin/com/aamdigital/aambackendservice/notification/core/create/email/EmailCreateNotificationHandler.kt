@@ -56,6 +56,7 @@ class EmailCreateNotificationHandler(
                         to = email,
                         subject = subject,
                         body = body,
+                        from = notificationEmailProperties.from,
                         isHtml = true,
                         headers =
                             mapOf(

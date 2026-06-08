@@ -10,6 +10,7 @@ class SmtpMailSenderService(
         val mimeMessage = javaMailSender.createMimeMessage()
         val helper = MimeMessageHelper(mimeMessage, "UTF-8")
         helper.setTo(request.to)
+        if (request.from.isNotBlank()) helper.setFrom(request.from)
         helper.setSubject(request.subject)
         helper.setText(request.body, request.isHtml)
         request.headers.forEach { (key, value) -> mimeMessage.addHeader(key, value) }
