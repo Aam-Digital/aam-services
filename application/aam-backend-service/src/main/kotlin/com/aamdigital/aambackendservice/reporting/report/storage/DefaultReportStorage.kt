@@ -20,13 +20,18 @@ import org.springframework.util.LinkedMultiValueMap
 import java.io.InterruptedIOException
 
 /**
- * Class that handles fetching the ReportConfig: from couchdb and transform it into a [Report]
- * Can handle ReportConfigV1Entity and ReportConfigEntity (v2)
+ * Fetches ReportConfig: documents from CouchDB and normalizes them into [Report] domain objects.
+ *
+ * Accepts both the legacy v1 format (aggregationDefinition + neededArgs + positional/named placeholders)
+ * and the canonical format (reportDefinition + transformations + $named placeholders).
+ * Legacy docs are normalized in memory and written back to CouchDB in canonical form on first read.
  */
 class DefaultReportStorage(
     private val couchDbClient: CouchDbClient,
     private val objectMapper: ObjectMapper
 ) : ReportStorage {
+    private val legacyMigration = ReportConfigLegacyMigration(couchDbClient)
+
     companion object {
         private const val REPORT_DATABASE = "app"
     }
@@ -46,23 +51,8 @@ class DefaultReportStorage(
         }
 
         return response.rows
-            .filter { rawReportConfig ->
-                isSqlReport(rawReportConfig.doc)
-            }.map { rawReportConfig ->
-                val version =
-                    try {
-                        objectMapper
-                            .readerFor(ObjectNode::class.java)
-                            .readValue(
-                                rawReportConfig.doc,
-                                ReportConfigVersionEntity::class.java
-                            ).version
-                    } catch (ex: Exception) {
-                        throw handleException(ex)
-                    }
-
-                anyEntityToReport(rawReportConfig.doc, version)
-            }
+            .filter { isSqlReport(it.doc) }
+            .map { normalizeRawDocToReport(it.doc) }
     }
 
     @Throws(
@@ -72,7 +62,7 @@ class DefaultReportStorage(
         NotFoundException::class
     )
     override fun fetchReport(reportRef: DomainReference): Report {
-        val rawReportConfig =
+        val rawDoc =
             try {
                 couchDbClient.getDatabaseDocument(
                     database = REPORT_DATABASE,
@@ -84,118 +74,60 @@ class DefaultReportStorage(
                 throw handleException(ex)
             }
 
-        val version =
-            try {
-                objectMapper
-                    .readerFor(ObjectNode::class.java)
-                    .readValue(rawReportConfig, ReportConfigVersionEntity::class.java)
-                    .version
-            } catch (ex: Exception) {
-                throw handleException(ex)
-            }
-
-        if (!isSqlReport(rawReportConfig)) {
+        if (!isSqlReport(rawDoc)) {
             throw InvalidArgumentException(
                 message = "Non SQL Reports are not supported",
                 code = ReportStorageErrorCode.INVALID_REPORT_CONFIG
             )
         }
 
-        return anyEntityToReport(rawReportConfig, version)
-    }
+        val report = normalizeRawDocToReport(rawDoc)
 
-    private fun anyEntityToReport(
-        doc: ObjectNode,
-        version: Int
-    ): Report =
-        when (val report = parseReportEntity(doc, version)) {
-            is ReportConfigV1Entity -> toReport(report)
-            is ReportConfigEntity -> toReport(report)
-            else -> throw InternalServerException(
-                message =
-                    "Invalid ReportConfig version. Only supports ReportConfigEntity and ReportConfigV1Entity",
-                code = ReportStorageErrorCode.INVALID_REPORT_CONFIG
-            ) // should not be possible
+        if (legacyMigration.isLegacyDoc(rawDoc)) {
+            legacyMigration.tryWriteMigratedDoc(rawDoc, report)
         }
 
-    private fun isSqlReport(objectNode: ObjectNode): Boolean =
-        objectNode.hasNonNull("mode") &&
-            objectNode.get("mode").textValue() == "sql"
+        return report
+    }
 
-    private fun parseReportEntity(
-        rawReportConfig: ObjectNode,
-        version: Int
-    ): Any {
-        try {
-            return when (version) {
-                1 ->
-                    objectMapper
-                        .readerFor(ObjectNode::class.java)
-                        .readValue(rawReportConfig, ReportConfigV1Entity::class.java)
+    private fun normalizeRawDocToReport(doc: ObjectNode): Report =
+        if (legacyMigration.isLegacyDoc(doc)) {
+            legacyMigration.normalizeLegacyDoc(doc)
+        } else {
+            normalizeCanonicalDoc(doc)
+        }
 
-                2 ->
-                    objectMapper
-                        .readerFor(ObjectNode::class.java)
-                        .readValue(rawReportConfig, ReportConfigEntity::class.java)
+    private fun isSqlReport(doc: ObjectNode): Boolean = doc.hasNonNull("mode") && doc.get("mode").textValue() == "sql"
 
-                else -> throw InternalServerException(
-                    message = "Invalid ReportConfig version. Only supports version 1 and 2",
-                    code = ReportStorageErrorCode.INVALID_REPORT_CONFIG
+    private fun normalizeCanonicalDoc(doc: ObjectNode): Report {
+        val entity =
+            try {
+                objectMapper.treeToValue(doc, ReportConfigEntity::class.java)
+            } catch (ex: JacksonException) {
+                throw InvalidArgumentException(
+                    message = "Could not parse Report to Entity",
+                    code = ReportStorageErrorCode.PARSING_ERROR,
+                    cause = ex
                 )
             }
-        } catch (ex: Exception) {
-            throw handleException(ex)
-        }
-    }
-
-    private fun toReport(reportDoc: ReportConfigEntity): Report =
-        Report(
-            id = reportDoc.id,
-            title = reportDoc.title,
-            version = reportDoc.version,
-            items = reportDoc.reportDefinition.map { asReportItem(it) },
-            transformations = reportDoc.transformations
-        )
-
-    private fun toReport(reportDoc: ReportConfigV1Entity): Report {
-        val transformationMap = mutableMapOf<String, List<String>>()
-
-        if (reportDoc.neededArgs.contains("to")) {
-            transformationMap["to"] = listOf("SQL_TO_DATE")
-        }
-
-        if (reportDoc.neededArgs.contains("from")) {
-            transformationMap["from"] = listOf("SQL_FROM_DATE")
-        }
 
         return Report(
-            id = reportDoc.id,
-            title = reportDoc.title,
-            version = reportDoc.version,
-            items =
-                listOf(
-                    ReportItem.ReportQuery(
-                        sql = reportDoc.aggregationDefinition
-                    )
-                ),
-            transformations = transformationMap
+            id = entity.id,
+            title = entity.title,
+            items = entity.reportDefinition.map { asReportItem(it) },
+            transformations = entity.transformations ?: emptyMap()
         )
     }
 
-    private fun asReportItem(reportDefinitionDto: ReportDefinitionDto): ReportItem {
-        if (!reportDefinitionDto.query.isNullOrEmpty()) {
-            return ReportItem.ReportQuery(
-                sql = reportDefinitionDto.query
-            )
+    private fun asReportItem(dto: ReportDefinitionDto): ReportItem {
+        if (!dto.query.isNullOrEmpty()) {
+            return ReportItem.ReportQuery(sql = dto.query)
         }
 
-        if (!reportDefinitionDto.items.isNullOrEmpty() && !reportDefinitionDto.groupTitle.isNullOrEmpty()) {
+        if (!dto.items.isNullOrEmpty() && !dto.groupTitle.isNullOrEmpty()) {
             return ReportItem.ReportGroup(
-                title = reportDefinitionDto.groupTitle,
-                items =
-                    reportDefinitionDto.items.map {
-                        asReportItem(it)
-                    }
+                title = dto.groupTitle,
+                items = dto.items.map { asReportItem(it) }
             )
         }
 

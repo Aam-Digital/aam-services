@@ -27,7 +27,6 @@ class SimpleReportQueryAnalyserTest {
             Report(
                 id = "report-1",
                 title = "Report 1",
-                version = 1,
                 transformations = emptyMap(),
                 items = listOf()
             )
@@ -49,7 +48,6 @@ class SimpleReportQueryAnalyserTest {
             Report(
                 id = "report-1",
                 title = "Report 1",
-                version = 1,
                 transformations = emptyMap(),
                 items =
                     listOf(
@@ -82,7 +80,6 @@ class SimpleReportQueryAnalyserTest {
             Report(
                 id = "report-1",
                 title = "Report 1",
-                version = 1,
                 transformations = emptyMap(),
                 items =
                     listOf(
@@ -109,7 +106,6 @@ class SimpleReportQueryAnalyserTest {
             Report(
                 id = "report-1",
                 title = "Report 1",
-                version = 1,
                 transformations = emptyMap(),
                 items =
                     listOf(
@@ -142,7 +138,6 @@ class SimpleReportQueryAnalyserTest {
             Report(
                 id = "report-1",
                 title = "Report 1",
-                version = 1,
                 transformations = emptyMap(),
                 items =
                     listOf(
@@ -188,7 +183,6 @@ class SimpleReportQueryAnalyserTest {
             Report(
                 id = "report-1",
                 title = "Report 1",
-                version = 1,
                 transformations = emptyMap(),
                 items =
                     listOf(
