@@ -5,7 +5,6 @@ package com.aamdigital.aambackendservice.reporting.report
  *
  * @param id unique identifier
  * @param title human-readable title of the Report
- * @param version version of the ReportItem.ReportQuery sql format
  * @param items list of ReportItems - can include nested ReportItems
  * @param transformations list of data transformations, applied to passed arguments
  *
@@ -13,9 +12,8 @@ package com.aamdigital.aambackendservice.reporting.report
 data class Report(
     val id: String,
     val title: String,
-    val version: Int,
     val items: List<ReportItem>,
-    val transformations: Map<String, List<String>> = mutableMapOf()
+    val transformations: Map<String, List<String>> = emptyMap()
 )
 
 /**

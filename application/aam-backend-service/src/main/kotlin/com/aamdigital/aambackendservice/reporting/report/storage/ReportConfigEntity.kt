@@ -1,20 +1,19 @@
 package com.aamdigital.aambackendservice.reporting.report.storage
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 
 /**
- * Represents an CouchDB ReportConfig: entity in version 2
- * Just relevant for ReportConfigs with mode=sql
+ * Represents a canonical CouchDB ReportConfig: entity (mode=sql).
  *
  * @param id couchdb _id
  * @param rev couchdb _rev of this document
  * @param title human-readable title of the Report
- * @param mode can be sql or something else. just sql values are supported right now
- * @param version schema version of a ReportConfig, used to apply different business logic
- * @param transformations configures wich DataTransformation will be applied on wich variable
- *                          (e.g) name -> [UPPERCASE, REVERSE]
- * @param reportDefinition List of ReportDefinitions
+ * @param mode report mode; only "sql" is supported
+ * @param transformations optional arg transformations, e.g. startDate → [SQL_FROM_DATE]
+ * @param reportDefinition list of queries and/or groups making up the report
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class ReportConfigEntity(
     @JsonProperty("_id")
     val id: String,
@@ -22,9 +21,8 @@ data class ReportConfigEntity(
     val rev: String,
     val title: String,
     val mode: String,
-    val version: Int,
-    val transformations: Map<String, List<String>>,
-    val reportDefinition: List<ReportDefinitionDto>
+    val transformations: Map<String, List<String>>? = null,
+    val reportDefinition: List<ReportDefinitionDto> = emptyList()
 )
 
 /**

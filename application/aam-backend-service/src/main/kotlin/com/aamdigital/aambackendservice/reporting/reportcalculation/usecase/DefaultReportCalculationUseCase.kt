@@ -28,22 +28,11 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 
 /**
- * Run ReportCalculation queries against SQS and store aggregate result in CouchDb attachment
+ * Run ReportCalculation queries against SQS and store aggregate result in CouchDb attachment.
  *
- * Will replace placeholder variables with values stored in ReportCalculation.args
- *
- * special handling for placeholder 'from' and 'to':
- *  There are currently several versions of data in the database. In order to support all formats,
- *  the 'from' and 'to' args are adapted to sqs before the request
- *
- *  Currently, these 'date' formats are used in our entities:
- *  - '2022-04-25'
- *  - '2022-04-25T22:00:000Z' (deprecated since some years, but still existing for old data)
- *
- *  For sqs, we will cut the 'from' date always to '2022-04-25'
- *
- *  If no date args are set, the default values are passed, to fetch all matching entities from all time
- *
+ * Replaces placeholder variables ($name) in SQL with values from ReportCalculation.args.
+ * Legacy "from"/"to" arg keys are normalized to "startDate"/"endDate" before processing so that
+ * calculations created before the v1→canonical migration continue to produce correct results.
  */
 class DefaultReportCalculationUseCase(
     private val reportCalculationStorage: ReportCalculationStorage,
@@ -115,30 +104,20 @@ class DefaultReportCalculationUseCase(
         report: Report,
         reportCalculation: ReportCalculation
     ): ReportCalculation {
+        normalizeLegacyArgs(reportCalculation.args)
         for ((argKey: String, transformationKeys: List<String>) in report.transformations) {
             handleTransformations(argKey, transformationKeys, reportCalculation.args)
         }
 
         val resultData =
-            if (report.version == 1) {
-                listOf(
-                    handleReportItems(
-                        queries = report.items,
-                        report = report,
-                        reportCalculation = reportCalculation
-                    )
-                )
-            } else {
-                listOf(
-                    "[".byteInputStream(),
-                    handleReportItems(
-                        queries = report.items,
-                        report = report,
-                        reportCalculation = reportCalculation
-                    ),
-                    "]".byteInputStream()
-                )
-            }
+            listOf(
+                "[".byteInputStream(),
+                handleReportItems(
+                    queries = report.items,
+                    reportCalculation = reportCalculation
+                ),
+                "]".byteInputStream()
+            )
 
         val result =
             reportCalculationStorage.addReportCalculationData(
@@ -154,7 +133,6 @@ class DefaultReportCalculationUseCase(
 
     private fun handleReportItems(
         queries: List<ReportItem>,
-        report: Report,
         reportCalculation: ReportCalculation
     ): InputStream {
         val queryStreams =
@@ -164,14 +142,14 @@ class DefaultReportCalculationUseCase(
                         is ReportItem.ReportQuery -> {
                             val queryResult =
                                 queryStorage.executeQuery(
-                                    handleReportQuery(queryItem, report, reportCalculation)
+                                    handleReportQuery(queryItem, reportCalculation)
                                 )
                             mutableListOf(queryResult)
                         }
 
                         is ReportItem.ReportGroup -> {
                             val prefix = "{\"${queryItem.title}\":[".byteInputStream()
-                            val queryResult = handleReportItems(queryItem.items, report, reportCalculation)
+                            val queryResult = handleReportItems(queryItem.items, reportCalculation)
                             val suffix = "]}".byteInputStream()
                             mutableListOf(prefix, queryResult, suffix)
                         }
@@ -197,31 +175,8 @@ class DefaultReportCalculationUseCase(
 
     private fun handleReportQuery(
         query: ReportItem.ReportQuery,
-        report: Report,
         reportCalculation: ReportCalculation
-    ): QueryRequest =
-        when (report.version) {
-            1 -> {
-                if (query.sql.contains("$")) {
-                    getQueryRequest(query, reportCalculation.args)
-                } else {
-                    QueryRequest(
-                        query = query.sql,
-                        args = reportCalculation.args.values.toList()
-                    )
-                }
-            }
-
-            2 -> {
-                getQueryRequest(query, reportCalculation.args)
-            }
-
-            else ->
-                throw InvalidArgumentException(
-                    message = "Reports with version ${report.version} are not supported yet",
-                    code = ReportCalculationError.UNSUPPORTED_REPORT_VERSION
-                )
-        }
+    ): QueryRequest = getQueryRequest(query, reportCalculation.args)
 
     private fun getQueryRequest(
         query: ReportItem.ReportQuery,
@@ -254,6 +209,26 @@ class DefaultReportCalculationUseCase(
             query = sqlQuery,
             args = queryArgs
         )
+    }
+
+    /**
+     * Normalize legacy "from"/"to" arg keys to canonical "startDate"/"endDate".
+     *
+     * This is independent of the ReportConfig migration in DefaultReportStorage: that migration
+     * rewrites the stored config (SQL placeholders + transformation keys) to canonical form, but
+     * it cannot touch the per-calculation runtime args. Those args are supplied by the caller —
+     * ndb-core still posts "from"/"to" — and are also already present on ReportCalculation
+     * documents created before the migration. Without this step, after the SQL is normalized to
+     * $startDate/$endDate the transformation lookup would miss the "from"/"to" values and silently
+     * fall back to all-time date defaults. Remove only once all callers send "startDate"/"endDate".
+     */
+    private fun normalizeLegacyArgs(args: MutableMap<String, String>) {
+        if (!args.containsKey("startDate")) {
+            args.remove("from")?.let { args["startDate"] = it }
+        }
+        if (!args.containsKey("endDate")) {
+            args.remove("to")?.let { args["endDate"] = it }
+        }
     }
 
     private fun handleTransformations(

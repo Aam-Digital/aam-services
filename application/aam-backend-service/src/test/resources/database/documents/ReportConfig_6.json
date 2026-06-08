@@ -1,0 +1,18 @@
+{
+  "_id": "ReportConfig:6",
+  "title": "Test Report 6 (canonical, no version field)",
+  "mode": "sql",
+  "transformations": {
+    "startDate": [
+      "SQL_FROM_DATE"
+    ],
+    "endDate": [
+      "SQL_TO_DATE"
+    ]
+  },
+  "reportDefinition": [
+    {
+      "query": "SELECT s.name as name FROM School as s WHERE s.date BETWEEN $startDate AND $endDate"
+    }
+  ]
+}

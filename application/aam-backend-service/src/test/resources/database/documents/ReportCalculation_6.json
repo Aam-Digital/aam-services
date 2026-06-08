@@ -1,0 +1,13 @@
+{
+  "_id": "ReportCalculation:6",
+  "report": {
+    "id": "ReportConfig:6"
+  },
+  "args": {
+    "startDate": "2024-01-01T00:00:00Z",
+    "endDate": "2024-04-30T00:00:00Z"
+  },
+  "status": "PENDING",
+  "startDate": null,
+  "endDate": null
+}
