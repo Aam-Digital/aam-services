@@ -16,8 +16,8 @@ additionally, as multi-tenant services:
 
 - *account-backend*: simple backend service to handle user account related tasks for the frontend in
   Keycloak [GitHub](https://github.com/Aam-Digital/account-backend)
-- *ndb-admin*: API for general admin functionality like statistics and config migrations on
-  databases [GitHub](https://github.com/Aam-Digital/ndb-admin)
+- *ndb-core CLI*: admin CLI for statistics, config migrations, and CouchDB operations;
+  built into ndb-core [CLI docs](https://github.com/Aam-Digital/ndb-core/blob/master/cli/README.md)
 
 ### managed by aam-digital (private)
 
