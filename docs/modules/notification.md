@@ -76,12 +76,12 @@ KEYCLOAK_CLIENTSECRET=<service-client-secret>
 NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64=<base-64-encoded-firebase-credential-file>
 
 APPLICATION_BASEURL=<your-instance>.aam-digital.com
-# if necessary, you can also override the linkBaseUrl (prefer to use the shared APPLICATION_BASEURL however)
-NOTIFICATIONFIREBASECONFIGURATION_LINKBASEURL=https://<your-instance>.aam-digital.com
 ```
 
-The email "manage notification settings" link is fixed to `https://<base-url>/user-account?tabIndex=1`
-and derived from `APPLICATION_BASEURL`.
+Notification links are derived centrally from `APPLICATION_BASEURL`:
+
+- Email "manage notification settings": `https://<base-url>/user-account?tabIndex=1`
+- Push notification link target (FCM webpush `link` and `url` custom data)
 
 Database change-detection is activated automatically when notification (or reporting) is enabled;
 no separate flag needs to be set.

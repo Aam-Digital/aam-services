@@ -1,9 +1,9 @@
 package com.aamdigital.aambackendservice.notification.core.create.push
 
+import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
-import com.aamdigital.aambackendservice.notification.di.NotificationFirebaseClientConfiguration
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.google.firebase.messaging.FirebaseMessaging
@@ -23,7 +23,7 @@ import org.springframework.data.domain.Pageable
 class PushCreateNotificationHandler(
     private val firebaseMessaging: FirebaseMessaging,
     private val userDeviceRepository: UserDeviceRepository,
-    private val notificationFirebaseClientConfiguration: NotificationFirebaseClientConfiguration
+    private val applicationConfig: ApplicationConfig
 ) : CreateNotificationHandler {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -60,7 +60,7 @@ class PushCreateNotificationHandler(
                                 .builder()
                                 .putCustomData(
                                     "url",
-                                    notificationFirebaseClientConfiguration.linkBaseUrl
+                                    applicationConfig.baseUrl
                                 ).setTitle("Update from Aam Digital")
                                 .setBody(createUserNotificationEvent.details.title)
                                 .build()
@@ -68,7 +68,7 @@ class PushCreateNotificationHandler(
                             WebpushFcmOptions
                                 .builder()
                                 .setLink(
-                                    notificationFirebaseClientConfiguration.linkBaseUrl
+                                    applicationConfig.baseUrl
                                 ).build()
                         ).build()
                 ).build()

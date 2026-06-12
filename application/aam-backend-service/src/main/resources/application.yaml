@@ -71,9 +71,6 @@ features:
   third-party-authentication:
     enabled: false
 
-notification-firebase-configuration:
-  link-base-url: ${application.base-url}
-
 notification:
   email:
     from: ""
