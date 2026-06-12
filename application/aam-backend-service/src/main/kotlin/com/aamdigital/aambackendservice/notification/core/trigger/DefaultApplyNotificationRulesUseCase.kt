@@ -187,7 +187,7 @@ class DefaultApplyNotificationRulesUseCase(
 
     private fun buildActionUrl(details: NotificationDetails): String =
         UriComponentsBuilder
-            .fromUriString(applicationConfig.baseUrl)
+            .fromUriString(applicationConfig.normalizedBaseUrl)
             .pathSegment("notification", "{id}")
             .buildAndExpand(mapOf("id" to details.id))
             .toUriString()

@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.notification.core.create.email
 
 import com.aamdigital.aambackendservice.common.mail.MailSenderRequest
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
+import com.aamdigital.aambackendservice.common.domain.normalizeUrlWithHttpsDefault
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
@@ -26,6 +27,7 @@ class EmailCreateNotificationHandler(
 ) : CreateNotificationHandler {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val emailBodyTemplate: String = loadEmailBodyTemplate(normalizeLocale(notificationEmailProperties.locale))
+    private val normalizedManageSettingsUrl: String = normalizeUrlWithHttpsDefault(notificationEmailProperties.manageSettingsUrl)
 
     override fun canHandle(notificationChannelType: NotificationChannelType): Boolean =
         NotificationChannelType.EMAIL == notificationChannelType
@@ -46,7 +48,7 @@ class EmailCreateNotificationHandler(
             buildEmailBody(
                 title = details.title,
                 actionUrl = details.actionUrl,
-                manageSettingsUrl = notificationEmailProperties.manageSettingsUrl
+                manageSettingsUrl = normalizedManageSettingsUrl
             )
 
         val mailSenderResponse =
@@ -60,7 +62,7 @@ class EmailCreateNotificationHandler(
                         isHtml = true,
                         headers =
                             mapOf(
-                                "List-Unsubscribe" to "<${notificationEmailProperties.manageSettingsUrl}>"
+                                "List-Unsubscribe" to "<$normalizedManageSettingsUrl>"
                             )
                     )
                 )

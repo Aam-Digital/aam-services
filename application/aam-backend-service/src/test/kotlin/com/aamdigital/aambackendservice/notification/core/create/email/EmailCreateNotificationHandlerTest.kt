@@ -194,6 +194,31 @@ class EmailCreateNotificationHandlerTest {
     }
 
     @Test
+    fun `should prepend https in manage settings URL when protocol is missing`() {
+        // Given
+        handler =
+            EmailCreateNotificationHandler(
+                mailSenderService = mailSenderService,
+                userEmailProvider = userEmailProvider,
+                notificationEmailProperties = emailProperties.copy(manageSettingsUrl = "app.test/user-account"),
+                templatesBaseDir = tempDir
+            )
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.headers["List-Unsubscribe"])
+            .contains("https://app.test/user-account")
+        assertThat(requestCaptor.firstValue.body)
+            .contains("https://app.test/user-account")
+    }
+
+    @Test
     fun `should HTML-escape injection attempt in title in body but keep subject unescaped`() {
         // Given
         val injectionEvent =

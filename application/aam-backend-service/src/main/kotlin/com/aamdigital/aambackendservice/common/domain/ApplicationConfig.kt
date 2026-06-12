@@ -9,4 +9,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 class ApplicationConfig(
     /** the base url of the app (e.g. dev.aam-digital.net) */
     val baseUrl: String
-)
+) {
+    /**
+     * Returns [baseUrl] with an explicit protocol, defaulting to https:// when missing.
+     */
+    val normalizedBaseUrl: String
+        get() = normalizeUrlWithHttpsDefault(baseUrl)
+}

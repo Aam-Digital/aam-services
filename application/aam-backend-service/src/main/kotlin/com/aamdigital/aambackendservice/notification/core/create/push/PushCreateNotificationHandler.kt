@@ -60,7 +60,7 @@ class PushCreateNotificationHandler(
                                 .builder()
                                 .putCustomData(
                                     "url",
-                                    applicationConfig.baseUrl
+                                    applicationConfig.normalizedBaseUrl
                                 ).setTitle("Update from Aam Digital")
                                 .setBody(createUserNotificationEvent.details.title)
                                 .build()
@@ -68,7 +68,7 @@ class PushCreateNotificationHandler(
                             WebpushFcmOptions
                                 .builder()
                                 .setLink(
-                                    applicationConfig.baseUrl
+                                    applicationConfig.normalizedBaseUrl
                                 ).build()
                         ).build()
                 ).build()
