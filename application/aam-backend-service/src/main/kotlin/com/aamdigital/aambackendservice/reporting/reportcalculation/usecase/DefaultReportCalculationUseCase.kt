@@ -290,14 +290,18 @@ class DefaultReportCalculationUseCase(
                     InternalServerException(
                         message = exception.localizedMessage,
                         code = ReportCalculationError.UNEXPECTED_ERROR,
-                        cause = exception.cause
+                        // keep `exception` itself, not `exception.cause`: the original error (e.g. the
+                        // HttpClientErrorException from an invalid query) is the root cause we need in Sentry
+                        cause = exception
                     )
             }
 
         return UseCaseOutcome.Failure(
             errorMessage = useCaseException.localizedMessage,
             errorCode = useCaseException.code,
-            cause = useCaseException.cause
+            // propagate the full wrapper chain (useCaseException -> original exception), not just its cause,
+            // so downstream listeners and Sentry receive the complete error trail
+            cause = useCaseException
         )
     }
 

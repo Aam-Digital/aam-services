@@ -8,7 +8,6 @@ import com.aamdigital.aambackendservice.reporting.webhook.WebhookEvent
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.di.ReportingNotificationQueueConfiguration.Companion.NOTIFICATION_QUEUE
 import com.rabbitmq.client.Channel
-import io.sentry.Sentry
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.core.Message
@@ -55,8 +54,8 @@ class WebhookEventConsumer(
                             ex,
                             code = WebhookError.WEBHOOK_EVENT_TRIGGER_ERROR
                         )
-                    Sentry.captureException(aamEx)
 
+                    // reporting to Sentry is handled centrally by QueueErrorHandler (logs the root cause once)
                     // TODO: requeue to retry (but then we need to make sure to not send an old event after a newer calculation already delivered)
                     throw AmqpRejectAndDontRequeueException(aamEx)
                 }

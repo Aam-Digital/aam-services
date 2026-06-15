@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.report.Report
 import com.aamdigital.aambackendservice.reporting.report.ReportItem
@@ -136,6 +137,45 @@ class DefaultReportCalculationUseCaseTest {
                 ReportCalculationError.REPORT_NOT_FOUND
             )
         assertThat(response.cause).isInstanceOf(NotFoundException::class.java)
+    }
+
+    @Test
+    fun `should preserve the original error as cause when query execution fails with a non-Aam exception`() {
+        // given
+        val report =
+            Report(
+                id = "Report:1",
+                title = "Report",
+                items = listOf(ReportItem.ReportQuery(sql = "SELECT name FROM foo"))
+            )
+
+        val reportCalculation = getPendingReportCalculation()
+
+        whenever(
+            reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:1")))
+        ).thenReturn(reportCalculation)
+
+        whenever(reportStorage.fetchReport(eq(DomainReference("Report:1")))).thenReturn(report)
+
+        whenever(reportCalculationStorage.storeCalculation(any())).thenAnswer { i -> i.arguments[0] }
+
+        val rootCause = RuntimeException("connection reset")
+        whenever(queryStorage.executeQuery(any())).thenAnswer { throw rootCause }
+
+        // when
+        val response =
+            service.run(
+                ReportCalculationRequest(reportCalculationId = reportCalculation.id)
+            )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        val failure = response as UseCaseOutcome.Failure
+        assertThat(failure.errorCode).isEqualTo(ReportCalculationError.UNEXPECTED_ERROR)
+        // regression test for the previous `cause = exception.cause` truncation: the wrapper must keep the
+        // real root cause so it reaches Sentry instead of being dropped
+        assertThat(failure.cause).isInstanceOf(InternalServerException::class.java)
+        assertThat(failure.cause?.cause).isSameAs(rootCause)
     }
 
     @Test
