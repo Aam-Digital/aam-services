@@ -80,17 +80,8 @@ class ThirdPartyAuthenticationController(
 
         return when (response) {
             is UseCaseOutcome.Success -> {
-                // add https:// if not already part of applicationConfig.baseUrl
-                val baseUrl =
-                    if (applicationConfig.baseUrl.startsWith("http://") ||
-                        applicationConfig.baseUrl.startsWith("https://")
-                    ) {
-                        applicationConfig.baseUrl
-                    } else {
-                        "https://${applicationConfig.baseUrl}"
-                    }
                 val entryPointUrl =
-                    "$baseUrl/login?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
+                    "${applicationConfig.normalizedBaseUrl}/login?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
 
                 logger.trace("[POST /session]: Created session for ${userSessionRequest.email}")
                 ResponseEntity.ok(

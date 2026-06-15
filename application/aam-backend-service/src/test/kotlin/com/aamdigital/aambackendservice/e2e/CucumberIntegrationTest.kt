@@ -1,7 +1,12 @@
 package com.aamdigital.aambackendservice.e2e
 
 import com.aamdigital.aambackendservice.common.changes.SyncRepository
+import com.aamdigital.aambackendservice.common.mail.MailSenderRequest
+import com.aamdigital.aambackendservice.common.mail.MailSenderResponse
+import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.container.TestContainers
+import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
+import com.aamdigital.aambackendservice.notification.core.create.email.UserEmailProvider
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
@@ -14,7 +19,14 @@ import io.cucumber.spring.CucumberContextConfiguration
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
+import org.mockito.kotlin.any
+import org.mockito.kotlin.after
+import org.mockito.kotlin.reset
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
+import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.core.io.ClassPathResource
 import org.springframework.http.HttpMethod
 import java.io.File
@@ -23,14 +35,26 @@ import java.io.File
 class CucumberIntegrationTest(
     val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher,
     val syncRepository: SyncRepository,
-    val userDeviceRepository: UserDeviceRepository
+    val userDeviceRepository: UserDeviceRepository,
+    val notificationConfigCache: NotificationConfigCache
 ) : SpringIntegrationTest() {
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    @MockBean
+    lateinit var mailSenderService: MailSenderService
+
+    @MockBean
+    lateinit var userEmailProvider: UserEmailProvider
+
     private var storedId: String? = null
+    private var latestNotificationConfigUserIdentifier: String? = null
 
     @Before
     fun `log scenario start`() {
+        reset(mailSenderService, userEmailProvider)
+        whenever(userEmailProvider.lookupEmail(any())).thenReturn("integration-test-user@example.com")
+        whenever(mailSenderService.sendMail(any<MailSenderRequest>())).thenReturn(MailSenderResponse(success = true))
+
         logger.info("[CucumberTest] === Scenario starting ===")
         logger.info("[CucumberTest] SyncEntries before scenario: {}", syncRepository.findAll().map { "${it.database}=${it.latestRef.take(20)}" })
     }
@@ -41,6 +65,7 @@ class CucumberIntegrationTest(
         couchDbTestingService.reset()
         userDeviceRepository.deleteAll()
         storedId = null
+        latestNotificationConfigUserIdentifier = null
         authToken = null
     }
 
@@ -87,6 +112,10 @@ class CucumberIntegrationTest(
             documentName = document,
             documentContent = File("src/test/resources/database/documents/$document.json").readText()
         )
+
+        if (document.startsWith("NotificationConfig_")) {
+            latestNotificationConfigUserIdentifier = document.removePrefix("NotificationConfig_")
+        }
     }
 
     @Given("template {} is stored in template engine")
@@ -249,6 +278,22 @@ class CucumberIntegrationTest(
             delay(milliseconds)
         }
 
+    @Then("the client waits until the notification config is applied")
+    fun `the client waits until the notification config is applied`() {
+        val userIdentifier = latestNotificationConfigUserIdentifier
+            ?: throw AssertionError("Expected a NotificationConfig document to be stored before waiting for config application")
+
+        waitUntil(
+            timeoutMs = 20_000L,
+            pollIntervalMs = 250L,
+            description = "notification config for user $userIdentifier to be applied"
+        ) {
+            notificationConfigCache.findAll().any {
+                it.userIdentifier == userIdentifier && it.channelEmail
+            }
+        }
+    }
+
     @Given("document {} is updated in database {}")
     fun `update document in database`(
         document: String,
@@ -296,5 +341,29 @@ class CucumberIntegrationTest(
             expectedCount,
             actualCount
         )
+    }
+
+    @Then("email notification is sent {int} times")
+    fun `email notification is sent n times`(expectedCount: Int) {
+        verify(mailSenderService, after(10_000).times(expectedCount)).sendMail(any())
+    }
+
+    private fun waitUntil(
+        timeoutMs: Long,
+        pollIntervalMs: Long,
+        description: String,
+        condition: () -> Boolean
+    ) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+
+        while (System.currentTimeMillis() < deadline) {
+            if (condition()) {
+                return
+            }
+
+            Thread.sleep(pollIntervalMs)
+        }
+
+        Assert.fail("Timed out after ${timeoutMs}ms while waiting for $description")
     }
 }

@@ -15,8 +15,7 @@ import java.util.*
 @ConditionalOnNotificationApiEnabled
 @ConditionalOnNotificationFirebaseMode
 class NotificationFirebaseClientConfiguration(
-    val credentialFileBase64: String,
-    val linkBaseUrl: String
+    val credentialFileBase64: String
 )
 
 @Configuration

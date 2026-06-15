@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.notification.core.CreateUserNotification
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationRequest
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationUseCase
+import com.aamdigital.aambackendservice.notification.core.create.TransientNotificationException
 import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
@@ -33,6 +34,12 @@ class DefaultUserNotificationConsumer(
             try {
                 messageParser.getTypeKClass(rawMessage.toByteArray())
             } catch (ex: AamException) {
+                logger.error(
+                    "Failed to parse message type, sending to DLQ: [{}] {}",
+                    ex.code,
+                    ex.localizedMessage,
+                    ex
+                )
                 throw AmqpRejectAndDontRequeueException("[${ex.code}] ${ex.localizedMessage}", ex)
             }
 
@@ -44,22 +51,37 @@ class DefaultUserNotificationConsumer(
                         kClass = CreateUserNotificationEvent::class
                     )
 
-                val result = createNotificationUseCase.run(
-                    request =
-                        CreateNotificationRequest(
-                            createUserNotificationEvent = payload
+                val result =
+                    try {
+                        createNotificationUseCase.run(
+                            request =
+                                CreateNotificationRequest(
+                                    createUserNotificationEvent = payload
+                                )
                         )
-                )
+                    } catch (ex: TransientNotificationException) {
+                        logger.warn(
+                            "Transient CreateNotification failure for user={}, channel={}, will be retried: {}",
+                            payload.userIdentifier,
+                            payload.notificationChannelType,
+                            ex.message,
+                            ex
+                        )
+                        throw ex
+                    }
 
                 when (result) {
                     is UseCaseOutcome.Failure -> {
-                        logger.warn(
-                            "CreateNotification failed for user={}, channel={}: [{}] {}",
+                        logger.error(
+                            "CreateNotification failed for user={}, channel={}: [{}] {} — sending to DLQ for retry after restart",
                             payload.userIdentifier,
                             payload.notificationChannelType,
                             result.errorCode,
                             result.errorMessage,
                             result.cause
+                        )
+                        throw AmqpRejectAndDontRequeueException(
+                            "[${result.errorCode}] ${result.errorMessage}", result.cause
                         )
                     }
                     is UseCaseOutcome.Success -> {

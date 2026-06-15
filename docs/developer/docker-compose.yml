@@ -21,6 +21,9 @@ services:
     image: maildev/maildev:2.2.1
     networks:
       - aam-digital
+    ports:
+      - "1025:1025"
+      - "1080:1080"
 
   # ***************************************************************
   # couchdb
@@ -173,7 +176,6 @@ services:
 
   aam-backend-service:
     image: ghcr.io/aam-digital/aam-backend-service:${AAM_BACKEND_SERVICE_VERSION:-latest}
-    restart: on-failure
     command:
       - sh
       - -c
@@ -184,6 +186,7 @@ services:
       - "keycloak.localhost:host-gateway" # (linux only) resolve host reverse-proxy from inside container
     volumes:
       - ./container-data/caddy-authorities/root.crt:/opt/app/reverse-proxy.crt:ro
+      - ./config/aam-backend-service/templates:/opt/app/templates:ro
     external_links:
       - reverse-proxy:aam.localhost
     depends_on:

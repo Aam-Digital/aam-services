@@ -83,6 +83,8 @@ features:
     enabled: true
   notification-api:
     enabled: true
+    email:
+      enabled: true
   skill-api:
     mode: disabled
 
