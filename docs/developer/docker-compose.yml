@@ -39,6 +39,12 @@ services:
     environment:
       COUCHDB_USER: admin
       COUCHDB_PASSWORD: docker
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5984/_up"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   # ***************************************************************
   # keycloak
@@ -48,7 +54,8 @@ services:
     image: quay.io/keycloak/keycloak:26.0.7-0
     container_name: keycloak
     depends_on:
-      - db-keycloak
+      db-keycloak:
+        condition: service_started
     ports:
       - "8080:8080"
     networks:
@@ -105,7 +112,8 @@ services:
       KC_HOSTNAME: keycloak.localhost
       KC_PROXY: edge
     depends_on:
-      - db-keycloak_23
+      db-keycloak_23:
+        condition: service_started
     command: start-dev
     # for production settings use command: start --optimized --spi-theme-login-theme=aam-theme
     volumes:
@@ -137,6 +145,12 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
 
   # ***************************************************************
   # replication-backend
@@ -145,7 +159,8 @@ services:
   replication-backend:
     image: ghcr.io/aam-digital/replication-backend:latest
     depends_on:
-      - db-couch
+      db-couch:
+        condition: service_healthy
     networks:
       - aam-digital
     extra_hosts:
@@ -190,8 +205,10 @@ services:
     external_links:
       - reverse-proxy:aam.localhost
     depends_on:
-      - aam-backend-service-db
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+      aam-backend-service-db:
+        condition: service_started
     env_file:
       - .env
     environment:
@@ -224,7 +241,8 @@ services:
     networks:
       - aam-digital
     depends_on:
-      - db-couch
+      db-couch:
+        condition: service_healthy
     ports:
       - "4984:4984"
     volumes:
