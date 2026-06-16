@@ -9,17 +9,13 @@ data class NotificationEmailProperties(
     /**
      * Sender email address for outgoing notification emails.
      *
+     * This is the deployment-specific address only; the display name shown in front of it (and the
+     * subject prefix) are managed in the `email-branding.properties` template file.
+     *
      * Expected format: RFC-5322 compliant email address.
      * Default value: empty string (`""`).
      */
     val from: String = "",
-    /**
-     * Prefix prepended to outgoing notification email subjects.
-     *
-     * Expected format: plain string.
-     * Default value: `"Aam Digital"`.
-     */
-    val subjectPrefix: String = "Aam Digital",
     /**
      * URL where users can manage their notification settings.
      *

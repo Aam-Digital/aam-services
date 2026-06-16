@@ -52,7 +52,9 @@ FEATURES_NOTIFICATIONAPI_MODE=firebase    # delivery mode for push notifications
 FEATURES_NOTIFICATIONAPI_EMAIL_ENABLED=false  # set true to enable email notifications
 
 # Required for email notifications (SMTP)
-NOTIFICATION_EMAIL_FROM="Aam Digital <notifications@your-instance.org>"
+# Sender address only; the display name and subject prefix are managed in the
+# templates/{locale}/notification/email-branding.properties template file.
+NOTIFICATION_EMAIL_FROM=notifications@your-instance.org
 SPRING_MAIL_HOST=<smtp-host>
 SPRING_MAIL_PORT=587
 SPRING_MAIL_USERNAME=<smtp-username>
@@ -60,8 +62,6 @@ SPRING_MAIL_PASSWORD=<smtp-password>
 SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
 SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
 
-# Recommended for email notifications (email content)
-NOTIFICATION_EMAIL_SUBJECTPREFIX=Aam Digital
 # Language of the email boilerplate (en, de, fr). Defaults to en.
 # Keep in sync with the site default language.
 NOTIFICATION_EMAIL_LOCALE=en
@@ -139,6 +139,7 @@ volumes:
 ```text
 config/aam-backend-service/templates/
   de/notification/create-notification-email-template.html
+  de/notification/email-branding.properties
   fr/notification/create-notification-email-template.html
 ```
 
@@ -147,6 +148,36 @@ Important:
 - Template changes require a container restart.
 - The backend does not manage logo files or inline image attachments.
   Template authors can embed images directly in the HTML template (for example as data URIs or remote image URLs).
+
+### Email Branding (sender name & subject prefix)
+
+The sender display name and the subject prefix are **not** environment variables. They are kept
+together with the email templates in `{locale}/notification/email-branding.properties`, so all
+template-related text is managed in one place:
+
+```properties
+# Display name shown in front of the sender address, e.g. "Aam Digital <notifications@example.org>".
+from-name=Aam Digital
+# Prefix prepended to every notification email subject, e.g. "Aam Digital: A new record was added".
+subject-prefix=Aam Digital
+```
+
+- `from-name` is combined with the configured address (`NOTIFICATION_EMAIL_FROM`, which holds the
+  bare address only) to form the final sender header `from-name <NOTIFICATION_EMAIL_FROM>`. If
+  `from-name` is empty, the bare address is used as-is.
+- `subject-prefix` is prepended to every email subject.
+
+The file is resolved per locale (`NOTIFICATION_EMAIL_LOCALE`) using the **same order as the HTML
+template**, using the first that exists:
+
+1. Mounted override, localized: `/opt/app/templates/{locale}/notification/email-branding.properties`
+2. Mounted override, legacy unsuffixed: `/opt/app/templates/notification/email-branding.properties`
+3. Bundled classpath, localized: `src/main/resources/templates/{locale}/notification/email-branding.properties`
+4. Bundled classpath, English fallback: `src/main/resources/templates/en/notification/email-branding.properties`
+
+Only the English (`en`) branding file is bundled; other locales fall back to it unless you provide a
+localized copy (e.g. to translate the subject prefix). If the file — or an individual key — is
+missing, the subject prefix falls back to `Aam Digital` and no display name is added.
 
 ### Permission-Aware Notifications (optional)
 
