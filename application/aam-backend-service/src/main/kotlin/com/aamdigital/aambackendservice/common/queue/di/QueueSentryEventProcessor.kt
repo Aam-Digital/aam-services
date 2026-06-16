@@ -13,8 +13,7 @@ import java.util.concurrent.atomic.AtomicReference
 /**
  * Throttles the noisy, low-value RabbitMQ "Failed to check/redeclare auto-delete queue(s)." error that
  * Spring AMQP logs whenever a listener container races broker readiness on (re)connect. Without throttling a
- * single crash-looping instance can emit tens of thousands of identical events (see Sentry
- * AAM-BACKEND-SERVICE-22, which reached ~47k events from one deployment).
+ * single crash-looping instance can emit tens of thousands of identical events.
  *
  * At most one such event is forwarded to Sentry per [throttleWindow]; the rest are dropped. Keeping a periodic
  * sample means the condition stays visible if it ever recurs after the deployment-level fix, without flooding
