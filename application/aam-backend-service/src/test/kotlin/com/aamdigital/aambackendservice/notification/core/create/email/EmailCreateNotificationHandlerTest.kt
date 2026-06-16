@@ -46,7 +46,6 @@ class EmailCreateNotificationHandlerTest {
     private val emailProperties =
         NotificationEmailProperties(
             from = "noreply@example.com",
-            subjectPrefix = "Aam Digital",
             manageSettingsUrl = "https://app.test/user-account"
         )
 
@@ -94,6 +93,23 @@ class EmailCreateNotificationHandlerTest {
             }
         Files.createDirectories(dir)
         val file = dir.resolve("create-notification-email-template.html")
+        Files.writeString(file, content, StandardCharsets.UTF_8)
+        return file
+    }
+
+    /**
+     * Writes a branding override under [baseDir]. A [locale] of `null` writes the legacy
+     * unsuffixed location `{baseDir}/notification/...`; otherwise `{baseDir}/{locale}/notification/...`.
+     */
+    private fun writeBrandingOverride(baseDir: Path, locale: String?, content: String): Path {
+        val dir =
+            if (locale == null) {
+                baseDir.resolve("notification")
+            } else {
+                baseDir.resolve(locale).resolve("notification")
+            }
+        Files.createDirectories(dir)
+        val file = dir.resolve("email-branding.properties")
         Files.writeString(file, content, StandardCharsets.UTF_8)
         return file
     }
@@ -357,6 +373,111 @@ class EmailCreateNotificationHandlerTest {
         val requestCaptor = argumentCaptor<MailSenderRequest>()
         verify(mailSenderService).sendMail(requestCaptor.capture())
         assertThat(requestCaptor.firstValue.body).contains("In Aam Digital öffnen")
+    }
+
+    @Test
+    fun `should compose from header with the bundled branding display name`() {
+        // Given the configured 'from' is a bare address and no branding override exists,
+        // the bundled email-branding.properties supplies the display name "Aam Digital".
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.from).isEqualTo("Aam Digital <noreply@example.com>")
+    }
+
+    @Test
+    fun `should use bare configured from when branding has no display name`() {
+        // Given a branding override that omits the display name
+        writeBrandingOverride(tempDir, locale = "en", content = "subject-prefix=Custom")
+        handler = createHandler(templatesBaseDir = tempDir, locale = "en")
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.from).isEqualTo("noreply@example.com")
+    }
+
+    @Test
+    fun `should apply branding override for display name and subject prefix`() {
+        // Given a mounted branding override
+        writeBrandingOverride(tempDir, locale = "en", content = "from-name=Custom Brand\nsubject-prefix=Custom")
+        handler = createHandler(templatesBaseDir = tempDir, locale = "en")
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.from).isEqualTo("Custom Brand <noreply@example.com>")
+        assertThat(requestCaptor.firstValue.subject).startsWith("Custom:")
+    }
+
+    @Test
+    fun `should apply localized branding override matching the configured locale`() {
+        // Given both an English and a German branding override exist, configured locale is German
+        writeBrandingOverride(tempDir, locale = "en", content = "from-name=English Brand\nsubject-prefix=English")
+        writeBrandingOverride(tempDir, locale = "de", content = "from-name=Deutsche Marke\nsubject-prefix=Deutsch")
+        handler = createHandler(templatesBaseDir = tempDir, locale = "de")
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.from).isEqualTo("Deutsche Marke <noreply@example.com>")
+        assertThat(requestCaptor.firstValue.subject).startsWith("Deutsch:")
+    }
+
+    @Test
+    fun `should apply legacy unsuffixed branding override as backward-compatible fallback`() {
+        // Given only a legacy unsuffixed branding override exists and the locale folder is absent
+        writeBrandingOverride(tempDir, locale = null, content = "from-name=Legacy Brand\nsubject-prefix=Legacy")
+        handler = createHandler(templatesBaseDir = tempDir, locale = "de")
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.from).isEqualTo("Legacy Brand <noreply@example.com>")
+        assertThat(requestCaptor.firstValue.subject).startsWith("Legacy:")
+    }
+
+    @Test
+    fun `should fall back to English bundled branding for a locale without a branding file`() {
+        // Given no overrides and a configured locale (es) that has no bundled branding file
+        handler = createHandler(templatesBaseDir = tempDir, locale = "es")
+        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(notificationEvent)
+
+        // Then the bundled English branding ("Aam Digital") is used
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        assertThat(requestCaptor.firstValue.from).isEqualTo("Aam Digital <noreply@example.com>")
+        assertThat(requestCaptor.firstValue.subject).startsWith("Aam Digital:")
     }
 
     @Test

@@ -73,8 +73,9 @@ features:
 
 notification:
   email:
+    # Sender address only; the display name and subject prefix are managed in the
+    # templates/{locale}/notification/email-branding.properties template file.
     from: ""
-    subject-prefix: Aam Digital
     manage-settings-url: "${application.base-url}/user-account?tabIndex=1"
     # Deployment-wide language for the email boilerplate (e.g. en, de, fr).
     # Selects the bundled/overridden template under {locale}/notification/...

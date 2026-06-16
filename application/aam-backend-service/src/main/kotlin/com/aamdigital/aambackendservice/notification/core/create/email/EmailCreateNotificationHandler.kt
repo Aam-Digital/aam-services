@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.notification.core.create.email
 import com.aamdigital.aambackendservice.common.mail.MailSenderRequest
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.common.domain.normalizeUrlWithHttpsDefault
+import com.aamdigital.aambackendservice.common.templating.LocalizedTemplateLoader
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
@@ -14,20 +15,24 @@ import org.springframework.mail.MailSendException
 import org.springframework.web.util.HtmlUtils
 import java.net.ConnectException
 import java.net.SocketTimeoutException
-import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.charset.StandardCharsets
+import java.io.StringReader
+import java.util.Properties
 
 class EmailCreateNotificationHandler(
     private val mailSenderService: MailSenderService,
     private val userEmailProvider: UserEmailProvider,
     private val notificationEmailProperties: NotificationEmailProperties,
-    private val templatesBaseDir: Path = DEFAULT_TEMPLATES_BASE_DIR
+    templatesBaseDir: Path = DEFAULT_TEMPLATES_BASE_DIR
 ) : CreateNotificationHandler {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val emailBodyTemplate: String = loadEmailBodyTemplate(normalizeLocale(notificationEmailProperties.locale))
+    private val templateLoader = LocalizedTemplateLoader(templatesBaseDir)
+    private val emailBodyTemplate: String =
+        templateLoader.loadRequired(TEMPLATE_RELATIVE_PATH, notificationEmailProperties.locale)
+    private val branding: EmailBranding = loadEmailBranding(notificationEmailProperties.locale)
     private val normalizedManageSettingsUrl: String = normalizeUrlWithHttpsDefault(notificationEmailProperties.manageSettingsUrl)
+    private val resolvedFrom: String = resolveFrom(notificationEmailProperties.from, branding.fromName)
 
     override fun canHandle(notificationChannelType: NotificationChannelType): Boolean =
         NotificationChannelType.EMAIL == notificationChannelType
@@ -43,7 +48,7 @@ class EmailCreateNotificationHandler(
         }
 
         val details = createUserNotificationEvent.details
-        val subject = "${notificationEmailProperties.subjectPrefix}: ${details.title}"
+        val subject = "${branding.subjectPrefix}: ${details.title}"
         val body =
             buildEmailBody(
                 title = details.title,
@@ -58,7 +63,7 @@ class EmailCreateNotificationHandler(
                         to = email,
                         subject = subject,
                         body = body,
-                        from = notificationEmailProperties.from,
+                        from = resolvedFrom,
                         isHtml = true,
                         headers =
                             mapOf(
@@ -102,54 +107,55 @@ class EmailCreateNotificationHandler(
             .replace("{{MANAGE_SETTINGS_URL}}", HtmlUtils.htmlEscape(manageSettingsUrl))
 
     /**
-     * Reduces a (possibly region-qualified) locale to the base language code used
-     * for the template folder name, e.g. `en-US` -> `en`, `de_DE` -> `de`.
-     * Falls back to [DEFAULT_LOCALE] for blank input.
+     * Composes the final sender header from the deployment-specific address
+     * ([NotificationEmailProperties.from]) and the [fromName] display text managed in the
+     * branding file, e.g. `Aam Digital <notifications@example.org>`.
+     *
+     * Falls back to the bare configured address when no [fromName] is configured (or the address
+     * is empty).
      */
-    private fun normalizeLocale(locale: String): String =
-        locale.substringBefore('-').substringBefore('_').trim().lowercase().ifBlank { DEFAULT_LOCALE }
-
-    /**
-     * Resolves the email template for the given (normalized) locale, trying, in order:
-     *  1. mounted override, localized: `{baseDir}/{locale}/notification/...`
-     *  2. mounted override, legacy unsuffixed (back-compat): `{baseDir}/notification/...`
-     *  3. bundled classpath, localized: `/templates/{locale}/notification/...`
-     *  4. bundled classpath, default English: `/templates/en/notification/...`
-     */
-    private fun loadEmailBodyTemplate(locale: String): String {
-        val localizedOverride = templatesBaseDir.resolve(locale).resolve(TEMPLATE_RELATIVE_PATH)
-        if (Files.isRegularFile(localizedOverride)) {
-            logger.info("Loading notification email template from {}", localizedOverride)
-            return Files.readString(localizedOverride, StandardCharsets.UTF_8)
+    private fun resolveFrom(configuredFrom: String, fromName: String): String {
+        val address = configuredFrom.trim()
+        if (address.isEmpty() || fromName.isBlank()) {
+            return configuredFrom
         }
-
-        val legacyOverride = templatesBaseDir.resolve(TEMPLATE_RELATIVE_PATH)
-        if (Files.isRegularFile(legacyOverride)) {
-            logger.info("Loading notification email template from legacy override {}", legacyOverride)
-            return Files.readString(legacyOverride, StandardCharsets.UTF_8)
-        }
-
-        val localizedClasspath = "/$TEMPLATES_CLASSPATH_ROOT/$locale/$TEMPLATE_RELATIVE_PATH"
-        javaClass.getResourceAsStream(localizedClasspath)?.use { resource ->
-            logger.info("Loading notification email template from classpath {}", localizedClasspath)
-            return resource.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
-        }
-
-        val defaultClasspath = "/$TEMPLATES_CLASSPATH_ROOT/$DEFAULT_LOCALE/$TEMPLATE_RELATIVE_PATH"
-        val resource = javaClass.getResourceAsStream(defaultClasspath)
-            ?: throw IllegalStateException("Missing email template resource: $defaultClasspath")
-
-        logger.info("Loading notification email template from classpath fallback {}", defaultClasspath)
-        return resource
-            .bufferedReader(StandardCharsets.UTF_8)
-            .use { it.readText() }
+        return "$fromName <$address>"
     }
 
+    /**
+     * Loads the email branding text (sender display name, subject prefix) for the given locale via
+     * the shared [templateLoader]. Missing file or keys fall back to [DEFAULT_SUBJECT_PREFIX] / no
+     * display name.
+     */
+    private fun loadEmailBranding(locale: String): EmailBranding {
+        val properties = Properties()
+        val content = templateLoader.load(BRANDING_RELATIVE_PATH, locale)
+        if (content != null) {
+            properties.load(StringReader(content))
+        } else {
+            logger.warn("No notification email branding file found; using defaults")
+        }
+        return EmailBranding(
+            fromName = properties.getProperty("from-name", "").trim(),
+            subjectPrefix = properties.getProperty("subject-prefix", DEFAULT_SUBJECT_PREFIX).trim()
+        )
+    }
+
+    /**
+     * Branding text for notification emails, managed in the `email-branding.properties` template
+     * file rather than in deployment config.
+     */
+    private data class EmailBranding(
+        val fromName: String,
+        val subjectPrefix: String
+    )
+
     companion object {
-        private const val DEFAULT_LOCALE = "en"
-        private const val TEMPLATES_CLASSPATH_ROOT = "templates"
+        private const val DEFAULT_SUBJECT_PREFIX = "Aam Digital"
         private const val TEMPLATE_RELATIVE_PATH =
             "notification/create-notification-email-template.html"
+        private const val BRANDING_RELATIVE_PATH =
+            "notification/email-branding.properties"
         private val DEFAULT_TEMPLATES_BASE_DIR: Path =
             Paths.get("/opt/app/templates")
     }
