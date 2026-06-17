@@ -70,6 +70,9 @@ features:
       enabled: false
   third-party-authentication:
     enabled: false
+  # mirrors the replication-backend's AUDIT_ENABLED (env FEATURES_AUDIT_ENABLED)
+  audit:
+    enabled: false
 
 notification:
   email:
@@ -201,6 +204,8 @@ features:
     email:
       enabled: true
   third-party-authentication:
+    enabled: true
+  audit:
     enabled: true
 
 keycloak:
