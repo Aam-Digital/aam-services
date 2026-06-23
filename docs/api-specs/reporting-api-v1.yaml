@@ -188,7 +188,6 @@ paths:
                 properties:
                   id:
                     type: string
-                    format: uuid
         401:
           description: If the access token does not grant permission to this Report
           content:
@@ -421,7 +420,6 @@ paths:
                 properties:
                   id:
                     type: string
-                    format: uuid
         401:
           description: If no valid access token
           content:
@@ -609,7 +607,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         name:
           type: string
           example: report_all_course_members
@@ -619,13 +616,11 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         report:
           type: object
           properties:
             id:
               type: string
-              format: uuid
         status:
           type: string
           description: Current status of the run
@@ -710,7 +705,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         name:
           type: string
           example: wh_aam_digital_reporting
@@ -797,7 +791,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         eventName:
           type: string
           enum:
