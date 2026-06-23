@@ -89,23 +89,43 @@ The test suite includes:
 - **Unit tests** (JUnit 5 + Mockito) for individual use cases and services
 - **E2E / integration tests** (Cucumber BDD) that spin up real Docker containers via Testcontainers (Keycloak, CouchDB, PostgreSQL, RabbitMQ, Carbone, SQS) and test full API flows. Cucumber feature files are located in `src/test/resources/cucumber/features/`.
 
-Both run together with `./gradlew test` — Docker must be available for the e2e tests.
+Both run together with `./gradlew test`.
 
-### Running a specific Cucumber scenario
+### Running the e2e tests
 
-You can run individual Cucumber scenarios using environment variables to filter by tag, feature file, or scenario name:
+**Prerequisites:** JDK 21 and a **running Docker daemon** — Testcontainers starts
+and tears down all the containers itself, so no other local setup (no
+docker-compose, no manual Keycloak) is needed.
+
+Run **only** the e2e tests (skips the unit tests):
+
+```shell
+./gradlew test --tests "*CucumberTestRunner"
+```
+
+Booting the full container stack and Spring Boot takes **~1–2 minutes** before the
+first scenario runs, regardless of how many scenarios you select.
+
+> **Gradle caches passing tests.** If you re-run without changing any source, the
+> `test` task reports `UP-TO-DATE` and nothing actually executes. Force a re-run
+> by prefixing `cleanTest`, e.g. `./gradlew cleanTest test --tests "*CucumberTestRunner"`.
+
+#### Running specific scenarios
+
+Filter scenarios with environment variables (always keep `--tests "*CucumberTestRunner"`
+so the unit tests stay skipped):
 
 ```shell
 # By tag (add e.g. @Focus to the scenario in the .feature file)
 CUCUMBER_FILTER_TAGS="@Focus" ./gradlew test --tests "*CucumberTestRunner"
 
-# By feature file path
+# By an existing tag (e.g. @Notification)
 CUCUMBER_FILTER_TAGS="@Notification" ./gradlew test --tests "*CucumberTestRunner"
 
 # By scenario name (regex)
 CUCUMBER_FILTER_NAME="client makes call to start a report calculation" ./gradlew test --tests "*CucumberTestRunner"
 
-# By feature file path with line number for a single scenario
+# By feature file path (optionally with :line for a single scenario)
 CUCUMBER_FEATURES="src/test/resources/cucumber/features/notification/notification-change-type.feature:8" ./gradlew test --tests "*CucumberTestRunner"
 ```
 

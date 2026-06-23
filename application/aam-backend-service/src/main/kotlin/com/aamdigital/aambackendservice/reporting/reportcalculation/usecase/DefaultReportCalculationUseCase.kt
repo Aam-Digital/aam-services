@@ -109,15 +109,32 @@ class DefaultReportCalculationUseCase(
             handleTransformations(argKey, transformationKeys, reportCalculation.args)
         }
 
+        // A single top-level query returns its rows directly as a flat JSON array ([{…},{…}]),
+        // matching the documented ReportData schema that external consumers (e.g. TolaData) rely on.
+        // Only reports with multiple items / groups get an enclosing array so each item's result
+        // stays addressable as data[i]; wrapping a single query in that extra array would collapse
+        // the result to a single row of nested objects for those flat consumers.
+        val singleBareQuery =
+            report.items.size == 1 && report.items.first() is ReportItem.ReportQuery
+
         val resultData =
-            listOf(
-                "[".byteInputStream(),
-                handleReportItems(
-                    queries = report.items,
-                    reportCalculation = reportCalculation
-                ),
-                "]".byteInputStream()
-            )
+            if (singleBareQuery) {
+                listOf(
+                    handleReportItems(
+                        queries = report.items,
+                        reportCalculation = reportCalculation
+                    )
+                )
+            } else {
+                listOf(
+                    "[".byteInputStream(),
+                    handleReportItems(
+                        queries = report.items,
+                        reportCalculation = reportCalculation
+                    ),
+                    "]".byteInputStream()
+                )
+            }
 
         val result =
             reportCalculationStorage.addReportCalculationData(

@@ -425,9 +425,19 @@ For local development setup (databases, queues, Keycloak), see `docs/developer/R
 ./gradlew test --tests "com.aamdigital.aambackendservice.export.usecase.DefaultCreateTemplateUseCaseTest"
 ```
 
-### Running Specific Cucumber (E2E) Tests
+### Running the E2E (Cucumber) Tests
 
-Use environment variables to filter Cucumber scenarios. Always combine with `--tests "*CucumberTestRunner"` to skip unit tests.
+Prerequisites: JDK 21 and a running Docker daemon (Testcontainers starts/stops the containers itself).
+
+Run only the e2e tests (skips unit tests):
+
+```bash
+./gradlew test --tests "*CucumberTestRunner"
+```
+
+Gradle caches passing tests — a re-run with no source changes is reported `UP-TO-DATE` and does nothing. Prefix `cleanTest` to force it: `./gradlew cleanTest test --tests "*CucumberTestRunner"`.
+
+Filter to specific scenarios with environment variables (always keep `--tests "*CucumberTestRunner"` to skip unit tests):
 
 ```bash
 # By tag — add e.g. @Focus to the scenario in the .feature file, then filter
@@ -443,7 +453,7 @@ CUCUMBER_FILTER_NAME="client makes call to start a report calculation" ./gradlew
 CUCUMBER_FEATURES="src/test/resources/cucumber/features/notification/notification-change-type.feature:8" ./gradlew test --tests "*CucumberTestRunner"
 ```
 
-Note: Cucumber E2E tests use Testcontainers, so Docker must be running. Container startup adds ~30-60s overhead regardless of how many scenarios run.
+Note: booting the full container stack + Spring Boot adds ~1–2 min of overhead before the first scenario runs, regardless of how many scenarios you select.
 
 ### Working with Test Results
 
