@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.notification.core.create.push
 
+import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
-import com.aamdigital.aambackendservice.notification.di.NotificationFirebaseClientConfiguration
 import com.aamdigital.aambackendservice.notification.domain.EntityNotificationContext
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
@@ -40,10 +40,7 @@ class PushCreateNotificationHandlerTest {
     @Mock
     lateinit var sendResponse: SendResponse
 
-    private val config = NotificationFirebaseClientConfiguration(
-        credentialFileBase64 = "",
-        linkBaseUrl = "https://app.test"
-    )
+    private val applicationConfig = ApplicationConfig(baseUrl = "https://app.test")
 
     private val notificationEvent = CreateUserNotificationEvent(
         userIdentifier = "test-user",
@@ -61,7 +58,7 @@ class PushCreateNotificationHandlerTest {
         handler = PushCreateNotificationHandler(
             firebaseMessaging = firebaseMessaging,
             userDeviceRepository = userDeviceRepository,
-            notificationFirebaseClientConfiguration = config
+            applicationConfig = applicationConfig
         )
     }
 

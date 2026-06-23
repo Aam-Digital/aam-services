@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.stream.handleInputStreamToOutputStream
 import com.aamdigital.aambackendservice.export.controller.TemplateExportControllerResponse
+import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
@@ -37,6 +38,7 @@ import java.util.*
 
 @RestController
 @RequestMapping("/v1/reporting/report-calculation")
+@ConditionalOnReportingEnabled
 @Validated
 class ReportCalculationController(
     private val reportStorage: ReportStorage,
@@ -70,19 +72,11 @@ class ReportCalculationController(
         val args = mutableMapOf<String, String>()
 
         if (from != null) {
-            if (report.version == 1) {
-                args["from"] = from.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
-            } else {
-                args["startDate"] = from.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
-            }
+            args["startDate"] = from.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
         }
 
         if (to != null) {
-            if (report.version == 1) {
-                args["to"] = to.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
-            } else {
-                args["endDate"] = to.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
-            }
+            args["endDate"] = to.toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME)
         }
 
         val createReportCalculationResponse =

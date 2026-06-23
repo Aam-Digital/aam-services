@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.thirdpartyauthentication.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.thirdpartyauthentication.ConditionalOnThirdPartyAuthenticationEnabled
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
@@ -9,18 +10,12 @@ import com.aamdigital.aambackendservice.thirdpartyauthentication.core.DefaultCre
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.DefaultSessionRedirectUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.DefaultVerifySessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.AuthenticationSessionRepository
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.crypto.password.PasswordEncoder
 
-@ConditionalOnProperty(
-    prefix = "features.third-party-authentication",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnThirdPartyAuthenticationEnabled
 @Configuration
 class AuthenticationConfiguration {
     @Bean

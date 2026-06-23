@@ -2,23 +2,27 @@ package com.aamdigital.aambackendservice.notification.core.trigger
 
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
+import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
+import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
 import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
-import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
 import com.aamdigital.aambackendservice.notification.domain.EntityNotificationContext
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
+import org.springframework.web.util.UriComponentsBuilder
 
 /** Applies persisted notification rules to a document change event and publishes matching notifications. */
 class DefaultApplyNotificationRulesUseCase(
     private val notificationConfigCache: NotificationConfigCache,
     private val userNotificationPublisher: UserNotificationPublisher,
     private val permissionCheckClient: PermissionCheckClient,
+    private val applicationConfig: ApplicationConfig,
+    private val emailEnabled: Boolean,
     private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
 ) : ApplyNotificationRulesUseCase() {
     override fun apply(request: ApplyNotificationRulesRequest): UseCaseOutcome<ApplyNotificationRulesData> {
@@ -139,11 +143,9 @@ class DefaultApplyNotificationRulesUseCase(
         rule: NotificationRuleCacheEntry,
         documentChangeEvent: DocumentChangeEvent
     ): NotificationDetails {
-        val notificationDetails =
+        val baseDetails =
             NotificationDetails(
                 title = rule.label,
-                // body = "name and details of the entity ...", // we load this only in the frontend currently. Add here later if needed for other channels like email
-                // TODO: add actionUrl for better linking
                 context =
                     EntityNotificationContext(
                         entityType = rule.entityType,
@@ -152,14 +154,18 @@ class DefaultApplyNotificationRulesUseCase(
                 notificationType = rule.notificationType
             )
 
+        val actionUrl = buildActionUrl(baseDetails)
+        val notificationDetails = baseDetails.copy(actionUrl = actionUrl)
+
         // notificationConfig.channelPush is currently ignored
         // because we don't have a global push registration for users, but only device-level registrations.
         // the consumer only sends notification out to whatever devices are registered.
-        val channelTypes = mutableListOf(
-            NotificationChannelType.APP,
-            NotificationChannelType.PUSH
-        )
-        if (notificationConfig.channelEmail) {
+        val channelTypes =
+            mutableListOf(
+                NotificationChannelType.APP,
+                NotificationChannelType.PUSH
+            )
+        if (emailEnabled && notificationConfig.channelEmail) {
             channelTypes.add(NotificationChannelType.EMAIL)
         }
 
@@ -178,4 +184,11 @@ class DefaultApplyNotificationRulesUseCase(
 
         return notificationDetails
     }
+
+    private fun buildActionUrl(details: NotificationDetails): String =
+        UriComponentsBuilder
+            .fromUriString(applicationConfig.normalizedBaseUrl)
+            .pathSegment("notification", "{id}")
+            .buildAndExpand(mapOf("id" to details.id))
+            .toUriString()
 }

@@ -64,7 +64,7 @@ abstract class DomainUseCase<R : UseCaseRequest, D : UseCaseData> {
                 }
             }
 
-        logger.debug("[{}] {}", errorCode, it.localizedMessage, it.cause)
+        logger.warn("[{}] {}", errorCode, it.localizedMessage, it)
 
         return UseCaseOutcome.Failure(
             errorMessage = it.localizedMessage,

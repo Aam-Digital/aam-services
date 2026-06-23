@@ -1,0 +1,28 @@
+{
+  "properties": [
+    {
+      "name": "events.listener.report-calculation.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Deprecated. Removed in favor of the master 'features.reporting.enabled' flag; the listener now activates whenever reporting is on.",
+      "deprecation": {
+        "level": "error",
+        "replacement": "features.reporting.enabled",
+        "reason": "The separate worker flag was vestigial — with the listener off, calculations queued but never ran, so reporting was effectively broken. Consolidated into the master reporting feature flag."
+      }
+    },
+    {
+      "name": "database-change-detection.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Deprecated. Change-detection is now auto-activated when any consuming feature module (reporting, notification) is enabled.",
+      "deprecation": {
+        "level": "warning",
+        "reason": "Operators no longer need to set this flag; it is derived from features.reporting.enabled and features.notification-api.enabled."
+      }
+    },
+    {
+      "name": "features.reporting.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Master feature flag for the reporting / query module."
+    }
+  ]
+}

@@ -11,6 +11,19 @@ spring:
     listener:
       simple:
         prefetch: 1
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 10000
+          multiplier: 2.0
+          max-interval: 60000
+  mail:
+    properties:
+      mail:
+        smtp:
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
   datasource:
     driver-class-name: org.postgresql.Driver
   jpa:
@@ -45,23 +58,29 @@ management:
       probability: 1
 
 features:
+  reporting:
+    enabled: true
   export-api:
     enabled: false
   skill-api:
     mode: disabled
   notification-api:
     enabled: false
+    email:
+      enabled: false
   third-party-authentication:
     enabled: false
 
-# enable/disables event processing for each queue
-events:
-  listener:
-    report-calculation:
-      enabled: true
-
-notification-firebase-configuration:
-  link-base-url: ${application.base-url}
+notification:
+  email:
+    # Sender address only; the display name and subject prefix are managed in the
+    # templates/{locale}/notification/email-branding.properties template file.
+    from: ""
+    manage-settings-url: "${application.base-url}/user-account?tabIndex=1"
+    # Deployment-wide language for the email boilerplate (e.g. en, de, fr).
+    # Selects the bundled/overridden template under {locale}/notification/...
+    # Keep this in sync with the site default language (SiteSettings.defaultLanguage).
+    locale: en
 
 aam-render-api-client-configuration:
   auth-config:
@@ -112,6 +131,15 @@ spring:
         observation-enabled: true
     username: local-spring
     password: docker
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
   datasource:
     url: jdbc:postgresql://localhost:5402/aam-backend-service
     username: admin
@@ -170,6 +198,8 @@ features:
   notification-api:
     enabled: true
     mode: firebase
+    email:
+      enabled: true
   third-party-authentication:
     enabled: true
 
@@ -181,14 +211,6 @@ keycloak:
 
 crypto-configuration:
   secret: super-duper-secret
-
-events:
-  listener:
-    report-calculation:
-      enabled: true
-
-database-change-detection:
-  enabled: true
 
 sentry:
   logging:

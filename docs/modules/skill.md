@@ -22,7 +22,8 @@ An example configuration would be:
 
 ```yaml
 features:
-  skill-api: disabled
+  skill-api:
+    mode: disabled
 ```
 
 #### Enable Skill feature with connection to SkillLab
@@ -31,7 +32,9 @@ Here an example configuration for the SkillLab project `42`
 
 ```yaml
 features:
-  skill-api: skilllab
+  skill-api:
+    enabled: true
+    mode: skilllab
 
 skilllab-api-client-configuration:
   base-path: https://skilllab.app/<some-api-path>/project/42

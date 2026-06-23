@@ -2,13 +2,22 @@ package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
+import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
+import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
+import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationEmailEnabled
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationFirebaseMode
 import com.aamdigital.aambackendservice.notification.core.config.DefaultNotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationUseCase
 import com.aamdigital.aambackendservice.notification.core.create.DefaultCreateNotificationUseCase
 import com.aamdigital.aambackendservice.notification.core.create.app.AppCreateNotificationHandler
+import com.aamdigital.aambackendservice.notification.core.create.email.EmailCreateNotificationHandler
+import com.aamdigital.aambackendservice.notification.core.create.email.KeycloakUserEmailProvider
+import com.aamdigital.aambackendservice.notification.core.create.email.UserEmailProvider
 import com.aamdigital.aambackendservice.notification.core.create.push.PushCreateNotificationHandler
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.core.trigger.DefaultApplyNotificationRulesUseCase
@@ -16,18 +25,47 @@ import com.aamdigital.aambackendservice.notification.queue.UserNotificationPubli
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.firebase.messaging.FirebaseMessaging
+import org.keycloak.admin.client.Keycloak
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty(
-    prefix = "features.notification-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnNotificationApiEnabled
 class NotificationConfiguration {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
+    @Bean
+    fun notificationStartupDiagnostics(
+        @Value("\${features.notification-api.email.enabled:false}") emailEnabled: Boolean,
+        @Value("\${spring.mail.host:}") mailHost: String,
+        keycloakProvider: ObjectProvider<Keycloak>
+    ): ApplicationRunner =
+        ApplicationRunner {
+            val keycloakAvailable = keycloakProvider.ifAvailable != null
+            val mailHostConfigured = mailHost.isNotBlank()
+            if (emailEnabled && !keycloakAvailable) {
+                logger.error(
+                    "Notification email is ENABLED (features.notification-api.email.enabled=true) but Keycloak is " +
+                            "not configured (keycloak.server-url unset), so no email handler exists and email " +
+                            "notifications will be skipped. Set keycloak.server-url (+ realm/client-id/client-secret) " +
+                            "and spring.mail.host to enable them."
+                )
+            } else {
+                logger.info(
+                    "Notification startup diagnostics: emailFeatureEnabled={}, keycloakBeanAvailable={}, " +
+                            "mailHostConfigured={}",
+                    emailEnabled,
+                    keycloakAvailable,
+                    mailHostConfigured
+                )
+            }
+        }
+
     @Bean
     fun notificationConfigCache(
         couchDbClient: CouchDbClient,
@@ -42,13 +80,24 @@ class NotificationConfiguration {
     fun defaultApplyNotificationRulesUseCase(
         notificationConfigCache: NotificationConfigCache,
         userNotificationPublisher: UserNotificationPublisher,
-        permissionCheckClient: PermissionCheckClient
-    ): ApplyNotificationRulesUseCase =
-        DefaultApplyNotificationRulesUseCase(
+        permissionCheckClient: PermissionCheckClient,
+        applicationConfig: ApplicationConfig,
+        @Value("\${features.notification-api.email.enabled:false}") emailEnabled: Boolean,
+        @Value("\${keycloak.server-url:}") keycloakServerUrl: String
+    ): ApplyNotificationRulesUseCase {
+        // Only emit EMAIL events when an EmailCreateNotificationHandler can exist. That handler requires both
+        // the email feature flag and a configured Keycloak (used to resolve recipient addresses) — the same
+        // gates applied to the handler bean below. Emitting EMAIL events without a handler turns them into
+        // poison messages that loop through the DLQ on every restart.
+        val emailHandlerAvailable = emailEnabled && keycloakServerUrl.isNotBlank()
+        return DefaultApplyNotificationRulesUseCase(
             notificationConfigCache = notificationConfigCache,
             userNotificationPublisher = userNotificationPublisher,
-            permissionCheckClient = permissionCheckClient
+            permissionCheckClient = permissionCheckClient,
+            applicationConfig = applicationConfig,
+            emailEnabled = emailHandlerAvailable
         )
+    }
 
     @Bean
     fun defaultCreateNotificationUseCase(
@@ -59,21 +108,16 @@ class NotificationConfiguration {
         )
 
     @Bean("push-create-notification-handler")
-    @ConditionalOnProperty(
-        prefix = "features.notification-api",
-        name = ["mode"],
-        havingValue = "firebase",
-        matchIfMissing = false
-    )
+    @ConditionalOnNotificationFirebaseMode
     fun pushCreateNotificationHandler(
         firebaseMessaging: FirebaseMessaging,
         userDeviceRepository: UserDeviceRepository,
-        notificationFirebaseClientConfiguration: NotificationFirebaseClientConfiguration
+        applicationConfig: ApplicationConfig
     ): PushCreateNotificationHandler =
         PushCreateNotificationHandler(
             firebaseMessaging = firebaseMessaging,
             userDeviceRepository = userDeviceRepository,
-            notificationFirebaseClientConfiguration = notificationFirebaseClientConfiguration
+            applicationConfig = applicationConfig
         )
 
     @Bean("app-create-notification-handler")
@@ -84,5 +128,36 @@ class NotificationConfiguration {
         AppCreateNotificationHandler(
             couchDbClient = couchDbClient,
             couchDbInitializer = couchDbInitializer
+        )
+
+    // Gated on the `keycloak.server-url` property (the same condition that gates the Keycloak bean in
+    // KeycloakAdminConfiguration) rather than @ConditionalOnBean(Keycloak): the latter is order-sensitive
+    // on plain @Configuration classes and silently drops this bean when NotificationConfiguration happens
+    // to be processed before KeycloakAdminConfiguration — even when Keycloak is configured. See
+    // NotificationEmailHandlerWiringTest, which fails the "notification config first" case under @ConditionalOnBean.
+    @Bean("keycloak-user-email-provider")
+    @ConditionalOnNotificationEmailEnabled
+    @ConditionalOnProperty(prefix = "keycloak", name = ["server-url"])
+    fun keycloakUserEmailProvider(
+        keycloak: Keycloak,
+        aamKeycloakConfig: AamKeycloakConfig
+    ): UserEmailProvider =
+        KeycloakUserEmailProvider(
+            keycloak = keycloak,
+            keycloakConfig = aamKeycloakConfig
+        )
+
+    @Bean("email-create-notification-handler")
+    @ConditionalOnNotificationEmailEnabled
+    @ConditionalOnProperty(prefix = "keycloak", name = ["server-url"])
+    fun emailCreateNotificationHandler(
+        mailSenderService: MailSenderService,
+        userEmailProvider: UserEmailProvider,
+        notificationEmailProperties: NotificationEmailProperties
+    ): CreateNotificationHandler =
+        EmailCreateNotificationHandler(
+            mailSenderService = mailSenderService,
+            userEmailProvider = userEmailProvider,
+            notificationEmailProperties = notificationEmailProperties
         )
 }

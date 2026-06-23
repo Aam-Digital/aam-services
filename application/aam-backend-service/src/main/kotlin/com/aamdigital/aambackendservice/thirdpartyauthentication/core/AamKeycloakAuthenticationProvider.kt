@@ -3,7 +3,7 @@ package com.aamdigital.aambackendservice.thirdpartyauthentication.core
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
-import com.aamdigital.aambackendservice.thirdpartyauthentication.di.AamKeycloakConfig
+import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
 import org.keycloak.admin.client.CreatedResponseUtil
 import org.keycloak.admin.client.Keycloak
 import org.keycloak.representations.idm.UserRepresentation

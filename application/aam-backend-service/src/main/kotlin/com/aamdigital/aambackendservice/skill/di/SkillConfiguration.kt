@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.skill.di
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
+import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
 import org.springframework.boot.context.properties.ConfigurationProperties
 
 /**
@@ -19,18 +20,8 @@ class FeatureConfigurationSkillApi(
 )
 
 @ConfigurationProperties("skilllab-api-client-configuration")
-@ConditionalOnProperty(
-    prefix = "features.skill-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
-@ConditionalOnProperty(
-    prefix = "features.skill-api",
-    name = ["mode"],
-    havingValue = "skilllab",
-    matchIfMissing = false
-)
+@ConditionalOnSkillApiEnabled
+@ConditionalOnSkillLabMode
 class SkillLabApiClientConfiguration(
     val basePath: String,
     val apiKey: String,

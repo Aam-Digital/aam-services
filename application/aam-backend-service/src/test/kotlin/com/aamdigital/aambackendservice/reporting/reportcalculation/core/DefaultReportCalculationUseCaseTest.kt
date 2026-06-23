@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.report.Report
 import com.aamdigital.aambackendservice.reporting.report.ReportItem
@@ -65,8 +66,8 @@ class DefaultReportCalculationUseCaseTest {
             status = ReportCalculationStatus.PENDING,
             args =
                 mutableMapOf(
-                    Pair("from", "2010-01-15T00:00:00.000Z"),
-                    Pair("to", "2010-01-16")
+                    Pair("startDate", "2010-01-15T00:00:00.000Z"),
+                    Pair("endDate", "2010-01-16")
                 )
         )
 
@@ -139,23 +140,61 @@ class DefaultReportCalculationUseCaseTest {
     }
 
     @Test
-    fun `should apply argument transformations before sending to query service (v1)`() {
+    fun `should preserve the original error as cause when query execution fails with a non-Aam exception`() {
         // given
         val report =
             Report(
                 id = "Report:1",
                 title = "Report",
-                version = 1,
+                items = listOf(ReportItem.ReportQuery(sql = "SELECT name FROM foo"))
+            )
+
+        val reportCalculation = getPendingReportCalculation()
+
+        whenever(
+            reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:1")))
+        ).thenReturn(reportCalculation)
+
+        whenever(reportStorage.fetchReport(eq(DomainReference("Report:1")))).thenReturn(report)
+
+        whenever(reportCalculationStorage.storeCalculation(any())).thenAnswer { i -> i.arguments[0] }
+
+        val rootCause = RuntimeException("connection reset")
+        whenever(queryStorage.executeQuery(any())).thenAnswer { throw rootCause }
+
+        // when
+        val response =
+            service.run(
+                ReportCalculationRequest(reportCalculationId = reportCalculation.id)
+            )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        val failure = response as UseCaseOutcome.Failure
+        assertThat(failure.errorCode).isEqualTo(ReportCalculationError.UNEXPECTED_ERROR)
+        // regression test for the previous `cause = exception.cause` truncation: the wrapper must keep the
+        // real root cause so it reaches Sentry instead of being dropped
+        assertThat(failure.cause).isInstanceOf(InternalServerException::class.java)
+        assertThat(failure.cause?.cause).isSameAs(rootCause)
+    }
+
+    @Test
+    fun `should apply argument transformations before sending to query service`() {
+        // given
+        val report =
+            Report(
+                id = "Report:1",
+                title = "Report",
                 items =
                     listOf(
                         ReportItem.ReportQuery(
-                            sql = "SELECT * FROM foo WHERE time BETWEEN ? and ?"
+                            sql = "SELECT * FROM foo WHERE time BETWEEN \$startDate and \$endDate"
                         )
                     ),
                 transformations =
                     mapOf(
-                        "to" to listOf("SQL_TO_DATE"),
-                        "from" to listOf("SQL_FROM_DATE")
+                        "endDate" to listOf("SQL_TO_DATE"),
+                        "startDate" to listOf("SQL_FROM_DATE")
                     )
             )
 
@@ -166,8 +205,8 @@ class DefaultReportCalculationUseCaseTest {
                 status = ReportCalculationStatus.PENDING,
                 args =
                     mutableMapOf(
-                        Pair("from", "2010-01-15T00:00:00.000Z"),
-                        Pair("to", "2010-01-16")
+                        Pair("startDate", "2010-01-15T00:00:00.000Z"),
+                        Pair("endDate", "2010-01-16")
                     )
             )
 
@@ -222,23 +261,24 @@ class DefaultReportCalculationUseCaseTest {
     }
 
     @Test
-    fun `should apply named argument transformations before sending to query service (v1)`() {
+    fun `should skip non-arg dollar signs in sql (e g json_extract path)`() {
         // given
         val report =
             Report(
                 id = "Report:1",
                 title = "Report",
-                version = 1,
                 items =
                     listOf(
                         ReportItem.ReportQuery(
-                            sql = "SELECT *, json_extract(foo.children, '$[0]') FROM foo WHERE time BETWEEN \$from and \$to"
+                            sql =
+                                "SELECT *, json_extract(foo.children, '\$[0]') FROM foo " +
+                                    "WHERE time BETWEEN \$startDate and \$endDate"
                         )
                     ),
                 transformations =
                     mapOf(
-                        "to" to listOf("SQL_TO_DATE"),
-                        "from" to listOf("SQL_FROM_DATE")
+                        "endDate" to listOf("SQL_TO_DATE"),
+                        "startDate" to listOf("SQL_FROM_DATE")
                     )
             )
 
@@ -249,8 +289,8 @@ class DefaultReportCalculationUseCaseTest {
                 status = ReportCalculationStatus.PENDING,
                 args =
                     mutableMapOf(
-                        Pair("from", "2010-01-15T00:00:00.000Z"),
-                        Pair("to", "2010-01-16")
+                        Pair("startDate", "2010-01-15T00:00:00.000Z"),
+                        Pair("endDate", "2010-01-16")
                     )
             )
 
@@ -305,23 +345,24 @@ class DefaultReportCalculationUseCaseTest {
     }
 
     @Test
-    fun `should apply multiple named argument transformations before sending to query service (v1)`() {
+    fun `should apply multiple named argument transformations before sending to query service`() {
         // given
         val report =
             Report(
                 id = "Report:1",
                 title = "Report",
-                version = 1,
                 items =
                     listOf(
                         ReportItem.ReportQuery(
-                            sql = "SELECT * FROM foo WHERE time BETWEEN \$from and \$to AND date BETWEEN \$from AND \$to"
+                            sql =
+                                "SELECT * FROM foo WHERE time BETWEEN \$startDate and \$endDate " +
+                                    "AND date BETWEEN \$startDate AND \$endDate"
                         )
                     ),
                 transformations =
                     mapOf(
-                        "to" to listOf("SQL_TO_DATE"),
-                        "from" to listOf("SQL_FROM_DATE")
+                        "endDate" to listOf("SQL_TO_DATE"),
+                        "startDate" to listOf("SQL_FROM_DATE")
                     )
             )
 
@@ -332,8 +373,8 @@ class DefaultReportCalculationUseCaseTest {
                 status = ReportCalculationStatus.PENDING,
                 args =
                     mutableMapOf(
-                        Pair("from", "2010-01-15T00:00:00.000Z"),
-                        Pair("to", "2010-01-16")
+                        Pair("startDate", "2010-01-15T00:00:00.000Z"),
+                        Pair("endDate", "2010-01-16")
                     )
             )
 
@@ -390,23 +431,17 @@ class DefaultReportCalculationUseCaseTest {
     }
 
     @Test
-    fun `should apply argument transformations before sending to query service (v2)`() {
+    fun `should send query without args when report has no transformations`() {
         // given
         val report =
             Report(
                 id = "Report:1",
                 title = "Report",
-                version = 2,
                 items =
                     listOf(
                         ReportItem.ReportQuery(
-                            sql = "SELECT * FROM foo WHERE time BETWEEN \$startDate and \$endDate"
+                            sql = "SELECT name FROM foo"
                         )
-                    ),
-                transformations =
-                    mapOf(
-                        "endDate" to listOf("SQL_TO_DATE"),
-                        "startDate" to listOf("SQL_FROM_DATE")
                     )
             )
 
@@ -415,11 +450,7 @@ class DefaultReportCalculationUseCaseTest {
                 id = "ReportCalculation:1",
                 report = DomainReference("Report:1"),
                 status = ReportCalculationStatus.PENDING,
-                args =
-                    mutableMapOf(
-                        Pair("startDate", "2010-01-15T00:00:00.000Z"),
-                        Pair("endDate", "2010-01-16")
-                    )
+                args = mutableMapOf()
             )
 
         whenever(
@@ -453,87 +484,13 @@ class DefaultReportCalculationUseCaseTest {
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
 
-        assertEquals(
-            reportCalculation,
-            (response as UseCaseOutcome.Success).data.reportCalculation
-        )
-
         verify(queryStorage).executeQuery(
             eq(
                 QueryRequest(
-                    query = "SELECT * FROM foo WHERE time BETWEEN ? and ?",
-                    args =
-                        listOf(
-                            "2010-01-15",
-                            "2010-01-16T23:59:59.999Z"
-                        )
+                    query = "SELECT name FROM foo",
+                    args = emptyList()
                 )
             )
-        )
-    }
-
-    @Test
-    fun `should return Failure when report version is invalid`() {
-        // given
-        val report =
-            Report(
-                id = "Report:1",
-                title = "Report",
-                version = 42,
-                items =
-                    listOf(
-                        ReportItem.ReportQuery(
-                            sql = "SELECT * FROM foo WHERE time BETWEEN \$startDate and \$endDate"
-                        )
-                    ),
-                transformations =
-                    mapOf(
-                        "endDate" to listOf("SQL_TO_DATE"),
-                        "startDate" to listOf("SQL_FROM_DATE")
-                    )
-            )
-
-        val reportCalculation =
-            ReportCalculation(
-                id = "ReportCalculation:1",
-                report = DomainReference("Report:1"),
-                status = ReportCalculationStatus.PENDING,
-                args =
-                    mutableMapOf(
-                        Pair("startDate", "2010-01-15T00:00:00.000Z"),
-                        Pair("endDate", "2010-01-16")
-                    )
-            )
-
-        whenever(
-            reportCalculationStorage.fetchReportCalculation(
-                eq(DomainReference("ReportCalculation:1"))
-            )
-        ).thenReturn(reportCalculation)
-
-        whenever(
-            reportStorage.fetchReport(
-                eq(DomainReference("Report:1"))
-            )
-        ).thenReturn(report)
-
-        whenever(reportCalculationStorage.storeCalculation(any()))
-            .thenAnswer { i -> i.arguments[0] }
-
-        // when
-        val response =
-            service.run(
-                ReportCalculationRequest(
-                    reportCalculationId = reportCalculation.id
-                )
-            )
-
-        // then
-        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
-
-        assertEquals(
-            ReportCalculationError.UNSUPPORTED_REPORT_VERSION,
-            (response as UseCaseOutcome.Failure).errorCode
         )
     }
 
@@ -544,17 +501,16 @@ class DefaultReportCalculationUseCaseTest {
             Report(
                 id = "Report:1",
                 title = "Report",
-                version = 1,
                 items =
                     listOf(
                         ReportItem.ReportQuery(
-                            sql = "SELECT * FROM foo WHERE time BETWEEN ? and ?"
+                            sql = "SELECT * FROM foo WHERE time BETWEEN \$startDate and \$endDate"
                         )
                     ),
                 transformations =
                     mapOf(
-                        "from" to listOf("SQL_FROM_DATE"),
-                        "to" to listOf("SQL_TO_DATE")
+                        "startDate" to listOf("SQL_FROM_DATE"),
+                        "endDate" to listOf("SQL_TO_DATE")
                     )
             )
 
@@ -611,6 +567,75 @@ class DefaultReportCalculationUseCaseTest {
                             DEFAULT_FROM_DATE,
                             DEFAULT_TO_DATE
                         )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `should normalize legacy from-to args to startDate-endDate before applying transformations`() {
+        // given
+        val report =
+            Report(
+                id = "Report:1",
+                title = "Report",
+                items =
+                    listOf(
+                        ReportItem.ReportQuery(
+                            sql = "SELECT * FROM foo WHERE time BETWEEN \$startDate and \$endDate"
+                        )
+                    ),
+                transformations =
+                    mapOf(
+                        "startDate" to listOf("SQL_FROM_DATE"),
+                        "endDate" to listOf("SQL_TO_DATE")
+                    )
+            )
+
+        val reportCalculation =
+            ReportCalculation(
+                id = "ReportCalculation:1",
+                report = DomainReference("Report:1"),
+                status = ReportCalculationStatus.PENDING,
+                args = mutableMapOf("from" to "2024-01-15T00:00:00Z", "to" to "2024-04-30T00:00:00Z")
+            )
+
+        whenever(
+            reportCalculationStorage.fetchReportCalculation(
+                eq(DomainReference("ReportCalculation:1"))
+            )
+        ).thenReturn(reportCalculation)
+
+        whenever(
+            reportStorage.fetchReport(
+                eq(DomainReference("Report:1"))
+            )
+        ).thenReturn(report)
+
+        whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
+
+        whenever(reportCalculationStorage.storeCalculation(any()))
+            .thenAnswer { i -> i.arguments[0] }
+
+        whenever(reportCalculationStorage.addReportCalculationData(any(), any()))
+            .thenAnswer { i -> i.arguments[0] }
+
+        // when
+        val response =
+            service.run(
+                ReportCalculationRequest(
+                    reportCalculationId = reportCalculation.id
+                )
+            )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+
+        verify(queryStorage).executeQuery(
+            eq(
+                QueryRequest(
+                    query = "SELECT * FROM foo WHERE time BETWEEN ? and ?",
+                    args = listOf("2024-01-15", "2024-04-30T23:59:59.999Z")
                 )
             )
         )

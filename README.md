@@ -27,6 +27,7 @@ You can make a request to the API to check if a certain feature is currently ena
 
 // response:
 {
+  "reporting": { "enabled": true },
   "notification": { "enabled": true },
   "export": { "enabled": true },
   "skill": { "enabled": true },
@@ -145,17 +146,56 @@ Boot's [Externalized Configuration](https://docs.spring.io/spring-boot/reference
 
 ### Feature Flags
 
-Modules (usually) have to be explicitly enabled through a feature flag configuration. For example,
-`FEATURES_EXPORTAPI_ENABLED=true` in .env can toggle the feature flag
+Modules (usually) have to be explicitly enabled through a feature flag configuration.
+For example, `FEATURES_EXPORTAPI_ENABLED=true` in .env toggles the export module.
 
+Each module defines a dedicated meta-annotation at its package root that gates
+all of its beans (controllers, `@Configuration` classes, `@Bean` factories, etc.) —
+look for `ConditionalOn<Module>Enabled.kt` alongside the module's `FeatureInfoEndpoint`.
+Use that annotation on any class or `@Bean` method that should only exist when the
+module is enabled.
+
+Some modules additionally expose a mode-specific meta-annotation (e.g. for picking
+between alternative backends). Stack the mode annotation on top of the
+`Enabled` annotation when a bean requires both:
+
+```kotlin
+@RestController
+@ConditionalOn<Module>Enabled
+@ConditionalOn<Module><Mode>Mode
+class SomeController(...)
 ```
-@ConditionalOnProperty(
-    prefix = "features.export-api",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
-```
+
+The exact flags and modes available for each module are documented in the
+respective [API Module docs](#api-modules).
+
+#### Adding a flag for a new feature module
+
+1. Define the meta-annotation at the module package root (next to the module's
+   `FeatureInfoEndpoint`), e.g.
+   `application/aam-backend-service/src/main/kotlin/com/aamdigital/aambackendservice/<module>/ConditionalOn<Module>Enabled.kt`:
+
+    ```kotlin
+    @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
+    @Retention(AnnotationRetention.RUNTIME)
+    @ConditionalOnProperty(
+        prefix = "features.<module>",
+        name = ["enabled"],
+        havingValue = "true",
+        matchIfMissing = false,
+    )
+    annotation class ConditionalOn<Module>Enabled
+    ```
+
+2. Annotate every bean that should only exist when the module is enabled with the
+   new annotation — `@RestController`, `@Component`, `@Configuration`, and any
+   `@Bean` factory inside.
+3. Register a `FeatureRegistrar` so the module appears in `/actuator/features`
+   (see [ReportingFeatureInfoEndpoint](application/aam-backend-service/src/main/kotlin/com/aamdigital/aambackendservice/reporting/ReportingFeatureInfoEndpoint.kt) for the pattern).
+4. If the module consumes `document.changes` events, add a nested
+   `@ConditionalOn<Module>Enabled` class to `ChangesConfiguration.AnyChangeConsumerEnabled`
+   so change-detection auto-activates when the module is enabled.
+5. Document the flag and any required env vars in `docs/modules/<module>.md`.
 
 ## Message Queues
 

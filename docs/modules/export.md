@@ -54,6 +54,24 @@ aam-render-api-client-configuration:
       scope: <needs-environment-configuration>
 ```
 
+### Batch rendering (ZIP or combined PDF)
+
+The bulk endpoint (`POST /v1/export/render-batch/{templateId}`) requires batch processing to be enabled in the configured Carbone instance.
+
+Carbone does **not** enable this via an aam-services environment variable. It must be configured in Carbone itself:
+
+```json
+{
+  "nbReportMaxPerBatch": 200
+}
+```
+
+If this value is missing or `0`, Carbone returns:
+`Unable to generate the document. Batch processing deactivated. nbReportMaxPerBatch = 0`
+
+For local development with `docs/developer/docker-compose.yml`, this repository provides
+`docs/developer/carbone.config.json`, mounted to `/app/config/config.json` for the `carbone-io` service.
+
 ### OAuth Proxy & Keycloak Client
 In our standard hosted setup, the carbone.io server is protected by an OAUTH proxy.
 The Keycloak Client used by our backend to authenticate against this can be reused across different systems.

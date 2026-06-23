@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.thirdpartyauthentication.controller
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
+import com.aamdigital.aambackendservice.thirdpartyauthentication.ConditionalOnThirdPartyAuthenticationEnabled
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCaseRequest
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
@@ -11,7 +12,6 @@ import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUs
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCaseRequest
 import jakarta.validation.constraints.Email
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.validation.annotation.Validated
@@ -49,12 +49,7 @@ data class UserSessionRedirectDto(
     val redirectUrl: String
 )
 
-@ConditionalOnProperty(
-    prefix = "features.third-party-authentication",
-    name = ["enabled"],
-    havingValue = "true",
-    matchIfMissing = false
-)
+@ConditionalOnThirdPartyAuthenticationEnabled
 @RestController
 @RequestMapping("/v1/third-party-authentication")
 @Validated
@@ -85,17 +80,8 @@ class ThirdPartyAuthenticationController(
 
         return when (response) {
             is UseCaseOutcome.Success -> {
-                // add https:// if not already part of applicationConfig.baseUrl
-                val baseUrl =
-                    if (applicationConfig.baseUrl.startsWith("http://") ||
-                        applicationConfig.baseUrl.startsWith("https://")
-                    ) {
-                        applicationConfig.baseUrl
-                    } else {
-                        "https://${applicationConfig.baseUrl}"
-                    }
                 val entryPointUrl =
-                    "$baseUrl/login?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
+                    "${applicationConfig.normalizedBaseUrl}/login?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
 
                 logger.trace("[POST /session]: Created session for ${userSessionRequest.email}")
                 ResponseEntity.ok(

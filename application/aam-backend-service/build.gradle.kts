@@ -55,6 +55,10 @@ dependencies {
 
     implementation("org.keycloak:keycloak-admin-client:26.0.5")
 
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation("com.github.ben-manes.caffeine:caffeine")
+
     implementation("com.google.firebase:firebase-admin:9.8.0")
 
     runtimeOnly("org.postgresql:postgresql:42.7.10")

@@ -10,7 +10,7 @@ This module watches for database changes and creates notification events which c
 
 - **Push Notifications** through Firebase
 - **"In-App" Notifications** directly in the toolbar of our frontend UI
-- _... in the future maybe also email_
+- **Email Notifications** through SMTP (optional)
 
 ### Dependencies
 
@@ -37,9 +37,10 @@ If the _aam-services backend_ is not deployed at all, such a request will usuall
 You should also account for that possibility.
 
 ## Usage
+
 ![notifications.drawio.png](../assets/notifications.drawio.png)
 
------
+---
 
 ## Setup
 
@@ -47,15 +48,136 @@ The following environment variables are required:
 
 ```dotenv
 FEATURES_NOTIFICATIONAPI_ENABLED=true
-DATABASECHANGEDETECTION_ENABLED=true
+FEATURES_NOTIFICATIONAPI_MODE=firebase    # delivery mode for push notifications
+FEATURES_NOTIFICATIONAPI_EMAIL_ENABLED=false  # set true to enable email notifications
+
+# Required for email notifications (SMTP)
+# Sender address only; the display name and subject prefix are managed in the
+# templates/{locale}/notification/email-branding.properties template file.
+NOTIFICATION_EMAIL_FROM=notifications@your-instance.org
+SPRING_MAIL_HOST=<smtp-host>
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=<smtp-username>
+SPRING_MAIL_PASSWORD=<smtp-password>
+SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
+SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+
+# Language of the email boilerplate (en, de, fr). Defaults to en.
+# Keep in sync with the site default language.
+NOTIFICATION_EMAIL_LOCALE=en
+
+# Required for email notifications (lookup recipient addresses in Keycloak)
+KEYCLOAK_SERVERURL=https://<your-keycloak-url>
+KEYCLOAK_REALM=<your-realm>
+KEYCLOAK_CLIENTID=<service-client-id>
+KEYCLOAK_CLIENTSECRET=<service-client-secret>
 
 # Firebase Configuration: Confidential (!)
 NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64=<base-64-encoded-firebase-credential-file>
 
 APPLICATION_BASEURL=<your-instance>.aam-digital.com
-# if necessary, you can also override the linkBaseUrl (prefer to use the shared APPLICATION_BASEURL however)
-NOTIFICATIONFIREBASECONFIGURATION_LINKBASEURL=https://<your-instance>.aam-digital.com
 ```
+
+Notification links are derived centrally from `APPLICATION_BASEURL`:
+
+- Email "manage notification settings": `https://<base-url>/user-account?tabIndex=1`
+- Push notification link target (FCM webpush `link` and `url` custom data)
+
+Database change-detection is activated automatically when notification (or reporting) is enabled;
+no separate flag needs to be set.
+
+Notes:
+
+- Email notifications are only sent for users with `channels.email=true` in their `NotificationConfig:*` document.
+- If email is enabled but a user has no email address in Keycloak, that notification is skipped for email delivery.
+- Ensure the server firewall allows outgoing traffic for the SMTP port.
+
+### Email delivery retries and failure handling
+
+If sending an email fails, the service automatically retries up to 3 times before giving up.
+Failed notifications are held in a queue (technically: a dead-letter queue `notification.user.dlq`)
+so no notifications are silently lost.
+
+When the service restarts, all held notifications are automatically retried once.
+This means the recovery path for any delivery problem is always the same:
+**fix the root cause, then restart the service.**
+
+Examples:
+
+- SMTP server temporarily unreachable → retried immediately up to 3 times, then held until next restart
+- Wrong SMTP credentials → held immediately (retrying wouldn't help), fixed after updating credentials and restarting
+
+### Multi-language Email Templates & Runtime Override
+
+The email language is selected by `NOTIFICATION_EMAIL_LOCALE` (defaults to `en`).
+Templates are organized in a per-language folder (`{locale}/notification/...`) so a
+translator can copy a whole language folder (e.g. `en/` → `de/`) and translate the
+bundled templates. A region suffix in the configured locale is ignored
+(`de-DE` → `de`).
+
+For the configured locale, the backend resolves the template in this order and uses
+the first that exists:
+
+1. Mounted override, localized:
+   `/opt/app/templates/{locale}/notification/create-notification-email-template.html`
+2. Mounted override, legacy unsuffixed (kept for backward compatibility):
+   `/opt/app/templates/notification/create-notification-email-template.html`
+3. Bundled classpath, localized:
+   `src/main/resources/templates/{locale}/notification/create-notification-email-template.html`
+4. Bundled classpath, English fallback:
+   `src/main/resources/templates/en/notification/create-notification-email-template.html`
+
+Bundled languages: `en`, `de`, `fr`.
+
+Example volume mount and override layout:
+
+```yaml
+volumes:
+  - ./config/aam-backend-service/templates:/opt/app/templates:ro
+```
+
+```text
+config/aam-backend-service/templates/
+  de/notification/create-notification-email-template.html
+  de/notification/email-branding.properties
+  fr/notification/create-notification-email-template.html
+```
+
+Important:
+
+- Template changes require a container restart.
+- The backend does not manage logo files or inline image attachments.
+  Template authors can embed images directly in the HTML template (for example as data URIs or remote image URLs).
+
+### Email Branding (sender name & subject prefix)
+
+The sender display name and the subject prefix are **not** environment variables. They are kept
+together with the email templates in `{locale}/notification/email-branding.properties`, so all
+template-related text is managed in one place:
+
+```properties
+# Display name shown in front of the sender address, e.g. "Aam Digital <notifications@example.org>".
+from-name=Aam Digital
+# Prefix prepended to every notification email subject, e.g. "Aam Digital: A new record was added".
+subject-prefix=Aam Digital
+```
+
+- `from-name` is combined with the configured address (`NOTIFICATION_EMAIL_FROM`, which holds the
+  bare address only) to form the final sender header `from-name <NOTIFICATION_EMAIL_FROM>`. If
+  `from-name` is empty, the bare address is used as-is.
+- `subject-prefix` is prepended to every email subject.
+
+The file is resolved per locale (`NOTIFICATION_EMAIL_LOCALE`) using the **same order as the HTML
+template**, using the first that exists:
+
+1. Mounted override, localized: `/opt/app/templates/{locale}/notification/email-branding.properties`
+2. Mounted override, legacy unsuffixed: `/opt/app/templates/notification/email-branding.properties`
+3. Bundled classpath, localized: `src/main/resources/templates/{locale}/notification/email-branding.properties`
+4. Bundled classpath, English fallback: `src/main/resources/templates/en/notification/email-branding.properties`
+
+Only the English (`en`) branding file is bundled; other locales fall back to it unless you provide a
+localized copy (e.g. to translate the subject prefix). If the file — or an individual key — is
+missing, the subject prefix falls back to `Aam Digital` and no display name is added.
 
 ### Permission-Aware Notifications (optional)
 
@@ -85,20 +207,20 @@ If you want to send Push Notifications, we rely on Firebase Cloud Messaging (FCM
 3. Select "Cloud Messaging" and "Add a web app" (you can skip the second step of setup through npm)
 4. Open the "Project Settings" page
 5. Under "Your apps" copy to JSON config object
-    1. store this as `assets/firebase-config.json` in the Aam Digital
-       frontend (or overwrite the empty sample file in your ndb-setup folder in your deployment)
-    2. make sure this is proper json format (i.e. the keys are also in double quotes)
+   1. store this as `assets/firebase-config.json` in the Aam Digital
+      frontend (or overwrite the empty sample file in your ndb-setup folder in your deployment)
+   2. make sure this is proper json format (i.e. the keys are also in double quotes)
 6. Create a Service Account or new key for it
-    1. ... through the firebase
-       interface [as described here](https://firebase.google.com/docs/admin/setup#initialize_the_sdk_in_non-google_environments)
-    2. download the `firebase-credentials.json` with its key
-    3. Encode it as base64
-       run this to print the encoded file to the console:
-       ```bash
-       base64 -i firebase-credentials.json
-       ```
-    4. Copy the output (remove line breaks to make it a single line of encoded text)
-    5. Add this as an environment variable: `NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64` as described above
+   1. ... through the firebase
+      interface [as described here](https://firebase.google.com/docs/admin/setup#initialize_the_sdk_in_non-google_environments)
+   2. download the `firebase-credentials.json` with its key
+   3. Encode it as base64
+      run this to print the encoded file to the console:
+      ```bash
+      base64 -i firebase-credentials.json
+      ```
+   4. Copy the output (remove line breaks to make it a single line of encoded text)
+   5. Add this as an environment variable: `NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64` as described above
 7. To apply the config restart the container, if necessary
 
 ### Config:Permissions
@@ -113,10 +235,7 @@ the [User Permissions doc](https://aam-digital.github.io/ndb-core/documentation/
 {
   "default": [
     {
-      "subject": [
-        "NotificationConfig",
-        "NotificationEvent"
-      ],
+      "subject": ["NotificationConfig", "NotificationEvent"],
       "action": "manage"
     }
   ]

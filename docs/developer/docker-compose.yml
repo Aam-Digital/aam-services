@@ -21,6 +21,9 @@ services:
     image: maildev/maildev:2.2.1
     networks:
       - aam-digital
+    ports:
+      - "1025:1025"
+      - "1080:1080"
 
   # ***************************************************************
   # couchdb
@@ -36,6 +39,12 @@ services:
     environment:
       COUCHDB_USER: admin
       COUCHDB_PASSWORD: docker
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5984/_up"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   # ***************************************************************
   # keycloak
@@ -45,7 +54,8 @@ services:
     image: quay.io/keycloak/keycloak:26.4.7
     container_name: keycloak
     depends_on:
-      - db-keycloak
+      db-keycloak:
+        condition: service_started
     ports:
       - "8080:8080"
     networks:
@@ -103,7 +113,8 @@ services:
       KC_HTTP_ENABLED: true
       KC_HOSTNAME: https://keycloak.localhost
     depends_on:
-      - db-keycloak_23
+      db-keycloak_23:
+        condition: service_started
     command: start --proxy-headers forwarded
     # for production settings use command: start --optimized --spi-theme-login-theme=aam-theme
     volumes:
@@ -135,6 +146,12 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
 
   # ***************************************************************
   # replication-backend
@@ -143,7 +160,8 @@ services:
   replication-backend:
     image: ghcr.io/aam-digital/replication-backend:latest
     depends_on:
-      - db-couch
+      db-couch:
+        condition: service_healthy
     networks:
       - aam-digital
     extra_hosts:
@@ -174,7 +192,6 @@ services:
 
   aam-backend-service:
     image: ghcr.io/aam-digital/aam-backend-service:${AAM_BACKEND_SERVICE_VERSION:-latest}
-    restart: on-failure
     command:
       - sh
       - -c
@@ -185,11 +202,14 @@ services:
       - "keycloak.localhost:host-gateway" # (linux only) resolve host reverse-proxy from inside container
     volumes:
       - ./container-data/caddy-authorities/root.crt:/opt/app/reverse-proxy.crt:ro
+      - ./config/aam-backend-service/templates:/opt/app/templates:ro
     external_links:
       - reverse-proxy:aam.localhost
     depends_on:
-      - aam-backend-service-db
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+      aam-backend-service-db:
+        condition: service_started
     env_file:
       - .env
     environment:
@@ -222,7 +242,8 @@ services:
     networks:
       - aam-digital
     depends_on:
-      - db-couch
+      db-couch:
+        condition: service_healthy
     ports:
       - "4984:4984"
     volumes:
@@ -238,6 +259,7 @@ services:
     networks:
       - aam-digital
     volumes:
+      - ./carbone.config.json:/app/config/config.json:ro
       - ./container-data/carbone-io/template:/app/template
       - ./container-data/carbone-io/render:/app/render
     ports:
