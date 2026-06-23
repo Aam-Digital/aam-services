@@ -278,13 +278,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportMetadata'
-            application/xml:
-              schema:
-                $ref: '#/components/schemas/ReportMetadata'
         404:
           description: report data is not available yet (when either the calculation id is not valid or the calculation is still running).
             Note that if the report calculation was successfully completed but the result is empty (because no data matched the report's query)
-            then this is not returning a 404 error but a 200 with an empty "items" array.
+            then this is not returning a 404 error but a 200 with an empty array.
           content:
             application/json:
               schema:
@@ -332,7 +329,7 @@ paths:
         404:
           description: report data is not available yet (when either the calculation id is not valid or the calculation is still running).
             Note that if the report calculation was successfully completed but the result is empty (because no data matched the report's query)
-            then this is not returning a 404 error but a 200 with an empty "items" array.
+            then this is not returning a 404 error but a 200 with an empty array.
           content:
             application/json:
               schema:
@@ -648,16 +645,21 @@ components:
           nullable: true
         args:
           type: object
-          description: Input arguments will be injected into the sql query
+          description: >-
+            Input arguments injected into the report's SQL query placeholders (for example
+            $startDate and $endDate). The canonical date-range keys are "startDate" and "endDate".
+            For backwards compatibility the legacy keys "from" and "to" are still accepted on the
+            calculation request and are normalized to "startDate"/"endDate" by the backend, so
+            calculations created before the migration may still expose "from"/"to" here.
           properties:
-            from:
+            startDate:
               type: string
-              description: optional start date for the time period of the data included in the report
+              description: optional start date for the time period of the data included in the report (legacy key "from")
               format: date
               nullable: true
-            to:
+            endDate:
               type: string
-              description: optional end date filtering data included in the report. If no date is given here, all data (possibly filtered by the "from" date) is included. The field considered for date filtering are defined in each report's query specifically.
+              description: optional end date filtering data included in the report. If no date is given here, all data (possibly filtered by the "startDate" date) is included. The field considered for date filtering are defined in each report's query specifically (legacy key "to").
               format: date
               nullable: true
         data:
@@ -691,6 +693,11 @@ components:
             id:
               type: string
               example: ReportCalculation:56f22a52-5863-4d24-9da6-239a34ea83ba
+        dataHash:
+          type: string
+          description: Hash of the calculated data, identical to the stored attachment digest.
+            Use it to detect whether a report's result actually changed between two calculations.
+          example: md5-pWo9Wj3ZZ27RqJUoh8C6VA==
         data:
           $ref: '#/components/schemas/ReportData'
 
@@ -716,30 +723,45 @@ components:
 
     ReportData:
       type: array
+      description: |-
+        The calculated report result. Its top-level structure depends on the report definition:
+
+        * Single-query report: `data` is the flat list of result rows, each row a JSON object of
+          column name -> value, e.g.
+          `[ { "name": "Alice", "privateSchool": 1 }, { "name": "Bob", "privateSchool": 0 } ]`.
+
+        * Report with multiple queries and/or groups: `data` holds one entry per top-level report
+          item, in definition order, where
+            - a query item contributes an array of its result rows (`[ { ... }, { ... } ]`), and
+            - a group item contributes a single-key object `{ "<groupTitle>": [ ... ] }` whose value
+              is, recursively, the list of that group's item results.
+
+        A successful calculation that matched no data returns an empty array (`[]`).
       items:
-        type: object
-        description: JSON object containing one row of results
+        oneOf:
+          - type: object
+            description: >-
+              Either a single result row (column name to value) for single-query reports,
+              or a group node keyed by its group title, of the form { "groupTitle": [ ... ] }.
+          - type: array
+            description: The result rows of one query; used when the report has multiple items.
+            items:
+              type: object
       example: |-
         [
+          [
+            { "New students": 6 }
+          ],
           {
-            "foo": 1
-          },
-          {
-            "bar": 2
-          },
-          {
-            "doo": [
-              {
-                "doo foo": 0
-              },
-              {
-                "doo bar": 4
-              }
+            "Students gender": [
+              [ { "male": 6 } ],
+              [ { "female": 4 } ]
             ]
           },
-          {
-            "dua": 0
-          }
+          [
+            { "count": 3, "project": "FOO", "school": "SchoolA" },
+            { "count": 1, "project": "BAR", "school": "SchoolB" }
+          ]
         ]
 
     WebhookConfiguration:

@@ -29,6 +29,7 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.io.InputStream
 
 @ExtendWith(MockitoExtension::class)
 class DefaultReportCalculationUseCaseTest {
@@ -272,7 +273,7 @@ class DefaultReportCalculationUseCaseTest {
                         ReportItem.ReportQuery(
                             sql =
                                 "SELECT *, json_extract(foo.children, '\$[0]') FROM foo " +
-                                    "WHERE time BETWEEN \$startDate and \$endDate"
+                                        "WHERE time BETWEEN \$startDate and \$endDate"
                         )
                     ),
                 transformations =
@@ -356,7 +357,7 @@ class DefaultReportCalculationUseCaseTest {
                         ReportItem.ReportQuery(
                             sql =
                                 "SELECT * FROM foo WHERE time BETWEEN \$startDate and \$endDate " +
-                                    "AND date BETWEEN \$startDate AND \$endDate"
+                                        "AND date BETWEEN \$startDate AND \$endDate"
                         )
                     ),
                 transformations =
@@ -639,5 +640,83 @@ class DefaultReportCalculationUseCaseTest {
                 )
             )
         )
+    }
+
+    @Test
+    fun `should store a single-query report as a flat array of rows without extra wrapping`() {
+        // given
+        val report =
+            Report(
+                id = "Report:1",
+                title = "Report",
+                items = listOf(ReportItem.ReportQuery(sql = "SELECT name FROM foo"))
+            )
+        val reportCalculation = getPendingReportCalculation()
+
+        whenever(
+            reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:1")))
+        ).thenReturn(reportCalculation)
+
+        whenever(reportStorage.fetchReport(eq(DomainReference("Report:1")))).thenReturn(report)
+
+        whenever(queryStorage.executeQuery(any()))
+            .thenReturn("""[{"name":"Alice"},{"name":"Bob"}]""".byteInputStream())
+
+        whenever(reportCalculationStorage.storeCalculation(any())).thenAnswer { i -> i.arguments[0] }
+
+        var storedData: String? = null
+        whenever(reportCalculationStorage.addReportCalculationData(any(), any())).thenAnswer { i ->
+            storedData = (i.arguments[1] as InputStream).readBytes().decodeToString()
+            i.arguments[0]
+        }
+
+        // when
+        service.run(ReportCalculationRequest(reportCalculationId = reportCalculation.id))
+
+        // then: a single bare query returns its rows directly, matching the documented ReportData
+        // schema (a flat array of row objects) that external consumers such as TolaData rely on
+        assertThat(storedData).isEqualTo("""[{"name":"Alice"},{"name":"Bob"}]""")
+    }
+
+    @Test
+    fun `should wrap a multi-query report in an outer array with one entry per item`() {
+        // given
+        val report =
+            Report(
+                id = "Report:1",
+                title = "Report",
+                items =
+                    listOf(
+                        ReportItem.ReportQuery(sql = "SELECT name FROM foo"),
+                        ReportItem.ReportQuery(sql = "SELECT age FROM bar")
+                    )
+            )
+        val reportCalculation = getPendingReportCalculation()
+
+        whenever(
+            reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:1")))
+        ).thenReturn(reportCalculation)
+
+        whenever(reportStorage.fetchReport(eq(DomainReference("Report:1")))).thenReturn(report)
+
+        whenever(queryStorage.executeQuery(any()))
+            .thenReturn(
+                """[{"name":"Alice"}]""".byteInputStream(),
+                """[{"age":5}]""".byteInputStream()
+            )
+
+        whenever(reportCalculationStorage.storeCalculation(any())).thenAnswer { i -> i.arguments[0] }
+
+        var storedData: String? = null
+        whenever(reportCalculationStorage.addReportCalculationData(any(), any())).thenAnswer { i ->
+            storedData = (i.arguments[1] as InputStream).readBytes().decodeToString()
+            i.arguments[0]
+        }
+
+        // when
+        service.run(ReportCalculationRequest(reportCalculationId = reportCalculation.id))
+
+        // then: multiple items stay wrapped so each item's result remains addressable as data[i]
+        assertThat(storedData).isEqualTo("""[[{"name":"Alice"}],[{"age":5}]]""")
     }
 }
