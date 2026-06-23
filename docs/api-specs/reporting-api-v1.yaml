@@ -121,7 +121,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReportCalculation'
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReportCalculation'
         401:
           description: If the access token does not grant permission to this Report
           content:
@@ -188,6 +190,12 @@ paths:
                 properties:
                   id:
                     type: string
+        404:
+          description: If the report does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         401:
           description: If the access token does not grant permission to this Report
           content:
@@ -227,9 +235,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ReportCalculation'
+                $ref: '#/components/schemas/ReportCalculation'
         401:
           description: If the access token does not grant permission to this Report
           content:
@@ -320,9 +326,12 @@ paths:
           required: true
       responses:
         200:
-          description: The actual data that has been calculated by the calculation run.
+          description: >-
+            The actual data that has been calculated by the calculation run. Served as a
+            stream (request with an octet-stream Accept header), but the response body is
+            the JSON report data.
           content:
-            application/octet-stream:
+            application/json:
               schema:
                 $ref: '#/components/schemas/ReportData'
         404:
@@ -610,6 +619,15 @@ components:
         name:
           type: string
           example: report_all_course_members
+        schema:
+          type: object
+          nullable: true
+          description: The data structure (column names) of this report's result data.
+          properties:
+            fields:
+              type: array
+              items:
+                type: string
 
     ReportCalculation:
       type: object
@@ -633,6 +651,7 @@ components:
           type: string
           description: The Date, the calculation starts processing the query
           example: date
+          nullable: true
         endDate:
           type: string
           description: The Date, the calculation finished processing and the data is available
@@ -642,23 +661,14 @@ components:
           type: object
           description: >-
             Input arguments injected into the report's SQL query placeholders (for example
-            $startDate and $endDate). The canonical date-range keys are "startDate" and "endDate".
-            For backwards compatibility the legacy keys "from" and "to" are still accepted on the
-            calculation request and are normalized to "startDate"/"endDate" by the backend, so
-            calculations created before the migration may still expose "from"/"to" here.
-          properties:
-            startDate:
-              type: string
-              description: optional start date for the time period of the data included in the report (legacy key "from")
-              format: date
-              nullable: true
-            endDate:
-              type: string
-              description: optional end date filtering data included in the report. If no date is given here, all data (possibly filtered by the "startDate" date) is included. The field considered for date filtering are defined in each report's query specifically (legacy key "to").
-              format: date
-              nullable: true
+            $startDate and $endDate). A free-form map of string keys to string values.
+            The canonical date-range keys are "startDate" and "endDate"; for backwards
+            compatibility the legacy keys "from" and "to" may also appear.
+          additionalProperties:
+            type: string
         data:
           type: object
+          nullable: true
           properties:
             contentType:
               type: string
@@ -669,6 +679,10 @@ components:
             length:
               type: number
               example: 368
+        errorDetails:
+          type: string
+          nullable: true
+          description: Details of the failure when the calculation finished with status FINISHED_ERROR.
 
     ReportMetadata:
       type: object
@@ -705,9 +719,19 @@ components:
       properties:
         id:
           type: string
-        name:
+        label:
           type: string
           example: wh_aam_digital_reporting
+        target:
+          $ref: '#/components/schemas/WebhookTarget'
+        authentication:
+          type: object
+          properties:
+            type:
+              type: string
+              example: API_KEY
+        owner:
+          $ref: '#/components/schemas/WebhookOwner'
         reportSubscriptions:
           description: The reports for which the webhook will receive a notification event whenever their results change due to users managing data in the Aam Digital system.
           type: array
@@ -760,30 +784,52 @@ components:
 
     WebhookConfiguration:
       type: object
+      description: Request body to register a new webhook.
+      properties:
+        label:
+          type: string
+          example: wh_aam_digital_reporting
+        target:
+          $ref: '#/components/schemas/WebhookTarget'
+        authentication:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - API_KEY
+            apiKey:
+              type: string
+
+    WebhookTarget:
+      type: object
       properties:
         method:
           type: string
           enum:
             - GET
             - POST
-        targetUrl:
+        url:
           type: string
-        authenticationType:
-          type: string
-          enum:
-            - API_KEY
-        authentication:
-          type: object
-          oneOf:
-            - $ref: '#/components/schemas/ApiKeyAuthConfig'
+          example: https://example.com/hook/{reportId}
 
-    ApiKeyAuthConfig:
+    WebhookOwner:
       type: object
       properties:
-        key:
+        creator:
           type: string
-        headerName:
-          type: string
+        users:
+          type: array
+          items:
+            type: string
+        groups:
+          type: array
+          items:
+            type: string
+        roles:
+          type: array
+          items:
+            type: string
 
     Event:
       type: object
@@ -810,12 +856,9 @@ components:
       properties:
         errorCode:
           type: string
-          items:
-            enum:
-              - NOT_FOUND
-              - UNAUTHORIZED
-              - FORBIDDEN
-              - INTERNAL_SERVER_ERROR
+          description: Machine-readable error code — either a business code
+            (e.g. NOT_FOUND, INTERNAL_SERVER_ERROR) or, for framework-level
+            auth errors, the HTTP status code as a string (e.g. "401").
         errorMessage:
           type: string
 

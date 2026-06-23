@@ -139,6 +139,39 @@ abstract class SpringIntegrationTest {
         validateContract(HttpMethod.POST, url, null)
     }
 
+    /** GET a binary/streaming endpoint, accepting `application/octet-stream`. */
+    fun download(url: String) {
+        val headers = HttpHeaders()
+
+        if (authToken != null) {
+            headers.set(HttpHeaders.AUTHORIZATION, "Bearer $authToken")
+        }
+
+        headers.accept = listOf(MediaType.APPLICATION_OCTET_STREAM, MediaType.ALL)
+
+        val requestEntity = HttpEntity<Void>(headers)
+
+        try {
+            restTemplate
+                .exchange(
+                    url,
+                    HttpMethod.GET,
+                    requestEntity,
+                    ByteArray::class.java
+                ).let {
+                    latestResponseStatus = it.statusCode
+                    latestResponseBody = it.body?.let { bytes -> String(bytes) }
+                    latestResponseHeaders = it.headers
+                }
+        } catch (ex: HttpClientErrorException) {
+            latestResponseStatus = ex.statusCode
+            latestResponseBody = ex.responseBodyAsString
+            latestResponseHeaders = ex.responseHeaders
+        }
+
+        validateContract(HttpMethod.GET, url, null)
+    }
+
     private fun validateContract(
         method: HttpMethod,
         url: String,

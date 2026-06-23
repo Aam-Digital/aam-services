@@ -141,6 +141,15 @@ ktlint {
 tasks.withType<Test> {
     useJUnitPlatform()
     systemProperty("cucumber.junit-platform.naming-strategy", "long")
+    // OpenAPI contract enforcement: which modules fail the build on spec drift.
+    // Defaults to the reconciled modules; override on the command line, e.g.
+    // -Dcontract.strict.modules= (empty) for report-only, or a custom list.
+    // (Gradle does not pass command-line -D properties to the forked test JVM
+    // automatically, hence the explicit forwarding.)
+    systemProperty(
+        "contract.strict.modules",
+        System.getProperty("contract.strict.modules") ?: "reporting"
+    )
     testLogging {
         showStandardStreams = true
     }

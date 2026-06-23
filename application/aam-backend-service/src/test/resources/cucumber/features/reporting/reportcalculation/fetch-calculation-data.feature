@@ -30,3 +30,13 @@ Feature: the report calculation data endpoint persist to database
         When the client calls GET /v1/reporting/report-calculation/ReportCalculation:1/data
         Then the client receives an json object
         Then the client receives status code of 404
+
+    Scenario: client makes call to GET /reporting/report-calculation/ReportCalculation:1/data-stream and receives data
+        Given database app is created
+        Given database report-calculation is created
+        Given document ReportConfig_1 is stored in database app
+        Given document ReportCalculation_1 is stored in database report-calculation
+        Given attachment ReportData_1 added to document ReportCalculation_1 in report-calculation
+        Given signed in as client dummy-client with secret client-secret in realm dummy-realm
+        When the client downloads GET /v1/reporting/report-calculation/ReportCalculation:1/data-stream
+        Then the client receives status code of 200
