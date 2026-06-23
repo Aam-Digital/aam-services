@@ -273,7 +273,7 @@ class DefaultReportCalculationUseCaseTest {
                         ReportItem.ReportQuery(
                             sql =
                                 "SELECT *, json_extract(foo.children, '\$[0]') FROM foo " +
-                                    "WHERE time BETWEEN \$startDate and \$endDate"
+                                        "WHERE time BETWEEN \$startDate and \$endDate"
                         )
                     ),
                 transformations =
@@ -357,7 +357,7 @@ class DefaultReportCalculationUseCaseTest {
                         ReportItem.ReportQuery(
                             sql =
                                 "SELECT * FROM foo WHERE time BETWEEN \$startDate and \$endDate " +
-                                    "AND date BETWEEN \$startDate AND \$endDate"
+                                        "AND date BETWEEN \$startDate AND \$endDate"
                         )
                     ),
                 transformations =
@@ -675,7 +675,7 @@ class DefaultReportCalculationUseCaseTest {
 
         // then: a single bare query returns its rows directly, matching the documented ReportData
         // schema (a flat array of row objects) that external consumers such as TolaData rely on
-        assertEquals("""[{"name":"Alice"},{"name":"Bob"}]""", storedData)
+        assertThat(storedData).isEqualTo("""[{"name":"Alice"},{"name":"Bob"}]""")
     }
 
     @Test
@@ -717,6 +717,6 @@ class DefaultReportCalculationUseCaseTest {
         service.run(ReportCalculationRequest(reportCalculationId = reportCalculation.id))
 
         // then: multiple items stay wrapped so each item's result remains addressable as data[i]
-        assertEquals("""[[{"name":"Alice"}],[{"age":5}]]""", storedData)
+        assertThat(storedData).isEqualTo("""[[{"name":"Alice"}],[{"age":5}]]""")
     }
 }

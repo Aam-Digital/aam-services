@@ -108,7 +108,7 @@ first scenario runs, regardless of how many scenarios you select.
 
 > **Gradle caches passing tests.** If you re-run without changing any source, the
 > `test` task reports `UP-TO-DATE` and nothing actually executes. Force a re-run
-> by prefixing `cleanTest`, e.g. `./gradlew cleanTest test --tests "*CucumberTestRunner"`.
+> by prefixing `clean`, e.g. `./gradlew clean test --tests "*CucumberTestRunner"`.
 
 #### Running specific scenarios
 

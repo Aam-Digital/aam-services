@@ -435,7 +435,7 @@ Run only the e2e tests (skips unit tests):
 ./gradlew test --tests "*CucumberTestRunner"
 ```
 
-Gradle caches passing tests — a re-run with no source changes is reported `UP-TO-DATE` and does nothing. Prefix `cleanTest` to force it: `./gradlew cleanTest test --tests "*CucumberTestRunner"`.
+Gradle caches passing tests — a re-run with no source changes is reported `UP-TO-DATE` and does nothing. Prefix `clean` to force it: `./gradlew clean test --tests "*CucumberTestRunner"`.
 
 Filter to specific scenarios with environment variables (always keep `--tests "*CucumberTestRunner"` to skip unit tests):
 
