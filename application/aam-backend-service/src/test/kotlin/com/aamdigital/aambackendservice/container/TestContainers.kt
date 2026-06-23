@@ -120,8 +120,8 @@ object TestContainers {
     val CONTAINER_SQS: GenericContainer<*> =
         GenericContainer(
             DockerImageName
-                .parse("ghcr.io/aam-digital/aam-sqs-linux")
-                .asCompatibleSubstituteFor("aam-sqs-linux")
+                .parse("ghcr.io/aam-digital/sqs-aam")
+                .asCompatibleSubstituteFor("sqs-aam")
                 .withTag("latest")
         ).withNetwork(network)
             .withNetworkAliases("sqs")
