@@ -373,6 +373,24 @@ response is validated against the spec, every documented operation must be exerc
 by a scenario, and every controller endpoint must be documented — so an out-of-date
 spec fails the build (see `e2e/contract/` and `.../e2e/contract/ContractEnforcementPlugin.kt`).
 
+#### Module naming convention
+
+The contract tooling derives everything about a module from its name, so these
+**must** line up (a new module is then a one-line addition to `ContractModule.ALL`):
+
+| Module name `<name>` | Derived from it |
+|---|---|
+| URL prefix | `/v1/<name>` (the controllers' `@RequestMapping` base) |
+| OpenAPI spec | `docs/api-specs/<name>-api-v1.yaml` |
+| Admin docs | `docs/modules/<name>.md` |
+| Code package | `com.aamdigital.aambackendservice.<name with hyphens removed>` |
+
+The hyphen-removal only matters for multi-word modules — e.g.
+`third-party-authentication` serves under `/v1/third-party-authentication`, is
+specified in `third-party-authentication-api-v1.yaml`, and lives in package
+`...thirdpartyauthentication`. Keep new modules to this pattern; the registry and the
+e2e gates rely on it.
+
 ---
 
 ## Performance & Monitoring

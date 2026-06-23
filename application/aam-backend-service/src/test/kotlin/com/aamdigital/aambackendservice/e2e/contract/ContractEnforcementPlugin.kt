@@ -3,7 +3,6 @@ package com.aamdigital.aambackendservice.e2e.contract
 import io.cucumber.plugin.ConcurrentEventListener
 import io.cucumber.plugin.event.EventPublisher
 import io.cucumber.plugin.event.TestRunFinished
-import java.io.File
 
 /**
  * Suite-end enforcement of the OpenAPI contract for strict modules (set via the
@@ -17,39 +16,6 @@ import java.io.File
  * Per-request conformance is enforced separately in [OpenApiContractValidators].
  */
 class ContractEnforcementPlugin : ConcurrentEventListener {
-    private data class ModuleGate(
-        val module: String,
-        val prefix: String,
-        val specFileName: String,
-        val basePackage: String
-    )
-
-    private val gates =
-        listOf(
-            ModuleGate(
-                "reporting",
-                "/v1/reporting",
-                "reporting-api-v1.yaml",
-                "com.aamdigital.aambackendservice.reporting"
-            ),
-            ModuleGate("export", "/v1/export", "export-api-v1.yaml", "com.aamdigital.aambackendservice.export"),
-            ModuleGate(
-                "notification",
-                "/v1/notification",
-                "notification-api-v1.yaml",
-                "com.aamdigital.aambackendservice.notification"
-            ),
-            ModuleGate("skill", "/v1/skill", "skill-api-v1.yaml", "com.aamdigital.aambackendservice.skill"),
-            ModuleGate(
-                "third-party-authentication",
-                "/v1/third-party-authentication",
-                "third-party-authentication-api-v1.yaml",
-                "com.aamdigital.aambackendservice.thirdpartyauthentication"
-            )
-        )
-
-    private val specDir = File("../../docs/api-specs")
-
     private val strictModules: Set<String> =
         (System.getProperty("contract.strict.modules") ?: "")
             .split(",")
@@ -62,12 +28,12 @@ class ContractEnforcementPlugin : ConcurrentEventListener {
     }
 
     private fun enforce() {
-        val strictGates = gates.filter { strictModules.contains(it.module) }
+        val strictGates = ContractModule.ALL.filter { strictModules.contains(it.name) }
         if (strictGates.isEmpty()) return
 
         val failures =
             strictGates.flatMap { gate ->
-                val spec = ContractSpecModel(File(specDir, gate.specFileName))
+                val spec = ContractSpecModel(gate.specFile)
                 checkCoverage(gate, spec) + checkInventory(gate, spec)
             }
 
@@ -77,12 +43,12 @@ class ContractEnforcementPlugin : ConcurrentEventListener {
     }
 
     private fun checkCoverage(
-        gate: ModuleGate,
+        gate: ContractModule,
         spec: ContractSpecModel
     ): List<String> {
         val exercised =
             ContractCoverageRecorder
-                .hitsForModule(gate.module)
+                .hitsForModule(gate.name)
                 .mapNotNull { spec.match(it.method, it.path.removePrefix(gate.prefix).ifEmpty { "/" }) }
                 .toSet()
         val uncovered = (spec.documentedOperationKeys - exercised).sorted()
@@ -90,7 +56,7 @@ class ContractEnforcementPlugin : ConcurrentEventListener {
             emptyList()
         } else {
             listOf(
-                "[${gate.module}] documented operations never exercised by an e2e test " +
+                "[${gate.name}] documented operations never exercised by an e2e test " +
                     "(add a scenario, or remove from the spec):\n" +
                     uncovered.joinToString("\n") { "    - $it" }
             )
@@ -98,7 +64,7 @@ class ContractEnforcementPlugin : ConcurrentEventListener {
     }
 
     private fun checkInventory(
-        gate: ModuleGate,
+        gate: ContractModule,
         spec: ContractSpecModel
     ): List<String> {
         val undocumented =
@@ -109,7 +75,7 @@ class ContractEnforcementPlugin : ConcurrentEventListener {
             emptyList()
         } else {
             listOf(
-                "[${gate.module}] endpoints implemented in code but missing from the OpenAPI spec " +
+                "[${gate.name}] endpoints implemented in code but missing from the OpenAPI spec " +
                     "(document them in docs/api-specs/${gate.specFileName}):\n" +
                     undocumented.joinToString("\n") { "    - $it" }
             )

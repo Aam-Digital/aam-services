@@ -6,7 +6,6 @@ import com.atlassian.oai.validator.model.SimpleResponse
 import com.atlassian.oai.validator.report.LevelResolver
 import com.atlassian.oai.validator.report.ValidationReport
 import org.slf4j.LoggerFactory
-import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -24,32 +23,6 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object OpenApiContractValidators {
     private val logger = LoggerFactory.getLogger(javaClass)
-
-    /** Module key -> path prefix + spec file under docs/api-specs/. */
-    private data class ModuleSpec(
-        val module: String,
-        val pathPrefix: String,
-        val specFileName: String
-    )
-
-    private val modules =
-        listOf(
-            ModuleSpec("reporting", "/v1/reporting", "reporting-api-v1.yaml"),
-            ModuleSpec("export", "/v1/export", "export-api-v1.yaml"),
-            ModuleSpec("notification", "/v1/notification", "notification-api-v1.yaml"),
-            ModuleSpec("skill", "/v1/skill", "skill-api-v1.yaml"),
-            ModuleSpec(
-                "third-party-authentication",
-                "/v1/third-party-authentication",
-                "third-party-authentication-api-v1.yaml"
-            )
-        )
-
-    /**
-     * Specs live in `docs/api-specs/`, outside this Gradle module. Tests run with
-     * the working directory set to `application/aam-backend-service/`.
-     */
-    private val specDir = File("../../docs/api-specs")
 
     private val strictModules: Set<String> =
         (System.getProperty("contract.strict.modules") ?: "")
@@ -73,8 +46,8 @@ object OpenApiContractValidators {
     private val validatorCache = ConcurrentHashMap<String, ValidatorState>()
     private val warnedLoadFailures = ConcurrentHashMap.newKeySet<String>()
 
-    private fun stateFor(module: ModuleSpec): ValidatorState =
-        validatorCache.computeIfAbsent(module.module) {
+    private fun stateFor(module: ContractModule): ValidatorState =
+        validatorCache.computeIfAbsent(module.name) {
             try {
                 Loaded(buildValidator(module))
             } catch (ex: Exception) {
@@ -82,16 +55,15 @@ object OpenApiContractValidators {
             }
         }
 
-    private fun buildValidator(module: ModuleSpec): OpenApiInteractionValidator {
-        val specFile = File(specDir, module.specFileName)
-        require(specFile.exists()) {
-            "OpenAPI spec not found for module '${module.module}': ${specFile.absolutePath}"
+    private fun buildValidator(module: ContractModule): OpenApiInteractionValidator {
+        require(module.specFile.exists()) {
+            "OpenAPI spec not found for module '${module.name}': ${module.specFile.absolutePath}"
         }
         return OpenApiInteractionValidator
-            .createForSpecificationUrl(specFile.toURI().toString())
+            .createForSpecificationUrl(module.specFile.toURI().toString())
             // Documented paths are relative (e.g. /report); the app serves them under
             // /v1/<module>, and spec `servers:` urls are inconsistent across modules.
-            .withBasePathOverride(module.pathPrefix)
+            .withBasePathOverride(module.prefix)
             .withLevelResolver(
                 LevelResolver
                     .create()
@@ -100,11 +72,6 @@ object OpenApiContractValidators {
                     .withLevel("validation.request.security.invalid", ValidationReport.Level.IGNORE)
                     .build()
             ).build()
-    }
-
-    private fun moduleFor(path: String): ModuleSpec? {
-        val pathOnly = path.substringBefore('?')
-        return modules.firstOrNull { pathOnly == it.pathPrefix || pathOnly.startsWith(it.pathPrefix + "/") }
     }
 
     /**
@@ -119,18 +86,18 @@ object OpenApiContractValidators {
         responseBody: String?,
         responseContentType: String?
     ) {
-        val module = moduleFor(path) ?: return
-        val strict = strictModules.contains(module.module)
+        val module = ContractModule.forPath(path) ?: return
+        val strict = strictModules.contains(module.name)
 
         val validator =
             when (val state = stateFor(module)) {
                 is Loaded -> state.validator
                 is LoadFailed -> {
-                    val msg = "Could not load OpenAPI spec for module '${module.module}': ${state.message}"
+                    val msg = "Could not load OpenAPI spec for module '${module.name}': ${state.message}"
                     if (strict) {
                         throw AssertionError(msg)
                     }
-                    if (warnedLoadFailures.add(module.module)) {
+                    if (warnedLoadFailures.add(module.name)) {
                         logger.warn("[contract][report-only] {}", msg)
                     }
                     return
@@ -142,14 +109,14 @@ object OpenApiContractValidators {
 
         val report = validator.validate(request, response)
 
-        ContractCoverageRecorder.record(module.module, method, path, statusCode)
+        ContractCoverageRecorder.record(module.name, method, path, statusCode)
 
         if (!report.hasErrors()) {
             return
         }
 
         val summary = report.messages.joinToString("\n") { "  - [${it.level}] ${it.key}: ${it.message}" }
-        val header = "OpenAPI contract mismatch for [${module.module}] $method $path -> $statusCode"
+        val header = "OpenAPI contract mismatch for [${module.name}] $method $path -> $statusCode"
 
         if (strict) {
             throw AssertionError("$header\n$summary")
