@@ -359,6 +359,20 @@ fun handleMessage(
 - Document error codes and their meanings
 - Keep API specifications in `docs/api-specs/`
 
+**Always keep the docs in sync with the code when changing a feature module's
+API.** Whenever you add or change a controller endpoint, request/response DTO, or
+status code under `application/.../<module>/`, update **both**:
+
+- `docs/api-specs/<module>-api-v1.yaml` — the OpenAPI contract (paths, schemas,
+  status codes), and
+- `docs/modules/<module>.md` — the admin/usage documentation,
+
+in the **same change**, and keep the two consistent with each other. The e2e suite
+enforces this for modules listed in `-Dcontract.strict.modules`: every request/
+response is validated against the spec, every documented operation must be exercised
+by a scenario, and every controller endpoint must be documented — so an out-of-date
+spec fails the build (see `e2e/contract/` and `.../e2e/contract/ContractEnforcementPlugin.kt`).
+
 ---
 
 ## Performance & Monitoring
