@@ -5,6 +5,7 @@ import com.aamdigital.aambackendservice.common.CouchDbTestingService
 import com.aamdigital.aambackendservice.container.TestContainers
 import com.aamdigital.aambackendservice.container.TestContainers.CONTAINER_COUCHDB
 import com.aamdigital.aambackendservice.container.TestContainers.CONTAINER_KEYCLOAK
+import com.aamdigital.aambackendservice.e2e.contract.OpenApiContractValidators
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -96,6 +97,8 @@ abstract class SpringIntegrationTest {
             latestResponseBody = ex.responseBodyAsString
             latestResponseHeaders = ex.responseHeaders
         }
+
+        validateContract(method, url, body)
     }
 
     fun exchangeMultipart(
@@ -132,6 +135,23 @@ abstract class SpringIntegrationTest {
             latestResponseBody = ex.responseBodyAsString
             latestResponseHeaders = ex.responseHeaders
         }
+
+        validateContract(HttpMethod.POST, url, null)
+    }
+
+    private fun validateContract(
+        method: HttpMethod,
+        url: String,
+        requestBody: String?
+    ) {
+        OpenApiContractValidators.validate(
+            method = method.name(),
+            path = url,
+            requestBody = requestBody,
+            statusCode = latestResponseStatus?.value() ?: return,
+            responseBody = latestResponseBody,
+            responseContentType = latestResponseHeaders?.contentType?.toString()
+        )
     }
 
     fun parseBodyToObjectNode(): ObjectNode? =
