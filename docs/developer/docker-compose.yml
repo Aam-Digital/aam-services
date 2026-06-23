@@ -236,7 +236,7 @@ services:
   # ***************************************************************
 
   sqs:
-    image: ghcr.io/aam-digital/aam-sqs-linux:latest
+    image: ghcr.io/aam-digital/sqs-aam:latest
     platform: linux/amd64
     networks:
       - aam-digital
