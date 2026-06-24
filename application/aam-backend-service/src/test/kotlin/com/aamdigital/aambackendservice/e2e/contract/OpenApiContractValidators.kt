@@ -82,6 +82,7 @@ object OpenApiContractValidators {
         method: String,
         path: String,
         requestBody: String?,
+        requestContentType: String?,
         statusCode: Int,
         responseBody: String?,
         responseContentType: String?
@@ -104,7 +105,7 @@ object OpenApiContractValidators {
                 }
             }
 
-        val request = buildRequest(method, path, requestBody)
+        val request = buildRequest(method, path, requestBody, requestContentType)
         val response = buildResponse(statusCode, responseBody, responseContentType)
 
         val report = validator.validate(request, response)
@@ -128,7 +129,8 @@ object OpenApiContractValidators {
     private fun buildRequest(
         method: String,
         path: String,
-        body: String?
+        body: String?,
+        contentType: String?
     ): SimpleRequest {
         val pathOnly = path.substringBefore('?')
         val builder = SimpleRequest.Builder(method, pathOnly)
@@ -142,7 +144,7 @@ object OpenApiContractValidators {
                 builder.withQueryParam(key, value)
             }
         if (!body.isNullOrEmpty()) {
-            builder.withContentType("application/json")
+            builder.withContentType(contentType ?: "application/json")
             builder.withBody(body)
         }
         return builder.build()

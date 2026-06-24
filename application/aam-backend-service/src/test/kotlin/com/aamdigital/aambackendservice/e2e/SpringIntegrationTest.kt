@@ -136,7 +136,13 @@ abstract class SpringIntegrationTest {
             latestResponseHeaders = ex.responseHeaders
         }
 
-        validateContract(HttpMethod.POST, url, null)
+        // Forward the multipart form parts to the contract validator. The validator parses
+        // form bodies with its URL-encoded parser, so we hand it a URL-encoded *representation*
+        // of the parts (not the literal multipart bytes) — enough for it to see the documented
+        // `template` part and stop reporting a false "request body is required but none found".
+        // Keep this in sync with the parts added above if more form fields are ever sent.
+        val multipartRepresentation = "template=${file.filename ?: "file"}"
+        validateContract(HttpMethod.POST, url, multipartRepresentation, MediaType.MULTIPART_FORM_DATA_VALUE)
     }
 
     /** GET a binary/streaming endpoint, accepting `application/octet-stream`. */
@@ -175,12 +181,14 @@ abstract class SpringIntegrationTest {
     private fun validateContract(
         method: HttpMethod,
         url: String,
-        requestBody: String?
+        requestBody: String?,
+        requestContentType: String? = null
     ) {
         OpenApiContractValidators.validate(
             method = method.name(),
             path = url,
             requestBody = requestBody,
+            requestContentType = requestContentType,
             statusCode = latestResponseStatus?.value() ?: return,
             responseBody = latestResponseBody,
             responseContentType = latestResponseHeaders?.contentType?.toString()

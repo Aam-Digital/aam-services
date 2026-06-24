@@ -148,7 +148,7 @@ tasks.withType<Test> {
     // automatically, hence the explicit forwarding.)
     systemProperty(
         "contract.strict.modules",
-        System.getProperty("contract.strict.modules") ?: "reporting"
+        System.getProperty("contract.strict.modules") ?: "reporting,export"
     )
     testLogging {
         showStandardStreams = true

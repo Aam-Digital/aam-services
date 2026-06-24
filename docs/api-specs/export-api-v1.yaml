@@ -137,30 +137,60 @@ paths:
     post:
       summary: Render an existing template for multiple data sets (batch)
       description: >-
-        Renders the template once per entry in the provided data and returns the
-        results as a ZIP or a combined document.
+        Renders the template once per entry in the `data` array and returns the
+        results either as a ZIP of N independently rendered files (`mode=zip`,
+        the default) or as a single combined document (`mode=combined`).
       parameters:
         - name: templateId
           in: path
           required: true
           schema:
             type: string
+        - name: mode
+          in: query
+          required: false
+          description: >-
+            `zip` (default) returns a ZIP of N rendered files; `combined` returns
+            a single merged document produced by Carbone.
+          schema:
+            type: string
+            enum:
+              - zip
+              - combined
+            default: zip
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: true
-              description: Batch render input (free-form; see RenderTemplateBatchRequest in code).
+              $ref: '#/components/schemas/RenderBatchRequest'
       responses:
         '200':
-          description: The rendered documents as a stream (ZIP or combined document).
+          # UNVERIFIED: no e2e exercises the batch success path — the test Carbone engine
+          # does not support batch rendering, so the actual ZIP/combined Content-Type has
+          # not been confirmed against a real response. See CONTRACT-RECONCILIATION-BACKLOG.md.
+          description: >-
+            The rendered documents. The response Content-Type is a ZIP archive for
+            `mode=zip` or the combined document's own media type for `mode=combined`.
           content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
             application/octet-stream:
               schema:
                 type: string
                 format: binary
+        '400':
+          description: Invalid `mode`, or a body whose `data` field is missing, not an array, or empty.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           description: No valid access token
           content:
@@ -169,6 +199,18 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Carbone rejected the batch (e.g. over the configured per-batch limit, or batch disabled).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -189,6 +231,25 @@ components:
           type: object
           additionalProperties: true
           description: Placeholder values injected into the template.
+        reportName:
+          type: string
+          description: Optional output file name (supports carbone placeholders).
+    RenderBatchRequest:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: true
+          description: One record per document to render. Must contain at least one entry.
+        convertTo:
+          type: string
+          description: The per-document output format, e.g. "pdf".
+          example: pdf
         reportName:
           type: string
           description: Optional output file name (supports carbone placeholders).

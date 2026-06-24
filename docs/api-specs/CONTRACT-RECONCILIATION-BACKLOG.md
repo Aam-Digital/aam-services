@@ -6,7 +6,7 @@ Status of bringing each module under strict contract enforcement
 | Module | Spec valid & reconciled | e2e coverage | Strict now? |
 |---|---|---|---|
 | reporting | ✅ | ✅ full | ✅ **strict** |
-| export | ✅ (rewritten to match code) | ⚠️ render-batch untested | ❌ report-only |
+| export | ✅ (rewritten to match code) | ✅ (render-batch success unverifiable — engine lacks batch) | ✅ **strict** |
 | notification | ✅ (was invalid — now loads) | ⚠️ device-test untested | ❌ report-only |
 | third-party-authentication | ✅ (was invalid — now loads) | ❌ no e2e tests at all | ❌ report-only |
 | skill | — (intentionally skipped, module abandoned) | — | — |
@@ -17,32 +17,60 @@ decision and/or a new e2e scenario. Each is independent.
 
 ---
 
-## export
+## export — ✅ now strict
 
 **Done:** rewrote the spec to match the controller — fixed the `GET` path
-(`/render/{id}` → `/template/{id}`), added the missing `POST /render-batch/{id}`,
-added `reportName` to the render request, added `401`/`404` responses, and documented
-the binary response content-types. Report-only drift is down to one harness issue (below).
+(`/render/{id}` → `/template/{id}`), added the missing `POST /render-batch/{id}`
+(now with the `mode` query param, a `data`-array request body, and `400`/`422`/`500`
+responses), added `reportName` to the render request, added `401`/`404` responses, and
+documented the binary response content-types. Added e2e scenarios for `render-batch`
+(a `422` engine-rejection path and a `404` not-found path). Fixed the multipart-body
+harness false-positive (see resolved item below) and **flipped export into the strict
+set** (`contract.strict.modules` default is now `reporting,export`).
 
-**To enable strict:**
+**Resolved on the way to strict:**
 
-1. **Write an e2e scenario for `POST /v1/export/render-batch/{templateId}`** — it is
-   implemented and documented but never exercised, so the coverage gate fails. The
-   request body is a free-form `JsonNode` (batch data); the response is a ZIP or
-   combined document stream. Needs a fixture and an understanding of the batch modes.
-2. **HARNESS — multipart request bodies.** `POST /template` is `multipart/form-data`;
-   the e2e `exchangeMultipart` helper does not forward the body to the validator, so it
-   reports a false "request body is required but none found". Before export strict,
-   either forward the multipart body to the validator or relax
-   `validation.request.body.missing` for multipart operations (in `OpenApiContractValidators`).
-3. **DECISION — dynamic binary content-types.** `GET /template/{id}` and
+- **HARNESS — multipart request bodies (FIXED).** `POST /template` is
+  `multipart/form-data`; `exchangeMultipart` did not forward the body to the validator,
+  so it raised a false `validation.request.body.missing`. Fixed by threading a request
+  content-type through `OpenApiContractValidators.validate` and having `exchangeMultipart`
+  forward a URL-encoded *representation* of the form parts (`template=<filename>`) — the
+  validator parses form bodies with its URL-encoded parser, so that is enough for it to
+  see the documented `template` part. Keep the representation in sync if more form fields
+  are ever sent.
+
+**Remaining caveats (do NOT block strict, but track):**
+
+1. **render-batch SUCCESS (200 + content-type) is UNVERIFIED at integration level.**
+   The endpoint is exercised only on its **error** paths (`422` engine-rejection, `404`
+   not-found) — which is what satisfies the strict **coverage** gate. The **success**
+   path (a real ZIP / combined PDF) **cannot be exercised** in the e2e harness: the test
+   `carbone/carbone-ee` container refuses batch rendering. Setting `nbReportMaxPerBatch > 0`
+   (as the prod/dev docs require, see `docs/developer/carbone.config.json`) clears the
+   first check (`Batch processing deactivated`), but the engine then rejects with
+   `Cannot use batch processing in buffer mode`. **Root cause not fully isolated** — the
+   full Carbone EE config schema (dumped from the binary) has no render-mode/buffer knob,
+   and the prod dev-docs config sets only `nbReportMaxPerBatch` (no license), so the
+   "buffer mode" barrier was not resolvable from config alone in the test container.
+   Consequences:
+     - The spec's `200` content-type list (`application/zip` / `pdf` / `octet-stream`)
+       is a **documented guess**, flagged `UNVERIFIED` in `export-api-v1.yaml`. Confirm
+       the real `Content-Type` against a live batch render before trusting it.
+     - Happy-path batch logic (zip assembly, entry-name decoding, combined mode) is
+       covered **only** by the unit test `DefaultRenderTemplateBatchUseCaseTest` (mocked
+       Carbone), which does **not** assert the real engine's response content-type.
+     - **Strict green ≠ batch-success verified.** The coverage gate is satisfied by the
+       `422`/`404` paths alone. To truly verify, run against a Carbone instance where
+       batch works (and read the actual `Content-Type`), or determine what the test
+       container needs to enable file-mode batch rendering.
+2. **DECISION — dynamic binary content-types.** `GET /template/{id}` and
    `POST /render/{id}` return the document's own media type, which varies with the
    uploaded template / `convertTo` (`application/pdf`,
-   `…wordprocessingml.document`, …). The spec currently lists pdf + docx + octet-stream.
-   Decide: (a) enumerate every supported output format, or (b) relax response
-   content-type validation for these operations (a `LevelResolver` ignore), or
-   (c) accept the enumerated list as "good enough". A streaming download uses an
-   octet-stream `Accept` header (see the `download` step added for reporting).
+   `…wordprocessingml.document`, …). The spec currently lists pdf + docx + octet-stream,
+   which covers everything the current scenarios render — so it produces **no mismatch
+   today**. If a scenario ever renders another format, either enumerate it, or relax
+   response content-type validation for these operations (a `LevelResolver` ignore). A
+   streaming download uses an octet-stream `Accept` header (see the `download` step).
 
 ---
 
