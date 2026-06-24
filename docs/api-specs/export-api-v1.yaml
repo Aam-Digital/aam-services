@@ -10,7 +10,7 @@ paths:
   /template:
     post:
       summary: Post a new template
-      description: Registers a template file. Creating the TemplateExport entity is handled by the client not by this endpoint through the server.
+      description: Registers a template file. Creating the TemplateExport entity is handled by the client, not by this endpoint through the server.
       requestBody:
         required: true
         content:
@@ -24,7 +24,7 @@ paths:
                   description: The template file to upload
       responses:
         '200':
-          description: Successful response
+          description: Template registered
           content:
             application/json:
               schema:
@@ -33,6 +33,53 @@ paths:
                   templateId:
                     type: string
                     description: The external identifier of the implementing TemplateEngine
+        '401':
+          description: No valid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /template/{templateId}:
+    get:
+      summary: Fetch an existing template file
+      description: Get the uploaded template file with its placeholders (not a generated document filled with data based on the template).
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: >-
+            The uploaded template file. The response Content-Type is the template's own
+            media type (e.g. a Word document).
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: No valid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /render/{templateId}:
     post:
@@ -43,88 +90,112 @@ paths:
           required: true
           schema:
             type: string
-            description: The ID of the TemplateExport entity to be rendered
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                convertTo:
-                  type: string
-                  description: The format to convert the template to, e.g. "pdf" in order to receive a PDF file in the reponse
-                data:
-                  type: object
-                  additionalProperties: true
-                  description: Additional data for rendering the template
+              $ref: '#/components/schemas/RenderRequest'
       responses:
         '200':
-          description: Rendered template
+          description: >-
+            The rendered document. The response Content-Type matches the requested
+            `convertTo` format (e.g. application/pdf).
           content:
             application/octet-stream:
               schema:
                 type: string
                 format: binary
-        '400':
-          description: Bad request
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: No valid access token
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  errorCode:
-                    type: string
-                  errorMessage:
-                    type: string
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  errorCode:
-                    type: string
-                  errorMessage:
-                    type: string
-    get:
-      summary: Fetch an existing template file
-      description: Get the uploaded template file with its placeholders (not a generated document filled with data based on the template)
+                $ref: '#/components/schemas/Error'
+
+  /render-batch/{templateId}:
+    post:
+      summary: Render an existing template for multiple data sets (batch)
+      description: >-
+        Renders the template once per entry in the provided data and returns the
+        results as a ZIP or a combined document.
       parameters:
         - name: templateId
           in: path
           required: true
           schema:
             type: string
-            description: The ID of the TemplateExport entity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: Batch render input (free-form; see RenderTemplateBatchRequest in code).
       responses:
         '200':
-          description: Rendered template
+          description: The rendered documents as a stream (ZIP or combined document).
           content:
             application/octet-stream:
               schema:
                 type: string
                 format: binary
-        '400':
-          description: Bad request
+        '401':
+          description: No valid access token
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  errorCode:
-                    type: string
-                  errorMessage:
-                    type: string
-        '500':
-          description: Internal server error
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Template not found
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  errorCode:
-                    type: string
-                  errorMessage:
-                    type: string
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    RenderRequest:
+      type: object
+      required:
+        - convertTo
+      properties:
+        convertTo:
+          type: string
+          description: The format to convert the template to, e.g. "pdf".
+          example: pdf
+        data:
+          type: object
+          additionalProperties: true
+          description: Placeholder values injected into the template.
+        reportName:
+          type: string
+          description: Optional output file name (supports carbone placeholders).
+    Error:
+      type: object
+      properties:
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
