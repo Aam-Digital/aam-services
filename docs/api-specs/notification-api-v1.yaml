@@ -109,12 +109,28 @@ components:
 
     TestMessageResponse:
       type: object
+      required:
+        - outcome
       properties:
-        receiverIds:
-          type: array
-          items:
-            type: string
-    
+        outcome:
+          $ref: '#/components/schemas/CreateNotificationData'
+
+    CreateNotificationData:
+      type: object
+      required:
+        - success
+        - messageCreated
+      properties:
+        success:
+          type: boolean
+        messageCreated:
+          type: boolean
+          description: Whether a push message was created (false e.g. when the user has no registered devices).
+        messageReference:
+          type: string
+          nullable: true
+          description: Reference to the created push message, or null when none was created.
+
     DeviceRegistrationCheckResponse:
       type: object
       properties:

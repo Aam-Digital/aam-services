@@ -138,7 +138,7 @@ checked against the owning module's spec; at the end of the run, each strict
 module is checked for **coverage** (every documented operation is exercised) and
 **inventory** (every controller endpoint is documented).
 
-Strictness is per module via a system property (default: `reporting,export`) —
+Strictness is per module via a system property (default: `reporting,export,notification`) —
 unlisted modules run in report-only mode (mismatches are logged, the build stays
 green). Override the default to widen, narrow, or disable enforcement:
 
@@ -146,7 +146,7 @@ green). Override the default to widen, narrow, or disable enforcement:
 # report-only for every module:
 ./gradlew test --tests "*CucumberTestRunner" -Dcontract.strict.modules=
 # a custom strict set:
-./gradlew test --tests "*CucumberTestRunner" -Dcontract.strict.modules=reporting,export
+./gradlew test --tests "*CucumberTestRunner" -Dcontract.strict.modules=reporting,export,notification
 ```
 
 When you change a module's API, update its `docs/api-specs/<module>-api-v1.yaml`

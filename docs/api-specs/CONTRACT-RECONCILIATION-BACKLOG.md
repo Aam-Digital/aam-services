@@ -7,7 +7,7 @@ Status of bringing each module under strict contract enforcement
 |---|---|---|---|
 | reporting | ✅ | ✅ full | ✅ **strict** |
 | export | ✅ (rewritten to match code) | ✅ (render-batch success unverifiable — engine lacks batch) | ✅ **strict** |
-| notification | ✅ (was invalid — now loads) | ⚠️ device-test untested | ❌ report-only |
+| notification | ✅ (was invalid — now loads) | ✅ (device-test exercised; firebase mode enabled in e2e) | ✅ **strict** |
 | third-party-authentication | ✅ (was invalid — now loads) | ❌ no e2e tests at all | ❌ report-only |
 | skill | — (intentionally skipped, module abandoned) | — | — |
 
@@ -74,23 +74,36 @@ set** (`contract.strict.modules` default is now `reporting,export`).
 
 ---
 
-## notification
+## notification — ✅ now strict
 
 **Done:** the spec was **invalid and failed to load** — `DeviceRegistration` used
 property-level `required: true/false` (not valid OpenAPI). Fixed to an object-level
 `required: [deviceToken]`, so the spec now loads. Also documented the previously-missing
 `401` on `POST /device` and the JSON error bodies (`Error`) on the `400`/`403`
-responses. After this, the **exercised** paths are clean; only the device-test gap below
-remains.
+responses. Then **flipped notification into the strict set** (default is now
+`reporting,export,notification`).
 
-**To enable strict:**
+**Resolved on the way to strict:**
 
-1. **Write an e2e scenario for `POST /v1/notification/message/device-test`** — it is
-   implemented and documented but never exercised (the only remaining coverage gap).
-2. **CONTRADICTION — `TestMessageResponse` schema.** The spec documents
-   `{ receiverIds: string[] }`, but the controller returns
-   `{ outcome: CreateNotificationData }`. The spec is wrong; fix it to the real shape
-   when adding the device-test scenario (left as-is for now since it is untested).
+1. **device-test coverage (DONE).** Added `notification-admin.feature` exercising
+   `POST /v1/notification/message/device-test`. The endpoint lives on
+   `NotificationAdminController`, which only exists when `features.notification-api.mode=firebase`
+   — so the **e2e profile now enables firebase mode** (`application-e2e.yaml`) with a
+   **throwaway, non-functional service-account credential** (a freshly generated RSA key
+   for a nonexistent project; not a real secret). This is safe because
+   `FirebaseApp.initializeApp()` is lazy and the test exercises the **no-registered-devices**
+   path, which returns before any FCM call. Firebase mode is independent of the email flag,
+   so the existing email/rules/change-type/device features are unaffected (verified by the
+   full strict suite).
+2. **`TestMessageResponse` schema (FIXED).** The spec wrongly documented
+   `{ receiverIds: string[] }`; the controller returns `{ outcome: CreateNotificationData }`.
+   Corrected to `{ outcome: { success: bool, messageCreated: bool, messageReference: string|null } }`
+   (`messageReference` is `nullable: true`, OpenAPI 3.0.3 style). Verified against the real
+   200 response by strict conformance.
+
+**Blast-radius note:** enabling firebase mode changed the **entire e2e profile**, not just
+one test — every e2e context now boots with the push beans + throwaway FCM credential.
+Verified green, but it is a wider change than "add one scenario".
 
 ---
 
