@@ -25,7 +25,8 @@ object ControllerEndpointScanner {
 
         val keys = mutableSetOf<String>()
         for (candidate in provider.findCandidateComponents(basePackage)) {
-            val clazz = Class.forName(candidate.beanClassName ?: continue)
+            val className = candidate.beanClassName ?: continue
+            val clazz = Class.forName(className, false, Thread.currentThread().contextClassLoader)
             val classMapping = AnnotatedElementUtils.findMergedAnnotation(clazz, RequestMapping::class.java)
             val basePaths = mappingPaths(classMapping?.value, classMapping?.path)
 

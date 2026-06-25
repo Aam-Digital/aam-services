@@ -22,7 +22,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
-import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.client.RestTemplate
 
 @SpringBootTest(
@@ -92,7 +92,7 @@ abstract class SpringIntegrationTest {
                     latestResponseBody = it.body
                     latestResponseHeaders = it.headers
                 }
-        } catch (ex: HttpClientErrorException) {
+        } catch (ex: HttpStatusCodeException) {
             latestResponseStatus = ex.statusCode
             latestResponseBody = ex.responseBodyAsString
             latestResponseHeaders = ex.responseHeaders
@@ -130,7 +130,7 @@ abstract class SpringIntegrationTest {
                     latestResponseBody = it.body
                     latestResponseHeaders = it.headers
                 }
-        } catch (ex: HttpClientErrorException) {
+        } catch (ex: HttpStatusCodeException) {
             latestResponseStatus = ex.statusCode
             latestResponseBody = ex.responseBodyAsString
             latestResponseHeaders = ex.responseHeaders
@@ -169,7 +169,7 @@ abstract class SpringIntegrationTest {
                     latestResponseBody = it.body?.let { bytes -> String(bytes) }
                     latestResponseHeaders = it.headers
                 }
-        } catch (ex: HttpClientErrorException) {
+        } catch (ex: HttpStatusCodeException) {
             latestResponseStatus = ex.statusCode
             latestResponseBody = ex.responseBodyAsString
             latestResponseHeaders = ex.responseHeaders

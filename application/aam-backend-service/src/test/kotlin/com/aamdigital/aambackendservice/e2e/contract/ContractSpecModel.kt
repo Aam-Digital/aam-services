@@ -36,13 +36,13 @@ class ContractSpecModel(
     fun match(
         method: String,
         concretePath: String
-    ): String? =
-        operations
-            .firstOrNull {
-                it.method.equals(
-                    method,
-                    ignoreCase = true
-                ) &&
-                    pathMatchesTemplate(it.template, concretePath)
-            }?.let { operationKey(it.method, it.template) }
+    ): String? {
+        fun methodMatches(operation: SpecOperation) = operation.method.equals(method, ignoreCase = true)
+        // Prefer an exact static route (e.g. /report/summary) over a parameterized one
+        // (e.g. /report/{reportId}) that would otherwise also match the same concrete path.
+        val operation =
+            operations.firstOrNull { methodMatches(it) && it.template == concretePath }
+                ?: operations.firstOrNull { methodMatches(it) && pathMatchesTemplate(it.template, concretePath) }
+        return operation?.let { operationKey(it.method, it.template) }
+    }
 }

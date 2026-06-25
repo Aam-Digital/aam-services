@@ -39,6 +39,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /template/{templateId}:
     get:
@@ -76,6 +82,12 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -170,8 +182,17 @@ paths:
           # does not support batch rendering, so the actual ZIP/combined Content-Type has
           # not been confirmed against a real response. See CONTRACT-RECONCILIATION-BACKLOG.md.
           description: >-
-            The rendered documents. The response Content-Type is a ZIP archive for
-            `mode=zip` or the combined document's own media type for `mode=combined`.
+            The rendered documents, returned as a binary stream whose packaging depends on
+            `mode`:
+
+            * `mode=zip` (default) — a ZIP archive (`application/zip`) containing one
+              independently rendered file per entry in the request `data` array.
+            * `mode=combined` — a single document (a merged PDF for the current Carbone
+              configuration) holding all rendered records in one file.
+
+            The exact response `Content-Type` is produced by the template engine and has
+            not yet been confirmed against a live batch render (see the UNVERIFIED note
+            above); `application/octet-stream` is listed as the generic streaming fallback.
           content:
             application/zip:
               schema:
@@ -191,30 +212,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                errorCode: INVALID_MODE
+                errorMessage: "Unsupported mode 'foo'. Allowed values: zip, combined."
         '401':
           description: No valid access token
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                errorCode: invalid_token
+                errorMessage: Unauthorized
         '404':
           description: Template not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                errorCode: NOT_FOUND_ERROR
+                errorMessage: Template not found
         '422':
           description: Carbone rejected the batch (e.g. over the configured per-batch limit, or batch disabled).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                errorCode: BATCH_REJECTED_ERROR
+                errorMessage: Batch processing deactivated
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                errorCode: INTERNAL_SERVER_ERROR
+                errorMessage: An unexpected error occurred.
 
 components:
   schemas:
@@ -253,10 +289,49 @@ components:
         reportName:
           type: string
           description: Optional output file name (supports carbone placeholders).
+      example:
+        data:
+          - firstname: Ada
+            lastname: Lovelace
+          - firstname: Alan
+            lastname: Turing
+        convertTo: pdf
+        reportName: "report-{d.lastname}.pdf"
     Error:
       type: object
+      description: Standard error envelope returned for every non-2xx response in this API.
       properties:
         errorCode:
           type: string
+          description: >-
+            Machine-readable error identifier; branch on this rather than on
+            `errorMessage`. Possible values:
+
+            * `NOT_FOUND_ERROR` — the referenced template does not exist (`404`).
+            * `INVALID_MODE` — the `mode` query parameter is not one of `zip`/`combined`
+              (`400`, render-batch only).
+            * `INVALID_DATA_SHAPE_ERROR` — the request body is not a JSON object, or its
+              `data` field is missing or not an array (`400`, render-batch only).
+            * `EMPTY_DATA_LIST_ERROR` — the `data` array is present but empty (`400`,
+              render-batch only).
+            * `BATCH_REJECTED_ERROR` — the template engine refused the batch (e.g. the
+              array exceeds the configured per-batch limit, or batch rendering is
+              disabled); the engine's message is propagated in `errorMessage` (`422`,
+              render-batch only).
+            * `FETCH_TEMPLATE_FAILED_ERROR`, `CREATE_RENDER_REQUEST_FAILED_ERROR`,
+              `FETCH_RENDER_ID_REQUEST_FAILED_ERROR`, `PARSE_RESPONSE_ERROR`,
+              `CREATE_TEMPLATE_REQUEST_FAILED_ERROR`, `FETCH_TEMPLATE_REQUEST_FAILED_ERROR`
+              — an upstream call to the template engine or storage failed while creating,
+              fetching, or rendering (`500`).
+            * `INTERNAL_SERVER_ERROR` — an unclassified server-side failure (`500`).
+
+            On `401` responses the value is instead the standard OAuth2 bearer-token error
+            code (e.g. `invalid_token`) or, when no OAuth2 error is available, the literal
+            HTTP status `"401"`.
+          example: NOT_FOUND_ERROR
         errorMessage:
           type: string
+          description: >-
+            Human-readable description of the failure, intended for logging/debugging
+            rather than programmatic branching.
+          example: Template not found
