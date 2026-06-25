@@ -6,10 +6,10 @@ import com.aamdigital.aambackendservice.common.couchdb.dto.FindResponse
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
-import com.aamdigital.aambackendservice.common.rest.truncateForLog
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
+import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.util.MultiValueMap
@@ -49,9 +49,8 @@ class DefaultCouchDbClient(
                 .get()
                 .uri("/_all_dbs")
                 .accept(MediaType.APPLICATION_JSON)
-                .exchange { _, clientResponse ->
-                    handleResponse(clientResponse, Array<String>::class)
-                }?.toList()
+                .retrieve()
+                .body(object : ParameterizedTypeReference<List<String>>() {})
 
         if (response.isNullOrEmpty()) {
             throw ExternalSystemException(
@@ -75,9 +74,8 @@ class DefaultCouchDbClient(
                     it.queryParams(queryParams)
                     it.build()
                 }.accept(MediaType.APPLICATION_JSON)
-                .exchange { _, clientResponse ->
-                    handleResponse(clientResponse, CouchDbChangesResponse::class)
-                }
+                .retrieve()
+                .body(CouchDbChangesResponse::class.java)
 
         if (response == null) {
             throw ExternalSystemException(
@@ -104,9 +102,8 @@ class DefaultCouchDbClient(
                     it.build()
                 }.contentType(MediaType.APPLICATION_JSON)
                 .body(body)
-                .exchange { _, clientResponse ->
-                    handleResponse(clientResponse, ObjectNode::class)
-                }
+                .retrieve()
+                .body(ObjectNode::class.java)
 
         if (response == null) {
             throw ExternalSystemException(
@@ -339,9 +336,7 @@ class DefaultCouchDbClient(
                 }
 
             throw ExternalSystemException(
-                message =
-                    "[DefaultCouchDbClient] CouchDB request failed with status " +
-                        "${statusCode.value()}: ${rawResponse.truncateForLog()}",
+                message = "[DefaultCouchDbClient] CouchDB request failed with status ${statusCode.value()}: $rawResponse",
                 code = errorCode
             )
         }
@@ -355,16 +350,9 @@ class DefaultCouchDbClient(
             val renderApiClientResponse = objectMapper.readValue(rawResponse, typeReference.java)
             return renderApiClientResponse
         } catch (ex: Exception) {
-            // keep the actual response available for debugging instead of only the decoding error (issue #25)
-            val responseSnippet = rawResponse.truncateForLog()
-            logger.error(
-                "[DefaultCouchDbClient] Could not parse response to {}. Response body: {}",
-                typeReference.java.canonicalName,
-                responseSnippet,
-                ex
-            )
+            logger.error("[DefaultCouchDbClient] Could not parse response to ${typeReference.java.canonicalName}", ex)
             throw ExternalSystemException(
-                message = "Could not parse response to ${typeReference.java.canonicalName}: $responseSnippet",
+                message = ex.localizedMessage,
                 cause = ex,
                 code = DefaultCouchDbClientErrorCode.PARSING_ERROR
             )
