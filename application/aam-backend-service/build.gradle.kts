@@ -84,6 +84,10 @@ dependencies {
     testImplementation("org.testcontainers:rabbitmq:1.21.4")
     testImplementation("com.github.dasniko:testcontainers-keycloak:3.9.1")
 
+    // Validates e2e request/response interactions against the OpenAPI specs in
+    // docs/api-specs/ (contract testing). See e2e/contract/.
+    testImplementation("com.atlassian.oai:swagger-request-validator-core:2.44.9")
+
     constraints {
         testImplementation("org.apache.commons:commons-compress:1.28.0") {
             because("previous versions have security issues")
@@ -137,6 +141,15 @@ ktlint {
 tasks.withType<Test> {
     useJUnitPlatform()
     systemProperty("cucumber.junit-platform.naming-strategy", "long")
+    // OpenAPI contract enforcement: which modules fail the build on spec drift.
+    // Defaults to the reconciled modules; override on the command line, e.g.
+    // -Dcontract.strict.modules= (empty) for report-only, or a custom list.
+    // (Gradle does not pass command-line -D properties to the forked test JVM
+    // automatically, hence the explicit forwarding.)
+    systemProperty(
+        "contract.strict.modules",
+        System.getProperty("contract.strict.modules") ?: "reporting,export,notification"
+    )
     testLogging {
         showStandardStreams = true
     }

@@ -5,6 +5,7 @@ import com.aamdigital.aambackendservice.common.CouchDbTestingService
 import com.aamdigital.aambackendservice.container.TestContainers
 import com.aamdigital.aambackendservice.container.TestContainers.CONTAINER_COUCHDB
 import com.aamdigital.aambackendservice.container.TestContainers.CONTAINER_KEYCLOAK
+import com.aamdigital.aambackendservice.e2e.contract.OpenApiContractValidators
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -21,7 +22,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
-import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.client.RestTemplate
 
 @SpringBootTest(
@@ -29,7 +30,7 @@ import org.springframework.web.client.RestTemplate
 )
 @ActiveProfiles("e2e")
 @ImportTestcontainers(TestContainers::class)
-@ContextConfiguration
+@ContextConfiguration(initializers = [FirebaseTestCredentialInitializer::class])
 abstract class SpringIntegrationTest {
     companion object {
         private const val APPLICATION_PORT = 9000
@@ -91,11 +92,13 @@ abstract class SpringIntegrationTest {
                     latestResponseBody = it.body
                     latestResponseHeaders = it.headers
                 }
-        } catch (ex: HttpClientErrorException) {
+        } catch (ex: HttpStatusCodeException) {
             latestResponseStatus = ex.statusCode
             latestResponseBody = ex.responseBodyAsString
             latestResponseHeaders = ex.responseHeaders
         }
+
+        validateContract(method, url, body)
     }
 
     fun exchangeMultipart(
@@ -127,11 +130,69 @@ abstract class SpringIntegrationTest {
                     latestResponseBody = it.body
                     latestResponseHeaders = it.headers
                 }
-        } catch (ex: HttpClientErrorException) {
+        } catch (ex: HttpStatusCodeException) {
             latestResponseStatus = ex.statusCode
             latestResponseBody = ex.responseBodyAsString
             latestResponseHeaders = ex.responseHeaders
         }
+
+        // Forward the multipart form parts to the contract validator. The validator parses
+        // form bodies with its URL-encoded parser, so we hand it a URL-encoded *representation*
+        // of the parts (not the literal multipart bytes) — enough for it to see the documented
+        // `template` part and stop reporting a false "request body is required but none found".
+        // Keep this in sync with the parts added above if more form fields are ever sent.
+        val multipartRepresentation = "template=${file.filename ?: "file"}"
+        validateContract(HttpMethod.POST, url, multipartRepresentation, MediaType.MULTIPART_FORM_DATA_VALUE)
+    }
+
+    /** GET a binary/streaming endpoint, accepting `application/octet-stream`. */
+    fun download(url: String) {
+        val headers = HttpHeaders()
+
+        if (authToken != null) {
+            headers.set(HttpHeaders.AUTHORIZATION, "Bearer $authToken")
+        }
+
+        headers.accept = listOf(MediaType.APPLICATION_OCTET_STREAM, MediaType.ALL)
+
+        val requestEntity = HttpEntity<Void>(headers)
+
+        try {
+            restTemplate
+                .exchange(
+                    url,
+                    HttpMethod.GET,
+                    requestEntity,
+                    ByteArray::class.java
+                ).let {
+                    latestResponseStatus = it.statusCode
+                    latestResponseBody = it.body?.let { bytes -> String(bytes) }
+                    latestResponseHeaders = it.headers
+                }
+        } catch (ex: HttpStatusCodeException) {
+            latestResponseStatus = ex.statusCode
+            latestResponseBody = ex.responseBodyAsString
+            latestResponseHeaders = ex.responseHeaders
+        }
+
+        validateContract(HttpMethod.GET, url, null)
+    }
+
+    private fun validateContract(
+        method: HttpMethod,
+        url: String,
+        requestBody: String?,
+        requestContentType: String? = null
+    ) {
+        OpenApiContractValidators.validate(
+            method = method.name(),
+            path = url,
+            requestBody = requestBody,
+            requestContentType = requestContentType,
+            statusCode = latestResponseStatus?.value() ?: return,
+            responseBody = latestResponseBody,
+            responseContentType = latestResponseHeaders?.contentType?.toString()
+        )
     }
 
     fun parseBodyToObjectNode(): ObjectNode? =

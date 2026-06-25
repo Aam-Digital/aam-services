@@ -132,6 +132,12 @@ class CucumberIntegrationTest(
         exchange(endpoint, HttpMethod.GET)
     }
 
+    @When("the client downloads GET {word}")
+    @Throws(Throwable::class)
+    fun `the client downloads GET endpoint`(endpoint: String) {
+        download(endpoint)
+    }
+
     @Given("emit ReportCalculationEvent for {word} in tenant {word}")
     @Throws(Throwable::class)
     fun `emit ReportCalculationEvent`(
