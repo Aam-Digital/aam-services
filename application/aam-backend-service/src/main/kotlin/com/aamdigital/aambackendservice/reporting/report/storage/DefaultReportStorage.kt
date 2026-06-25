@@ -4,9 +4,9 @@ import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getQueryParamsAllDocs
 import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbSearchResponse
 import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
-import com.aamdigital.aambackendservice.common.error.NetworkException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.report.Report
 import com.aamdigital.aambackendservice.reporting.report.ReportItem
@@ -57,7 +57,7 @@ class DefaultReportStorage(
 
     @Throws(
         InvalidArgumentException::class,
-        NetworkException::class,
+        ExternalSystemException::class,
         InternalServerException::class,
         NotFoundException::class
     )
@@ -147,7 +147,7 @@ class DefaultReportStorage(
                 )
 
             is InterruptedIOException ->
-                NetworkException(
+                ExternalSystemException(
                     message = ex.localizedMessage,
                     cause = ex,
                     code = DefaultReportCalculationStorageError.NETWORK_ERROR

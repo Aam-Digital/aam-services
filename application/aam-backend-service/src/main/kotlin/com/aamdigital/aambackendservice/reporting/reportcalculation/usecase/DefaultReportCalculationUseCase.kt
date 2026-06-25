@@ -6,7 +6,6 @@ import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
-import com.aamdigital.aambackendservice.common.error.NetworkException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.report.Report
 import com.aamdigital.aambackendservice.reporting.report.ReportItem
@@ -275,13 +274,6 @@ class DefaultReportCalculationUseCase(
     ): UseCaseOutcome<ReportCalculationData> {
         val useCaseException: AamException =
             when (exception) {
-                is NetworkException ->
-                    NetworkException(
-                        message = exception.localizedMessage,
-                        code = useCaseStepCode ?: ReportCalculationError.IO_ERROR,
-                        cause = exception
-                    )
-
                 is NotFoundException ->
                     NotFoundException(
                         message = exception.localizedMessage,

@@ -4,7 +4,6 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome.Success
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
-import com.aamdigital.aambackendservice.common.error.NetworkException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.FetchTemplateData
 import com.aamdigital.aambackendservice.export.core.FetchTemplateError
@@ -68,7 +67,7 @@ class DefaultFetchTemplateUseCase(
                             )
                     }
             } catch (ex: ResourceAccessException) {
-                throw NetworkException(
+                throw ExternalSystemException(
                     cause = ex,
                     message = ex.localizedMessage,
                     code = FetchTemplateError.FETCH_TEMPLATE_REQUEST_FAILED_ERROR
