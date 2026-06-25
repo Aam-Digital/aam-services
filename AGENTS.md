@@ -160,6 +160,10 @@ The `DomainUseCase` base class handles error wrapping:
 - Error enums end with `Error`
 - Data classes use clear, intention-revealing names
 
+### Comments
+
+- Do not reference GitHub issues (e.g. `#25`) in code comments unless the comment is an open TODO tracking remaining work. Explanatory comments should state the rationale directly rather than point to an issue.
+
 ### Refactoring & Legacy Code
 
 - Some existing code may not follow current conventions. For existing code, analyse the status and refactor only after confirmation.

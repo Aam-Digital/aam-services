@@ -45,6 +45,8 @@ class DefaultCreateTemplateUseCaseTest : WebClientTestBase() {
             CreateTemplateError.PARSE_RESPONSE_ERROR,
             (response as UseCaseOutcome.Failure).errorCode
         )
+        // the actual (unparseable) response body must be surfaced for debugging
+        assertThat(response.errorMessage).contains("invalid json")
     }
 
     @Test

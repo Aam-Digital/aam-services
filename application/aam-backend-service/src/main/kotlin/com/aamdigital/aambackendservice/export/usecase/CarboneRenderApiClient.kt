@@ -4,6 +4,7 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.rest.truncateForLog
 import com.aamdigital.aambackendservice.export.core.TemplateExport
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
@@ -180,7 +181,8 @@ internal class CarboneRenderApiClient(
                 try {
                     objectMapper.readValue(raw, RenderRequestErrorResponseDto::class.java).error
                 } catch (ignored: Exception) {
-                    ex.localizedMessage
+                    // neither the success nor the error shape matched; keep the actual response
+                    "${ex.localizedMessage} (response body: ${raw.truncateForLog()})"
                 }
             throw ExternalSystemException(
                 cause = ex,

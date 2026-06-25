@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.export.usecase
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.rest.truncateForLog
 import com.aamdigital.aambackendservice.export.core.CreateTemplateData
 import com.aamdigital.aambackendservice.export.core.CreateTemplateError.CREATE_TEMPLATE_REQUEST_FAILED_ERROR
 import com.aamdigital.aambackendservice.export.core.CreateTemplateError.PARSE_RESPONSE_ERROR
@@ -79,9 +80,10 @@ class DefaultCreateTemplateUseCase(
             val renderApiClientResponse = objectMapper.readValue(raw, CreateTemplateResponseDto::class.java)
             return renderApiClientResponse.data.templateId
         } catch (ex: Exception) {
+            // keep the actual response available for debugging instead of only the decoding error
             throw ExternalSystemException(
                 cause = ex,
-                message = ex.localizedMessage,
+                message = "${ex.localizedMessage} (response body: ${raw.truncateForLog()})",
                 code = PARSE_RESPONSE_ERROR
             )
         }
