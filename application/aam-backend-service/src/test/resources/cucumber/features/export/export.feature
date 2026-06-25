@@ -66,3 +66,22 @@ Feature: the export endpoint handles template creation
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         When the client calls POST /v1/export/render/TemplateExport:not-existing with body RenderRequest_2
         Then the client receives status code of 404
+
+    # NOTE: the test Carbone engine does not support batch rendering (it returns a
+    # "buffer mode" / "batch deactivated" rejection regardless of nbReportMaxPerBatch),
+    # so the success (200 + ZIP) path cannot be exercised end-to-end here. This scenario
+    # verifies the documented contract for a valid batch request the engine rejects: the
+    # API surfaces it as 422. The happy-path batch logic is covered by the unit test
+    # DefaultRenderTemplateBatchUseCaseTest (mocked Carbone). See CONTRACT-RECONCILIATION-BACKLOG.md.
+    Scenario: client makes call to POST /export/render-batch/TemplateExport:1 and the engine rejects the batch with 422
+        Given database app is created
+        Given document TemplateExport_1 is stored in database app
+        Given signed in as client dummy-client with secret client-secret in realm dummy-realm
+        When the client calls POST /v1/export/render-batch/TemplateExport:1 with body RenderBatchRequest_1
+        Then the client receives status code of 422
+
+    Scenario: client makes call to POST /export/render-batch/TemplateExport:not-existing and receives an 404
+        Given database app is created
+        Given signed in as client dummy-client with secret client-secret in realm dummy-realm
+        When the client calls POST /v1/export/render-batch/TemplateExport:not-existing with body RenderBatchRequest_1
+        Then the client receives status code of 404

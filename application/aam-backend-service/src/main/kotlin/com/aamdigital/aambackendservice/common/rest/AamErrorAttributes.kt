@@ -3,10 +3,8 @@ package com.aamdigital.aambackendservice.common.rest
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.ForbiddenAccessException
-import com.aamdigital.aambackendservice.common.error.IOException
 import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
-import com.aamdigital.aambackendservice.common.error.NetworkException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.error.UnauthorizedAccessException
 import org.springframework.boot.web.error.ErrorAttributeOptions
@@ -69,9 +67,7 @@ class AamErrorAttributes : DefaultErrorAttributes() {
     private fun getStatus(error: AamException) =
         when (error) {
             is InternalServerException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
-            is IOException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
             is ExternalSystemException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
-            is NetworkException -> HttpStatus.INTERNAL_SERVER_ERROR.value()
             is InvalidArgumentException -> HttpStatus.BAD_REQUEST.value()
             is UnauthorizedAccessException -> HttpStatus.UNAUTHORIZED.value()
             is ForbiddenAccessException -> HttpStatus.FORBIDDEN.value()

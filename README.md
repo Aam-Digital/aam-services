@@ -129,6 +129,29 @@ CUCUMBER_FILTER_NAME="client makes call to start a report calculation" ./gradlew
 CUCUMBER_FEATURES="src/test/resources/cucumber/features/notification/notification-change-type.feature:8" ./gradlew test --tests "*CucumberTestRunner"
 ```
 
+#### OpenAPI contract enforcement
+
+The e2e suite also validates the API against the hand-written OpenAPI specs in
+[`docs/api-specs/`](docs/api-specs/), so the specs stay honest (see
+`src/test/kotlin/.../e2e/contract/`). For every call, the request/response is
+checked against the owning module's spec; at the end of the run, each strict
+module is checked for **coverage** (every documented operation is exercised) and
+**inventory** (every controller endpoint is documented).
+
+Strictness is per module via a system property (default: `reporting,export,notification`) —
+unlisted modules run in report-only mode (mismatches are logged, the build stays
+green). Override the default to widen, narrow, or disable enforcement:
+
+```shell
+# report-only for every module:
+./gradlew test --tests "*CucumberTestRunner" -Dcontract.strict.modules=
+# a custom strict set:
+./gradlew test --tests "*CucumberTestRunner" -Dcontract.strict.modules=reporting,export,notification
+```
+
+When you change a module's API, update its `docs/api-specs/<module>-api-v1.yaml`
+spec (and `docs/modules/<module>.md`) in the same change.
+
 **VS Code:** Install the [Gradle for Java](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-gradle) extension to discover and run tests from the Test Explorer sidebar.
 
 ## Running the Application Locally

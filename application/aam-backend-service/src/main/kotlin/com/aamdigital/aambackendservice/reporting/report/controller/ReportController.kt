@@ -4,7 +4,6 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
-import com.aamdigital.aambackendservice.common.error.NetworkException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.ReportSchema
@@ -81,16 +80,6 @@ class ReportController(
                     .body(
                         HttpErrorDto(
                             errorCode = "NOT_FOUND",
-                            errorMessage = ex.localizedMessage
-                        )
-                    )
-
-            is NetworkException ->
-                ResponseEntity
-                    .status(HttpStatus.BAD_GATEWAY)
-                    .body(
-                        HttpErrorDto(
-                            errorCode = "GATEWAY_TIMEOUT",
                             errorMessage = ex.localizedMessage
                         )
                     )

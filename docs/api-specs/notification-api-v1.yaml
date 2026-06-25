@@ -22,7 +22,17 @@ paths:
         204:
           description: Device registration successful
         400:
-          description: The device is already registered
+          description: Bad request (e.g. the device is already registered, or no subject in the token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: No valid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /device/{deviceId}:
     get:
@@ -38,6 +48,10 @@ paths:
       responses:
         403:
           description: Device does not belong to user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
           description: Device registration does not exist
         200:
@@ -59,6 +73,10 @@ paths:
       responses:
         403:
           description: Device does not belong to user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
           description: Device registration does not exist
         204:
@@ -81,26 +99,51 @@ components:
   schemas:
     DeviceRegistration:
       type: object
+      required:
+        - deviceToken
       properties:
         deviceName:
           type: string
-          required: false
         deviceToken:
           type: string
-          required: true
 
     TestMessageResponse:
       type: object
+      required:
+        - outcome
       properties:
-        receiverIds:
-          type: array
-          items:
-            type: string
-    
+        outcome:
+          $ref: '#/components/schemas/CreateNotificationData'
+
+    CreateNotificationData:
+      type: object
+      required:
+        - success
+        - messageCreated
+        - messageReference
+      properties:
+        success:
+          type: boolean
+        messageCreated:
+          type: boolean
+          description: Whether a push message was created (false e.g. when the user has no registered devices).
+        messageReference:
+          type: string
+          nullable: true
+          description: Reference to the created push message, or null when none was created.
+
     DeviceRegistrationCheckResponse:
       type: object
       properties:
         deviceToken:
           type: string
         deviceName:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        errorCode:
+          type: string
+        errorMessage:
           type: string

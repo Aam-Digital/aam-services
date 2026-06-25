@@ -71,6 +71,8 @@ skilllab-api-client-configuration:
   response-timeout-in-seconds: 15
 
 notification-firebase-configuration:
+  # Placeholder — FirebaseTestCredentialInitializer generates a throwaway RSA key at runtime
+  # and overrides this value so no private key is committed to source control.
   credential-file-base64: ""
 
 aam-replication-backend-client-configuration:
@@ -83,6 +85,10 @@ features:
     enabled: true
   notification-api:
     enabled: true
+    # firebase mode activates the push beans + NotificationAdminController so the contract
+    # e2e suite can exercise POST /v1/notification/message/device-test. Independent of the
+    # email flag below. Credential is generated at runtime by FirebaseTestCredentialInitializer.
+    mode: firebase
     email:
       enabled: true
   skill-api:

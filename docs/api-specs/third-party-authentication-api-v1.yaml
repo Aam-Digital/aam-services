@@ -115,70 +115,68 @@ components:
   schemas:
     UserSessionRequest:
       type: object
+      required:
+        - userId
+        - firstName
+        - lastName
+        - redirectUrl
+        - email
       properties:
         userId:
           type: string
-          required: true
           format: uuid
         firstName:
           type: string
-          required: true
         lastName:
           type: string
-          required: true
         redirectUrl:
           type: string
-          required: true
         email:
           type: string
-          required: true
           format: email
         additionalData:
           type: object
-          required: false
           additionalProperties: true
     UserSession:
       type: object
+      required:
+        - sessionId
+        - sessionToken
+        - entryPointUrl
+        - validUntil
       properties:
         sessionId:
           type: string
-          required: true
           format: uuid
         sessionToken:
           type: string
-          required: true
         entryPointUrl:
           type: string
-          required: true
           format: uri
         validUntil:
           type: string
-          required: true
           format: date-time
     UserSessionDataDto:
       type: object
+      required:
+        - userId
       properties:
         userId:
           type: string
-          required: true
           format: uuid
     UserSessionRedirectDto:
       type: object
+      required:
+        - redirectUrl
       properties:
         redirectUrl:
           type: string
-          required: true
           format: uri
     Error:
       type: object
       properties:
         errorCode:
           type: string
-          items:
-            enum:
-              - NOT_FOUND
-              - UNAUTHORIZED
-              - FORBIDDEN
-              - INTERNAL_SERVER_ERROR
+          description: Machine-readable error code (business code or HTTP status string).
         errorMessage:
           type: string

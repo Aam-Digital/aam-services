@@ -1,0 +1,17 @@
+{
+  "convertTo": "pdf",
+  "data": [
+    {
+      "participant": "Mr. Robot",
+      "sign": "An Aam Digital TEST",
+      "issuer": "Aam Digital GmbH",
+      "date": "11.09.2024"
+    },
+    {
+      "participant": "Jane Doe",
+      "sign": "An Aam Digital TEST",
+      "issuer": "Aam Digital GmbH",
+      "date": "12.09.2024"
+    }
+  ]
+}
