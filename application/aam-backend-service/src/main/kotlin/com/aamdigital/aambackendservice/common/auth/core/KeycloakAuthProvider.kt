@@ -80,6 +80,8 @@ class KeycloakAuthProvider(
                 token = keycloakTokenResponse.accessToken
             )
         } catch (ex: Exception) {
+            // deliberately do NOT include the raw response here: a successful token endpoint body
+            // contains the access_token secret, so logging it would leak credentials
             throw ExternalSystemException(
                 message = "Could not parse access token from KeycloakAuthProvider",
                 cause = ex,
