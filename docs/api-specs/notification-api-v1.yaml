@@ -120,6 +120,7 @@ components:
       required:
         - success
         - messageCreated
+        - messageReference
       properties:
         success:
           type: boolean

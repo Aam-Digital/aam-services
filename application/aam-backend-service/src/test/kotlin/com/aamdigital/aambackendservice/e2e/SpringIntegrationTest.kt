@@ -30,7 +30,7 @@ import org.springframework.web.client.RestTemplate
 )
 @ActiveProfiles("e2e")
 @ImportTestcontainers(TestContainers::class)
-@ContextConfiguration
+@ContextConfiguration(initializers = [FirebaseTestCredentialInitializer::class])
 abstract class SpringIntegrationTest {
     companion object {
         private const val APPLICATION_PORT = 9000
