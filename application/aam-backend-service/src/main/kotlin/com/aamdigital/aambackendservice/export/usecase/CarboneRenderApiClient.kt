@@ -3,7 +3,6 @@ package com.aamdigital.aambackendservice.export.usecase
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
-import com.aamdigital.aambackendservice.common.error.NetworkException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.TemplateExport
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
@@ -67,8 +66,8 @@ internal class CarboneRenderApiClient(
                         code = notFoundCode,
                     )
 
-                is NetworkException ->
-                    NetworkException(
+                is ExternalSystemException ->
+                    ExternalSystemException(
                         cause = ex.cause ?: ex,
                         message = ex.localizedMessage,
                         code = fetchTemplateFailedCode,
@@ -158,7 +157,7 @@ internal class CarboneRenderApiClient(
         } catch (ex: Exception) {
             throw when (ex) {
                 is ResourceAccessException ->
-                    NetworkException(
+                    ExternalSystemException(
                         cause = ex.cause ?: ex,
                         message = ex.localizedMessage,
                         code = fetchRenderResultFailedCode,

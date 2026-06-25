@@ -8,7 +8,6 @@ import com.aamdigital.aambackendservice.common.domain.FileStorage
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.InternalServerException
-import com.aamdigital.aambackendservice.common.error.NetworkException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
@@ -88,8 +87,7 @@ class DefaultReportCalculationStorage(
 
     @Throws(
         NotFoundException::class,
-        ExternalSystemException::class,
-        NetworkException::class
+        ExternalSystemException::class
     )
     override fun fetchReportCalculation(calculation: DomainReference): ReportCalculation =
         try {
@@ -158,14 +156,14 @@ class DefaultReportCalculationStorage(
                 )
 
             is InterruptedIOException ->
-                NetworkException(
+                ExternalSystemException(
                     message = ex.localizedMessage,
                     cause = ex,
                     code = DefaultReportCalculationStorageError.NETWORK_ERROR
                 )
 
             is HttpClientErrorException ->
-                NetworkException(
+                ExternalSystemException(
                     message = ex.localizedMessage,
                     cause = ex,
                     code = DefaultReportCalculationStorageError.NETWORK_ERROR

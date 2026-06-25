@@ -5,7 +5,6 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
-import com.aamdigital.aambackendservice.common.error.NetworkException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.RenderTemplateError
 import com.aamdigital.aambackendservice.export.core.RenderTemplateRequest
@@ -432,7 +431,7 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
 
         assertThat((response as UseCaseOutcome.Failure).cause)
-            .isInstanceOf(NetworkException::class.java)
+            .isInstanceOf(ExternalSystemException::class.java)
 
         assertThat(response.cause?.cause)
             .isInstanceOf(SocketTimeoutException::class.java)

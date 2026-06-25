@@ -4,7 +4,6 @@ import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
-import com.aamdigital.aambackendservice.common.error.NetworkException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.TemplateExport
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
@@ -35,8 +34,7 @@ class DefaultTemplateStorage(
 
     @Throws(
         NotFoundException::class,
-        ExternalSystemException::class,
-        NetworkException::class
+        ExternalSystemException::class
     )
     override fun fetchTemplate(template: DomainReference): TemplateExport {
         val document =
@@ -48,7 +46,7 @@ class DefaultTemplateStorage(
                     kClass = TemplateExportDto::class
                 )
             } catch (ex: InterruptedIOException) {
-                throw NetworkException(
+                throw ExternalSystemException(
                     cause = ex,
                     message = ex.localizedMessage,
                     code = DefaultTemplateStorageErrorCode.IO_NETWORK_ERROR
