@@ -182,7 +182,7 @@ internal class CarboneRenderApiClient(
                 try {
                     objectMapper.readValue(raw, RenderRequestErrorResponseDto::class.java).error
                 } catch (ignored: Exception) {
-                    // neither the success nor the error shape matched; keep the actual response (issue #25)
+                    // neither the success nor the error shape matched; keep the actual response
                     "${ex.localizedMessage} (response body: ${raw.truncateForLog()})"
                 }
             throw ExternalSystemException(

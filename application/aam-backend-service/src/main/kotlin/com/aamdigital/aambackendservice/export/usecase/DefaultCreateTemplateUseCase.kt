@@ -80,7 +80,7 @@ class DefaultCreateTemplateUseCase(
             val renderApiClientResponse = objectMapper.readValue(raw, CreateTemplateResponseDto::class.java)
             return renderApiClientResponse.data.templateId
         } catch (ex: Exception) {
-            // keep the actual response available for debugging instead of only the decoding error (issue #25)
+            // keep the actual response available for debugging instead of only the decoding error
             throw ExternalSystemException(
                 cause = ex,
                 message = "${ex.localizedMessage} (response body: ${raw.truncateForLog()})",

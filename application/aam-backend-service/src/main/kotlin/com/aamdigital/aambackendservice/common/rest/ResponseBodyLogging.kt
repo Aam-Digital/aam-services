@@ -3,7 +3,7 @@ package com.aamdigital.aambackendservice.common.rest
 /**
  * Maximum number of characters of a remote response body to include in logs or error messages.
  *
- * Remote responses are read as a raw String first (see issue #25) so the actual payload survives a
+ * Remote responses are read as a raw String first so the actual payload survives a
  * parsing failure and can be surfaced for debugging. Bodies can be large or unbounded, so any value
  * that reaches a log line or exception message must be capped to this length.
  */
