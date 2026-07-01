@@ -2,8 +2,8 @@
 
 Collection of aam-digital services and tools
 
-[![Maintainability](https://codeclimate.com/github/Aam-Digital/aam-services/badges/gpa.svg)](https://codeclimate.com/github/Aam-Digital/aam-services)
-[![Test Coverage](https://qlty.sh/badges/gh/Aam-Digital/aam-services/test_coverage.svg)](https://qlty.sh/gh/Aam-Digital/aam-services)
+[![Maintainability](https://qlty.sh/gh/Aam-Digital/projects/aam-services/maintainability.svg)](https://qlty.sh/gh/Aam-Digital/projects/aam-services)
+[![Code Coverage](https://qlty.sh/gh/Aam-Digital/projects/aam-services/coverage.svg)](https://qlty.sh/gh/Aam-Digital/projects/aam-services)
 
 A modularize Spring Boot application that contains API modules for [Aam Digital's case management platform](https://github.com/Aam-Digital/ndb-core).
 
