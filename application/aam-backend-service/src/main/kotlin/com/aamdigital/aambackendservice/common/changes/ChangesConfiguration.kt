@@ -40,11 +40,13 @@ class ChangesConfiguration {
         changeEventPublisher: ChangeEventPublisher,
         syncRepository: SyncRepository,
         objectMapper: ObjectMapper,
+        changeDetectionProperties: ChangeDetectionProperties,
     ): CouchDbChangesProcessor =
         CouchDbChangesProcessor(
             couchDbClient,
             changeEventPublisher,
             syncRepository,
             objectMapper,
+            changeDetectionProperties,
         )
 }

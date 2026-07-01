@@ -45,6 +45,7 @@ class CouchDbChangesProcessorTest {
             documentChangeEventPublisher = changeEventPublisher,
             syncRepository = syncRepository,
             objectMapper = objectMapper,
+            changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app")),
         )
     }
 
@@ -63,6 +64,53 @@ class CouchDbChangesProcessorTest {
 
         verify(couchDbClient, never()).getDatabaseChanges(eq("_users"), any())
         verify(couchDbClient, never()).getDatabaseChanges(eq("_replicator"), any())
+    }
+
+    @Test
+    fun `should skip databases not on the included-databases allowlist`() {
+        whenever(couchDbClient.allDatabases()).thenReturn(
+            listOf("app", "audit", "notifications-x", "app-attachments")
+        )
+
+        whenever(syncRepository.findByDatabase("app")).thenReturn(
+            Optional.of(SyncEntry(database = "app", latestRef = "seq-1"))
+        )
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
+            .thenReturn(CouchDbChangesResponse(lastSeq = "seq-1", results = emptyList(), pending = 0))
+        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
+
+        service.checkForChanges()
+
+        verify(couchDbClient).getDatabaseChanges(eq("app"), any())
+        verify(couchDbClient, never()).getDatabaseChanges(eq("audit"), any())
+        verify(couchDbClient, never()).getDatabaseChanges(eq("notifications-x"), any())
+        verify(couchDbClient, never()).getDatabaseChanges(eq("app-attachments"), any())
+    }
+
+    @Test
+    fun `should poll databases added to a custom included-databases allowlist`() {
+        service = CouchDbChangesProcessor(
+            couchDbClient = couchDbClient,
+            documentChangeEventPublisher = changeEventPublisher,
+            syncRepository = syncRepository,
+            objectMapper = objectMapper,
+            changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app", "audit")),
+        )
+
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app", "audit", "notifications-x"))
+
+        whenever(syncRepository.findByDatabase(any())).thenAnswer {
+            Optional.of(SyncEntry(database = it.arguments[0] as String, latestRef = "seq-1"))
+        }
+        whenever(couchDbClient.getDatabaseChanges(any(), any()))
+            .thenReturn(CouchDbChangesResponse(lastSeq = "seq-1", results = emptyList(), pending = 0))
+        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
+
+        service.checkForChanges()
+
+        verify(couchDbClient).getDatabaseChanges(eq("app"), any())
+        verify(couchDbClient).getDatabaseChanges(eq("audit"), any())
+        verify(couchDbClient, never()).getDatabaseChanges(eq("notifications-x"), any())
     }
 
     @Test

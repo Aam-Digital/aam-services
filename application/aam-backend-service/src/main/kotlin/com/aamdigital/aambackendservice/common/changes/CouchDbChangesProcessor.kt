@@ -10,7 +10,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
 
 /**
- * Polls CouchDB `_changes` feeds for all databases, enriches each change with
+ * Polls CouchDB `_changes` feeds for the databases allowlisted in
+ * [ChangeDetectionProperties.includedDatabases], enriches each change with
  * the current and previous document revision, and publishes a [DocumentChangeEvent]
  * to the RabbitMQ fanout exchange.
  *
@@ -21,6 +22,7 @@ class CouchDbChangesProcessor(
     private val documentChangeEventPublisher: ChangeEventPublisher,
     private val syncRepository: SyncRepository,
     private val objectMapper: ObjectMapper,
+    private val changeDetectionProperties: ChangeDetectionProperties,
 ) {
     companion object {
         private const val CHANGES_LIMIT: Int = 100
@@ -36,6 +38,7 @@ class CouchDbChangesProcessor(
         couchDbClient
             .allDatabases()
             .filter { !it.startsWith("_") }
+            .filter { it in changeDetectionProperties.includedDatabases }
             .forEach { database ->
                 fetchChangesForDatabase(database)
             }
