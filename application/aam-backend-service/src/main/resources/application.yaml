@@ -179,6 +179,12 @@ couch-db-client-configuration:
   basic-auth-username: admin
   basic-auth-password: docker
 
+database-change-detection:
+  # Allowlist of CouchDB databases polled for document changes (see CouchDbChangesProcessor).
+  # Auxiliary databases (e.g. audit, notifications-*, app-attachments) are intentionally excluded.
+  included-databases:
+    - app
+
 sqs-client-configuration:
   base-path: https://aam.localhost/sqs
   basic-auth-username: admin
