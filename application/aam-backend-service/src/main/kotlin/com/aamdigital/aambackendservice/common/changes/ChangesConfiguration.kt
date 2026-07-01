@@ -1,7 +1,6 @@
 package com.aamdigital.aambackendservice.common.changes
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.thirdpartyauthentication.ConditionalOnThirdPartyAuthenticationEnabled
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.boot.autoconfigure.condition.AnyNestedCondition
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -29,9 +28,6 @@ class ChangesConfiguration {
 
         @ConditionalOnProperty("features.notification-api.enabled", havingValue = "true")
         class NotificationApi
-
-        @ConditionalOnThirdPartyAuthenticationEnabled
-        class ThirdPartyAuth
     }
 
     @Bean
