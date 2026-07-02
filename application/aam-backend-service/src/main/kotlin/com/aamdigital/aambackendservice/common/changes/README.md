@@ -47,9 +47,8 @@ Feature modules receive changes by:
 
 ```yaml
 database-change-detection:
-        fixed-delay: 8000
-        included-databases:
-                - app
+  included-databases:
+    - app
 ```
 
 `included-databases` is an allowlist: only databases with an exact name match are polled.
