@@ -23,6 +23,7 @@ class ChangesConfigurationConditionalTest {
             .withBean(ChangeEventPublisher::class.java, { mock<ChangeEventPublisher>() })
             .withBean(SyncRepository::class.java, { mock<SyncRepository>() })
             .withBean(ObjectMapper::class.java, { ObjectMapper() })
+            .withBean(ChangeDetectionProperties::class.java, { ChangeDetectionProperties() })
 
     @Test
     fun `change-detection is active when reporting is enabled`() {
