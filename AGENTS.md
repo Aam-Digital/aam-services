@@ -164,6 +164,15 @@ The `DomainUseCase` base class handles error wrapping:
 
 - Do not reference GitHub issues (e.g. `#25`) in code comments unless the comment is an open TODO tracking remaining work. Explanatory comments should state the rationale directly rather than point to an issue.
 
+### Public GitHub Content (PRs, Issues, Comments, Commit Messages)
+
+This repository is public. Never include customer/project-identifying information or other
+production-system-specific data in anything posted to GitHub — no deployment/instance names,
+server hostnames, external partner URLs, user identifiers, or real record data. Share only
+generalized insights instead (e.g. "a large production instance", "an external webhook
+consumer"). Scrub quoted log or monitoring output before posting. Links to access-restricted
+internal tools (e.g. Sentry issues) are acceptable.
+
 ### Refactoring & Legacy Code
 
 - Some existing code may not follow current conventions. For existing code, analyse the status and refactor only after confirmation.
