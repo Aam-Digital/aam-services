@@ -7,8 +7,8 @@ import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.di.ReportQueueConfiguration
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationDebouncer
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
@@ -18,7 +18,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener
 
 class ReportDocumentChangeEventConsumer(
     private val messageParser: QueueMessageParser,
-    private val createReportCalculationUseCase: CreateReportCalculationUseCase,
+    private val reportCalculationDebouncer: ReportCalculationDebouncer,
     private val reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
     private val identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
     private val webhookStorage: WebhookStorage
@@ -74,15 +74,16 @@ class ReportDocumentChangeEventConsumer(
                             webhook.reportSubscriptions.contains(DomainReference(report.id))
                         }
                     }.forEach { report ->
-                        createReportCalculationUseCase
-                            .createReportCalculation(
-                                request =
-                                    CreateReportCalculationRequest(
-                                        report = report,
-                                        args = mutableMapOf(),
-                                        fromAutomaticChangeDetection = true
-                                    )
-                            )
+                        // debounced: the calculation is only created once changes settle down,
+                        // so bursts of document changes result in a single recalculation
+                        reportCalculationDebouncer.recordChange(
+                            request =
+                                CreateReportCalculationRequest(
+                                    report = report,
+                                    args = mutableMapOf(),
+                                    fromAutomaticChangeDetection = true
+                                )
+                        )
                     }
 
                 return

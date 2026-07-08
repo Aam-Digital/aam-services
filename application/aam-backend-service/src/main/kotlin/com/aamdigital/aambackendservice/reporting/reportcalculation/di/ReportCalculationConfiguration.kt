@@ -6,7 +6,9 @@ import com.aamdigital.aambackendservice.common.domain.FileStorage
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationDebouncer
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
 import com.aamdigital.aambackendservice.reporting.reportcalculation.storage.DefaultReportCalculationStorage
@@ -20,8 +22,10 @@ import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationServi
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import java.time.Duration
 
 @Configuration
 @ConditionalOnReportingEnabled
@@ -51,6 +55,18 @@ class ReportCalculationConfiguration {
         reportCalculationStorage: ReportCalculationStorage,
         reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher
     ) = DefaultCreateReportCalculationUseCase(reportCalculationStorage, reportCalculationEventPublisher)
+
+    @Bean
+    fun reportCalculationDebouncer(
+        createReportCalculationUseCase: CreateReportCalculationUseCase,
+        @Value("\${report-calculation-debounce.quiet-period-seconds:60}") quietPeriodSeconds: Long,
+        @Value("\${report-calculation-debounce.max-wait-seconds:300}") maxWaitSeconds: Long,
+    ): ReportCalculationDebouncer =
+        ReportCalculationDebouncer(
+            createReportCalculationUseCase = createReportCalculationUseCase,
+            quietPeriod = Duration.ofSeconds(quietPeriodSeconds),
+            maxWait = Duration.ofSeconds(maxWaitSeconds),
+        )
 
     @Bean
     fun getSqlFromDateTransformation(): DataTransformation<String> = SqlFromDateTransformation()
