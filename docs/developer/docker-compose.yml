@@ -50,8 +50,8 @@ services:
   # keycloak
   # ***************************************************************
 
-  keycloak_26:
-    image: quay.io/keycloak/keycloak:26.0.7-0
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.7
     container_name: keycloak
     depends_on:
       db-keycloak:
@@ -64,7 +64,6 @@ services:
     environment:
       KC_HTTP_ENABLED: true
       KC_HOSTNAME: https://keycloak.localhost
-      KC_FRONTEND_URL: https://keycloak.localhost
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://db-keycloak:5432/postgres
       KC_DB_SCHEMA: public
@@ -76,8 +75,6 @@ services:
     volumes:
       - ./container-data/keycloak/providers:/opt/keycloak/providers
     # - ./container-data/keycloak/themes:/opt/keycloak/themes
-    profiles:
-      - keycloak_latest
 
   db-keycloak:
     image: postgres:16
@@ -91,45 +88,6 @@ services:
       POSTGRES_PASSWORD: docker
     ports:
       - "5401:5432"
-
-# Currently Keycloak 23 is used in production:
-  keycloak_23:
-    image: quay.io/keycloak/keycloak:23.0.7
-    # our actual production image (currently not available publicly, however): ghcr.io/aam-digital/aam-keycloak:23.0.7
-    container_name: keycloak
-    networks:
-      - aam-digital
-    ports:
-      - "8080:8080"
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://db-keycloak_23:5432/postgres
-      KC_DB_SCHEMA: public
-      KC_DB_USERNAME: admin
-      KC_DB_PASSWORD: docker
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: docker
-      KC_HOSTNAME: keycloak.localhost
-      KC_PROXY: edge
-    depends_on:
-      db-keycloak_23:
-        condition: service_started
-    command: start-dev
-    # for production settings use command: start --optimized --spi-theme-login-theme=aam-theme
-    volumes:
-      - ./container-data/keycloak/providers:/opt/keycloak/providers
-    #  - ./container-data/keycloak/themes:/opt/keycloak/themes
-
-  db-keycloak_23:
-    image: postgres:16
-    volumes:
-      - ./container-data/db-keycloak23/postgresql-data:/var/lib/postgresql/data
-    networks:
-      - aam-digital
-    environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: docker
 
   # ***************************************************************
   # rabbitmq

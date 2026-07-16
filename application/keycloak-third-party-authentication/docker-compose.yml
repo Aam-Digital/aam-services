@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: keycloak
   keycloak:
-    image: quay.io/keycloak/keycloak:23.0.7
+    image: quay.io/keycloak/keycloak:26.4.7
     volumes:
       - ./data/keycloak/data:/opt/keycloak/data
       - ./data/keycloak/themes:/opt/keycloak/themes
