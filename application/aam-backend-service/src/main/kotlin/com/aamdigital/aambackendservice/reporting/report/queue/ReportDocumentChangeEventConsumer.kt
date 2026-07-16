@@ -7,7 +7,6 @@ import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.di.ReportQueueConfiguration
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationDebouncer
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import com.rabbitmq.client.Channel
@@ -19,7 +18,6 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener
 class ReportDocumentChangeEventConsumer(
     private val messageParser: QueueMessageParser,
     private val reportCalculationDebouncer: ReportCalculationDebouncer,
-    private val reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
     private val identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
     private val webhookStorage: WebhookStorage
 ) {
@@ -49,16 +47,6 @@ class ReportDocumentChangeEventConsumer(
                         body = rawMessage.toByteArray(),
                         kClass = DocumentChangeEvent::class
                     )
-
-                if (payload.documentId.startsWith("ReportCalculation:")) {
-                    if (payload.deleted) {
-                        return
-                    }
-                    reportCalculationChangeUseCase.handle(
-                        documentChangeEvent = payload
-                    )
-                    return
-                }
 
                 val affectedReports =
                     identifyAffectedReportsUseCase.analyse(

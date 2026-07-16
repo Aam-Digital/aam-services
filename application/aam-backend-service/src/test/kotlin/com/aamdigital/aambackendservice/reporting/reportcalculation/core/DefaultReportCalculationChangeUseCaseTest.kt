@@ -1,14 +1,11 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
-import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.couchdb.dto.AttachmentMetaData
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
-import com.aamdigital.aambackendservice.reporting.reportcalculation.storage.ReportCalculationEntity
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationService
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -31,46 +28,53 @@ class DefaultReportCalculationChangeUseCaseTest {
     lateinit var reportCalculationStorage: ReportCalculationStorage
 
     @Mock
-    lateinit var objectMapper: ObjectMapper
-
-    @Mock
     lateinit var notificationService: NotificationService
 
     @BeforeEach
     fun setUp() {
-        reset(reportCalculationStorage, objectMapper, notificationService)
+        reset(reportCalculationStorage, notificationService)
         service =
             DefaultReportCalculationChangeUseCase(
                 reportCalculationStorage = reportCalculationStorage,
-                objectMapper = objectMapper,
                 notificationService = notificationService
             )
     }
 
-    private fun generateDocumentChangeEvent(documentId: String = "ReportCalculation:1"): DocumentChangeEvent =
-        DocumentChangeEvent(
-            database = "report-calculation",
-            documentId = documentId,
-            rev = "1-abc",
-            currentVersion = mapOf("_id" to documentId),
-            previousVersion = mapOf("_id" to documentId),
-            deleted = false
+    /**
+     * Build the mocks eagerly (not inside a `whenever(...).thenReturn(...)` argument): stubbing the
+     * attachment digest while an outer stubbing is still open would trip Mockito's UnfinishedStubbing.
+     */
+    private fun reportCalculation(
+        id: String,
+        status: ReportCalculationStatus = ReportCalculationStatus.FINISHED_SUCCESS,
+        digest: String? = null,
+        fromAutomaticChangeDetection: Boolean = false
+    ): ReportCalculation {
+        val attachments =
+            digest?.let { digestValue ->
+                val attachment = mock<AttachmentMetaData>()
+                whenever(attachment.digest).thenReturn(digestValue)
+                mutableMapOf("data.json" to attachment)
+            } ?: mutableMapOf()
+
+        return ReportCalculation(
+            id = id,
+            report = DomainReference("Report:1"),
+            status = status,
+            attachments = attachments,
+            fromAutomaticChangeDetection = fromAutomaticChangeDetection
         )
+    }
 
     @Test
     fun `should skip processing if status is not FINISHED_SUCCESS`() {
         // given
-        val reportCalculationEntity =
-            mock<ReportCalculationEntity> {
-                on { status } doReturn ReportCalculationStatus.PENDING
-            }
-
-        val documentChangeEvent = generateDocumentChangeEvent()
-        whenever(objectMapper.convertValue(documentChangeEvent.currentVersion, ReportCalculationEntity::class.java))
-            .thenReturn(reportCalculationEntity)
+        val current = reportCalculation(id = "ReportCalculation:2", status = ReportCalculationStatus.PENDING)
+        whenever(reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:2"))))
+            .thenReturn(current)
 
         // when
-        service.handle(documentChangeEvent)
+        service.handle("ReportCalculation:2")
 
         // then
         verify(reportCalculationStorage, never()).fetchReportCalculations(any())
@@ -80,92 +84,44 @@ class DefaultReportCalculationChangeUseCaseTest {
     @Test
     fun `should send notifications if data is changed`() {
         // given
-        val currentReportCalculation =
-            ReportCalculationEntity(
-                id = "ReportCalculation:2",
-                report = DomainReference("Report:1"),
-                status = ReportCalculationStatus.FINISHED_SUCCESS,
-                attachments =
-                    mutableMapOf(
-                        "data.json" to
-                            mock<AttachmentMetaData> {
-                                on { digest } doReturn "new-digest"
-                            }
-                    )
-            )
-        val documentChangeEvent = generateDocumentChangeEvent(currentReportCalculation.id)
-        whenever(objectMapper.convertValue(documentChangeEvent.currentVersion, ReportCalculationEntity::class.java))
-            .thenReturn(currentReportCalculation)
-
-        val existingReportCalculation =
-            ReportCalculation(
-                id = "ReportCalculation:1",
-                report = DomainReference("Report:1"),
-                status = ReportCalculationStatus.FINISHED_SUCCESS,
-                attachments =
-                    mutableMapOf(
-                        "data.json" to
-                            mock<AttachmentMetaData> {
-                                on { digest } doReturn "old-digest"
-                            }
-                    )
-            )
+        val current = reportCalculation(id = "ReportCalculation:2", digest = "new-digest")
+        val existing = reportCalculation(id = "ReportCalculation:1", digest = "old-digest")
+        whenever(reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:2"))))
+            .thenReturn(current)
         whenever(reportCalculationStorage.fetchReportCalculations(any()))
-            .thenReturn(listOf(existingReportCalculation))
+            .thenReturn(listOf(existing))
 
         // when
-        service.handle(documentChangeEvent)
+        service.handle("ReportCalculation:2")
 
         // then
         verify(notificationService).sendNotifications(
             eq(DomainReference("Report:1")),
-            eq(DomainReference(currentReportCalculation.id))
+            eq(DomainReference("ReportCalculation:2"))
         )
     }
 
     @Test
     fun `should delete duplicate automatically created report calculation if it was auto-created from change`() {
         // given
-        val currentReportCalculation =
-            ReportCalculationEntity(
+        val current =
+            reportCalculation(
                 id = "ReportCalculation:2",
-                report = DomainReference("Report:1"),
-                status = ReportCalculationStatus.FINISHED_SUCCESS,
-                attachments =
-                    mutableMapOf(
-                        "data.json" to
-                            mock<AttachmentMetaData> {
-                                on { digest } doReturn "old-digest"
-                            }
-                    ),
+                digest = "old-digest",
                 fromAutomaticChangeDetection = true
             )
-        val documentChangeEvent = generateDocumentChangeEvent(currentReportCalculation.id)
-        whenever(objectMapper.convertValue(documentChangeEvent.currentVersion, ReportCalculationEntity::class.java))
-            .thenReturn(currentReportCalculation)
-
-        val existingReportCalculation =
-            ReportCalculation(
-                id = "ReportCalculation:1",
-                report = DomainReference("Report:1"),
-                status = ReportCalculationStatus.FINISHED_SUCCESS,
-                attachments =
-                    mutableMapOf(
-                        "data.json" to
-                            mock<AttachmentMetaData> {
-                                on { digest } doReturn "old-digest"
-                            }
-                    )
-            )
+        val existing = reportCalculation(id = "ReportCalculation:1", digest = "old-digest")
+        whenever(reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:2"))))
+            .thenReturn(current)
         whenever(reportCalculationStorage.fetchReportCalculations(any()))
-            .thenReturn(listOf(existingReportCalculation))
+            .thenReturn(listOf(existing))
 
         // when
-        service.handle(documentChangeEvent)
+        service.handle("ReportCalculation:2")
 
         // then
         verify(reportCalculationStorage).deleteReportCalculation(
-            eq(DomainReference(currentReportCalculation.id))
+            eq(DomainReference("ReportCalculation:2"))
         )
         verify(notificationService, never()).sendNotifications(any(), any())
     }

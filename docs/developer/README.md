@@ -298,7 +298,7 @@ cd ./container-data/keycloak/providers # (create folder if necessary)
 sudo wget https://github.com/aerogear/keycloak-metrics-spi/releases/download/6.0.0/keycloak-metrics-spi-6.0.0.jar && \
 sudo wget https://github.com/wouterh-dev/keycloak-spi-trusted-device/releases/download/v0.0.1-22/keycloak-spi-trusted-device-0.0.1-22.jar && \
 sudo wget https://static.aam-digital.net/keycloak-2fa-email-authenticator-1.0-SNAPSHOT.jar && \
-sudo wget https://github.com/Aam-Digital/aam-services/releases/download/keycloak-third-party-authentication/v0.1.0/keycloak-third-party-authentication.jar
+sudo wget https://github.com/Aam-Digital/aam-services/releases/download/keycloak-third-party-authentication/v0.2.0/keycloak-third-party-authentication.jar
 ```
 
 ### Step 3: Set Up CouchDB (todo: improve this by automatic script)

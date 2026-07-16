@@ -37,7 +37,7 @@ class AamKeycloakAuthenticationProvider(
         newUser.isEnabled = true
         newUser.isEmailVerified = true
         if (userEntityId != null) {
-            newUser.singleAttribute("exact_username", userEntityId)
+            newUser.attributes = mapOf("exact_username" to listOf(userEntityId))
         }
 
         val response =

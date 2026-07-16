@@ -13,25 +13,23 @@ Processing is asynchronous and decoupled using RabbitMQ messages.
 flowchart TD
     subgraph trigger[external triggers]
         calculationRequest>"POST /report-calculation/report/{reportId}"]
-        externalDocChange>"CouchDB doc changed"]
+        externalDocChange>"CouchDB app doc changed"]
     end
-    calculationRequest --> CreateCalculation
+
     externalDocChange -.-> Q_DocChanges
+    Q_DocChanges[[Queue: document.changes.report]] -.-> ChangeEventConsumer
+    ChangeEventConsumer(ReportDocumentChangeEventConsumer) --> CreateCalculation
+    calculationRequest --> CreateCalculation
 
-    Q_DocChanges -.-> ChangeEventConsumer
-    ChangeEventConsumer --> CreateCalculation
-    CreateCalculation -.-> Q_DocChanges
-    Q_DocChanges -.-> Calculation
-    Calculation -.-> Q_DocChanges
-    
-    ChangeEventConsumer --> CalculationChange
-    CalculationChange -- if calculation FINISHED_SUCCESS --> WebhookNotification
-
-    Q_DocChanges[[Queue: document.changes.report / report.calculation]]
-    ChangeEventConsumer(ReportDocumentChangeEventConsumer)
-    CreateCalculation[CreateReportCalculationUseCase]
+    CreateCalculation[CreateReportCalculationUseCase] -.-> Q_Calculation
+    Q_Calculation[[Queue: report.calculation]] -.-> CalculationListener
+    CalculationListener(ReportCalculationEventListener) --> Calculation
     Calculation[ReportCalculationUseCase]
     style Calculation fill:#00C853
-    CalculationChange[ReportCalculationChangeUseCase]
+
+    CalculationListener -- if FINISHED_SUCCESS --> Q_Completed
+    Q_Completed[[Queue: report.calculation.completed]] -.-> CompletedConsumer
+    CompletedConsumer(ReportCalculationCompletedEventConsumer) --> CalculationChange
+    CalculationChange[ReportCalculationChangeUseCase] -- if result changed --> WebhookNotification
     WebhookNotification["NotificationService (call Webhooks)"]
 ```

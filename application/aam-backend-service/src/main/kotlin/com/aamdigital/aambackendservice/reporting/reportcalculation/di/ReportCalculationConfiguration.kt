@@ -45,10 +45,9 @@ class ReportCalculationConfiguration {
     @Bean
     fun defaultReportCalculationChangeUseCase(
         reportCalculationStorage: ReportCalculationStorage,
-        objectMapper: ObjectMapper,
         notificationService: NotificationService
     ): ReportCalculationChangeUseCase =
-        DefaultReportCalculationChangeUseCase(reportCalculationStorage, objectMapper, notificationService)
+        DefaultReportCalculationChangeUseCase(reportCalculationStorage, notificationService)
 
     @Bean
     fun defaultCreateReportCalculationUseCase(

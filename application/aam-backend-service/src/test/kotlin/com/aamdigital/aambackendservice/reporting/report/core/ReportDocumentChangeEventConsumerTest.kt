@@ -7,7 +7,6 @@ import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationDebouncer
 import com.aamdigital.aambackendservice.reporting.webhook.Webhook
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthentication
@@ -53,9 +52,6 @@ class ReportDocumentChangeEventConsumerTest {
     lateinit var reportCalculationDebouncer: ReportCalculationDebouncer
 
     @Mock
-    lateinit var reportCalculationChangeUseCase: ReportCalculationChangeUseCase
-
-    @Mock
     lateinit var identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase
 
     @Mock
@@ -69,7 +65,6 @@ class ReportDocumentChangeEventConsumerTest {
         reset(
             messageParser,
             reportCalculationDebouncer,
-            reportCalculationChangeUseCase,
             identifyAffectedReportsUseCase,
             webhookStorage
         )
@@ -78,7 +73,6 @@ class ReportDocumentChangeEventConsumerTest {
             ReportDocumentChangeEventConsumer(
                 messageParser = messageParser,
                 reportCalculationDebouncer = reportCalculationDebouncer,
-                reportCalculationChangeUseCase = reportCalculationChangeUseCase,
                 identifyAffectedReportsUseCase = identifyAffectedReportsUseCase,
                 webhookStorage = webhookStorage
             )

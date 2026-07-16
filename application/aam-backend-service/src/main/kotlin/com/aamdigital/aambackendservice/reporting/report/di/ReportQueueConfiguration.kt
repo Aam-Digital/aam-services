@@ -4,7 +4,6 @@ import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationDebouncer
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import org.springframework.amqp.core.Binding
@@ -39,14 +38,12 @@ class ReportQueueConfiguration {
     fun reportDocumentChangeEventConsumer(
         messageParser: QueueMessageParser,
         reportCalculationDebouncer: ReportCalculationDebouncer,
-        reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
         identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
         webhookStorage: WebhookStorage
     ): ReportDocumentChangeEventConsumer =
         ReportDocumentChangeEventConsumer(
             messageParser,
             reportCalculationDebouncer,
-            reportCalculationChangeUseCase,
             identifyAffectedReportsUseCase,
             webhookStorage
         )
