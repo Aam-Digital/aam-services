@@ -10,6 +10,7 @@ import com.aamdigital.aambackendservice.notification.core.create.email.UserEmail
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
+import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import io.cucumber.java.After
 import io.cucumber.java.Before
 import io.cucumber.java.en.Given
@@ -23,6 +24,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.after
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
+import org.mockito.kotlin.timeout
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
@@ -46,12 +48,17 @@ class CucumberIntegrationTest(
     @MockBean
     lateinit var userEmailProvider: UserEmailProvider
 
+    // mocked so the guardrail can verify the webhook is triggered without needing a real HTTP receiver;
+    // the mock still sits downstream of both the report.calculation.completed and notification.webhook queues
+    @MockBean
+    lateinit var triggerWebhookUseCase: TriggerWebhookUseCase
+
     private var storedId: String? = null
     private var latestNotificationConfigUserIdentifier: String? = null
 
     @Before
     fun `log scenario start`() {
-        reset(mailSenderService, userEmailProvider)
+        reset(mailSenderService, userEmailProvider, triggerWebhookUseCase)
         whenever(userEmailProvider.lookupEmail(any())).thenReturn("integration-test-user@example.com")
         whenever(mailSenderService.sendMail(any<MailSenderRequest>())).thenReturn(MailSenderResponse(success = true))
 
@@ -352,6 +359,14 @@ class CucumberIntegrationTest(
     @Then("email notification is sent {int} times")
     fun `email notification is sent n times`(expectedCount: Int) {
         verify(mailSenderService, after(10_000).times(expectedCount)).sendMail(any())
+    }
+
+    // Assert at-least-once (not an exact count): subscribing a webhook already triggers an initial
+    // calculation, and the explicit emit triggers another, so multiple deliveries are expected. The
+    // guardrail's point is that a finished calculation delivers to the webhook at all (never zero).
+    @Then("the subscribed webhook is triggered")
+    fun `the subscribed webhook is triggered`() {
+        verify(triggerWebhookUseCase, timeout(10_000).atLeastOnce()).trigger(any())
     }
 
     private fun waitUntil(

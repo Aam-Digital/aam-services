@@ -4,6 +4,25 @@ Feature: Webhook registration and subscription management
     Background:
         Given all default databases are created
 
+    # Guardrail (regression test for the silent webhook outage): a report calculation that finishes
+    # successfully must deliver to its subscribed webhooks. This deliberately spans the full chain
+    # (calculation finished -> report.calculation.completed event -> notification -> notification.webhook
+    # -> webhook trigger). Because the e2e change-detection allowlist only polls `app`, a completed
+    # calculation in the `report-calculation` database is NOT observed via the CouchDB changes feed here:
+    # this scenario therefore only passes when completion is announced by an explicit RabbitMQ event.
+    Scenario: A successfully finished report calculation triggers its subscribed webhook
+        Given document ReportConfig_1 is stored in database app
+        Given document Config_CONFIG_ENTITY is stored in database app
+        Given document ReportCalculation_2 is stored in database report-calculation
+        Given signed in as client dummy-client with secret client-secret in realm dummy-realm
+        When the client calls POST /v1/reporting/webhook with body CreateWebhookRequest_1
+        Then the client receives status code of 200
+        Given the client stores the id from latest response
+        When the client calls POST /v1/reporting/webhook/ with stored id and suffix /subscribe/report/ReportConfig:1
+        Then the client receives status code of 200
+        Given emit ReportCalculationEvent for ReportCalculation:2 in tenant local-spring
+        Then the subscribed webhook is triggered
+
     Scenario: Create a webhook without authentication returns 401
         When the client calls POST /v1/reporting/webhook with body CreateWebhookRequest_1
         Then the client receives status code of 401

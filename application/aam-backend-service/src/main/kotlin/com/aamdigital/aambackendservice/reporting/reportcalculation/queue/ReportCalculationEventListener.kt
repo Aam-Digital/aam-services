@@ -1,8 +1,10 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.queue
 
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationCompletedEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationRequest
+import com.aamdigital.aambackendservice.reporting.reportcalculation.di.ReportCalculationQueueConfiguration.Companion.REPORT_CALCULATION_COMPLETED_QUEUE
 import com.aamdigital.aambackendservice.reporting.reportcalculation.di.ReportCalculationQueueConfiguration.Companion.REPORT_CALCULATION_EVENT_QUEUE
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -19,7 +21,8 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener
 class ReportCalculationEventListener(
     val observationRegistry: ObservationRegistry,
     val reportCalculationUseCase: DefaultReportCalculationUseCase,
-    val objectMapper: ObjectMapper
+    val objectMapper: ObjectMapper,
+    val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -53,7 +56,15 @@ class ReportCalculationEventListener(
                     response.cause
                 )
 
-                is UseCaseOutcome.Success -> logger.trace(objectMapper.writeValueAsString(response))
+                is UseCaseOutcome.Success -> {
+                    logger.trace(objectMapper.writeValueAsString(response))
+                    // announce completion so the webhook-notification path is triggered by an explicit
+                    // event rather than by observing the report-calculation database via the changes feed
+                    reportCalculationEventPublisher.publish(
+                        REPORT_CALCULATION_COMPLETED_QUEUE,
+                        ReportCalculationCompletedEvent(reportCalculationId = event.reportCalculationId)
+                    )
+                }
             }
         }
     }

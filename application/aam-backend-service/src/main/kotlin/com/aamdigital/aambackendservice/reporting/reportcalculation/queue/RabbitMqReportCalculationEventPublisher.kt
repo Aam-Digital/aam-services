@@ -3,7 +3,7 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.queue
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.InternalServerException
-import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
+import com.aamdigital.aambackendservice.common.events.DomainEvent
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpException
@@ -23,7 +23,7 @@ class RabbitMqReportCalculationEventPublisher(
     @Throws(AamException::class)
     fun publish(
         channel: String,
-        event: ReportCalculationEvent
+        event: DomainEvent
     ) {
         try {
             rabbitTemplate.send(
@@ -32,7 +32,7 @@ class RabbitMqReportCalculationEventPublisher(
             )
         } catch (ex: AmqpException) {
             throw InternalServerException(
-                message = "Could not publish ReportCalculationEvent: $event",
+                message = "Could not publish ${event.javaClass.simpleName}: $event",
                 code = RabbitMqReportCalculationEventErrorCode.EVENT_PUBLISH_ERROR,
                 cause = ex
             )
