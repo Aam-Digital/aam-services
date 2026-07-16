@@ -75,25 +75,36 @@ class ReportCalculationDebouncer(
         // debounce window instead of being swallowed by the calculation we create now
         pendingTriggers.remove(reportId)
 
-        when (val result = createReportCalculationUseCase.createReportCalculation(trigger.request)) {
-            is CreateReportCalculationResult.Success -> {
-                logger.debug(
-                    "created debounced report calculation {} for report {}",
-                    result.calculation.id,
-                    reportId,
-                )
-            }
+        try {
+            when (val result = createReportCalculationUseCase.createReportCalculation(trigger.request)) {
+                is CreateReportCalculationResult.Success -> {
+                    logger.debug(
+                        "created debounced report calculation {} for report {}",
+                        result.calculation.id,
+                        reportId,
+                    )
+                }
 
-            is CreateReportCalculationResult.Failure -> {
-                logger.warn(
-                    "could not create debounced report calculation for report {} ({}), will retry: {}",
-                    reportId,
-                    result.errorCode,
-                    result.errorMessage,
-                    result.cause,
-                )
-                restorePendingTrigger(reportId, trigger)
+                is CreateReportCalculationResult.Failure -> {
+                    logger.warn(
+                        "could not create debounced report calculation for report {} ({}), will retry: {}",
+                        reportId,
+                        result.errorCode,
+                        result.errorMessage,
+                        result.cause,
+                    )
+                    restorePendingTrigger(reportId, trigger)
+                }
             }
+        } catch (ex: Exception) {
+            // an unexpected throw (not a Failure result) must not lose the claimed trigger, nor
+            // abort the flush loop over the remaining reports: restore for retry on the next flush
+            logger.error(
+                "unexpected error creating debounced report calculation for report {}, will retry",
+                reportId,
+                ex,
+            )
+            restorePendingTrigger(reportId, trigger)
         }
     }
 
