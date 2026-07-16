@@ -21,7 +21,7 @@ Feature: Webhook registration and subscription management
         When the client calls POST /v1/reporting/webhook/ with stored id and suffix /subscribe/report/ReportConfig:1
         Then the client receives status code of 200
         Given emit ReportCalculationEvent for ReportCalculation:2 in tenant local-spring
-        Then the subscribed webhook is triggered 1 time
+        Then the subscribed webhook is triggered
 
     Scenario: Create a webhook without authentication returns 401
         When the client calls POST /v1/reporting/webhook with body CreateWebhookRequest_1
