@@ -10,6 +10,7 @@ import com.aamdigital.aambackendservice.notification.core.create.email.UserEmail
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
+import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import io.cucumber.java.After
 import io.cucumber.java.Before
 import io.cucumber.java.en.Given
@@ -46,12 +47,17 @@ class CucumberIntegrationTest(
     @MockBean
     lateinit var userEmailProvider: UserEmailProvider
 
+    // mocked so the guardrail can verify the webhook is triggered without needing a real HTTP receiver;
+    // the mock still sits downstream of both the report.calculation.completed and notification.webhook queues
+    @MockBean
+    lateinit var triggerWebhookUseCase: TriggerWebhookUseCase
+
     private var storedId: String? = null
     private var latestNotificationConfigUserIdentifier: String? = null
 
     @Before
     fun `log scenario start`() {
-        reset(mailSenderService, userEmailProvider)
+        reset(mailSenderService, userEmailProvider, triggerWebhookUseCase)
         whenever(userEmailProvider.lookupEmail(any())).thenReturn("integration-test-user@example.com")
         whenever(mailSenderService.sendMail(any<MailSenderRequest>())).thenReturn(MailSenderResponse(success = true))
 
@@ -352,6 +358,11 @@ class CucumberIntegrationTest(
     @Then("email notification is sent {int} times")
     fun `email notification is sent n times`(expectedCount: Int) {
         verify(mailSenderService, after(10_000).times(expectedCount)).sendMail(any())
+    }
+
+    @Then("the subscribed webhook is triggered {int} time(s)")
+    fun `the subscribed webhook is triggered n times`(expectedCount: Int) {
+        verify(triggerWebhookUseCase, after(10_000).times(expectedCount)).trigger(any())
     }
 
     private fun waitUntil(

@@ -5,7 +5,6 @@ import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import com.rabbitmq.client.Channel
 import org.junit.jupiter.api.Assertions
@@ -38,9 +37,6 @@ class ReportDocumentChangeEventConsumerTest {
     lateinit var createReportCalculationUseCase: CreateReportCalculationUseCase
 
     @Mock
-    lateinit var reportCalculationChangeUseCase: ReportCalculationChangeUseCase
-
-    @Mock
     lateinit var identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase
 
     @Mock
@@ -51,7 +47,6 @@ class ReportDocumentChangeEventConsumerTest {
         reset(
             messageParser,
             createReportCalculationUseCase,
-            reportCalculationChangeUseCase,
             identifyAffectedReportsUseCase,
             webhookStorage
         )
@@ -60,7 +55,6 @@ class ReportDocumentChangeEventConsumerTest {
             ReportDocumentChangeEventConsumer(
                 messageParser = messageParser,
                 createReportCalculationUseCase = createReportCalculationUseCase,
-                reportCalculationChangeUseCase = reportCalculationChangeUseCase,
                 identifyAffectedReportsUseCase = identifyAffectedReportsUseCase,
                 webhookStorage = webhookStorage
             )
