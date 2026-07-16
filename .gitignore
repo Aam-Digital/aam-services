@@ -1,3 +1,6 @@
+# Claude Code worktrees (local only, must never be committed as submodules)
+.claude/worktrees/
+
 .idea
 .run
 aam-services.iml
