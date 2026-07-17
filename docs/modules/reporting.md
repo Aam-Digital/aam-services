@@ -121,3 +121,23 @@ _... when data in Aam Digital changes (and once initially directly after you sub
 6. Use the report-calculation-id in the event to fetch actual data:
    - get metadata like timestamp of the calculation: `GET /v1/reporting/report-calculation/<calculation-id>`
    - get the actual report data: `GET /v1/reporting/report-calculation/<calculation-id>/data`
+
+### Debouncing of automatic report calculations
+
+When data in Aam Digital changes, affected subscribed reports are not recalculated once per
+changed document. Instead, changes are debounced: the calculation runs once no further change
+has arrived for a quiet period, so a burst of edits (or a bulk import) results in a single
+recalculation reflecting the final state. While changes keep arriving continuously, an
+intermediate calculation is still triggered regularly (max wait), so subscribers receive
+updates during long-running imports.
+
+This behaviour can be tuned via environment variables / application properties (defaults shown):
+
+| Property                                            | Default | Description                                                              |
+|-----------------------------------------------------|---------|--------------------------------------------------------------------------|
+| `report-calculation-debounce.quiet-period-seconds`  | `60`    | wait this long after the last change before calculating                   |
+| `report-calculation-debounce.max-wait-seconds`      | `300`   | calculate at least this often while changes keep arriving                 |
+| `report-calculation-debounce.flush-fixed-delay`     | `10000` | interval (ms) at which pending triggers are checked                       |
+
+Manually triggered calculations (`POST /v1/reporting/report-calculation/report/<report-id>`)
+are not debounced and always run immediately.
