@@ -322,8 +322,13 @@ class DefaultReportStorageTest {
             body = bodyCaptor.capture()
         )
         val writtenDoc = bodyCaptor.firstValue as ObjectNode
-        assertThat(writtenDoc.get("reportDefinition").get(0).get("query").textValue())
-            .isEqualTo("SELECT name, _created_at FROM Child")
+        val writtenQuery =
+            writtenDoc
+                .get("reportDefinition")
+                .get(0)
+                .get("query")
+                .textValue()
+        assertThat(writtenQuery).isEqualTo("SELECT name, _created_at FROM Child")
         // untouched fields survive the write-back
         assertThat(writtenDoc.get("_rev").textValue()).isEqualTo("1-abc")
         assertThat(writtenDoc.get("title").textValue()).isEqualTo("Rename")

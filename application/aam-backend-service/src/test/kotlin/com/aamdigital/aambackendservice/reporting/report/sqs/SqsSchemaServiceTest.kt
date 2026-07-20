@@ -17,6 +17,8 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
+private const val SCHEMA_DOC_ID = "_design/sqlite:config"
+
 @ExtendWith(MockitoExtension::class)
 class SqsSchemaServiceTest {
     private lateinit var service: SqsSchemaService
@@ -42,21 +44,21 @@ class SqsSchemaServiceTest {
         whenever(
             couchDbClient.getDatabaseDocument(
                 database = eq("app"),
-                documentId = eq("_design/sqlite:config"),
+                documentId = eq(SCHEMA_DOC_ID),
                 queryParams = any(),
                 kClass = eq(SqsSchema::class)
             )
         ).thenAnswer { throw NotFoundException(message = "not found", code = TestErrorCode.TEST_EXCEPTION) }
         whenever(
             couchDbClient.putDatabaseDocument(any(), any(), any())
-        ).thenReturn(DocSuccess(ok = true, id = "_design/sqlite:config", rev = "1-new"))
+        ).thenReturn(DocSuccess(ok = true, id = SCHEMA_DOC_ID, rev = "1-new"))
     }
 
     private fun capturePublishedSchema(): SqsSchema {
         val bodyCaptor = argumentCaptor<Any>()
         verify(couchDbClient).putDatabaseDocument(
             database = eq("app"),
-            documentId = eq("_design/sqlite:config"),
+            documentId = eq(SCHEMA_DOC_ID),
             body = bodyCaptor.capture()
         )
         return bodyCaptor.firstValue as SqsSchema
@@ -80,7 +82,10 @@ class SqsSchemaServiceTest {
 
         // then
         val schema = capturePublishedSchema()
-        val childFields = schema.sql.tables.getValue("Child").fields
+        val childFields =
+            schema.sql.tables
+                .getValue("Child")
+                .fields
 
         assertThat(childFields.getValue("_created_at").field).isEqualTo("created.at")
         assertThat(childFields.getValue("_created_by").field).isEqualTo("created.by")
@@ -91,7 +96,10 @@ class SqsSchemaServiceTest {
         // real entity fields stay unprefixed
         assertThat(childFields).containsKeys("name", "inactive", "anonymized")
 
-        val enumFields = schema.sql.tables.getValue("ConfigurableEnum").fields
+        val enumFields =
+            schema.sql.tables
+                .getValue("ConfigurableEnum")
+                .fields
         assertThat(enumFields.getValue("values").field).isEqualTo("values")
         assertThat(enumFields).containsKey("_id")
 
@@ -115,7 +123,11 @@ class SqsSchemaServiceTest {
         service.updateSchema()
 
         // then: hard-wired definition wins, no metadata columns are mixed in
-        val enumFields = capturePublishedSchema().sql.tables.getValue("ConfigurableEnum").fields
+        val enumFields =
+            capturePublishedSchema()
+                .sql.tables
+                .getValue("ConfigurableEnum")
+                .fields
         assertThat(enumFields.keys).containsExactlyInAnyOrder("_id", "values")
     }
 }
