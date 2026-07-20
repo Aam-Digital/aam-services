@@ -288,6 +288,47 @@ class DefaultReportStorageTest {
         verify(couchDbClient, never()).putDatabaseDocument(any(), any(), any())
     }
 
+    // --- Deprecated metadata column rename ---
+
+    @Test
+    fun `should rewrite deprecated metadata columns on read and write renamed doc back`() {
+        // given
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:rename",
+              "_rev": "1-abc",
+              "title": "Rename",
+              "mode": "sql",
+              "reportDefinition": [
+                { "query": "SELECT name, created_at FROM Child" }
+              ]
+            }
+            """.trimIndent()
+        )
+        stubWriteBack()
+
+        // when
+        val report = storage.fetchReport(DomainReference("ReportConfig:rename"))
+
+        // then
+        assertThat((report.items[0] as ReportItem.ReportQuery).sql)
+            .isEqualTo("SELECT name, _created_at FROM Child")
+
+        val bodyCaptor = argumentCaptor<Any>()
+        verify(couchDbClient).putDatabaseDocument(
+            database = eq("app"),
+            documentId = eq("ReportConfig:rename"),
+            body = bodyCaptor.capture()
+        )
+        val writtenDoc = bodyCaptor.firstValue as ObjectNode
+        assertThat(writtenDoc.get("reportDefinition").get(0).get("query").textValue())
+            .isEqualTo("SELECT name, _created_at FROM Child")
+        // untouched fields survive the write-back
+        assertThat(writtenDoc.get("_rev").textValue()).isEqualTo("1-abc")
+        assertThat(writtenDoc.get("title").textValue()).isEqualTo("Rename")
+    }
+
     // --- Non-SQL report ---
 
     @Test

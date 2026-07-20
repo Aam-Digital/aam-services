@@ -77,6 +77,31 @@ class SqsSchemaService(
         private const val FILENAME_CONFIG_ENTITY = "Config:CONFIG_ENTITY"
         private const val SCHEMA_PATH = "_design/sqlite:config"
         private const val TARGET_DATABASE = "app"
+
+        /**
+         * Name of the hard-wired table exposing raw ConfigurableEnum documents
+         * (one row per enum, options as a JSON array in the "values" column).
+         */
+        const val CONFIGURABLE_ENUM_TABLE = "ConfigurableEnum"
+
+        /**
+         * One row per enum option, so report queries can translate stored option ids
+         * into human-readable labels with a plain JOIN instead of json_each boilerplate:
+         *
+         * SELECT c.name, COALESCE(g.label, c.gender) AS gender
+         * FROM Child c
+         * LEFT JOIN ConfigurableEnumOption g
+         *   ON g.enum_id = 'genders' AND g.option_id = c.gender
+         *
+         * SQS executes any statement listed in sql.indexes, which lets us ship this view
+         * as part of the schema definition.
+         */
+        const val CONFIGURABLE_ENUM_OPTION_VIEW =
+            "CREATE VIEW IF NOT EXISTS ConfigurableEnumOption AS " +
+                "SELECT REPLACE(ec._id, 'ConfigurableEnum:', '') AS enum_id, " +
+                "json_extract(o.value, '$.id') AS option_id, " +
+                "json_extract(o.value, '$.label') AS label " +
+                "FROM ConfigurableEnum ec, json_each(ec.\"values\") o"
     }
 
     fun getSchemaPath(): String = "/$TARGET_DATABASE/$SCHEMA_PATH"
@@ -156,6 +181,9 @@ class SqsSchemaService(
                 }.associate {
                     Pair(it.first, TableFields(it.second))
                 }
+                // hard-wired last, so it wins over a manually configured entity:ConfigurableEnum
+                // (the old workaround that required adding this entity to the config document)
+                .plus(getConfigurableEnumTable())
 
         return SqsSchema(
             sql =
@@ -168,10 +196,25 @@ class SqsSchemaService(
                                 separator = ":"
                             )
                         ),
-                    indexes = emptyList()
+                    indexes = listOf(CONFIGURABLE_ENUM_OPTION_VIEW)
                 )
         )
     }
+
+    /**
+     * ConfigurableEnum documents are defined in code (not in Config:CONFIG_ENTITY),
+     * so their table is hard-wired here to make enum options queryable at all times.
+     */
+    private fun getConfigurableEnumTable(): Pair<String, TableFields> =
+        Pair(
+            CONFIGURABLE_ENUM_TABLE,
+            TableFields(
+                mapOf(
+                    "_id" to EntityAttributeType(field = "_id", type = "TEXT"),
+                    "values" to EntityAttributeType(field = "values", type = "TEXT")
+                )
+            )
+        )
 
     private fun mapConfigDataTypeToSqsDataType(dataType: String): String =
         when (dataType) {
@@ -207,29 +250,31 @@ class SqsSchemaService(
                     type = "TEXT"
                 )
             ),
+            // "_" prefix marks columns that are derived from internal metadata rather than
+            // configured entity fields, and avoids clashes with custom fields of the same name
             EntityAttribute(
-                "created_at",
+                "_created_at",
                 EntityAttributeType(
                     field = "created.at",
                     type = "DATE"
                 )
             ),
             EntityAttribute(
-                "created_by",
+                "_created_by",
                 EntityAttributeType(
                     field = "created.by",
                     type = "TEXT"
                 )
             ),
             EntityAttribute(
-                "updated_at",
+                "_updated_at",
                 EntityAttributeType(
                     field = "updated.at",
                     type = "DATE"
                 )
             ),
             EntityAttribute(
-                "updated_by",
+                "_updated_by",
                 EntityAttributeType(
                     field = "updated.by",
                     type = "TEXT"

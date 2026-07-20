@@ -31,6 +31,7 @@ class DefaultReportStorage(
     private val objectMapper: ObjectMapper
 ) : ReportStorage {
     private val legacyMigration = ReportConfigLegacyMigration(couchDbClient)
+    private val columnRenameMigration = ReportColumnRenameMigration(couchDbClient)
 
     companion object {
         private const val REPORT_DATABASE = "app"
@@ -52,7 +53,7 @@ class DefaultReportStorage(
 
         return response.rows
             .filter { isSqlReport(it.doc) }
-            .map { normalizeRawDocToReport(it.doc) }
+            .map { columnRenameMigration.migrate(normalizeRawDocToReport(it.doc)) }
     }
 
     @Throws(
@@ -81,10 +82,14 @@ class DefaultReportStorage(
             )
         }
 
-        val report = normalizeRawDocToReport(rawDoc)
+        val rawReport = normalizeRawDocToReport(rawDoc)
+        val report = columnRenameMigration.migrate(rawReport)
 
         if (legacyMigration.isLegacyDoc(rawDoc)) {
+            // the legacy write-back already persists the report with renamed columns
             legacyMigration.tryWriteMigratedDoc(rawDoc, report)
+        } else if (report != rawReport) {
+            columnRenameMigration.tryWriteRenamedDoc(rawDoc)
         }
 
         return report
