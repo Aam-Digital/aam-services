@@ -156,6 +156,9 @@ class SqsSchemaService(
                 }.associate {
                     Pair(it.first, TableFields(it.second))
                 }
+                // hard-wired last, so it wins over a manually configured entity:ConfigurableEnum
+                // (the old workaround that required adding this entity to the config document)
+                .plus(Pair(ConfigurableEnumSchema.TABLE, ConfigurableEnumSchema.FIELDS))
 
         return SqsSchema(
             sql =
@@ -168,7 +171,7 @@ class SqsSchemaService(
                                 separator = ":"
                             )
                         ),
-                    indexes = emptyList()
+                    indexes = listOf(ConfigurableEnumSchema.OPTION_VIEW)
                 )
         )
     }
@@ -207,29 +210,31 @@ class SqsSchemaService(
                     type = "TEXT"
                 )
             ),
+            // "_" prefix marks columns that are derived from internal metadata rather than
+            // configured entity fields, and avoids clashes with custom fields of the same name
             EntityAttribute(
-                "created_at",
+                "_created_at",
                 EntityAttributeType(
                     field = "created.at",
                     type = "DATE"
                 )
             ),
             EntityAttribute(
-                "created_by",
+                "_created_by",
                 EntityAttributeType(
                     field = "created.by",
                     type = "TEXT"
                 )
             ),
             EntityAttribute(
-                "updated_at",
+                "_updated_at",
                 EntityAttributeType(
                     field = "updated.at",
                     type = "DATE"
                 )
             ),
             EntityAttribute(
-                "updated_by",
+                "_updated_by",
                 EntityAttributeType(
                     field = "updated.by",
                     type = "TEXT"
