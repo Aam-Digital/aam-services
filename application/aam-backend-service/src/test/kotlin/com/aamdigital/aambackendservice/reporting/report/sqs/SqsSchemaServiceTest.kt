@@ -103,7 +103,7 @@ class SqsSchemaServiceTest {
         assertThat(enumFields.getValue("values").field).isEqualTo("values")
         assertThat(enumFields).containsKey("_id")
 
-        assertThat(schema.sql.indexes).containsExactly(SqsSchemaService.CONFIGURABLE_ENUM_OPTION_VIEW)
+        assertThat(schema.sql.indexes).containsExactly(ConfigurableEnumSchema.OPTION_VIEW)
     }
 
     @Test
