@@ -14,7 +14,7 @@
     "schedule": [
         "after 00:00 and before 04:00 on Wednesday"
     ],
-    "dependencyDashboard": true,
+    "dependencyDashboard": false,
     "prConcurrentLimit": 5,
     "prHourlyLimit": 2,
     "labels": [
@@ -29,7 +29,6 @@
                 "major"
             ],
             "draftPR": true,
-            "dependencyDashboardApproval": true,
             "labels": [
                 "dependencies",
                 "major-update"
