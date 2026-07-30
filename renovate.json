@@ -83,10 +83,11 @@
             "automerge": false
         },
         {
-            "description": "The Gradle wrapper and the gradle builder image in the Dockerfile pin the same version in two files handled by different managers. Group them so they can never drift into a combination that cannot build.",
-            "groupName": "gradle",
+            "description": "The JVM build and runtime toolchain. The Gradle wrapper and the gradle builder image pin the same version in two files handled by different managers, and the amazoncorretto runtime image has to stay on the same JDK line the service is built against. Grouping them means a toolchain move arrives as one reviewable PR instead of several that can land apart.",
+            "groupName": "jvm-toolchain",
             "matchPackageNames": [
-                "gradle"
+                "gradle",
+                "amazoncorretto"
             ]
         },
         {
