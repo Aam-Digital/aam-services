@@ -1,4 +1,4 @@
-FROM gradle:8.10.2-jdk21-alpine AS BUILD
+FROM gradle:9.6.1-jdk21-alpine AS BUILD
 WORKDIR /opt/app
 COPY . .
 RUN gradle installDist
