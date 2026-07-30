@@ -51,15 +51,16 @@ You should also account for that possibility.
 ## SQL schema
 
 The schema handed to SQS is generated from `Config:CONFIG_ENTITY` (see `SqsSchemaService`): every configured entity type
-becomes a table with one column per configured field. On top of that, the backend hard-wires the following, so reports
-can use them without any config change:
+becomes a table with one column per configured field, except fields of dataType `file`, which are skipped. The backend
+additionally hard-wires the following, so reports can use them without any config change:
 
-- **Default columns in every table** (`getDefaultEntityAttributes`): `_id`, `_rev`, `_attachments`, `_created_at`,
-  `_created_by`, `_updated_at`, `_updated_by`, `inactive`, `anonymized`.
+- **Default columns in every generated entity table** (`getDefaultEntityAttributes`): `_id`, `_rev`, `_attachments`,
+  `_created_at`, `_created_by`, `_updated_at`, `_updated_by`, `inactive`, `anonymized`.
   The `_` prefix marks columns generated from internal document metadata (e.g. `_created_at` reads `created.at`) and
   avoids clashes with configured fields of the same name. `inactive` and `anonymized` stay unprefixed because they are
   regular entity fields.
-- **`ConfigurableEnum` table** (`_id`, `values`), one row per dropdown definition with its options as a JSON array.
+- **`ConfigurableEnum` table**, with only the columns `_id` and `values` (the default columns above do not apply to it),
+  one row per dropdown definition with its options as a JSON array.
 - **`ConfigurableEnumOption` view** (`enum_id`, `option_id`, `label`), one row per dropdown option, shipped as part of
   `sql.indexes` (see `ConfigurableEnumSchema`). Report queries translate a stored option id into its human-readable
   label with a plain JOIN:
