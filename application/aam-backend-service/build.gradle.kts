@@ -65,34 +65,34 @@ dependencies {
 
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 
-    testImplementation("io.cucumber:cucumber-java:7.34.3")
-    testImplementation("io.cucumber:cucumber-junit:7.34.3")
-    testImplementation("io.cucumber:cucumber-spring:7.34.3")
+    testImplementation("io.cucumber:cucumber-java:7.34.6")
+    testImplementation("io.cucumber:cucumber-junit:7.34.6")
+    testImplementation("io.cucumber:cucumber-spring:7.34.6")
     testImplementation("org.junit.vintage:junit-vintage-engine")
 
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:6.3.0")
     testImplementation("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("net.joshka:junit-json-params:5.10.2-r0")
-    testImplementation("org.eclipse.parsson:parsson:1.1.7")
+    testImplementation("org.eclipse.parsson:parsson:1.1.9")
 
     testImplementation("io.projectreactor:reactor-test")
 
-    testImplementation("com.squareup.okhttp3:okhttp:4.12.0")
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("com.squareup.okhttp3:okhttp:5.4.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.4.0")
 
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")
     testImplementation("org.testcontainers:rabbitmq:1.21.4")
-    testImplementation("com.github.dasniko:testcontainers-keycloak:3.9.1")
+    testImplementation("com.github.dasniko:testcontainers-keycloak:4.3.1")
 
     // Validates e2e request/response interactions against the OpenAPI specs in
     // docs/api-specs/ (contract testing). See e2e/contract/.
-    testImplementation("com.atlassian.oai:swagger-request-validator-core:2.44.9")
+    testImplementation("com.atlassian.oai:swagger-request-validator-core:3.0.0")
 
     constraints {
         testImplementation("org.apache.commons:commons-compress:1.28.0") {
             because("previous versions have security issues")
         }
-        testImplementation("org.apache.james:apache-mime4j-core:0.8.13") {
+        testImplementation("org.apache.james:apache-mime4j-core:0.8.14") {
             because("previous versions have security issues")
         }
     }
