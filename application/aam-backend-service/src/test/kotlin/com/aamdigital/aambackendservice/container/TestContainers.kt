@@ -78,7 +78,7 @@ object TestContainers {
         RabbitMQContainer(
             DockerImageName
                 .parse("rabbitmq")
-                .withTag("4.3-management-alpine")
+                .withTag(TestImages.RABBITMQ)
         )
 
     @Container
@@ -87,7 +87,7 @@ object TestContainers {
         GenericContainer(
             DockerImageName
                 .parse("couchdb")
-                .withTag("3.5.2")
+                .withTag(TestImages.COUCHDB)
         ).withNetwork(network)
             .withNetworkAliases("couchdb")
             .withEnv(
@@ -104,7 +104,7 @@ object TestContainers {
         GenericContainer(
             DockerImageName
                 .parse("postgres")
-                .withTag("16.14-bookworm")
+                .withTag(TestImages.POSTGRES)
         ).withNetwork(network)
             .withNetworkAliases("postgres")
             .withEnv(
@@ -122,7 +122,7 @@ object TestContainers {
             DockerImageName
                 .parse("ghcr.io/aam-digital/sqs-aam")
                 .asCompatibleSubstituteFor("sqs-aam")
-                .withTag("latest")
+                .withTag(TestImages.SQS)
         ).withNetwork(network)
             .withNetworkAliases("sqs")
             .withEnv(
@@ -137,7 +137,7 @@ object TestContainers {
         GenericContainer(
             DockerImageName
                 .parse("carbone/carbone-ee")
-                .withTag("4.23.4")
+                .withTag(TestImages.CARBONE)
         ).withNetwork(network)
             .withNetworkAliases("pdf")
             .withExposedPorts(4000)
