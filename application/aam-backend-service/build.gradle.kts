@@ -8,7 +8,7 @@ plugins {
     id("org.springframework.boot") version "3.5.16"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.jetbrains.kotlin.kapt") version "2.4.10"
-    id("io.sentry.jvm.gradle") version "6.2.0"
+    id("io.sentry.jvm.gradle") version "6.16.0"
     id("org.jlleitschuh.gradle.ktlint") version "12.3.0"
 }
 
@@ -104,7 +104,7 @@ dependencies {
 }
 
 jacoco {
-    toolVersion = "0.8.12"
+    toolVersion = "0.8.15"
 }
 
 tasks.jacocoTestReport {
