@@ -49,6 +49,18 @@
                 "//\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+?)\\s+depName=(?<depName>\\S+?)(?:\\s+versioning=(?<versioning>\\S+?))?\\s*\\n[^\"\\n]*\"(?<currentValue>[^\"]+)\""
             ],
             "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}docker{{/if}}"
+        },
+        {
+            "customType": "regex",
+            "description": "Rust crates installed via 'cargo install' inside workflow run steps. The github-actions manager only reads 'uses:', so these are invisible to it.",
+            "managerFilePatterns": [
+                "/^\\.github/workflows/[^/]+\\.ya?ml$/"
+            ],
+            "matchStrings": [
+                "cargo install\\s+(?<depName>[a-zA-Z0-9_-]+)\\s+--version\\s+(?<currentValue>\\S+)"
+            ],
+            "datasourceTemplate": "crate",
+            "versioningTemplate": "cargo"
         }
     ],
     "packageRules": [
