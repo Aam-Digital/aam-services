@@ -41,12 +41,41 @@ You should also account for that possibility.
     - or, if it was already enabled, re-up the docker compose and confirm the new containers and environment are running
 3. Create `ReportConfig:` entities to define specific reports
     - the API / backend reports only support the `"mode": "sql"`
-    - for details on report definitions,
-      see https://aam-digital.github.io/ndb-core/documentation/additional-documentation/how-to-guides/create-a-report.html
+    - for details on report definitions, the available tables and columns and useful SQL recipes,
+      see https://aam-digital.github.io/ndb-core/documentation/additional-documentation/concepts/reports.html
 4. Make sure the users who are supposed to access the reports in the frontend have permission to view `ReportConfig`
    entities
 5. Within the app, users can now execute sql-based reports and see calculated results (configuration for the view in
    Config:CONFIG_ENTITY `"view:report": {"component": "Reporting"}`)
+
+## SQL schema
+
+The schema handed to SQS is generated from `Config:CONFIG_ENTITY` (see `SqsSchemaService`): every configured entity type
+becomes a table with one column per configured field. On top of that, the backend hard-wires the following, so reports
+can use them without any config change:
+
+- **Default columns in every table** (`getDefaultEntityAttributes`): `_id`, `_rev`, `_attachments`, `_created_at`,
+  `_created_by`, `_updated_at`, `_updated_by`, `inactive`, `anonymized`.
+  The `_` prefix marks columns generated from internal document metadata (e.g. `_created_at` reads `created.at`) and
+  avoids clashes with configured fields of the same name. `inactive` and `anonymized` stay unprefixed because they are
+  regular entity fields.
+- **`ConfigurableEnum` table** (`_id`, `values`), one row per dropdown definition with its options as a JSON array.
+- **`ConfigurableEnumOption` view** (`enum_id`, `option_id`, `label`), one row per dropdown option, shipped as part of
+  `sql.indexes` (see `ConfigurableEnumSchema`). Report queries translate a stored option id into its human-readable
+  label with a plain JOIN:
+
+```sql
+SELECT c.name, COALESCE(g.label, c.gender) AS gender
+FROM Child c
+LEFT JOIN ConfigurableEnumOption g
+  ON g.enum_id = 'genders' AND g.option_id = c.gender
+```
+
+The schema hash (`configVersion`) covers tables and indexes, so changing any of this makes SQS re-ingest the database
+once after deployment. The first report calculation after such a change is therefore slower than usual.
+
+For the full list of query recipes and examples,
+see https://aam-digital.github.io/ndb-core/documentation/additional-documentation/concepts/reports.html
 
 ## API access to reports
 
