@@ -9,7 +9,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
     id("org.jetbrains.kotlin.kapt") version "2.4.10"
     id("io.sentry.jvm.gradle") version "6.16.0"
-    id("org.jlleitschuh.gradle.ktlint") version "12.3.0"
+    id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
 }
 
 group = "com.aam-digital"
@@ -135,7 +135,7 @@ kotlin {
 }
 
 ktlint {
-    version.set("1.5.0")
+    version.set("1.8.0")
 }
 
 tasks.withType<Test> {
