@@ -2,12 +2,12 @@ plugins {
     application
     distribution
     jacoco
-    kotlin("jvm") version "2.1.20"
-    kotlin("plugin.spring") version "2.1.20"
-    kotlin("plugin.jpa") version "2.1.20"
+    kotlin("jvm") version "2.4.10"
+    kotlin("plugin.spring") version "2.4.10"
+    kotlin("plugin.jpa") version "2.4.10"
     id("org.springframework.boot") version "3.5.12"
     id("io.spring.dependency-management") version "1.1.7"
-    id("org.jetbrains.kotlin.kapt") version "2.1.20"
+    id("org.jetbrains.kotlin.kapt") version "2.4.10"
     id("io.sentry.jvm.gradle") version "6.2.0"
     id("org.jlleitschuh.gradle.ktlint") version "12.3.0"
 }
