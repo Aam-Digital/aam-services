@@ -25,8 +25,13 @@ data class SkillLabUserProfileEntity(
     var mobileNumber: String?,
     @Column
     var email: String?,
+    /**
+     * [JvmSuppressWildcards] is required because Kotlin's `Set` is covariant and would
+     * otherwise compile to `Set<? extends SkillReferenceEntity>`. Hibernate rejects such a
+     * wildcard collection as a raw type and cannot derive the element type from it.
+     */
     @ElementCollection(fetch = FetchType.EAGER)
-    var skills: Set<SkillReferenceEntity>,
+    var skills: Set<@JvmSuppressWildcards SkillReferenceEntity>,
     /**
      * represents the latest update at skillLab
      */
