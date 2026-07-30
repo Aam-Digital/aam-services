@@ -6,9 +6,12 @@
     ],
     "enabledManagers": [
         "gradle",
+        "gradle-wrapper",
+        "maven",
         "github-actions",
         "dockerfile",
-        "docker-compose"
+        "docker-compose",
+        "custom.regex"
     ],
     "timezone": "Etc/UTC",
     "schedule": [
@@ -22,6 +25,31 @@
     ],
     "reviewers": [
         "sleidig"
+    ],
+    "vulnerabilityAlerts": {
+        "enabled": true,
+        "schedule": [
+            "at any time"
+        ],
+        "labels": [
+            "dependencies",
+            "security"
+        ],
+        "prPriority": 10
+    },
+    "osvVulnerabilityAlerts": true,
+    "customManagers": [
+        {
+            "customType": "regex",
+            "description": "Version strings in Kotlin sources annotated with a '// renovate:' comment, e.g. the e2e container images in TestImages.kt",
+            "managerFilePatterns": [
+                "/\\.kt$/"
+            ],
+            "matchStrings": [
+                "//\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+?)\\s+depName=(?<depName>\\S+?)(?:\\s+versioning=(?<versioning>\\S+?))?\\s*\\n[^\"\\n]*\"(?<currentValue>[^\"]+)\""
+            ],
+            "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}docker{{/if}}"
+        }
     ],
     "packageRules": [
         {
@@ -41,6 +69,35 @@
             ],
             "groupName": "weekly-non-major-updates",
             "automerge": false
+        },
+        {
+            "description": "The Gradle wrapper and the gradle builder image in the Dockerfile pin the same version in two files handled by different managers. Group them so they can never drift into a combination that cannot build.",
+            "groupName": "gradle",
+            "matchPackageNames": [
+                "gradle"
+            ]
+        },
+        {
+            "description": "The Keycloak SPI jar, the server image and the testcontainers module must all match the deployed Keycloak server. keycloak-server-spi-private gives no cross-version compatibility guarantee, so these are grouped and always land as a draft for deliberate deployment coordination.",
+            "groupName": "keycloak",
+            "matchPackageNames": [
+                "org.keycloak:**",
+                "quay.io/keycloak/keycloak",
+                "com.github.dasniko:testcontainers-keycloak"
+            ],
+            "draftPR": true,
+            "labels": [
+                "dependencies",
+                "needs-deploy-coordination"
+            ]
+        },
+        {
+            "description": "carbone-ee is pinned to the same tag in the dev stack and the e2e tests. Upstream switched from plain numeric tags to full-/slim- prefixed ones, so any update is a behaviour change for the export module and needs a deliberate decision.",
+            "groupName": "carbone",
+            "matchPackageNames": [
+                "carbone/carbone-ee"
+            ],
+            "draftPR": true
         }
     ]
 }
