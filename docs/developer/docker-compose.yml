@@ -4,7 +4,7 @@ services:
   # dev tools
   # ***************************************************************
   reverse-proxy:
-    image: caddy:2.9-alpine
+    image: caddy:2.11-alpine
     networks:
       - aam-digital
     extra_hosts:
@@ -30,7 +30,7 @@ services:
   # ***************************************************************
 
   db-couch:
-    image: couchdb:3.4.2
+    image: couchdb:3.5.2
     networks:
       - aam-digital
     volumes:
@@ -94,7 +94,7 @@ services:
   # ***************************************************************
 
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: rabbitmq:4.3-management-alpine
     hostname: rabbitmq
     networks:
       - aam-digital
@@ -179,7 +179,7 @@ services:
       SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE: file:/opt/app/reverse-proxy.crt
 
   aam-backend-service-db:
-    image: postgres:16.6-bookworm
+    image: postgres:16.14-bookworm
     networks:
       - aam-digital
     environment:
