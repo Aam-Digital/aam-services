@@ -31,17 +31,17 @@ jobs:
         working-directory: application/aam-backend-service
     steps:
       - name: Checkout repository files
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'corretto'
           java-version: 21
           cache: 'gradle'
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -74,7 +74,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout repository files
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Extract tag (release)
         if: ${{ github.event.ref  != '' }}
@@ -91,7 +91,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           tags: |
             type=ref,enable=true,event=pr
@@ -100,13 +100,13 @@ jobs:
           images: ${{ env.REGISTRY_IMAGE }}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -119,7 +119,7 @@ jobs:
 
       - name: Build Image and push by digest
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           platforms: ${{ matrix.platform }}
           context: ./application/aam-backend-service
@@ -137,7 +137,7 @@ jobs:
           touch "./tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
           path: ./tmp/digests/*
@@ -153,14 +153,14 @@ jobs:
       - build
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: ./tmp/digests
           pattern: digests-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Extract tag (release)
         if: ${{ github.event.ref  != '' }}
@@ -172,7 +172,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           tags: |
             type=ref,enable=true,event=pr
@@ -181,7 +181,7 @@ jobs:
           images: ${{ env.REGISTRY_IMAGE }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -206,7 +206,7 @@ jobs:
         working-directory: application/aam-backend-service
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
