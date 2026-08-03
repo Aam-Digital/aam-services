@@ -41,6 +41,7 @@ class SqsQueryStorageTest {
         result.use { response ->
             assertThat(response.readBytes().decodeToString()).isEqualTo("""[{"foo":1}]""")
         }
+    }
 
     @Test
     fun `should throw InvalidArgumentException carrying the SQS body and report id on 4xx (invalid query)`() {
