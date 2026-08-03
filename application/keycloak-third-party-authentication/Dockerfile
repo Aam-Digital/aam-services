@@ -1,4 +1,4 @@
-FROM maven:3-amazoncorretto-23 AS build
+FROM maven:3-amazoncorretto-25 AS build
 WORKDIR /opt/app
 COPY . .
 RUN ["mvn", "clean", "package"]

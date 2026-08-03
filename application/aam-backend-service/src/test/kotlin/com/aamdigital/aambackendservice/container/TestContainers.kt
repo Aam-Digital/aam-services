@@ -78,7 +78,7 @@ object TestContainers {
         RabbitMQContainer(
             DockerImageName
                 .parse("rabbitmq")
-                .withTag("3-management-alpine")
+                .withTag("4.3-management-alpine")
         )
 
     @Container
@@ -87,7 +87,7 @@ object TestContainers {
         GenericContainer(
             DockerImageName
                 .parse("couchdb")
-                .withTag("3.4.2")
+                .withTag("3.5.2")
         ).withNetwork(network)
             .withNetworkAliases("couchdb")
             .withEnv(
@@ -104,7 +104,7 @@ object TestContainers {
         GenericContainer(
             DockerImageName
                 .parse("postgres")
-                .withTag("16.5-bookworm")
+                .withTag("16.14-bookworm")
         ).withNetwork(network)
             .withNetworkAliases("postgres")
             .withEnv(

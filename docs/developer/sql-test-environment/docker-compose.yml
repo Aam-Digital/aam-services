@@ -4,7 +4,7 @@
 name: aam-services-sql-environment
 services:
   db-couch:
-    image: couchdb:3.4
+    image: couchdb:3.5
     volumes:
       - ~/docker-volumes/aam-digital/db-couch/document-data:/opt/couchdb/data
     environment:
