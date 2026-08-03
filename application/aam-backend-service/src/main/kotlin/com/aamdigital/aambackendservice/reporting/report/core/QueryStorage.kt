@@ -4,5 +4,5 @@ import com.aamdigital.aambackendservice.reporting.report.sqs.QueryRequest
 import java.io.InputStream
 
 interface QueryStorage {
-    fun executeQuery(query: QueryRequest): InputStream
+    fun executeQuery(query: QueryRequest, reportId: String): InputStream
 }

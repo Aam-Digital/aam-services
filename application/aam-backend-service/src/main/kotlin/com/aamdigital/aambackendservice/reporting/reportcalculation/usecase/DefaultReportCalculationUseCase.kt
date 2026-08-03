@@ -120,6 +120,7 @@ class DefaultReportCalculationUseCase(
             if (singleBareQuery) {
                 listOf(
                     handleReportItems(
+                        reportId = report.id,
                         queries = report.items,
                         reportCalculation = reportCalculation
                     )
@@ -128,6 +129,7 @@ class DefaultReportCalculationUseCase(
                 listOf(
                     "[".byteInputStream(),
                     handleReportItems(
+                        reportId = report.id,
                         queries = report.items,
                         reportCalculation = reportCalculation
                     ),
@@ -148,6 +150,7 @@ class DefaultReportCalculationUseCase(
     }
 
     private fun handleReportItems(
+        reportId: String,
         queries: List<ReportItem>,
         reportCalculation: ReportCalculation
     ): InputStream {
@@ -158,14 +161,15 @@ class DefaultReportCalculationUseCase(
                         is ReportItem.ReportQuery -> {
                             val queryResult =
                                 queryStorage.executeQuery(
-                                    handleReportQuery(queryItem, reportCalculation)
+                                    handleReportQuery(queryItem, reportCalculation),
+                                    reportId
                                 )
                             mutableListOf(queryResult)
                         }
 
                         is ReportItem.ReportGroup -> {
                             val prefix = "{\"${queryItem.title}\":[".byteInputStream()
-                            val queryResult = handleReportItems(queryItem.items, reportCalculation)
+                            val queryResult = handleReportItems(reportId, queryItem.items, reportCalculation)
                             val suffix = "]}".byteInputStream()
                             mutableListOf(prefix, queryResult, suffix)
                         }
