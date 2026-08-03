@@ -211,7 +211,9 @@ services:
       - include-private
 
   carbone-io:
-    image: carbone/carbone-ee
+    # pinned to the same tag the e2e tests run against, so local behaviour matches CI;
+    # an untagged image would also be invisible to Renovate
+    image: carbone/carbone-ee:4.23.4
     platform: linux/amd64
     networks:
       - aam-digital
