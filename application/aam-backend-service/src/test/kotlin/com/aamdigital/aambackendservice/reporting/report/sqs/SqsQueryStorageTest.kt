@@ -38,8 +38,9 @@ class SqsQueryStorageTest {
 
         val result = storage.executeQuery(QueryRequest("SELECT foo FROM bar", emptyList()), "Report:1")
 
-        assertThat(result.readBytes().decodeToString()).isEqualTo("""[{"foo":1}]""")
-    }
+        result.use { response ->
+            assertThat(response.readBytes().decodeToString()).isEqualTo("""[{"foo":1}]""")
+        }
 
     @Test
     fun `should throw InvalidArgumentException carrying the SQS body and report id on 4xx (invalid query)`() {
