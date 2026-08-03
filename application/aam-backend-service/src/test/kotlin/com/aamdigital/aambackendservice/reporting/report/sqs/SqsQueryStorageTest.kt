@@ -36,31 +36,35 @@ class SqsQueryStorageTest {
     fun `should return the response stream on success`() {
         mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody("""[{"foo":1}]"""))
 
-        val result = storage.executeQuery(QueryRequest("SELECT foo FROM bar", emptyList()))
+        val result = storage.executeQuery(QueryRequest("SELECT foo FROM bar", emptyList()), "Report:1")
 
         assertThat(result.readBytes().decodeToString()).isEqualTo("""[{"foo":1}]""")
     }
 
     @Test
-    fun `should throw InvalidArgumentException carrying the SQS body on 4xx (invalid query)`() {
+    fun `should throw InvalidArgumentException carrying the SQS body and report id on 4xx (invalid query)`() {
         mockWebServer.enqueue(MockResponse().setResponseCode(400).setBody("no such column: foo"))
 
-        val thrown = catchThrowable { storage.executeQuery(QueryRequest("SELECT foo FROM bar", emptyList())) }
+        val thrown =
+            catchThrowable { storage.executeQuery(QueryRequest("SELECT foo FROM bar", emptyList()), "Report:1") }
 
         assertThat(thrown).isInstanceOf(InvalidArgumentException::class.java)
         assertThat((thrown as InvalidArgumentException).code)
             .isEqualTo(SqsQueryStorage.SqsQueryStorageErrorCode.QUERY_FAILED)
         assertThat(thrown.message).contains("no such column: foo")
+        assertThat(thrown.message).contains("Report:1")
     }
 
     @Test
-    fun `should throw ExternalSystemException on 5xx`() {
+    fun `should throw ExternalSystemException carrying the report id on 5xx`() {
         mockWebServer.enqueue(MockResponse().setResponseCode(500).setBody("internal error"))
 
-        val thrown = catchThrowable { storage.executeQuery(QueryRequest("SELECT foo FROM bar", emptyList())) }
+        val thrown =
+            catchThrowable { storage.executeQuery(QueryRequest("SELECT foo FROM bar", emptyList()), "Report:1") }
 
         assertThat(thrown).isInstanceOf(ExternalSystemException::class.java)
         assertThat((thrown as ExternalSystemException).code)
             .isEqualTo(SqsQueryStorage.SqsQueryStorageErrorCode.QUERY_EXECUTION_FAILED)
+        assertThat(thrown.message).contains("Report:1")
     }
 }

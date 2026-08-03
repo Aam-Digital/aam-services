@@ -161,7 +161,7 @@ class DefaultReportCalculationUseCaseTest {
         whenever(reportCalculationStorage.storeCalculation(any())).thenAnswer { i -> i.arguments[0] }
 
         val rootCause = RuntimeException("connection reset")
-        whenever(queryStorage.executeQuery(any())).thenAnswer { throw rootCause }
+        whenever(queryStorage.executeQuery(any(), any())).thenAnswer { throw rootCause }
 
         // when
         val response =
@@ -223,7 +223,7 @@ class DefaultReportCalculationUseCaseTest {
             )
         ).thenReturn(report)
 
-        whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
+        whenever(queryStorage.executeQuery(any(), any())).thenReturn("[{}]".byteInputStream())
 
         whenever(reportCalculationStorage.storeCalculation(any()))
             .thenAnswer { i -> i.arguments[0] }
@@ -257,7 +257,8 @@ class DefaultReportCalculationUseCaseTest {
                             "2010-01-16T23:59:59.999Z"
                         )
                 )
-            )
+            ),
+            eq("Report:1")
         )
     }
 
@@ -307,7 +308,7 @@ class DefaultReportCalculationUseCaseTest {
             )
         ).thenReturn(report)
 
-        whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
+        whenever(queryStorage.executeQuery(any(), any())).thenReturn("[{}]".byteInputStream())
 
         whenever(reportCalculationStorage.storeCalculation(any()))
             .thenAnswer { i -> i.arguments[0] }
@@ -341,7 +342,8 @@ class DefaultReportCalculationUseCaseTest {
                             "2010-01-16T23:59:59.999Z"
                         )
                 )
-            )
+            ),
+            eq("Report:1")
         )
     }
 
@@ -391,7 +393,7 @@ class DefaultReportCalculationUseCaseTest {
             )
         ).thenReturn(report)
 
-        whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
+        whenever(queryStorage.executeQuery(any(), any())).thenReturn("[{}]".byteInputStream())
 
         whenever(reportCalculationStorage.storeCalculation(any()))
             .thenAnswer { i -> i.arguments[0] }
@@ -427,7 +429,8 @@ class DefaultReportCalculationUseCaseTest {
                             "2010-01-16T23:59:59.999Z"
                         )
                 )
-            )
+            ),
+            eq("Report:1")
         )
     }
 
@@ -466,7 +469,7 @@ class DefaultReportCalculationUseCaseTest {
             )
         ).thenReturn(report)
 
-        whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
+        whenever(queryStorage.executeQuery(any(), any())).thenReturn("[{}]".byteInputStream())
 
         whenever(reportCalculationStorage.storeCalculation(any()))
             .thenAnswer { i -> i.arguments[0] }
@@ -491,7 +494,8 @@ class DefaultReportCalculationUseCaseTest {
                     query = "SELECT name FROM foo",
                     args = emptyList()
                 )
-            )
+            ),
+            eq("Report:1")
         )
     }
 
@@ -535,7 +539,7 @@ class DefaultReportCalculationUseCaseTest {
             )
         ).thenReturn(report)
 
-        whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
+        whenever(queryStorage.executeQuery(any(), any())).thenReturn("[{}]".byteInputStream())
 
         whenever(reportCalculationStorage.storeCalculation(any()))
             .thenAnswer { i -> i.arguments[0] }
@@ -569,7 +573,8 @@ class DefaultReportCalculationUseCaseTest {
                             DEFAULT_TO_DATE
                         )
                 )
-            )
+            ),
+            eq("Report:1")
         )
     }
 
@@ -613,7 +618,7 @@ class DefaultReportCalculationUseCaseTest {
             )
         ).thenReturn(report)
 
-        whenever(queryStorage.executeQuery(any())).thenReturn("[{}]".byteInputStream())
+        whenever(queryStorage.executeQuery(any(), any())).thenReturn("[{}]".byteInputStream())
 
         whenever(reportCalculationStorage.storeCalculation(any()))
             .thenAnswer { i -> i.arguments[0] }
@@ -638,7 +643,8 @@ class DefaultReportCalculationUseCaseTest {
                     query = "SELECT * FROM foo WHERE time BETWEEN ? and ?",
                     args = listOf("2024-01-15", "2024-04-30T23:59:59.999Z")
                 )
-            )
+            ),
+            eq("Report:1")
         )
     }
 
@@ -659,7 +665,7 @@ class DefaultReportCalculationUseCaseTest {
 
         whenever(reportStorage.fetchReport(eq(DomainReference("Report:1")))).thenReturn(report)
 
-        whenever(queryStorage.executeQuery(any()))
+        whenever(queryStorage.executeQuery(any(), any()))
             .thenReturn("""[{"name":"Alice"},{"name":"Bob"}]""".byteInputStream())
 
         whenever(reportCalculationStorage.storeCalculation(any())).thenAnswer { i -> i.arguments[0] }
@@ -699,7 +705,7 @@ class DefaultReportCalculationUseCaseTest {
 
         whenever(reportStorage.fetchReport(eq(DomainReference("Report:1")))).thenReturn(report)
 
-        whenever(queryStorage.executeQuery(any()))
+        whenever(queryStorage.executeQuery(any(), any()))
             .thenReturn(
                 """[{"name":"Alice"}]""".byteInputStream(),
                 """[{"age":5}]""".byteInputStream()

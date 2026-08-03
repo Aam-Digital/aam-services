@@ -34,7 +34,7 @@ class SqsQueryStorage(
         private const val MAX_ERROR_BODY_LENGTH = 500
     }
 
-    override fun executeQuery(query: QueryRequest): InputStream {
+    override fun executeQuery(query: QueryRequest, reportId: String): InputStream {
         val schemaPath = schemaService.getSchemaPath()
         schemaService.updateSchema()
 
@@ -51,13 +51,13 @@ class SqsQueryStorage(
                 // opaque, untyped HttpClientErrorException
                 .onStatus({ it.is4xxClientError }) { _, clientResponse ->
                     throw InvalidArgumentException(
-                        message = "[SqsQueryStorage] SQS rejected the query " +
+                        message = "[SqsQueryStorage] SQS rejected the query for report '$reportId' " +
                             "(${clientResponse.statusCode}): ${readErrorBody(clientResponse)}",
                         code = SqsQueryStorageErrorCode.QUERY_FAILED,
                     )
                 }.onStatus({ it.is5xxServerError }) { _, clientResponse ->
                     throw ExternalSystemException(
-                        message = "[SqsQueryStorage] SQS failed to execute the query " +
+                        message = "[SqsQueryStorage] SQS failed to execute the query for report '$reportId' " +
                             "(${clientResponse.statusCode}): ${readErrorBody(clientResponse)}",
                         code = SqsQueryStorageErrorCode.QUERY_EXECUTION_FAILED,
                     )
@@ -65,7 +65,7 @@ class SqsQueryStorage(
 
         if (response == null) {
             throw ExternalSystemException(
-                message = "[SqsQueryStorage] Could not fetch response from SQS",
+                message = "[SqsQueryStorage] Could not fetch response from SQS for report '$reportId'",
                 code = SqsQueryStorageErrorCode.EMPTY_RESPONSE
             )
         }
