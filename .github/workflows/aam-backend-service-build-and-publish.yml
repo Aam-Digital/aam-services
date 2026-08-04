@@ -48,16 +48,18 @@ jobs:
           password: ${{ secrets.GHCR_PULL_SECRET }}
 
       - name: Run Tests and generate Jacoco Test Report
-        env:
-          JACOCO_SOURCE_PATH: application/aam-backend-service/src/main/kotlin
         run: |
           ./gradlew jacocoTestReport --no-daemon
 
-      - uses: qltysh/qlty-action/coverage@v2
+      - name: Upload coverage to Qlty
+        uses: qltysh/qlty-action/coverage@v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
-          files: "**/build/reports/jacoco/test/jacocoTestReport.xml"
+          files: application/aam-backend-service/build/reports/jacoco/test/jacocoTestReport.xml
           format: jacoco
+          # JaCoCo XML records paths relative to the source root
+          # (com/aamdigital/...), so prefix them to make them repo-relative.
+          add-prefix: application/aam-backend-service/src/main/kotlin
 
   build:
     strategy:
