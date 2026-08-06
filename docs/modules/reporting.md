@@ -7,10 +7,89 @@ This service allows to run SQL queries on the database.
 In particular, this service allows users with limited permissions to see reports of aggregated statistics across all
 data (e.g. a supervisor could analyse reports without having access to possibly confidential details of participants or
 notes).
+The queries can also be designed to output raw data for workflows that represent more of an export than a summary.
 
 -----
 
-## Setup
+## API access to reports
+
+Reports and their results are available for external services through the given API
+endpoints ([see OpenAPI specs](../api-specs/reporting-api-v1.yaml)). Endpoints require a valid JWT access token, which
+can be fetched via OAuth2 client credential flow.
+
+1. Get valid access token using your client secret:
+
+```bash
+curl -X "POST" "https://keycloak.aam-digital.net/realms/<your_realm>/protocol/openid-connect/token" \
+     -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
+     --data-urlencode "client_id=<your_client_id>" \
+     --data-urlencode "client_secret=<your_client_secret>" \
+     --data-urlencode "grant_type=client_credentials" \
+     --data-urlencode "scopes=reporting_read reporting_write"
+```
+
+Check API docs for the required "scopes".
+This returns a JWT access token required to provided as Bearer Token for any request to the API endpoints. Sample token:
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI...",
+  "expires_in": 300,
+  "refresh_expires_in": 0,
+  "token_type": "Bearer",
+  "not-before-policy": 0,
+  "scope": "reporting_read reporting_write"
+}
+```
+
+### Manually execute a report calculation
+2. Request the all available reports: `GET /v1/reporting/reports` (see OpenAPI specs for details)
+3. Trigger the calculation of a reports data: `POST /v1/reporting/report-calculation/report/<report-id>`
+4. Get status of the report calculation: `GET /v1/reporting/report-calculation/<calculation-id>`
+5. Once the status shows the calculation is completed, get the actual result data:
+   `GET /v1/reporting/report-calculation/<calculation-id>/data`
+
+### Subscribe to continuous changes of a report
+1. Create an initial webhook (if not already registered): `POST /v1/reporting/webhook`
+   - pass your details how to receive the callback upon events
+   - you receive the ID of that webhook back in the response (use this to add one or more subscriptions to specific reports)
+2. Register for events of the selected report for your webhook: `POST /v1/reporting/webhook/{webhookId}/subscribe/report/{reportId}`
+3. After subscribing to a new report your webhook will immediately receive one callback with the latest report-calculation so far, so that you can do an initial import of data.
+4. If you want to subscribe to more reports later, you do not have to create a new webhook, you can also `GET /v1/reporting/webhook` to check the list of existing webhooks and update one of these, if you prefer.
+
+_... when data in Aam Digital changes (and once initially directly after you subscribe to a report) ..._
+
+5. You receive an event object sent to your webhook with the current report-calculation reference
+   - this does not contain the actual data, but only the reportCalculationId of the result that is ready
+6. Use the report-calculation-id in the event to fetch actual data:
+   - get metadata like timestamp of the calculation: `GET /v1/reporting/report-calculation/<calculation-id>`
+   - get the actual report data: `GET /v1/reporting/report-calculation/<calculation-id>/data`
+
+#### Debouncing of automatic report calculations
+
+When data in Aam Digital changes, affected subscribed reports are not recalculated once per
+changed document. Instead, changes are debounced: the calculation runs once no further change
+has arrived for a quiet period, so a burst of edits (or a bulk import) results in a single
+recalculation reflecting the final state. While changes keep arriving continuously, an
+intermediate calculation is still triggered regularly (max wait), so subscribers receive
+updates during long-running imports.
+
+This behaviour can be tuned via environment variables / application properties (defaults shown):
+
+| Property                                            | Default | Description                                                              |
+|-----------------------------------------------------|---------|--------------------------------------------------------------------------|
+| `report-calculation-debounce.quiet-period-seconds`  | `60`    | wait this long after the last change before calculating                   |
+| `report-calculation-debounce.max-wait-seconds`      | `300`   | calculate at least this often while changes keep arriving                 |
+| `report-calculation-debounce.flush-fixed-delay`     | `10000` | interval (ms) at which pending triggers are checked                       |
+
+Manually triggered calculations (`POST /v1/reporting/report-calculation/report/<report-id>`)
+are not debounced and always run immediately.
+
+-----
+
+## Setup of the Feature Module
+
+To use this feature in your aam-services backend, the following setup is required:
 
 _(the following steps are automatically handled by the interactive setup
 script ([ndb-setup](https://github.com/Aam-Digital/ndb-setup)) also)_
@@ -48,12 +127,6 @@ You should also account for that possibility.
 5. Within the app, users can now execute sql-based reports and see calculated results (configuration for the view in
    Config:CONFIG_ENTITY `"view:report": {"component": "Reporting"}`)
 
-## API access to reports
-
-Reports and their results are available for external services through the given API
-endpoints ([see OpenAPI specs](../api-specs/reporting-api-v1.yaml)). Endpoints require a valid JWT access token, which
-can be fetched via OAuth2 client credential flow.
-
 ### Initial setup of an API integration
 
 1. Create a Keycloak "Client" (--> admin has
@@ -69,75 +142,3 @@ can be fetched via OAuth2 client credential flow.
     - also
       see [Support Guide: Integration with TolaData](https://chatwoot.help/hc/aam-digital/articles/1726341005-integration-with-tola_data)
       for details of the required URLs
-
-----
-
-## Access a reporting via API (after setup)
-
-1. Get valid access token using your client secret:
-
-```bash
-curl -X "POST" "https://keycloak.aam-digital.net/realms/<your_realm>/protocol/openid-connect/token" \
-     -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
-     --data-urlencode "client_id=<your_client_id>" \
-     --data-urlencode "client_secret=<your_client_secret>" \
-     --data-urlencode "grant_type=client_credentials" \
-     --data-urlencode "scopes=reporting_read reporting_write"
-```
-
-Check API docs for the required "scopes".
-This returns a JWT access token required to provided as Bearer Token for any request to the API endpoints. Sample token:
-
-```json
-{
-  "access_token": "eyJhbGciOiJSUzI...",
-  "expires_in": 300,
-  "refresh_expires_in": 0,
-  "token_type": "Bearer",
-  "not-before-policy": 0,
-  "scope": "reporting_read reporting_write"
-}
-```
-
-### Manually execute a report calculation
-2. Request the all available reports: `GET /v1/reporting/reports` (see OpenAPI specs for details)
-3. Trigger the calculation of a reports data: `POST /v1/reporting/report-calculation/report/<report-id>`
-4. Get status of the report calculation: `GET /v1/reporting/report-calculation/<calculation-id>`
-5. Once the status shows the calculation is completed, get the actual result data:
-   `GET /v1/reporting/report-calculation/<calculation-id>/data`
-
-## Subscribe to continuous changes of a report
-1. Create an initial webhook (if not already registered): `POST /v1/reporting/webhook`
-   - pass your details how to receive the callback upon events
-   - you receive the ID of that webhook back in the response (use this to add one or more subscriptions to specific reports)
-2. Register for events of the selected report for your webhook: `POST /v1/reporting/webhook/{webhookId}/subscribe/report/{reportId}`
-3. After subscribing to a new report your webhook will immediately receive one callback with the latest report-calculation so far, so that you can do an initial import of data.
-4. If you want to subscribe to more reports later, you do not have to create a new webhook, you can also `GET /v1/reporting/webhook` to check the list of existing webhooks and update one of these, if you prefer.
-
-_... when data in Aam Digital changes (and once initially directly after you subscribe to a report) ..._
-
-5. You receive an event object sent to your webhook with the current report-calculation reference
-   - this does not contain the actual data, but only the reportCalculationId of the result that is ready
-6. Use the report-calculation-id in the event to fetch actual data:
-   - get metadata like timestamp of the calculation: `GET /v1/reporting/report-calculation/<calculation-id>`
-   - get the actual report data: `GET /v1/reporting/report-calculation/<calculation-id>/data`
-
-### Debouncing of automatic report calculations
-
-When data in Aam Digital changes, affected subscribed reports are not recalculated once per
-changed document. Instead, changes are debounced: the calculation runs once no further change
-has arrived for a quiet period, so a burst of edits (or a bulk import) results in a single
-recalculation reflecting the final state. While changes keep arriving continuously, an
-intermediate calculation is still triggered regularly (max wait), so subscribers receive
-updates during long-running imports.
-
-This behaviour can be tuned via environment variables / application properties (defaults shown):
-
-| Property                                            | Default | Description                                                              |
-|-----------------------------------------------------|---------|--------------------------------------------------------------------------|
-| `report-calculation-debounce.quiet-period-seconds`  | `60`    | wait this long after the last change before calculating                   |
-| `report-calculation-debounce.max-wait-seconds`      | `300`   | calculate at least this often while changes keep arriving                 |
-| `report-calculation-debounce.flush-fixed-delay`     | `10000` | interval (ms) at which pending triggers are checked                       |
-
-Manually triggered calculations (`POST /v1/reporting/report-calculation/report/<report-id>`)
-are not debounced and always run immediately.
