@@ -50,19 +50,26 @@ For instructions to enable the backend in an overall system: [ndb-setup README](
 
 ## Deployment topology
 
-In production each Aam Digital instance runs its **own complete stack** — there is no shared fleet.
-Every instance has its own CouchDB, PostgreSQL and RabbitMQ container alongside this service, as
-defined in [ndb-setup's docker-compose.yml](https://github.com/Aam-Digital/ndb-setup/blob/master/docker-compose.yml).
-What instances do share is the host they run on and the `external_web` network.
+In production each Aam Digital instance runs its **own data stack**: its own CouchDB, PostgreSQL and
+RabbitMQ container alongside this service, as defined in
+[ndb-setup's docker-compose.yml](https://github.com/Aam-Digital/ndb-setup/blob/master/docker-compose.yml).
+None of those are shared between instances.
+
+What instances _do_ share is the layer underneath and in front of them — the host they run on, the
+`external_web` Docker network (declared `external: true`, created outside the instance stack), and
+the single reverse proxy attached to it, deployed once per host from
+[ndb-setup/nginx-proxy](https://github.com/Aam-Digital/ndb-setup/tree/master/nginx-proxy).
 
 Three consequences that are easy to get wrong when reading logs, monitoring or configuration:
 
-- **Failures across many instances at once cannot be one shared service restarting.** Each instance
-  has its own databases and broker, so a simultaneous fleet-wide failure points at the host or at a
-  rollout, not at a shared component.
+- **A failure hitting many instances at once is not one shared database or broker** — those are
+  per-instance, so a fault in one instance's CouchDB, PostgreSQL or RabbitMQ cannot reach another.
+  Simultaneous fleet-wide symptoms point at what actually is shared: the host, the `external_web`
+  network, or the reverse proxy in front of them — where a failure or misconfiguration does affect
+  every instance at once — or at a fleet-wide rollout.
 - **Runtime configuration comes from each instance's own `.env` file**, managed in ndb-setup.
   [`templates/aam-backend-service/application.template.env`](templates/aam-backend-service/application.template.env)
-  in this repository only seeds *new* instances, so editing it does not reach existing deployments.
+  in this repository only seeds _new_ instances, so editing it does not reach existing deployments.
   A default that must apply everywhere belongs in `application.yaml`, which ships inside the image
   (deployments can still override it via environment variables).
 - **This service can start before its own database or broker is ready.** Containers run with

@@ -21,6 +21,7 @@ import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.doNothing
 import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.times
@@ -99,11 +100,17 @@ class NotificationDlqReprocessorTest {
         // When
         service.reprocessDeadLetteredNotifications()
 
-        // Then
-        verify(channel, times(2)).basicPublish(eq(""), eq(USER_NOTIFICATION_QUEUE), anyOrNull(), any())
-        verify(channel).basicAck(eq(1L), eq(false))
-        verify(channel).basicAck(eq(2L), eq(false))
-        verify(channel).txCommit()
+        // Then - the whole move runs inside one transaction: select first, then publish and
+        // acknowledge each message, then commit. Without txSelect the acknowledgement would take
+        // effect immediately and the atomicity this relies on would be gone.
+        val transactedMove = inOrder(channel)
+        transactedMove.verify(channel).txSelect()
+        transactedMove.verify(channel).basicPublish(eq(""), eq(USER_NOTIFICATION_QUEUE), anyOrNull(), any())
+        transactedMove.verify(channel).basicAck(eq(1L), eq(false))
+        transactedMove.verify(channel).basicPublish(eq(""), eq(USER_NOTIFICATION_QUEUE), anyOrNull(), any())
+        transactedMove.verify(channel).basicAck(eq(2L), eq(false))
+        transactedMove.verify(channel).txCommit()
+
         assertThat(loggedAt(Level.INFO)).anyMatch { it.contains("Re-queued 2 message(s)") }
     }
 
