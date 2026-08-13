@@ -71,12 +71,24 @@ class NotificationDlqReprocessor(
     private fun drainDeadLetterQueue(): Int {
         amqpAdmin.declareQueue(dlq)
 
-        var count = 0
-        while (true) {
-            val message = rabbitTemplate.receive(USER_NOTIFICATION_DLQ) ?: break
-            rabbitTemplate.send("", USER_NOTIFICATION_QUEUE, message)
-            count++
-        }
-        return count
+        // Move each message on a single transacted channel, so the publish onto
+        // USER_NOTIFICATION_QUEUE and the acknowledgement on USER_NOTIFICATION_DLQ commit together.
+        // RabbitTemplate.receive() acknowledges as soon as it reads, which would drop a notification
+        // permanently if publishing it back then failed. Leaving the transaction uncommitted keeps
+        // the messages unacknowledged, so the broker redelivers them on the next attempt.
+        return rabbitTemplate.execute { channel ->
+            channel.txSelect()
+
+            var count = 0
+            while (true) {
+                val response = channel.basicGet(USER_NOTIFICATION_DLQ, false) ?: break
+                channel.basicPublish("", USER_NOTIFICATION_QUEUE, response.props, response.body)
+                channel.basicAck(response.envelope.deliveryTag, false)
+                count++
+            }
+
+            channel.txCommit()
+            count
+        } ?: 0
     }
 }
