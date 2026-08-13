@@ -56,27 +56,7 @@ RabbitMQ container alongside this service, as defined in
 None of those are shared between instances.
 
 What instances _do_ share is the layer underneath and in front of them — the host they run on, the
-`external_web` Docker network (declared `external: true`, created outside the instance stack), and
-the single reverse proxy attached to it, deployed once per host from
-[ndb-setup/nginx-proxy](https://github.com/Aam-Digital/ndb-setup/tree/master/nginx-proxy).
-
-Three consequences that are easy to get wrong when reading logs, monitoring or configuration:
-
-- **A failure hitting many instances at once is not one shared database or broker** — those are
-  per-instance, so a fault in one instance's CouchDB, PostgreSQL or RabbitMQ cannot reach another.
-  Simultaneous fleet-wide symptoms point at what actually is shared: the host, the `external_web`
-  network, or the reverse proxy in front of them — where a failure or misconfiguration does affect
-  every instance at once — or at a fleet-wide rollout.
-- **Runtime configuration comes from each instance's own `.env` file**, managed in ndb-setup.
-  [`templates/aam-backend-service/application.template.env`](templates/aam-backend-service/application.template.env)
-  in this repository only seeds _new_ instances, so editing it does not reach existing deployments.
-  A default that must apply everywhere belongs in `application.yaml`, which ships inside the image
-  (deployments can still override it via environment variables).
-- **This service can start before its own database or broker is ready.** Containers run with
-  `restart: unless-stopped`, and Docker applies restart policies per container without consulting
-  `depends_on`. The `depends_on: condition: service_healthy` in the compose file therefore only
-  orders `docker compose up`; after a host or daemon restart the ordering is not guaranteed, so the
-  application has to tolerate an unavailable dependency at startup rather than assume ordering.
+`external_web` Docker network (declared `external: true`, created outside the instance stack).
 
 The individual modules like "Reporting" require some setup and environment variables.
 Please refer to the respective READMEs in the "API Modules" list above for instructions about each API Module.
