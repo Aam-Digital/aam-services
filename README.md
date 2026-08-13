@@ -48,6 +48,29 @@ See the [ndb-setup repository](https://github.com/Aam-Digital/ndb-setup) for too
 
 For instructions to enable the backend in an overall system: [ndb-setup README](https://github.com/Aam-Digital/ndb-setup?tab=readme-ov-file#api-integrations-and-sql-reports)
 
+## Deployment topology
+
+In production each Aam Digital instance runs its **own complete stack** — there is no shared fleet.
+Every instance has its own CouchDB, PostgreSQL and RabbitMQ container alongside this service, as
+defined in [ndb-setup's docker-compose.yml](https://github.com/Aam-Digital/ndb-setup/blob/master/docker-compose.yml).
+What instances do share is the host they run on and the `external_web` network.
+
+Three consequences that are easy to get wrong when reading logs, monitoring or configuration:
+
+- **Failures across many instances at once cannot be one shared service restarting.** Each instance
+  has its own databases and broker, so a simultaneous fleet-wide failure points at the host or at a
+  rollout, not at a shared component.
+- **Runtime configuration comes from each instance's own `.env` file**, managed in ndb-setup.
+  [`templates/aam-backend-service/application.template.env`](templates/aam-backend-service/application.template.env)
+  in this repository only seeds *new* instances, so editing it does not reach existing deployments.
+  A default that must apply everywhere belongs in `application.yaml`, which ships inside the image
+  (deployments can still override it via environment variables).
+- **This service can start before its own database or broker is ready.** Containers run with
+  `restart: unless-stopped`, and Docker applies restart policies per container without consulting
+  `depends_on`. The `depends_on: condition: service_healthy` in the compose file therefore only
+  orders `docker compose up`; after a host or daemon restart the ordering is not guaranteed, so the
+  application has to tolerate an unavailable dependency at startup rather than assume ordering.
+
 The individual modules like "Reporting" require some setup and environment variables.
 Please refer to the respective READMEs in the "API Modules" list above for instructions about each API Module.
 
