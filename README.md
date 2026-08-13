@@ -48,6 +48,16 @@ See the [ndb-setup repository](https://github.com/Aam-Digital/ndb-setup) for too
 
 For instructions to enable the backend in an overall system: [ndb-setup README](https://github.com/Aam-Digital/ndb-setup?tab=readme-ov-file#api-integrations-and-sql-reports)
 
+## Deployment topology
+
+In production each Aam Digital instance runs its **own data stack**: its own CouchDB, PostgreSQL and
+RabbitMQ container alongside this service, as defined in
+[ndb-setup's docker-compose.yml](https://github.com/Aam-Digital/ndb-setup/blob/master/docker-compose.yml).
+None of those are shared between instances.
+
+What instances _do_ share is the layer underneath and in front of them — the host they run on, the
+`external_web` Docker network (declared `external: true`, created outside the instance stack).
+
 The individual modules like "Reporting" require some setup and environment variables.
 Please refer to the respective READMEs in the "API Modules" list above for instructions about each API Module.
 

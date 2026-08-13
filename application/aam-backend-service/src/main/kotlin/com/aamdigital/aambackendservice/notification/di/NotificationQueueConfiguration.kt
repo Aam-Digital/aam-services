@@ -8,17 +8,17 @@ import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificat
 import com.aamdigital.aambackendservice.notification.queue.DefaultNotificationDocumentChangeConsumer
 import com.aamdigital.aambackendservice.notification.queue.DefaultUserNotificationConsumer
 import com.aamdigital.aambackendservice.notification.queue.DefaultUserNotificationPublisher
+import com.aamdigital.aambackendservice.notification.queue.NotificationDlqReprocessor
 import com.aamdigital.aambackendservice.notification.queue.NotificationDocumentChangeConsumer
-import com.aamdigital.aambackendservice.notification.queue.StartupNotificationDlqReprocessor
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationConsumer
 import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.amqp.core.AmqpAdmin
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder
 import org.springframework.amqp.core.FanoutExchange
 import org.springframework.amqp.core.Queue
 import org.springframework.amqp.core.QueueBuilder
-import org.springframework.amqp.rabbit.connection.ConnectionFactory
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.amqp.rabbit.retry.MessageRecoverer
 import org.springframework.amqp.rabbit.retry.RejectAndDontRequeueRecoverer
@@ -111,9 +111,8 @@ class NotificationQueueConfiguration {
 
     @Bean("notification-user-dlq-reprocessor")
     fun notificationUserDlqReprocessor(
-        connectionFactory: ConnectionFactory,
+        amqpAdmin: AmqpAdmin,
         @Qualifier("notification-user-notification-dlq") dlq: Queue,
-        rabbitTemplate: RabbitTemplate,
-    ): StartupNotificationDlqReprocessor =
-        StartupNotificationDlqReprocessor(connectionFactory, dlq, rabbitTemplate)
+        rabbitTemplate: RabbitTemplate
+    ): NotificationDlqReprocessor = NotificationDlqReprocessor(amqpAdmin, dlq, rabbitTemplate)
 }
