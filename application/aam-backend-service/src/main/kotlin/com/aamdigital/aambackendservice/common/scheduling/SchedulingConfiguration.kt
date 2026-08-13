@@ -17,15 +17,17 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
  *
  * Defining this bean makes it the [TaskScheduler] used for `@Scheduled` (the auto-configuration
  * backs off on the existing bean), giving the jobs their own pool so they no longer block each
- * other. The pool is sized to the number of scheduled jobs. This only affects scheduling; web
- * request handling and `@Async` keep using virtual threads.
+ * other. The pool is sized to the number of scheduled jobs, counting the ones that only exist when
+ * their feature module is enabled
+ * (`[com.aamdigital.aambackendservice.notification.queue.NotificationDlqReprocessor]`). This only
+ * affects scheduling; web request handling and `@Async` keep using virtual threads.
  */
 @Configuration
 class SchedulingConfiguration {
     @Bean
     fun taskScheduler(): TaskScheduler =
         ThreadPoolTaskScheduler().apply {
-            poolSize = 3
+            poolSize = 4
             setThreadNamePrefix("scheduled-")
         }
 }
