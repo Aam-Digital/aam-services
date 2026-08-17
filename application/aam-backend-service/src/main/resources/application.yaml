@@ -238,6 +238,7 @@ crypto-configuration:
 sentry:
   logging:
     enabled: false
+  release: ${APPLICATION_VERSION:#{null}}
 
 application:
   base-url: https://aam.localhost

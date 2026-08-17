@@ -10,5 +10,10 @@ RUN gradle installDist
 FROM amazoncorretto:21.0.12-alpine
 WORKDIR /opt/app
 COPY --from=BUILD /opt/app/build/install/aam-backend-service /opt/app
+# Consumed at runtime as sentry.release (see application.yaml) so error events are tagged with a
+# version. Left empty rather than a placeholder like "unknown" when not passed at build time, so
+# Sentry falls back to no release instead of lumping unrelated builds under one fake release.
+ARG APPLICATION_VERSION=
+ENV APPLICATION_VERSION=${APPLICATION_VERSION}
 EXPOSE 8080
 CMD ./bin/aam-backend-service

@@ -86,6 +86,17 @@ jobs:
         if: ${{ github.event.ref  == '' }}
         run: echo "TAG=pr-${{ github.event.number }}" >> $GITHUB_ENV
 
+      - name: Determine application version
+        # Baked into the image as sentry.release (see application.yaml) so error events are
+        # tagged with a version. Tag pushes get the released version; everything else (main,
+        # PRs) gets the commit SHA, since TAG above is not unique per build in those cases.
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/aam-backend-service/* ]]; then
+            echo "APPLICATION_VERSION=${GITHUB_REF#refs/tags/aam-backend-service/}" >> $GITHUB_ENV
+          else
+            echo "APPLICATION_VERSION=${{ github.sha }}" >> $GITHUB_ENV
+          fi
+
       - name: Prepare Platform
         run: |
           platform=${{ matrix.platform }}
@@ -127,6 +138,8 @@ jobs:
           context: ./application/aam-backend-service
           provenance: false
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APPLICATION_VERSION=${{ env.APPLICATION_VERSION }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,url=${{ runner.env.ACTIONS_CACHE_URL }},token=${{ runner.env.ACTIONS_RUNTIME_TOKEN }}
           cache-to: type=gha,mode=min,url=${{ runner.env.ACTIONS_CACHE_URL }},token=${{ runner.env.ACTIONS_RUNTIME_TOKEN }}
