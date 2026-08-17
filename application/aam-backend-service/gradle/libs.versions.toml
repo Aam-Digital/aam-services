@@ -22,7 +22,9 @@ jacoco = "0.8.15"
 
 # --- runtime ---
 # keycloak-admin-client follows its own release train, which stops at 26.0.x and does not
-# track the Keycloak server version (26.4.7, pinned in the SPI module's pom.xml).
+# track the Keycloak server version (26.7.1, pinned in the SPI module's pom.xml). Nothing
+# newer exists: 26.1.0 onwards were never published for this artifact, so 26.0.x is the
+# whole line and matching the server version is not possible.
 keycloakAdminClient = "26.0.11"
 firebaseAdmin = "9.10.0"
 postgresql = "42.7.13"
