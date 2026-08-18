@@ -15,7 +15,7 @@
     ],
     "timezone": "Etc/UTC",
     "schedule": [
-        "after 00:00 and before 04:00 on Wednesday"
+        "* * * * 3"
     ],
     "dependencyDashboard": false,
     "prConcurrentLimit": 5,
@@ -34,8 +34,7 @@
         "labels": [
             "dependencies",
             "security"
-        ],
-        "prPriority": 10
+        ]
     },
     "osvVulnerabilityAlerts": true,
     "customManagers": [
