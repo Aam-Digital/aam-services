@@ -184,10 +184,27 @@ internal tools (e.g. Sentry issues) are acceptable.
 
 ### Test Structure
 
-- Use JUnit 5 with `@ExtendWith(MockitoExtension::class)`
-- Follow Given-When-Then pattern in test methods
-- Use AssertJ for assertions: `Assertions.assertThat()`
-- Mock external dependencies with Mockito
+- Use JUnit 5, with test names written as backticked sentences.
+- Follow the Given-When-Then pattern in test methods.
+- Assert with AssertJ, statically imported: `import org.assertj.core.api.Assertions.assertThat`.
+- Create and stub mocks with **mockito-kotlin** (`mock()`, `whenever()`, `verify()`, `any()`),
+  not the raw `Mockito.mock()` / `Mockito.when()` API. The `@Mock` annotation itself
+  (`org.mockito.Mock`) is the normal way to declare them.
+
+### When to add `@ExtendWith(MockitoExtension::class)`
+
+Add it **only when the test class declares `@Mock` fields.** The extension exists to
+initialize those fields and to enforce strict stubbing; in a class with no mocks it does
+nothing, so leaving it out is correct rather than an omission.
+
+| The test class... | Extension |
+|---|---|
+| declares `@Mock` fields | `@ExtendWith(MockitoExtension::class)` |
+| builds mocks with mockito-kotlin `mock()` initializers | not needed |
+| has no mocks — pure functions, real in-memory objects | not needed |
+
+Do not use `@InjectMocks`; it appears nowhere in this repository. Construct the subject
+under test explicitly, normally in a `@BeforeEach`, so its dependencies stay visible.
 
 ### Test Naming
 
@@ -205,11 +222,24 @@ fun `should return success when valid request is provided`() {
 }
 ```
 
+### What to Mock
+
+Mock collaborators that are slow, non-deterministic, or reach outside the process.
+
+Do **not** mock what you can construct cheaply and deterministically. Real
+`ByteArrayInputStream`/`ByteArrayOutputStream`, data classes, and small value objects
+make better tests than stubs: a stubbed collaborator only ever proves that the stub
+behaves as configured, which is precisely useless when the bug under test lives in how
+the real type behaves.
+
+For HTTP boundaries prefer `MockWebServer` over stubbing `RestClient`, so the test also
+covers serialization and status handling. The Cucumber e2e suite runs against real
+containers via Testcontainers — do not mock infrastructure there.
+
 ### Test Coverage
 
 - Unit tests for all use cases and business logic
 - Integration tests for controllers and external service interactions
-- Mock external dependencies (databases, message queues, HTTP clients)
 - Cucumber BDD tests for end-to-end scenarios
 
 ---
