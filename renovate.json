@@ -15,7 +15,7 @@
     ],
     "timezone": "Etc/UTC",
     "schedule": [
-        "* * * * 3"
+        "* * * * 0"
     ],
     "dependencyDashboard": false,
     "prConcurrentLimit": 5,
