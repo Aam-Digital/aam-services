@@ -72,18 +72,6 @@ If this value is missing or `0`, Carbone returns:
 For local development with `docs/developer/docker-compose.yml`, this repository provides
 `docs/developer/carbone.config.json`, mounted to `/app/config/config.json` for the `carbone-io` service.
 
-#### The `{c.now}` placeholder in batch mode
-
-Carbone resolves its reserved `{c.now}` placeholder (see
-[Carbone date formatters](https://carbone.io/documentation/design/formatters/date.html#current-date))
-by injecting the current date itself, but only for single renders. With `batchSplitBy` set it stays empty,
-so a template that prints the generation date would render a blank value in bulk exports while working fine
-for a single record.
-
-The bulk use case therefore passes the date explicitly as `complement.now`, which is the documented way to
-override the value. All records of one batch share the same timestamp. A `complement.now` supplied by the
-caller keeps precedence.
-
 ### OAuth Proxy & Keycloak Client
 In our standard hosted setup, the carbone.io server is protected by an OAUTH proxy.
 The Keycloak Client used by our backend to authenticate against this can be reused across different systems.
