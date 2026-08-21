@@ -87,8 +87,9 @@ class DatabaseSentryEventProcessor : EventProcessor {
                 return true
             }
 
-            // The SQL standard reserves SQLState class 08 for connection exceptions; the PostgreSQL
-            // driver and HikariCP's pool timeout both report it.
+            // The SQL standard reserves SQLState class 08 for connection exceptions, which is what
+            // the PostgreSQL driver reports for a socket that went away. Pool timeouts reach this
+            // check through the wrapper types above once Hibernate has translated them.
             if (cause is SQLException && cause.sqlState?.startsWith(CONNECTION_SQL_STATE_CLASS) == true) {
                 return true
             }

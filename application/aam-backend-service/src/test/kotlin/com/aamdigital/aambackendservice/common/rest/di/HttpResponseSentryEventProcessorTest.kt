@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.common.rest.di
 
+import com.aamdigital.aambackendservice.Application
 import com.aamdigital.aambackendservice.common.rest.di.HttpResponseSentryEventProcessor.Companion.MIME_HEADERS_CLASS
 import com.aamdigital.aambackendservice.common.rest.di.HttpResponseSentryEventProcessor.Companion.MIME_HEADERS_FINGERPRINT
 import io.sentry.Hint
@@ -8,6 +9,7 @@ import io.sentry.exception.ExceptionMechanismException
 import io.sentry.protocol.Mechanism
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 
 class HttpResponseSentryEventProcessorTest {
     private val processor = HttpResponseSentryEventProcessor()
@@ -32,6 +34,20 @@ class HttpResponseSentryEventProcessorTest {
                     )
                 )
         }
+
+    @Test
+    fun `is discoverable by the application's component scan`() {
+        // Given - Sentry only consults processors that made it into the context, and this one lives
+        // in a package that had no beans before, so verify the scan reaches it
+        val scanner = ClassPathScanningCandidateComponentProvider(true)
+
+        // When
+        val components = scanner.findCandidateComponents(Application::class.java.packageName)
+
+        // Then
+        assertThat(components.map { it.beanClassName })
+            .contains(HttpResponseSentryEventProcessor::class.java.name)
+    }
 
     @Test
     fun `groups the header table failures that differ only in accessor and loop variable`() {

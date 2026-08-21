@@ -118,12 +118,13 @@ class DatabaseSentryEventProcessorTest {
     @Test
     fun `groups a connection fault reported through the sentry exception mechanism`() {
         // Given - the logback integration wraps the throwable before handing it to the processors
-        val poolTimeout =
+        val connectionLost =
             SQLTransientConnectionException(
-                "HikariPool-1 - Connection is not available, request timed out after 30000ms",
+                "Connection is not available",
+                // any class-08 SQLState stands for "connection exception"
                 "08003"
             )
-        val event = exceptionEvent(ExceptionMechanismException(Mechanism(), poolTimeout, Thread.currentThread()))
+        val event = exceptionEvent(ExceptionMechanismException(Mechanism(), connectionLost, Thread.currentThread()))
 
         // When
         val result = processor.process(event, Hint())
