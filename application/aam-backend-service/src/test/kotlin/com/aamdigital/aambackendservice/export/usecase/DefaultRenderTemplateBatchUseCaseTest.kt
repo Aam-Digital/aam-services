@@ -26,6 +26,7 @@ import org.mockito.kotlin.whenever
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import java.time.Instant
 import java.util.Base64
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -215,6 +216,57 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
         assertThat(sentBody["reportName"]).isEqualTo("test_letter_{d.name}.pdf")
         assertThat(sentBody["batchReportName"]).isEqualTo("test_letter_{d.name}.pdf")
         assertThat(sentBody["data"]).isInstanceOf(List::class.java)
+    }
+
+    @Test
+    fun `should add the current date to the complement so Carbone fills its reserved now keyword`() {
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue("""{"convertTo":"pdf","data":[{"name":"Alice"},{"name":"Bob"}]}""")
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template())
+        enqueueRenderAndFile(renderId = "render-zip-1", contentType = "application/zip")
+
+        service.run(
+            RenderTemplateBatchRequest(
+                templateRef = templateRef,
+                bodyData = bodyData,
+                mode = RenderTemplateBatchMode.ZIP
+            )
+        )
+
+        val renderRequest = mockWebServer.takeRequest()
+        val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
+
+        @Suppress("UNCHECKED_CAST")
+        val complement = sentBody["complement"] as Map<String, Any?>
+        assertThat(Instant.parse(complement["now"] as String)).isNotNull()
+    }
+
+    @Test
+    fun `should keep a caller-provided complement including an explicit now`() {
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """{"data":[{"name":"Alice"}],"complement":{"now":"2020-01-01T00:00:00Z","user":{"name":"Bob"}}}"""
+            )
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template())
+        enqueueRenderAndFile(renderId = "render-zip-1", contentType = "application/zip")
+
+        service.run(
+            RenderTemplateBatchRequest(
+                templateRef = templateRef,
+                bodyData = bodyData,
+                mode = RenderTemplateBatchMode.ZIP
+            )
+        )
+
+        val renderRequest = mockWebServer.takeRequest()
+        val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
+
+        @Suppress("UNCHECKED_CAST")
+        val complement = sentBody["complement"] as Map<String, Any?>
+        assertThat(complement["now"]).isEqualTo("2020-01-01T00:00:00Z")
+        assertThat(complement["user"]).isEqualTo(mapOf("name" to "Bob"))
     }
 
     @Test

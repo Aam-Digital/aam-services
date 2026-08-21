@@ -16,6 +16,7 @@ import org.springframework.web.client.RestClient
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
+import java.time.Instant
 import java.util.Base64
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
@@ -37,7 +38,7 @@ import java.util.zip.ZipOutputStream
  */
 class DefaultRenderTemplateBatchUseCase(
     renderClient: RestClient,
-    objectMapper: ObjectMapper,
+    private val objectMapper: ObjectMapper,
     templateStorage: TemplateStorage,
 ) : RenderTemplateBatchUseCase() {
     private val carboneClient =
@@ -93,6 +94,7 @@ class DefaultRenderTemplateBatchUseCase(
             // Carbone v5+ substitutes {d.field} placeholders per record for each zip entry name
             bodyData.put("batchReportName", targetFileName)
         }
+        provideCurrentDate(bodyData)
 
         val raw = carboneClient.createRenderRequest(template.templateId, bodyData)
         val renderId = carboneClient.parseRenderId(raw)
@@ -111,6 +113,30 @@ class DefaultRenderTemplateBatchUseCase(
                     responseHeaders = result.headers,
                 ),
         )
+    }
+
+    /**
+     * Provide the value behind Carbone's reserved `{c.now}` placeholder.
+     *
+     * Carbone fills that placeholder itself, but only for single renders. With `batchSplitBy` set
+     * it stays empty, so templates using `{c.now}` would render a blank date in bulk exports.
+     * Passing the date explicitly is the documented override and keeps both modes consistent,
+     * with the whole batch sharing one timestamp.
+     *
+     * A caller-provided `now` wins, matching Carbone's own precedence.
+     */
+    private fun provideCurrentDate(bodyData: ObjectNode) {
+        val existing = bodyData.get("complement")
+        if (existing != null && existing !is ObjectNode) {
+            // unexpected shape: leave it untouched rather than discarding caller data
+            return
+        }
+
+        val complement = existing as? ObjectNode ?: objectMapper.createObjectNode()
+        if (!complement.has("now")) {
+            complement.put("now", Instant.now().toString())
+        }
+        bodyData.replace("complement", complement)
     }
 
     private fun carboneBatchOutput(mode: RenderTemplateBatchMode): String =
