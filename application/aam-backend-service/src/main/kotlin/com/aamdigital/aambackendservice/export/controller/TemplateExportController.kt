@@ -21,6 +21,7 @@ import com.aamdigital.aambackendservice.export.core.RenderTemplateUseCase
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
+import org.springframework.core.io.InputStreamResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -35,8 +36,6 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
-import java.io.OutputStream
 
 sealed interface TemplateExportControllerResponse {
     /**
@@ -45,27 +44,6 @@ sealed interface TemplateExportControllerResponse {
     data class CreateTemplateControllerResponse(
         val templateId: String
     ) : TemplateExportControllerResponse
-
-    /**
-     * StreamingResponse of the template binary file
-     */
-    fun interface FetchTemplateControllerResponse :
-        StreamingResponseBody,
-        TemplateExportControllerResponse
-
-    /**
-     * StreamingResponse of the template, rendered with passed data as binary file
-     */
-    fun interface RenderTemplateControllerResponse :
-        StreamingResponseBody,
-        TemplateExportControllerResponse
-
-    /**
-     * StreamingResponse of a bulk render (ZIP archive of N files, or a single combined file).
-     */
-    fun interface RenderTemplateBatchControllerResponse :
-        StreamingResponseBody,
-        TemplateExportControllerResponse
 
     class ErrorControllerResponse(
         errorCode: String,
@@ -83,6 +61,22 @@ sealed interface TemplateExportControllerResponse {
  *
  * In Aam, this API is especially used for generating PDFs for an entity.
  *
+ * Every endpoint that answers with a file returns an [InputStreamResource] rather than a
+ * `org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody`. A
+ * StreamingResponseBody is written from an async task while the container owns the request
+ * lifecycle, so Tomcat can recycle the request underneath the writer - on the async timeout (30s
+ * by default, which by itself truncates slow downloads) or when the client goes away. Both threads
+ * then touch the same `MimeHeaders`, which is not thread safe, and the response commit fails with
+ * a NullPointerException from inside Tomcat, sometimes taking whichever request next reuses the
+ * recycled objects with it. Neither Tomcat nor Spring treats that as fixable on their side
+ * (spring-framework#33439 was closed as not planned).
+ *
+ * Returning a Resource keeps the copy on the request thread, where the container cannot recycle
+ * anything until the handler returns. Virtual threads are enabled, so blocking that thread for the
+ * length of a download is cheap, and a client that disappears mid-download surfaces as a
+ * `ClientAbortException` that Spring's `DefaultHandlerExceptionResolver` logs at DEBUG.
+ * `ResourceHttpMessageConverter` copies the stream verbatim and closes it afterwards.
+ *
  * @param createTemplateUseCase Use case for creating a new template.
  * @param fetchTemplateUseCase Use case for fetching an existing template (file).
  * @param renderTemplateUseCase Use case for rendering an existing template.
@@ -98,10 +92,6 @@ class TemplateExportController(
     private val renderTemplateBatchUseCase: RenderTemplateBatchUseCase,
     private val objectMapper: ObjectMapper
 ) {
-    companion object {
-        private const val BYTE_ARRAY_BUFFER_LENGTH = 4096
-    }
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     private fun getErrorEntity(
@@ -119,26 +109,26 @@ class TemplateExportController(
             )
 
     /*
-     * Needed so be able to return "ResponseEntity<StreamingResponseBody>" without the need to write a converter.
+     * Keeps the error responses the same body type as the success ones, so no converter is needed.
      */
-    private fun getErrorStreamingBody(result: Failure<*>) =
-        StreamingResponseBody { outputStream: OutputStream ->
-            val buffer = ByteArray(BYTE_ARRAY_BUFFER_LENGTH)
-            var bytesRead: Int
+    private fun getErrorBody(result: Failure<*>) =
+        getErrorBody(
+            errorCode = result.errorCode.toString(),
+            errorMessage = result.errorMessage
+        )
 
-            val bodyStream =
-                objectMapper
-                    .writeValueAsString(
-                        TemplateExportControllerResponse.ErrorControllerResponse(
-                            errorCode = result.errorCode.toString(),
-                            errorMessage = result.errorMessage
-                        )
-                    ).byteInputStream()
-
-            while ((bodyStream.read(buffer).also { bytesRead = it }) != -1) {
-                outputStream.write(buffer, 0, bytesRead)
-            }
-        }
+    private fun getErrorBody(
+        errorCode: String,
+        errorMessage: String
+    ) = InputStreamResource(
+        objectMapper
+            .writeValueAsString(
+                TemplateExportControllerResponse.ErrorControllerResponse(
+                    errorCode = errorCode,
+                    errorMessage = errorMessage
+                )
+            ).byteInputStream()
+    )
 
     @PostMapping("/template")
     fun postTemplate(
@@ -192,7 +182,7 @@ class TemplateExportController(
     @GetMapping("/template/{templateId}")
     fun fetchTemplate(
         @PathVariable templateId: String
-    ): ResponseEntity<StreamingResponseBody> {
+    ): ResponseEntity<InputStreamResource> {
         val result =
             fetchTemplateUseCase.run(
                 FetchTemplateRequest(
@@ -202,22 +192,10 @@ class TemplateExportController(
 
         return when (result) {
             is Success -> {
-                val responseBody =
-                    TemplateExportControllerResponse.FetchTemplateControllerResponse { outputStream: OutputStream ->
-                        val buffer = ByteArray(BYTE_ARRAY_BUFFER_LENGTH)
-                        var bytesRead: Int
-                        while ((
-                                result.data.file
-                                    .read(buffer)
-                                    .also { bytesRead = it }
-                            ) != -1
-                        ) {
-                            outputStream.write(buffer, 0, bytesRead)
-                        }
-                    }
+                val responseBody = InputStreamResource(result.data.file)
 
                 logger.trace(
-                    "[TemplateExportController.fetchTemplate()] success response: (FetchTemplateControllerResponse)"
+                    "[TemplateExportController.fetchTemplate()] success response: (template file)"
                 )
 
                 ResponseEntity(
@@ -228,7 +206,7 @@ class TemplateExportController(
             }
 
             is Failure -> {
-                val errorStreamingBody = getErrorStreamingBody(result)
+                val errorBody = getErrorBody(result)
                 val headers = HttpHeaders()
                 headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 
@@ -236,14 +214,14 @@ class TemplateExportController(
                     when (result.errorCode as FetchTemplateError) {
                         FetchTemplateError.NOT_FOUND_ERROR ->
                             ResponseEntity(
-                                errorStreamingBody,
+                                errorBody,
                                 headers,
                                 HttpStatus.NOT_FOUND
                             )
 
                         else ->
                             ResponseEntity(
-                                errorStreamingBody,
+                                errorBody,
                                 headers,
                                 HttpStatus.INTERNAL_SERVER_ERROR
                             )
@@ -258,7 +236,7 @@ class TemplateExportController(
     fun renderTemplate(
         @PathVariable templateId: String,
         @RequestBody templateData: JsonNode
-    ): ResponseEntity<StreamingResponseBody> {
+    ): ResponseEntity<InputStreamResource> {
         val result =
             renderTemplateUseCase.run(
                 RenderTemplateRequest(
@@ -269,22 +247,10 @@ class TemplateExportController(
 
         return when (result) {
             is Success -> {
-                val responseBody =
-                    TemplateExportControllerResponse.RenderTemplateControllerResponse { outputStream: OutputStream ->
-                        val buffer = ByteArray(BYTE_ARRAY_BUFFER_LENGTH)
-                        var bytesRead: Int
-                        while ((
-                                result.data.file
-                                    .read(buffer)
-                                    .also { bytesRead = it }
-                            ) != -1
-                        ) {
-                            outputStream.write(buffer, 0, bytesRead)
-                        }
-                    }
+                val responseBody = InputStreamResource(result.data.file)
 
                 logger.trace(
-                    "[TemplateExportController.renderTemplate()] success response: (RenderTemplateControllerResponse)"
+                    "[TemplateExportController.renderTemplate()] success response: (rendered file)"
                 )
 
                 ResponseEntity(
@@ -295,7 +261,7 @@ class TemplateExportController(
             }
 
             is Failure -> {
-                val errorStreamingBody = getErrorStreamingBody(result)
+                val errorBody = getErrorBody(result)
                 val headers = HttpHeaders()
                 headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 
@@ -303,14 +269,14 @@ class TemplateExportController(
                     when (result.errorCode as RenderTemplateError) {
                         RenderTemplateError.NOT_FOUND_ERROR ->
                             ResponseEntity(
-                                errorStreamingBody,
+                                errorBody,
                                 headers,
                                 HttpStatus.NOT_FOUND
                             )
 
                         else ->
                             ResponseEntity(
-                                errorStreamingBody,
+                                errorBody,
                                 headers,
                                 HttpStatus.INTERNAL_SERVER_ERROR
                             )
@@ -331,7 +297,7 @@ class TemplateExportController(
         @PathVariable templateId: String,
         @RequestParam(name = "mode", required = false, defaultValue = "zip") mode: String,
         @RequestBody templateData: JsonNode
-    ): ResponseEntity<StreamingResponseBody> {
+    ): ResponseEntity<InputStreamResource> {
         val parsedMode =
             when (mode.lowercase()) {
                 "zip" -> {
@@ -346,18 +312,10 @@ class TemplateExportController(
                     val headers = HttpHeaders()
                     headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                     return ResponseEntity(
-                        StreamingResponseBody { outputStream: OutputStream ->
-                            outputStream.write(
-                                objectMapper
-                                    .writeValueAsString(
-                                        TemplateExportControllerResponse.ErrorControllerResponse(
-                                            errorCode = "INVALID_MODE",
-                                            errorMessage =
-                                                "Unsupported mode '$mode'. Allowed values: zip, combined."
-                                        )
-                                    ).toByteArray()
-                            )
-                        },
+                        getErrorBody(
+                            errorCode = "INVALID_MODE",
+                            errorMessage = "Unsupported mode '$mode'. Allowed values: zip, combined."
+                        ),
                         headers,
                         HttpStatus.BAD_REQUEST
                     )
@@ -377,14 +335,10 @@ class TemplateExportController(
             is Success -> {
                 val responseHeaders = HttpHeaders().apply { putAll(result.data.responseHeaders) }
 
-                val responseBody =
-                    TemplateExportControllerResponse.RenderTemplateBatchControllerResponse {
-                        result.data.file.copyTo(it, BYTE_ARRAY_BUFFER_LENGTH)
-                    }
+                val responseBody = InputStreamResource(result.data.file)
 
                 logger.trace(
-                    "[TemplateExportController.renderTemplateBatch()] success response: " +
-                        "(RenderTemplateBatchControllerResponse)"
+                    "[TemplateExportController.renderTemplateBatch()] success response: (batch file)"
                 )
 
                 ResponseEntity(
@@ -395,7 +349,7 @@ class TemplateExportController(
             }
 
             is Failure -> {
-                val errorStreamingBody = getErrorStreamingBody(result)
+                val errorBody = getErrorBody(result)
                 val headers = HttpHeaders()
                 headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 
@@ -411,7 +365,7 @@ class TemplateExportController(
                         else -> HttpStatus.INTERNAL_SERVER_ERROR
                     }
 
-                ResponseEntity(errorStreamingBody, headers, status)
+                ResponseEntity(errorBody, headers, status)
             }
         }
     }
