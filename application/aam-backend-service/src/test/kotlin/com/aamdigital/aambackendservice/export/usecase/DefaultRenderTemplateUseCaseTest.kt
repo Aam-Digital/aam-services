@@ -292,6 +292,65 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     }
 
     @Test
+    fun `should forward additional request body fields like complement to carbone unchanged`() {
+        // given
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """
+                {"convertTo":"pdf","data":{"name":"Ada"},"complement":{"user":{"name":"Grace Hopper"}}}
+                """.trimIndent()
+            )
+        val templateExport =
+            TemplateExport(
+                id = "export-id",
+                templateId = "export-template-id",
+                targetFileName = "target_file_name.pdf",
+                title = "export-title",
+                description = "export-description",
+                applicableForEntityTypes = emptyList()
+            )
+
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
+
+        mockWebServer.enqueue(
+            MockResponse().setBody(
+                """{"success":true,"data":{"renderId":"some-render-id"}}"""
+            )
+        )
+
+        val buffer = Buffer()
+        buffer.writeAll(File("src/test/resources/files/pdf-test-file-1.pdf").source())
+
+        mockWebServer.enqueue(
+            MockResponse()
+                .setHeaders(
+                    mapOf(
+                        "Content-Type" to "application/pdf",
+                        "Content-Length" to buffer.size.toString()
+                    ).toHeaders()
+                ).setBody(buffer)
+        )
+
+        // when
+        val response =
+            service.run(
+                RenderTemplateRequest(
+                    templateRef,
+                    bodyData
+                )
+            )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        val renderRequest = mockWebServer.takeRequest()
+        val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
+        assertThat(sentBody["data"]).isEqualTo(mapOf("name" to "Ada"))
+        assertThat(sentBody["complement"])
+            .isEqualTo(mapOf("user" to mapOf("name" to "Grace Hopper")))
+    }
+
+    @Test
     fun `should return Failure with parsed error message`() {
         // given
         val templateRef = DomainReference("some-id")

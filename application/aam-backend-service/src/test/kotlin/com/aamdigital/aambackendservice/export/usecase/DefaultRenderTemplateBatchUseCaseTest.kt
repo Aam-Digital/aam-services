@@ -218,6 +218,37 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
     }
 
     @Test
+    fun `should forward additional request body fields like complement to carbone unchanged`() {
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue(
+                """
+                {"convertTo":"pdf","data":[{"name":"Alice"},{"name":"Bob"}],
+                "complement":{"user":{"name":"Grace Hopper"}}}
+                """.trimIndent()
+            )
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template())
+        enqueueRenderAndFile(renderId = "render-zip-1", contentType = "application/zip")
+
+        val response =
+            service.run(
+                RenderTemplateBatchRequest(
+                    templateRef = templateRef,
+                    bodyData = bodyData,
+                    mode = RenderTemplateBatchMode.ZIP
+                )
+            )
+
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        val renderRequest = mockWebServer.takeRequest()
+        val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
+        // the complement is sent once for the whole batch, next to the split-up data array
+        assertThat(sentBody["complement"])
+            .isEqualTo(mapOf("user" to mapOf("name" to "Grace Hopper")))
+        assertThat(sentBody["data"]).isInstanceOf(List::class.java)
+    }
+
+    @Test
     fun `ZIP mode should sanitize illegal filesystem characters from the target file name pattern`() {
         val templateRef = DomainReference("some-id")
         val bodyData: JsonNode =

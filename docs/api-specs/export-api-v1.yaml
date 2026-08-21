@@ -267,6 +267,14 @@ components:
           type: object
           additionalProperties: true
           description: Placeholder values injected into the template.
+        complement:
+          type: object
+          additionalProperties: true
+          description: >-
+            Optional context data available in the template (and in `reportName`) under
+            carbone's `{c.…}` prefix, separate from the record data under `{d.…}`.
+            Used by the Aam Digital app to expose the logged-in user's record as
+            `{c.user.…}`.
         reportName:
           type: string
           description: Optional output file name (supports carbone placeholders).
@@ -286,6 +294,15 @@ components:
           type: string
           description: The per-document output format, e.g. "pdf".
           example: pdf
+        complement:
+          type: object
+          additionalProperties: true
+          description: >-
+            Optional context data available in the template (and in `reportName` /
+            `batchReportName`) under carbone's `{c.…}` prefix, separate from the record
+            data under `{d.…}`. It is sent once and shared by every record of the batch.
+            Used by the Aam Digital app to expose the logged-in user's record as
+            `{c.user.…}`.
         reportName:
           type: string
           description: Optional output file name (supports carbone placeholders).
@@ -296,6 +313,9 @@ components:
           - firstname: Alan
             lastname: Turing
         convertTo: pdf
+        complement:
+          user:
+            name: Grace Hopper
         reportName: "report-{d.lastname}.pdf"
     Error:
       type: object
