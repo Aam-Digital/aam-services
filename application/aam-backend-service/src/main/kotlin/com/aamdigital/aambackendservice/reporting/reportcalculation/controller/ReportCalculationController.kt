@@ -4,7 +4,6 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.FileStorage
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.error.NotFoundException
-import com.aamdigital.aambackendservice.common.stream.handleInputStreamToOutputStream
 import com.aamdigital.aambackendservice.export.controller.TemplateExportControllerResponse
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
@@ -16,6 +15,7 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateR
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
+import org.springframework.core.io.InputStreamResource
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -28,9 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.InputStream
-import java.io.OutputStream
 import java.io.SequenceInputStream
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -138,16 +136,35 @@ class ReportCalculationController(
         return ResponseEntity.ok(toDto(reportCalculation))
     }
 
+    /**
+     * Streams the calculated data, wrapped in a small envelope of metadata.
+     *
+     * The body is an [InputStreamResource] and *not* a
+     * `org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody` on purpose.
+     * A StreamingResponseBody is written from an async task while the container owns the request
+     * lifecycle, so Tomcat could recycle the request underneath the writer - on the async timeout
+     * (30s by default, which by itself truncates large downloads) or when the client goes away.
+     * Both threads then touch the same `MimeHeaders`, which is not thread safe, and it fails with
+     * a NullPointerException from inside Tomcat while committing the response, sometimes taking
+     * whichever request next reuses the recycled objects with it. Neither Tomcat nor Spring treats
+     * that as fixable on their side (spring-framework#33439 was closed as not planned).
+     *
+     * Returning a Resource keeps the copy on the request thread, where the container cannot
+     * recycle anything until the handler returns. Virtual threads are enabled, so blocking that
+     * thread for the length of a download is cheap, and a client that disappears mid-download
+     * surfaces as a `ClientAbortException` that Spring's `DefaultHandlerExceptionResolver` logs at
+     * DEBUG. `ResourceHttpMessageConverter` copies the stream verbatim and closes it afterwards.
+     */
     @GetMapping("/{calculationId}/data", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun fetchReportCalculationData(
         @PathVariable("calculationId") calculationIdRaw: String
-    ): ResponseEntity<StreamingResponseBody> {
+    ): ResponseEntity<InputStreamResource> {
         // TODO Auth check (https://github.com/Aam-Digital/aam-services/issues/10)
 
         if (calculationIdRaw.isBlank() || calculationIdRaw.trim().isEmpty()) {
             logger.debug("[GET /{calculationId}/data]: Invalid calculationId $calculationIdRaw")
             return ResponseEntity(
-                getErrorStreamingBody(errorCode = "INVALID_DATA", "Invalid calculationId."),
+                getErrorBody(errorCode = "INVALID_DATA", "Invalid calculationId."),
                 HttpHeaders().apply {
                     set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 },
@@ -166,7 +183,7 @@ class ReportCalculationController(
             } catch (ex: NotFoundException) {
                 logger.trace("[GET /{calculationId}/data]: Requested calculationId $calculationId file not found")
                 return ResponseEntity(
-                    getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
+                    getErrorBody(errorCode = ex.code.toString(), ex.localizedMessage),
                     HttpHeaders().apply {
                         set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                     },
@@ -179,8 +196,10 @@ class ReportCalculationController(
                 reportCalculationStorage.fetchReportCalculation(DomainReference(id = calculationId))
             } catch (ex: NotFoundException) {
                 logger.trace("[GET /{calculationId}/data]: Requested calculationId $calculationId not found")
+                // nothing will consume the attachment stream that was opened above
+                file.close()
                 return ResponseEntity(
-                    getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
+                    getErrorBody(errorCode = ex.code.toString(), ex.localizedMessage),
                     HttpHeaders().apply {
                         set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                     },
@@ -189,26 +208,23 @@ class ReportCalculationController(
             }
 
         val responseBody =
-            StreamingResponseBody { outputStream: OutputStream ->
-                handleInputStreamToOutputStream(
-                    outputStream,
-                    SequenceInputStream(
-                        Collections.enumeration(
-                            listOf(
-                                (
-                                    "{\"id\": \"${calculationId}_data.json\"," +
-                                        "\"report\": {\"id\": \"${reportCalculation.report.id}\"}," +
-                                        "\"calculation\":{\"id\": \"$calculationId\"}," +
-                                        "\"dataHash\": \"${reportCalculation.attachments["data.json"]?.digest}\"," +
-                                        "\"data\":"
-                                ).byteInputStream(),
-                                file,
-                                "}".byteInputStream()
-                            )
+            InputStreamResource(
+                SequenceInputStream(
+                    Collections.enumeration(
+                        listOf(
+                            (
+                                "{\"id\": \"${calculationId}_data.json\"," +
+                                    "\"report\": {\"id\": \"${reportCalculation.report.id}\"}," +
+                                    "\"calculation\":{\"id\": \"$calculationId\"}," +
+                                    "\"dataHash\": \"${reportCalculation.attachments["data.json"]?.digest}\"," +
+                                    "\"data\":"
+                            ).byteInputStream(),
+                            file,
+                            "}".byteInputStream()
                         )
                     )
                 )
-            }
+            )
 
         logger.trace(
             "[GET /{calculationId}/data]: Returning stream for ${reportCalculation.report.id} calculationId $calculationId with ${reportCalculation.attachments["data.json"]?.digest}"
@@ -220,10 +236,16 @@ class ReportCalculationController(
             .body(responseBody)
     }
 
+    /**
+     * Streams the calculated data as it is stored, without the metadata envelope.
+     *
+     * Returns an [InputStreamResource] rather than a StreamingResponseBody for the reasons given
+     * on [fetchReportCalculationData].
+     */
     @GetMapping("/{calculationId}/data-stream", produces = [MediaType.APPLICATION_OCTET_STREAM_VALUE])
     fun fetchReportCalculationDataStream(
         @PathVariable calculationId: String
-    ): ResponseEntity<StreamingResponseBody> {
+    ): ResponseEntity<InputStreamResource> {
         val file =
             try {
                 fileStorage.fetchFile(
@@ -235,7 +257,7 @@ class ReportCalculationController(
                     "[GET /{calculationId}/data-stream]: Requested calculationId $calculationId file not found"
                 )
                 return ResponseEntity(
-                    getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
+                    getErrorBody(errorCode = ex.code.toString(), ex.localizedMessage),
                     HttpHeaders().apply {
                         set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                     },
@@ -248,8 +270,10 @@ class ReportCalculationController(
                 reportCalculationStorage.fetchReportCalculation(DomainReference(id = calculationId))
             } catch (ex: NotFoundException) {
                 logger.trace("[GET /{calculationId}/data-stream]: Requested calculationId $calculationId not found")
+                // nothing will consume the attachment stream that was opened above
+                file.close()
                 return ResponseEntity(
-                    getErrorStreamingBody(errorCode = ex.code.toString(), ex.localizedMessage),
+                    getErrorBody(errorCode = ex.code.toString(), ex.localizedMessage),
                     HttpHeaders().apply {
                         set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                     },
@@ -257,10 +281,7 @@ class ReportCalculationController(
                 )
             }
 
-        val responseBody =
-            StreamingResponseBody { outputStream: OutputStream ->
-                handleInputStreamToOutputStream(outputStream, file)
-            }
+        val responseBody = InputStreamResource(file)
 
         logger.trace(
             "[GET /{calculationId}/data-stream]: Returning stream for ${reportCalculation.report.id} calculationId $calculationId"
@@ -273,31 +294,20 @@ class ReportCalculationController(
     }
 
     /*
-     * Needed to be able to return "ResponseEntity<StreamingResponseBody>" without the need to write a converter.
+     * Keeps the error responses the same body type as the success ones, so no converter is needed.
      */
-    private fun getErrorStreamingBody(
+    private fun getErrorBody(
         errorCode: String,
-        errorMessage: String,
-        byteArrayBufferLength: Int = 4096
-    ) = StreamingResponseBody { outputStream: OutputStream ->
-        val buffer = ByteArray(byteArrayBufferLength)
-        var bytesRead: Int
-
-        val bodyStream =
-            objectMapper
-                .writeValueAsString(
-                    TemplateExportControllerResponse.ErrorControllerResponse(
-                        errorCode = errorCode,
-                        errorMessage = errorMessage
-                    )
-                ).byteInputStream()
-
-        while ((bodyStream.read(buffer).also { bytesRead = it }) != -1) {
-            if (bytesRead > 0) {
-                outputStream.write(buffer, 0, bytesRead)
-            }
-        }
-    }
+        errorMessage: String
+    ) = InputStreamResource(
+        objectMapper
+            .writeValueAsString(
+                TemplateExportControllerResponse.ErrorControllerResponse(
+                    errorCode = errorCode,
+                    errorMessage = errorMessage
+                )
+            ).byteInputStream()
+    )
 
     private fun toDto(it: ReportCalculation): ReportCalculationDto {
         val result =
