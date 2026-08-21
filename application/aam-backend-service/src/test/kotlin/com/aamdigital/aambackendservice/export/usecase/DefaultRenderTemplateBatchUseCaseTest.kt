@@ -411,6 +411,11 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
         assertThat(sentBody["batchSplitBy"]).isEqualTo("d")
         assertThat(sentBody["batchOutput"]).isEqualTo("pdf")
         assertThat(sentBody).doesNotContainKey("batchReportName")
+
+        // the blank {c.now} affected both batch modes, so guard the date here as well
+        @Suppress("UNCHECKED_CAST")
+        val complement = sentBody["complement"] as Map<String, Any?>
+        assertThat(Instant.parse(complement["now"] as String)).isNotNull()
     }
 
     @Test
