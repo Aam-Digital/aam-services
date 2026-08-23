@@ -19,6 +19,7 @@ import org.springframework.amqp.core.BindingBuilder
 import org.springframework.amqp.core.FanoutExchange
 import org.springframework.amqp.core.Queue
 import org.springframework.amqp.core.QueueBuilder
+import org.springframework.amqp.rabbit.connection.ConnectionFactory
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.amqp.rabbit.retry.MessageRecoverer
 import org.springframework.amqp.rabbit.retry.RejectAndDontRequeueRecoverer
@@ -109,10 +110,24 @@ class NotificationQueueConfiguration {
             rabbitTemplate = rabbitTemplate
         )
 
+    /**
+     * A dedicated template for [NotificationDlqReprocessor], which moves each dead lettered message
+     * inside a channel transaction.
+     *
+     * The `@Primary` [RabbitTemplate] is not channel-transacted, and `CachingConnectionFactory` then
+     * hands out a channel whose proxy rejects `txSelect` with
+     * `UnsupportedOperationException: Cannot start transaction on non-transactional channel` — which
+     * made the drain fail on every instance. Only the reprocessor needs transacted channels, so it
+     * gets its own template rather than changing publish semantics for everything else.
+     */
+    @Bean("notification-dlq-rabbit-template")
+    fun notificationDlqRabbitTemplate(connectionFactory: ConnectionFactory): RabbitTemplate =
+        RabbitTemplate(connectionFactory).apply { isChannelTransacted = true }
+
     @Bean("notification-user-dlq-reprocessor")
     fun notificationUserDlqReprocessor(
         amqpAdmin: AmqpAdmin,
         @Qualifier("notification-user-notification-dlq") dlq: Queue,
-        rabbitTemplate: RabbitTemplate
+        @Qualifier("notification-dlq-rabbit-template") rabbitTemplate: RabbitTemplate
     ): NotificationDlqReprocessor = NotificationDlqReprocessor(amqpAdmin, dlq, rabbitTemplate)
 }
