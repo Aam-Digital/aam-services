@@ -145,8 +145,9 @@ jobs:
           build-args: |
             APPLICATION_VERSION=${{ env.APPLICATION_VERSION }}
             SENTRY_UPLOAD_SOURCES=${{ github.event_name != 'pull_request' }}
-          secrets: |
-            sentry_auth_token=${{ github.event_name != 'pull_request' && secrets.SENTRY_TOKEN || '' }}
+          # Empty input rather than an empty value: `sentry_auth_token=` alone makes the action
+          # warn that it is not a valid secret.
+          secrets: ${{ github.event_name != 'pull_request' && format('sentry_auth_token={0}', secrets.SENTRY_TOKEN) || '' }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,url=${{ runner.env.ACTIONS_CACHE_URL }},token=${{ runner.env.ACTIONS_RUNTIME_TOKEN }}
           cache-to: type=gha,mode=min,url=${{ runner.env.ACTIONS_CACHE_URL }},token=${{ runner.env.ACTIONS_RUNTIME_TOKEN }}
