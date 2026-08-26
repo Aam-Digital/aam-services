@@ -124,8 +124,8 @@ sentry {
 
     org = "aam-digital"
     projectName = "aam-backend-service"
+    // Set in the Docker build from a mounted secret; without it the upload is skipped.
     authToken = System.getenv("SENTRY_AUTH_TOKEN")
-    version = System.getenv("APPLICATION_VERSION")
 }
 
 kotlin {

@@ -1,14 +1,18 @@
 FROM gradle:9.6.1-jdk21-alpine AS BUILD
 WORKDIR /opt/app
 COPY . .
-# When a Sentry auth token is mounted (see the build workflow), the sources of this build are
+# With a Sentry auth token mounted (see the build workflow), the sources of this build are
 # bundled and uploaded, so Sentry shows the surrounding source code for our own stack trace
 # frames. That has to happen in this Gradle run: the bundle id is generated once per build and
 # baked into the jar, so an upload from any other build would not match the shipped jar.
-# `installDist` alone does not pull the upload task in. Without a token (e.g. builds from
-# forks) only the plain build runs, exactly as before.
+# `installDist` alone does not pull the upload task in. Without a token (e.g. builds from forks)
+# only the plain build runs, exactly as before.
+# The build arg is what keeps this honest across the layer cache: secrets are deliberately not
+# part of the cache key, so without it a layer built without a token would be reused for a build
+# that has one - shipping a jar whose bundle id was never uploaded.
+ARG SENTRY_UPLOAD_SOURCES=false
 RUN --mount=type=secret,id=sentry_auth_token \
-    if [ -s /run/secrets/sentry_auth_token ]; then \
+    if [ "$SENTRY_UPLOAD_SOURCES" = "true" ] && [ -s /run/secrets/sentry_auth_token ]; then \
       SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)" \
         gradle installDist sentryUploadSourceBundleJava; \
     else \

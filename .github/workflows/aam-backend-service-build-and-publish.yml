@@ -138,8 +138,15 @@ jobs:
           context: ./application/aam-backend-service
           provenance: false
           labels: ${{ steps.meta.outputs.labels }}
+          # SENTRY_UPLOAD_SOURCES lets the Gradle build inside the image upload this build's
+          # source bundle, so Sentry can show our source code next to the stack trace frames
+          # (see Dockerfile). Off for pull requests: those images are never deployed, and forks
+          # cannot read the secret anyway.
           build-args: |
             APPLICATION_VERSION=${{ env.APPLICATION_VERSION }}
+            SENTRY_UPLOAD_SOURCES=${{ github.event_name != 'pull_request' }}
+          secrets: |
+            sentry_auth_token=${{ github.event_name != 'pull_request' && secrets.SENTRY_TOKEN || '' }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,url=${{ runner.env.ACTIONS_CACHE_URL }},token=${{ runner.env.ACTIONS_RUNTIME_TOKEN }}
           cache-to: type=gha,mode=min,url=${{ runner.env.ACTIONS_CACHE_URL }},token=${{ runner.env.ACTIONS_RUNTIME_TOKEN }}
