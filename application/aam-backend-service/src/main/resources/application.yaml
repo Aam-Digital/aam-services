@@ -119,6 +119,13 @@ logging:
 application:
   base-url: "" # default for backwards compatibility - this should be set in env however!
 
+sentry:
+  # Version of the running build, baked into the image from the APPLICATION_VERSION build arg
+  # (see Dockerfile), so error events are tagged with a release. This has to stay in the
+  # always-active part of the config: the "local-development" document below is skipped in
+  # production, where no Spring profile is active.
+  release: ${APPLICATION_VERSION:}
+
 ---
 # <second part of the config, just active with profile "local-development">
 
@@ -238,7 +245,6 @@ crypto-configuration:
 sentry:
   logging:
     enabled: false
-  release: ${APPLICATION_VERSION:#{null}}
 
 application:
   base-url: https://aam.localhost
