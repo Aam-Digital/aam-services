@@ -146,7 +146,9 @@ jobs:
             APPLICATION_VERSION=${{ env.APPLICATION_VERSION }}
             SENTRY_UPLOAD_SOURCES=${{ github.event_name != 'pull_request' }}
           # Empty input rather than an empty value: `sentry_auth_token=` alone makes the action
-          # warn that it is not a valid secret.
+          # warn that it is not a valid secret. Keep this condition in sync with the one on
+          # SENTRY_UPLOAD_SOURCES above: a build that is told to upload but gets no token fails
+          # on purpose, rather than quietly skipping the upload.
           secrets: ${{ github.event_name != 'pull_request' && format('sentry_auth_token={0}', secrets.SENTRY_TOKEN) || '' }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,url=${{ runner.env.ACTIONS_CACHE_URL }},token=${{ runner.env.ACTIONS_RUNTIME_TOKEN }}
