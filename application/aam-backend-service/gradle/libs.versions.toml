@@ -25,7 +25,7 @@ jacoco = "0.8.15"
 # track the Keycloak server version (26.7.1, pinned in the SPI module's pom.xml). Nothing
 # newer exists: 26.1.0 onwards were never published for this artifact, so 26.0.x is the
 # whole line and matching the server version is not possible.
-keycloakAdminClient = "26.0.11"
+keycloakAdminClient = "26.0.12"
 firebaseAdmin = "9.10.0"
 postgresql = "42.7.13"
 
