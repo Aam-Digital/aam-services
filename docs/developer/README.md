@@ -165,17 +165,20 @@ After this you can render single PDFs and bulk PDFs (ZIP or combined) from your 
 The stack includes a caddy reverse-proxy that runs on https://aam.localhost/ - SSL is enabled by default. However, this
 certificate is self-signed and must be added manually as trustworthy.
 
-You also need to adapt your `/etc/hosts` file and add an entry for `aam.localhost` to `127.0.0.1`:
+The stack uses two hostnames: `aam.localhost` and `keycloak.localhost`. On macOS and on Linux
+with systemd-resolved, any `*.localhost` name already resolves to `127.0.0.1` and you can skip
+this step. Everywhere else, add both to your `/etc/hosts`:
 
 ```bash
 sudo nano /etc/hosts
 ```
 
-Add another line for `aam.localhost`:
+Add a line for each hostname:
 
 ```
 127.0.0.1       localhost
 127.0.0.1       aam.localhost
+127.0.0.1       keycloak.localhost
 ```
 
 #### add self-signed certificate
@@ -183,6 +186,11 @@ Add another line for `aam.localhost`:
 You can add import the auto generated caddy certificate after the aam-stack is started.
 
 ##### link certificate to aam-backend-service
+
+> Only needed when you run `aam-backend-service` **from source**, outside Docker.
+> The docker-compose setup already bind-mounts this certificate into the container and points
+> `SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE` at it, so you can skip this
+> step when following the docker-compose walkthrough below.
 
 To be able to verify https connections, the `aam-backend-service` need the generated caddy certificate.  
 You can copy the certificate to the resources directory of the `aam-backend-service`:
@@ -276,10 +284,32 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
 
 ### Step 2: Configure Keycloak
 
-> WARNING! We currently use Keycloak 23 in production. For local development the latest Keycloak 26 is also supported.
-> The docker-compose offers both options. Enable one with code comments or profiles
-> 
-> Note that switching between the two Keycloak containers means the realm setup is different and the public key (`REPLICATION_BACKEND_PUBLIC_KEY`) has to be updated in .env
+> The stack runs the Keycloak version pinned in `docker-compose.yml`. If you change it, note
+> that the realm setup differs between versions and the public key
+> (`REPLICATION_BACKEND_PUBLIC_KEY`) has to be updated in .env.
+
+#### 2.1 Install the Keycloak provider plugins (required)
+
+Do this **first**. The realm imported in the next step wires these plugins into its browser
+authentication flow, so without them nobody can log in — Keycloak fails the login with
+`Unable to find factory for AuthenticatorFactory: ...` and the browser only shows a generic
+"Unexpected error when handling authentication request".
+
+```bash
+cd ./container-data/keycloak/providers # (create folder if necessary)
+sudo wget https://github.com/aerogear/keycloak-metrics-spi/releases/download/6.0.0/keycloak-metrics-spi-6.0.0.jar && \
+sudo wget https://github.com/wouterh-dev/keycloak-spi-trusted-device/releases/download/v0.0.1-22/keycloak-spi-trusted-device-0.0.1-22.jar && \
+sudo wget https://static.aam-digital.net/keycloak-2fa-email-authenticator-1.0-SNAPSHOT.jar && \
+sudo wget https://github.com/Aam-Digital/aam-services/releases/download/keycloak-third-party-authentication/v0.2.0/keycloak-third-party-authentication.jar
+```
+
+Keycloak only loads providers at startup, so restart it afterwards:
+
+```shell
+docker compose restart keycloak
+```
+
+#### 2.2 Import the realm and clients
 
 - Open the Keycloak Admin UI at [https://keycloak.localhost](https://keycloak.localhost) with the credentials defined in
   the docker-compose file.
@@ -289,19 +319,48 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
 - Under **Keycloak Realm > Clients
   ** ([https://keycloak.localhost/admin/master/console/#/dummy-realm/clients](https://keycloak.localhost/admin/master/console/#/dummy-realm/clients)),
   import the client configuration using [client_config.json from the ndb-setup](https://github.com/Aam-Digital/ndb-setup/tree/master/keycloak).
+
+#### 2.3 Create the `aam-backend` client
+
+The imported files only create the public `app` client used by the frontend. Both
+`replication-backend` and `aam-backend-service` additionally authenticate against the Keycloak
+Admin API as a confidential client named `aam-backend` (see
+`REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_ID` and the `keycloak.client-id` setting), which you
+have to create yourself:
+
+- Create a client with client ID **`aam-backend`**.
+- Turn **Client authentication** on (confidential) and enable **Service accounts roles**.
+  Standard flow and direct access grants are not needed.
+- On the client's **Service accounts roles** tab, assign the `view-users` and `query-users`
+  roles from the **realm-management** client. Without them the backends can resolve tokens but
+  not look up user roles.
+- Copy the secret from the **Credentials** tab into `REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_SECRET`
+  in your `.env` (see Step 4).
+
+#### 2.4 Create a user
+
 - In the new realm, create a user and assign relevant roles.
   (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.  
   If the roles are not visible in "Assign roles" dialog, you may need to change the "Filter by realm roles".)
-- Add additional providers (plugins):
-```bash
-cd ./container-data/keycloak/providers # (create folder if necessary)
-sudo wget https://github.com/aerogear/keycloak-metrics-spi/releases/download/6.0.0/keycloak-metrics-spi-6.0.0.jar && \
-sudo wget https://github.com/wouterh-dev/keycloak-spi-trusted-device/releases/download/v0.0.1-22/keycloak-spi-trusted-device-0.0.1-22.jar && \
-sudo wget https://static.aam-digital.net/keycloak-2fa-email-authenticator-1.0-SNAPSHOT.jar && \
-sudo wget https://github.com/Aam-Digital/aam-services/releases/download/keycloak-third-party-authentication/v0.2.0/keycloak-third-party-authentication.jar
-```
+- Note that the imported realm enforces a password policy, so the `docker` password used
+  elsewhere in this guide is rejected here — the password needs at least one upper-case
+  character.
 
 ### Step 3: Set Up CouchDB (todo: improve this by automatic script)
+
+The `app`, `app-attachments`, `report-calculation` and `notification-webhook` databases are
+created automatically by `aam-backend-service` the first time it starts successfully — you do
+not create them by hand. If CouchDB is still empty here, `aam-backend-service` did not come up;
+check `docker compose logs aam-backend-service` before continuing.
+
+> Because of that ordering, `replication-backend` may have started while `app` did not yet
+> exist. It gives up permanently after a few attempts and logs
+> `SUSTAINED OUTAGE: Changes feed request failed` with `Database does not exist`.
+> Restart it once the databases are there:
+>
+> ```shell
+> docker compose restart replication-backend
+> ```
 
 - Access CouchDB
   at [https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs](https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs).
@@ -372,15 +431,20 @@ docker compose down && docker compose up -d
 
 In your local repository of [ndb-core](https://github.com/Aam-Digital/ndb-core):
 
-1. Update `environment.ts` or `assets/config.json` with the following settings, in order to run the app in "synced" mode
-   using the backend services:
+1. Create `src/assets/config.json` with the following settings, in order to run the app in "synced" mode
+   using the backend services. That file overrides `environment.ts` and is git-ignored, so your
+   local setup stays out of `git status`; editing the tracked `environment.ts` works too, but is
+   easy to commit by accident:
 
-```
-session_type: "synced",
-demo_mode: false
+```json
+{
+  "session_type": "synced",
+  "demo_mode": false
+}
 ```
 
-2. Update `assets/keycloak.json` with the following settings
+2. Update `assets/keycloak.json` with the following settings (the values below are already the
+   defaults committed in ndb-core, so usually there is nothing to change)
 
 ```
 {
@@ -398,24 +462,25 @@ demo_mode: false
 
 ```shell
 # https://github.com/Aam-Digital/ndb-core
-ng serve --host 0.0.0.0
+npm start
 ```
+
+`npm start` already runs `ng serve --host 0.0.0.0`, which is what the reverse-proxy needs — no
+change to `package.json` required.
 
 **Attention**
 
-If you use the default `npm start` command, make sure to update the start command in the `package.json` to:
-
-```json
-{
-  "scripts": {
-    "start": "ng serve --host 0.0.0.0"
-  }
-}
-```
+Open the app at [https://aam.localhost/](https://aam.localhost/), not at `localhost:4200`.
+Only the proxied hostname can reach the backend services and Keycloak.
 
 ### Further Steps (optional):
 
 #### Set up RabbitMQ (needed for some modules)
+
+> Only needed when you run `aam-backend-service` **from source** with the `local-development`
+> profile, which expects the `local` virtual host and the `local-spring` user. The dockerized
+> `aam-backend-service` connects as the default `guest` user on the `/` virtual host and needs
+> none of this.
 
 To use the queue, you have to create a user and virutal host in the RabbitMQ admin interface:
 
@@ -431,6 +496,39 @@ To use the queue, you have to create a user and virutal host in the RabbitMQ adm
 
 Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific modules like Notification:
 
+Note that `FEATURES_NOTIFICATIONAPI_ENABLED=true` in `.env.example` only enables the module — it
+stays non-functional until you supply real Firebase credentials for
+`NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64`, which ships as a placeholder. The
+service reports what it actually resolved on startup:
+
+```
+Notification startup diagnostics: emailFeatureEnabled=false, keycloakBeanAvailable=false, mailHostConfigured=false
+```
+
+-----
+
+## Verify your setup
+
+Once you have worked through the steps above:
+
+```shell
+# all containers up; aam-backend-service must NOT be restarting or exited
+docker compose ps
+
+# reverse-proxy answers
+curl https://aam.localhost/hello
+
+# the backend created its databases
+curl -s -u admin:docker https://aam.localhost/db/couchdb/_all_dbs
+# -> ["_users","app","app-attachments","notification-webhook","report-calculation"]
+```
+
+Then open [https://aam.localhost/](https://aam.localhost/) and log in with the user you created
+in Step 2.4. You should reach the app's dashboard, not the demo setup wizard.
+
+If `aam-backend-service` keeps exiting, its log names the reason on the last few lines —
+missing datasource credentials and unbound configuration properties both show up there as
+startup failures.
 
 -----
 
