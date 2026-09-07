@@ -12,7 +12,7 @@
 kotlin = "2.4.10"
 springBoot = "3.5.16"
 springDependencyManagement = "1.1.7"
-sentryPlugin = "6.16.0"
+sentryPlugin = "6.21.0"
 ktlintPlugin = "14.2.0"
 # ktlint and jacoco are tool versions consumed by the ktlint {} and jacoco {} blocks.
 # Leaving them unset is not an option: Gradle 9.6.1 defaults to JaCoCo 0.8.14 and the
@@ -30,11 +30,11 @@ firebaseAdmin = "9.10.0"
 postgresql = "42.7.13"
 
 # --- test ---
-cucumber = "7.34.6"
+cucumber = "7.34.8"
 mockitoKotlin = "6.3.0"
 junitJsonParams = "5.10.2-r0"
 parsson = "1.1.9"
-okhttp = "5.4.0"
+okhttp = "5.5.0"
 testcontainers = "1.21.4"
 # Supplies its own default Keycloak image, which is what the e2e suite runs against.
 testcontainersKeycloak = "4.3.1"
