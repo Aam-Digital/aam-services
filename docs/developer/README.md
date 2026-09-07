@@ -39,118 +39,62 @@ An SQL query engine for CouchDB, letting you use SQL SELECT statements to extrac
 
 -----
 
-## Running a full system locally
+## Full local setup with Docker and docker-compose
 
-After completing the setup steps below once
-you can simply use the docker compose file in this directory:
+All services run as docker containers, communicating over a dedicated docker network (`aam-digital`).
+The steps below are a **one-time setup**; afterwards, starting the stack again is just
+`docker compose up -d` from `docs/developer` — no need to repeat Steps 1-5.
 
-```shell
-docker compose up -d
-```
+### Step 1: start the local development stack
 
-(!) Make sure to access the frontend at [http://aam.localhost/](http://aam.localhost/)
-instead of "localhost:4200". Otherwise, the connections to backend services like sync will not work.
+1. Create the docker network (once per machine):
 
-Also see the "Tips and tricks" section at the end of this file for possible adjustments.
-
------
-
-## Setup of development environment
-
-To make development as simple as possible, we provide all services as docker containers. You can start them with the
-docker-compose file provided [here in this folder](./docker-compose.yml)  
-All container will communicate directly over a separate docker network: `aam-digital`
-
-You need to create the docker network initial:
-
-```bash
-docker network create aam-digital
-```
-
-##### (bugfix) macOS with M4:
-
-Fix bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85:
-
-Add this to your .env file:
-
-```env
-JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
-```
-
-##### (limitation) arm64 hosts: Carbone PDF rendering fails locally
-
-The `carbone/carbone-ee` image is published only for `linux/amd64`. On any `arm64` host — Apple Silicon Macs (M1 / M2 / M3 / M4), Windows on ARM (e.g. Surface Pro X, Snapdragon devices), Linux on arm64 — it runs through emulation, and the embedded Chromium process used to convert documents to PDF crashes during every render (qemu/GPU errors). The container starts and `/status` responds, but `POST /render/{templateId}` either hangs or returns an empty/failed result. The frontend's bulk-PDF action will show "Generated 0 of N files." in this state.
-
-There is no fix on the local side. You need a Carbone container running on an `x86_64` Linux host and tunnel it back to your machine, then point the local backend at the tunnel.
-
-- **External / open-source contributors:** you do **not** have access to the Aam-Digital dev server. Two options:
-  - **Recommended:** open a discussion on the PR or issue asking the maintainers for help. We can confirm your feature works on our infrastructure during review.
-  - **Self-hosted:** if you need to verify PDF rendering yourself, run an `x86_64` Linux VM (any cloud, e.g. a small Hetzner / AWS / DigitalOcean instance) and start the Carbone container there using the same steps below.
-
-Once you have an `x86_64` host you can reach over SSH, follow the workaround:
-
-Quick steps:
-
-1. On an `x86_64` Linux host you have SSH access to, start a temp Carbone container:
    ```bash
-   NAME=<test-container>-carbone
-   WORKDIR=/tmp/$NAME
-   mkdir -p "$WORKDIR/config" "$WORKDIR/template" "$WORKDIR/render"
-   cat > "$WORKDIR/config/config.json" <<'EOF'
-   {
-     "port": 4000,
-     "bind": "127.0.0.1",
-     "factories": 1,
-     "authentication": false,
-     "jwtAudience": "carbone-ee",
-     "templatePathRetention": 0,
-     "maxDataSize": 62914560,
-     "nbReportMaxPerBatch": 200
-   }
-   EOF
-   docker run -d --name "$NAME" \
-     -p 127.0.0.1:4001:4000 \
-     -v "$WORKDIR/config":/app/config \
-     -v "$WORKDIR/template":/app/template \
-     -v "$WORKDIR/render":/app/render \
-     --restart unless-stopped \
-     carbone/carbone-ee
+   docker network create aam-digital
    ```
 
-2. On your local machine, open the tunnel (keep this terminal open for the session). Works in macOS Terminal, Linux shells, Windows PowerShell, WSL, or Git Bash:
-   ```bash
-   ssh -N -L 0.0.0.0:4001:127.0.0.1:4001 <dev-server-host>
+   > **macOS M4 bugfix:** Sequoia 15.2 on M4 chips hits [corretto-21#85](https://github.com/corretto/corretto-21/issues/85).
+   > Add this to your `.env` (created in the next step) if you're on that combination:
+   > ```env
+   > JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
+   > ```
+   >
+   > **arm64 hosts (Apple Silicon, Windows/Linux on ARM):** the `carbone/carbone-ee` image is
+   > `linux/amd64`-only and runs under emulation, which crashes on every PDF render
+   > (`POST /render/{templateId}` hangs or returns empty; the frontend shows
+   > "Generated 0 of N files."). There is no local fix — see
+   > [arm64 Carbone workaround](#arm64-hosts-carbone-pdf-rendering-workaround) below if you need to
+   > verify PDF rendering yourself; otherwise this is safe to ignore.
+
+2. Create a `.env` file by copying the example:
+
+   ```shell
+   # /aam-services/docs/developer
+   cp .env.example .env
    ```
-   The bind address must be `0.0.0.0` because the local backend container reaches the tunnel through `host.docker.internal`, not `localhost`.
 
-3. In `docs/developer/.env`, set the render base path to the tunnel:
-   ```env
-   AAM_RENDER_API_CLIENT_CONFIGURATION_BASE_PATH=http://host.docker.internal:4001
-   ```
-   Keep the rest of your local dummy-Keycloak auth values; do not copy any dev/prod secrets.
+3. Start all services:
 
-4. Restart only the backend so it picks up the new base path:
-   ```bash
-   cd docs/developer
-   docker compose up -d --force-recreate aam-backend-service
+   ```shell
+   # /aam-services/docs/developer
+   docker compose up -d
    ```
 
-5. Re-upload your template through the running app's Admin → Export Templates view. Carbone stores template IDs inside the engine, and the temp container starts empty.
+   - If needed, switch the sqs image in `docker-compose.yml` from `aam-sqs-mac` to `aam-sqs-linux` for compatibility.
+   - Attention: sqs is a private repository for internal use only. If you don't have permissions,
+     reach out to us or disable this block in the `docker-compose.yml` file
 
-After this you can render single PDFs and bulk PDFs (ZIP or combined) from your local frontend the same way x86_64 developers can.
+4. Test the running proxy: open [https://aam.localhost/hello](https://aam.localhost/hello) — you should see a
+   welcome message. If you get a certificate warning, continue to Step 1b below first.
 
-**Note on `nbReportMaxPerBatch`:** the config field above is also required on dev / staging / prod Carbone instances if you intend to use the bulk render endpoint (`POST /v1/export/render-batch/{templateId}`). Without it set to a positive number, Carbone returns: `Unable to generate the document. Batch processing deactivated. nbReportMaxPerBatch = 0`.
+### Step 1b: trust the reverse-proxy certificate
 
----
+The stack includes a caddy reverse-proxy on `https://aam.localhost/` with a self-signed certificate
+that needs to be trusted manually, and uses two hostnames: `aam.localhost` and `keycloak.localhost`.
 
-### reverse-proxy
-
-The stack includes a caddy reverse-proxy that runs on https://aam.localhost/ - SSL is enabled by default. However, this
-certificate is self-signed and must be added manually as trustworthy.
-
-The stack uses two hostnames: `aam.localhost` and `keycloak.localhost`. On macOS and on Linux
-with systemd-resolved, any `*.localhost` name already resolves to `127.0.0.1` and you can skip
-this step. Everywhere else, add both to your `/etc/hosts`:
+On macOS and on Linux with systemd-resolved, any `*.localhost` name already resolves to
+`127.0.0.1` and you can skip the hosts-file part below. Everywhere else, add both to your
+`/etc/hosts`:
 
 ```bash
 sudo nano /etc/hosts
@@ -166,37 +110,7 @@ Add a line for each hostname:
 
 #### add self-signed certificate
 
-You can add import the auto generated caddy certificate after the aam-stack is started.
-
-##### link certificate to aam-backend-service
-
-> Only needed when you run `aam-backend-service` **from source**, outside Docker.
-> The docker-compose setup already bind-mounts this certificate into the container and points
-> `SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE` at it, so you can skip this
-> step when following the docker-compose walkthrough below.
-
-To be able to verify https connections, the `aam-backend-service` need the generated caddy certificate.  
-You can copy the certificate to the resources directory of the `aam-backend-service`:
-
-```shell
-# /aam-services
-cp docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
-```
-
-##### link certificate to replication-backend
-
-When running the `replication-backend` locally (outside Docker), Node.js must trust the Caddy CA for HTTPS calls to `keycloak.localhost`.  
-Set the `NODE_EXTRA_CA_CERTS` environment variable before starting the service:
-
-```shell
-export NODE_EXTRA_CA_CERTS=/absolute/path/to/aam-services/docs/developer/container-data/caddy-authorities/root.crt
-```
-
-The certificate file is created by Docker as root, so you may need to make it readable first:
-
-```shell
-sudo chmod 644 docs/developer/container-data/caddy-authorities/root.crt
-```
+You can import the auto generated caddy certificate after the stack is started (step 3 above).
 
 ##### MacOS
 
@@ -232,38 +146,35 @@ sudo chown $USER:$USER aam.localhost.crt
 
     todo
 
-## Full local setup with Docker and docker-compose
+##### link certificate to aam-backend-service
 
-### Step 1: start the local development stack
+> Only needed when you run `aam-backend-service` **from source**, outside Docker.
+> The docker-compose setup already bind-mounts this certificate into the container and points
+> `SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE` at it, so you can skip this
+> step when following this docker-compose walkthrough.
 
-Create a `.env` file by copying the example:
-
-```shell
-# /aam-services/docs/developer
-cp .env.example .env
-```
-
-You can start all services needed for the local development with docker-compose:
+To be able to verify https connections, the `aam-backend-service` need the generated caddy certificate.  
+You can copy the certificate to the resources directory of the `aam-backend-service`:
 
 ```shell
-# /aam-services/docs/developer
-docker compose -f docker-compose.yml up -d
+# /aam-services
+cp docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
 ```
 
-or in the same directory just
+##### link certificate to replication-backend
+
+When running the `replication-backend` locally (outside Docker), Node.js must trust the Caddy CA for HTTPS calls to `keycloak.localhost`.  
+Set the `NODE_EXTRA_CA_CERTS` environment variable before starting the service:
 
 ```shell
-# /aam-services/docs/developer
-docker compose up -d
+export NODE_EXTRA_CA_CERTS=/absolute/path/to/aam-services/docs/developer/container-data/caddy-authorities/root.crt
 ```
 
-- If needed, switch the sqs image in `docker-compose.yml` from `aam-sqs-mac` to `aam-sqs-linux` for compatibility.
-- Attention: sqs is a private repository for internal use only. If you don't have permissions,
-  reach out to us or disable this block in the `docker-compose.yml` file
+The certificate file is created by Docker as root, so you may need to make it readable first:
 
-You can test the running proxy by open [https://aam.localhost/hello](https://aam.localhost/hello) - You should see a
-welcome message.
-When you see a SSL warning, follow the steps in `add self-signed certificate`
+```shell
+sudo chmod 644 docs/developer/container-data/caddy-authorities/root.crt
+```
 
 ### Step 2: Configure Keycloak
 
@@ -523,6 +434,70 @@ startup failures.
 -----
 
 ## Tips and tricks
+
+### arm64 hosts: Carbone PDF rendering workaround
+
+The `carbone/carbone-ee` image is published only for `linux/amd64`. On any `arm64` host — Apple Silicon Macs (M1 / M2 / M3 / M4), Windows on ARM (e.g. Surface Pro X, Snapdragon devices), Linux on arm64 — it runs through emulation, and the embedded Chromium process used to convert documents to PDF crashes during every render (qemu/GPU errors). The container starts and `/status` responds, but `POST /render/{templateId}` either hangs or returns an empty/failed result. The frontend's bulk-PDF action will show "Generated 0 of N files." in this state.
+
+There is no fix on the local side. You need a Carbone container running on an `x86_64` Linux host and tunnel it back to your machine, then point the local backend at the tunnel.
+
+- **External / open-source contributors:** you do **not** have access to the Aam-Digital dev server. Two options:
+  - **Recommended:** open a discussion on the PR or issue asking the maintainers for help. We can confirm your feature works on our infrastructure during review.
+  - **Self-hosted:** if you need to verify PDF rendering yourself, run an `x86_64` Linux VM (any cloud, e.g. a small Hetzner / AWS / DigitalOcean instance) and start the Carbone container there using the same steps below.
+
+Once you have an `x86_64` host you can reach over SSH, follow the workaround:
+
+Quick steps:
+
+1. On an `x86_64` Linux host you have SSH access to, start a temp Carbone container:
+   ```bash
+   NAME=<test-container>-carbone
+   WORKDIR=/tmp/$NAME
+   mkdir -p "$WORKDIR/config" "$WORKDIR/template" "$WORKDIR/render"
+   cat > "$WORKDIR/config/config.json" <<'EOF'
+   {
+     "port": 4000,
+     "bind": "127.0.0.1",
+     "factories": 1,
+     "authentication": false,
+     "jwtAudience": "carbone-ee",
+     "templatePathRetention": 0,
+     "maxDataSize": 62914560,
+     "nbReportMaxPerBatch": 200
+   }
+   EOF
+   docker run -d --name "$NAME" \
+     -p 127.0.0.1:4001:4000 \
+     -v "$WORKDIR/config":/app/config \
+     -v "$WORKDIR/template":/app/template \
+     -v "$WORKDIR/render":/app/render \
+     --restart unless-stopped \
+     carbone/carbone-ee
+   ```
+
+2. On your local machine, open the tunnel (keep this terminal open for the session). Works in macOS Terminal, Linux shells, Windows PowerShell, WSL, or Git Bash:
+   ```bash
+   ssh -N -L 0.0.0.0:4001:127.0.0.1:4001 <dev-server-host>
+   ```
+   The bind address must be `0.0.0.0` because the local backend container reaches the tunnel through `host.docker.internal`, not `localhost`.
+
+3. In `docs/developer/.env`, set the render base path to the tunnel:
+   ```env
+   AAM_RENDER_API_CLIENT_CONFIGURATION_BASE_PATH=http://host.docker.internal:4001
+   ```
+   Keep the rest of your local dummy-Keycloak auth values; do not copy any dev/prod secrets.
+
+4. Restart only the backend so it picks up the new base path:
+   ```bash
+   cd docs/developer
+   docker compose up -d --force-recreate aam-backend-service
+   ```
+
+5. Re-upload your template through the running app's Admin → Export Templates view. Carbone stores template IDs inside the engine, and the temp container starts empty.
+
+After this you can render single PDFs and bulk PDFs (ZIP or combined) from your local frontend the same way x86_64 developers can.
+
+**Note on `nbReportMaxPerBatch`:** the config field above is also required on dev / staging / prod Carbone instances if you intend to use the bulk render endpoint (`POST /v1/export/render-batch/{templateId}`). Without it set to a positive number, Carbone returns: `Unable to generate the document. Batch processing deactivated. nbReportMaxPerBatch = 0`.
 
 ### Accessing the Local Environment
 
