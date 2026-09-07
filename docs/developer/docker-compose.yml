@@ -180,7 +180,7 @@ services:
       SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE: file:/opt/app/reverse-proxy.crt
 
   aam-backend-service-db:
-    image: postgres:16.14-bookworm
+    image: postgres:16.15-bookworm
     networks:
       - aam-digital
     environment:
