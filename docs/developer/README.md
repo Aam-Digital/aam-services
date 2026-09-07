@@ -9,25 +9,12 @@ For some features, we also use third party solutions that are maintained from th
 - *ndb-core*: main angular frontend application [GitHub](https://github.com/Aam-Digital/ndb-core)
 - *replication-backend*: (optional) layer between frontend and the couchdb for handling document
   permissions [GitHub](https://github.com/Aam-Digital/replication-backend)
-- *aam-backend-services*: main backend spring boot application, modulith
+- *aam-backend-services*: (optional) main backend spring boot application, modulith
   architecture [GitHub](https://github.com/Aam-Digital/aam-services/tree/main/application/aam-backend-service)
-
-additionally, as multi-tenant services:
-
-- *account-backend*: simple backend service to handle user account related tasks for the frontend in
-  Keycloak [GitHub](https://github.com/Aam-Digital/account-backend)
-- *ndb-core CLI*: admin CLI for statistics, config migrations, and CouchDB operations;
-  built into ndb-core [CLI docs](https://github.com/Aam-Digital/ndb-core/blob/master/cli/README.md)
-
-### managed by aam-digital (private)
-
-Accessible for aam-digital internals and contributors only.
-
-- *aam-external-mock-service*: mock of external systems are subject to a duty of non-disclosure in some cases.
 
 ---
 
-### used by aam-digital stack, managed by third party (public)
+### used by aam-digital stack, managed by third party
 
 - *couchdb*: Seamless multi-master syncing database with an intuitive HTTP/JSON API, designed for
   reliability [GitHub](https://github.com/apache/couchdb)
@@ -38,12 +25,8 @@ Accessible for aam-digital internals and contributors only.
 - *rabbitmq-server*: Multi-protocol messaging and streaming
   broker. [GitHub](https://github.com/rabbitmq/rabbitmq-server)
 - *carbone*: Fast, Simple and Powerful report generator in any format [GitHub](https://github.com/carboneio/carbone)
-
-### used by aam-digital stack, managed by third party (private)
-
-Accessible for aam-digital internals and contributors only.
-
-- *structured-query-server (sqs)*: An SQL query engine for CouchDB, letting you use SQL SELECT statements to extract
+- *structured-query-server (sqs)*: (private; Accessible for aam-digital internals and contributors only)
+An SQL query engine for CouchDB, letting you use SQL SELECT statements to extract
   information from a CouchDB
   database. [Homepage](https://neighbourhood.ie/products-and-services/structured-query-server)
 
