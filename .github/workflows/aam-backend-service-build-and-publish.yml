@@ -221,9 +221,20 @@ jobs:
   publish:
     name: Publish aam-backend-service Release
     runs-on: ubuntu-latest
-    if: ${{ github.event.ref  != '' }} # release
+    # Only main pushes compute and create the next release; the tag push this job creates
+    # re-triggers this workflow (to build the version-tagged image in the build/merge jobs
+    # above) but must not re-run this job, or it wastes the concurrency slot below re-doing
+    # a no-op release computation.
+    if: ${{ github.ref == 'refs/heads/main' }} # release
     needs:
       - test
+    # Serializes releases across overlapping main-branch pushes (e.g. several PRs merged
+    # within minutes of each other). Without this, two runs can both read the same
+    # last-released tag before either creates the next one and race to create the same
+    # release, so the second's `gh api` call 422s on "already_exists".
+    concurrency:
+      group: aam-backend-service-publish
+      cancel-in-progress: false
     permissions:
       contents: write # to be able to publish a GitHub release
     defaults:
@@ -275,7 +286,7 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             /repos/Aam-Digital/aam-services/releases \
             -f "tag_name=$TAG_NAME" \
-            -f "target_commitish=main" \
+            -f "target_commitish=${{ github.sha }}" \
             -f "name=$TAG_NAME" \
             -F "draft=false" \
             -F "prerelease=false" \
