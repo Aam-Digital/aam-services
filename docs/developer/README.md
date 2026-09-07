@@ -331,11 +331,18 @@ have to create yourself:
 - Create a client with client ID **`aam-backend`**.
 - Turn **Client authentication** on (confidential) and enable **Service accounts roles**.
   Standard flow and direct access grants are not needed.
-- On the client's **Service accounts roles** tab, assign the `view-users` and `query-users`
-  roles from the **realm-management** client. Without them the backends can resolve tokens but
-  not look up user roles.
+- On the client's **Service accounts roles** tab, assign the `manage-realm`, `query-users`,
+  `view-users` and `manage-users` roles from the **realm-management** client — the same four a
+  real instance gets automatically from `createKeycloakBackendClient()` in
+  [ndb-setup's `scripts/lib/keycloak.sh`](https://github.com/Aam-Digital/ndb-setup/blob/master/scripts/lib/keycloak.sh).
+  Without them the backends can resolve tokens but not look up or manage user roles.
 - Copy the secret from the **Credentials** tab into `REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_SECRET`
   in your `.env` (see Step 4).
+
+> As of [ndb-setup#118](https://github.com/Aam-Digital/ndb-setup/pull/118), importing
+> `keycloak/client_config_aam-backend.json` from ndb-setup creates this client for you — once
+> that's merged, skip straight to the role assignment above instead of creating the client by
+> hand.
 
 #### 2.4 Create a user
 
