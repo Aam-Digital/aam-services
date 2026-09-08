@@ -148,18 +148,10 @@ sudo chown $USER:$USER aam.localhost.crt
 
 ##### link certificate to aam-backend-service
 
-> Only needed when you run `aam-backend-service` **from source**, outside Docker.
-> The docker-compose setup already bind-mounts this certificate into the container and points
-> `SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE` at it, so you can skip this
-> step when following this docker-compose walkthrough.
-
-To be able to verify https connections, the `aam-backend-service` need the generated caddy certificate.  
-You can copy the certificate to the resources directory of the `aam-backend-service`:
-
-```shell
-# /aam-services
-cp docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
-```
+Only needed when running `aam-backend-service` **from source**, outside Docker — the
+docker-compose setup already bind-mounts this certificate for you. See
+["Running services locally instead of docker images"](#running-services-locally-instead-of-docker-images)
+in Tips and tricks.
 
 ##### link certificate to replication-backend
 
@@ -376,22 +368,13 @@ Only the proxied hostname can reach the backend services and Keycloak.
 
 ### Further Steps (optional):
 
-#### Set up RabbitMQ (needed for some modules)
+#### RabbitMQ (needed for some modules)
 
-> Only needed when you run `aam-backend-service` **from source** with the `local-development`
-> profile, which expects the `local` virtual host and the `local-spring` user. The dockerized
-> `aam-backend-service` connects as the default `guest` user on the `/` virtual host and needs
-> none of this.
-
-To use the queue, you have to create a user and virutal host in the RabbitMQ admin interface:
-
-1. Open [aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/#/users)
-2. Login with the default credentials (guest:guest)
-3. Navigate to the "Admin" section
-4. Create a new virtual host (local) to fit
-   the [application.yaml settings](/application/aam-backend-service/src/main/resources/application.yaml)
-5. Create a new user (local-spring:docker)
-6. Edit that user and assign permissions to the "local" virtual host
+Whether you run `aam-backend-service` from source (`local-development` profile) or via
+docker-compose, it connects to the same RabbitMQ container using RabbitMQ's built-in defaults —
+the `guest` user on the `/` virtual host. No manual user or virtual host setup is needed; you can
+still open [aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/#/users) (login `guest:guest`)
+to inspect queues.
 
 #### Configure modules
 
@@ -548,3 +531,14 @@ to use an address through `host.docker.internal` to point to your local machine
 
 Please note that the .env files here in this directory are not automatically used as environment variables
 in a locally started service like this code base.
+
+**`aam-backend-service` needs the Caddy certificate on its classpath.** The docker-compose setup
+already bind-mounts this certificate into the container and points
+`SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE` at it, so this is only needed when
+running `aam-backend-service` from source, outside Docker. To verify https connections, copy the
+generated Caddy certificate into the service's resources directory:
+
+```shell
+# /aam-services
+cp docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
+```
