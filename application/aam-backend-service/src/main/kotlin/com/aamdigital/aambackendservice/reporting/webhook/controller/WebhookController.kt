@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.security.Principal
+import java.time.Instant
 
 data class WebhookAuthenticationWriteDto(
     val type: WebhookAuthenticationType,
@@ -38,7 +39,8 @@ data class WebhookDto(
     val target: WebhookTarget,
     val authentication: WebhookAuthenticationReadDto,
     val owner: WebhookOwner,
-    val reportSubscriptions: MutableList<String>
+    val reportSubscriptions: MutableList<String>,
+    val createdAt: Instant?
 )
 
 data class CreateWebhookRequestDto(
@@ -209,6 +211,7 @@ class WebhookController(
                     type = it.authentication.type.toString()
                 ),
             owner = it.owner,
-            reportSubscriptions = it.reportSubscriptions.map { it.id }.toMutableList()
+            reportSubscriptions = it.reportSubscriptions.map { it.id }.toMutableList(),
+            createdAt = it.createdAt
         )
 }

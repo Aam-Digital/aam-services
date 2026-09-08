@@ -8,8 +8,16 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
+import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.client.RestClient
 import java.net.URI
+
+/**
+ * Thrown when the webhook receiver itself responds with an error status, so the RabbitMQ listener
+ * failure log (and the Sentry event it produces) reads as "the receiver rejected our callback"
+ * instead of a bare, unattributed `HttpClientErrorException` message.
+ */
+class WebhookCallbackRejectedException(message: String) : RuntimeException(message)
 
 /**
  * Calls a configured (external) webhook
@@ -47,25 +55,32 @@ class DefaultTriggerWebhookUseCase(
             webhookEvent.calculationId
         )
         val response =
-            httpClient
-                .method(HttpMethod.valueOf(webhook.target.method))
-                .uri {
-                    it.scheme(uri.scheme)
-                    it.host(uri.host)
-                    it.path(uri.path)
-                    it.build()
-                }.headers {
-                    it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
-                }.contentType(MediaType.APPLICATION_JSON)
-                .body(
-                    objectMapper.writeValueAsString(
-                        hashMapOf(
-                            "calculation_id" to webhookEvent.calculationId
+            try {
+                httpClient
+                    .method(HttpMethod.valueOf(webhook.target.method))
+                    .uri {
+                        it.scheme(uri.scheme)
+                        it.host(uri.host)
+                        it.path(uri.path)
+                        it.build()
+                    }.headers {
+                        it.set(HttpHeaders.AUTHORIZATION, "Token ${webhook.authentication.secret}")
+                    }.contentType(MediaType.APPLICATION_JSON)
+                    .body(
+                        objectMapper.writeValueAsString(
+                            hashMapOf(
+                                "calculation_id" to webhookEvent.calculationId
+                            )
                         )
-                    )
-                ).accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .body(String::class.java)
+                    ).accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(String::class.java)
+            } catch (ex: HttpStatusCodeException) {
+                throw WebhookCallbackRejectedException(
+                    "Webhook receiver ${uri.host} rejected our callback for webhook" +
+                        " ${webhookEvent.webhookId}: ${ex.message}"
+                )
+            }
 
         logger.debug(
             "[DefaultTriggerWebhookUseCase] Webhook trigger completed for Webhook:" +

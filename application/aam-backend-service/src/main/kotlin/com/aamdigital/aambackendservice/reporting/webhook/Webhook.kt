@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.reporting.webhook
 
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookOwner
+import java.time.Instant
 
 data class Webhook(
     val id: String,
@@ -9,7 +10,8 @@ data class Webhook(
     val target: WebhookTarget,
     val authentication: WebhookAuthentication,
     val owner: WebhookOwner,
-    val reportSubscriptions: MutableList<DomainReference> = mutableListOf()
+    val reportSubscriptions: MutableList<DomainReference> = mutableListOf(),
+    val createdAt: Instant? = null
 )
 
 data class WebhookTarget(

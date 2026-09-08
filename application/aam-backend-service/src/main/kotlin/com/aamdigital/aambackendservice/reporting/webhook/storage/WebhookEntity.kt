@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.reporting.webhook.storage
 
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthenticationType
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookTarget
+import java.time.Instant
 
 data class WebhookAuthenticationEntity(
     var type: WebhookAuthenticationType,
@@ -22,5 +23,7 @@ data class WebhookEntity(
     val target: WebhookTarget,
     val authentication: WebhookAuthenticationEntity,
     val owner: WebhookOwner,
-    val reportSubscriptions: MutableList<String> = mutableListOf()
+    val reportSubscriptions: MutableList<String> = mutableListOf(),
+    // nullable because documents created before this field existed have none
+    val createdAt: Instant? = null
 )

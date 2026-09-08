@@ -8,6 +8,7 @@ import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.reporting.webhook.Webhook
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthentication
 import org.slf4j.LoggerFactory
+import java.time.Instant
 import java.util.*
 
 enum class WebhookError : AamErrorCode {
@@ -89,7 +90,8 @@ class DefaultWebhookStorage(
                             users = emptyList(),
                             groups = emptyList()
                         ),
-                    reportSubscriptions = mutableListOf()
+                    reportSubscriptions = mutableListOf(),
+                    createdAt = Instant.now()
                 )
         )
 
@@ -116,7 +118,8 @@ class DefaultWebhookStorage(
                 target = entity.target,
                 authentication,
                 owner = entity.owner,
-                reportSubscriptions
+                reportSubscriptions,
+                createdAt = entity.createdAt
             )
         } catch (ex: Exception) {
             logger.error("Could not map webhook entity ${entity.id} to Webhook object: ${ex.message}", ex)
