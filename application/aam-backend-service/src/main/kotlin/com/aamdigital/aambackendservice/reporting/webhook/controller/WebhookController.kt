@@ -11,6 +11,7 @@ import com.aamdigital.aambackendservice.reporting.webhook.core.AddWebhookSubscri
 import com.aamdigital.aambackendservice.reporting.webhook.storage.CreateWebhookRequest
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookOwner
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
+import com.fasterxml.jackson.annotation.JsonFormat
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -40,6 +41,11 @@ data class WebhookDto(
     val authentication: WebhookAuthenticationReadDto,
     val owner: WebhookOwner,
     val reportSubscriptions: MutableList<String>,
+    // the app's shared ObjectMapper is built via a bare Jackson2ObjectMapperBuilder() (see
+    // ObjectMapperConfiguration), which leaves WRITE_DATES_AS_TIMESTAMPS at Jackson's raw default
+    // (enabled) instead of Spring Boot's usual override - without this, Instant serializes as a
+    // numeric epoch value instead of the ISO-8601 string the OpenAPI spec documents.
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     val createdAt: Instant?
 )
 
