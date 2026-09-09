@@ -62,7 +62,7 @@ class CouchDbTestingService(
         val response =
             try {
                 restTemplate.exchange(
-                    "/$database/_all_docs?startkey=%22$prefix:%22&endkey=%22$prefix:%EF%BF%B0%22",
+                    "/$database/_all_docs",
                     HttpMethod.GET,
                     HttpEntity.EMPTY,
                     ObjectNode::class.java
@@ -71,8 +71,11 @@ class CouchDbTestingService(
                 if (e.statusCode.value() == 404) return else throw e
             }
 
+        // filtered here rather than with startkey/endkey: this runs against a handful of documents
+        // and keeps the CouchDB key-encoding rules out of the test helper
         response.body?.get("rows")?.forEach { row ->
             val id = row.get("id")?.textValue() ?: return@forEach
+            if (!id.startsWith("$prefix:")) return@forEach
             val rev = row.get("value")?.get("rev")?.textValue() ?: return@forEach
             restTemplate.exchange(
                 "/$database/$id?rev=$rev",

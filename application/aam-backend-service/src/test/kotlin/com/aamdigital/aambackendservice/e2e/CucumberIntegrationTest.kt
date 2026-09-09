@@ -1,13 +1,13 @@
 package com.aamdigital.aambackendservice.e2e
 
 import com.aamdigital.aambackendservice.common.changes.SyncRepository
+import com.aamdigital.aambackendservice.common.couchdb.core.BACKEND_STATE_DATABASE
 import com.aamdigital.aambackendservice.common.mail.MailSenderRequest
 import com.aamdigital.aambackendservice.common.mail.MailSenderResponse
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.container.TestContainers
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.email.UserEmailProvider
-import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
@@ -41,7 +41,6 @@ import java.util.Optional
 class CucumberIntegrationTest(
     val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher,
     val syncRepository: SyncRepository,
-    val userDeviceRepository: UserDeviceRepository,
     val notificationConfigCache: NotificationConfigCache
 ) : SpringIntegrationTest() {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -86,7 +85,9 @@ class CucumberIntegrationTest(
     fun `reset all databases`() {
         logger.info("[CucumberTest] === Scenario cleanup ===")
         couchDbTestingService.reset()
-        userDeviceRepository.deleteAll()
+        // aam-backend-state survives reset() (see CouchDbTestingService), so the per-scenario
+        // state inside it is cleared explicitly
+        couchDbTestingService.deleteDocumentsByPrefix(BACKEND_STATE_DATABASE, "UserDevice")
         storedId = null
         latestNotificationConfigUserIdentifier = null
         storedSessionId = null

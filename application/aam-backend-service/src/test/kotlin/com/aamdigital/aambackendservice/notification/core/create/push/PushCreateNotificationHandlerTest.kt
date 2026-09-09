@@ -6,7 +6,7 @@ import com.aamdigital.aambackendservice.notification.domain.EntityNotificationCo
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
-import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
+import com.aamdigital.aambackendservice.notification.domain.UserDevice
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.google.firebase.messaging.BatchResponse
 import com.google.firebase.messaging.FirebaseMessaging
@@ -21,7 +21,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
-import org.springframework.data.domain.PageImpl
 
 @ExtendWith(MockitoExtension::class)
 class PushCreateNotificationHandlerTest {
@@ -76,8 +75,8 @@ class PushCreateNotificationHandlerTest {
     @Test
     fun `should return success without sending when user has no registered devices`() {
         // Given
-        whenever(userDeviceRepository.findByUserIdentifier(any(), any()))
-            .thenReturn(PageImpl(emptyList()))
+        whenever(userDeviceRepository.findByUserIdentifier(any()))
+            .thenReturn(emptyList())
 
         // When
         val result = handler.createMessage(notificationEvent)
@@ -92,14 +91,12 @@ class PushCreateNotificationHandlerTest {
     @Test
     fun `should send push notification when user has registered devices`() {
         // Given
-        val device = UserDeviceEntity(
-            id = 1L,
+        val device = UserDevice(
             deviceName = "My Phone",
-            deviceToken = "device-token-abc",
-            userIdentifier = "test-user"
+            deviceToken = "device-token-abc"
         )
-        whenever(userDeviceRepository.findByUserIdentifier(any(), any()))
-            .thenReturn(PageImpl(listOf(device)))
+        whenever(userDeviceRepository.findByUserIdentifier(any()))
+            .thenReturn(listOf(device))
         whenever(sendResponse.messageId).thenReturn("firebase-msg-id-1")
         whenever(batchResponse.responses).thenReturn(listOf(sendResponse))
         whenever(firebaseMessaging.sendEachForMulticast(any())).thenReturn(batchResponse)
@@ -118,11 +115,11 @@ class PushCreateNotificationHandlerTest {
     fun `should include all device tokens when user has multiple registered devices`() {
         // Given
         val devices = listOf(
-            UserDeviceEntity(id = 1L, deviceName = "Phone", deviceToken = "token-1", userIdentifier = "test-user"),
-            UserDeviceEntity(id = 2L, deviceName = "Tablet", deviceToken = "token-2", userIdentifier = "test-user")
+            UserDevice(deviceName = "Phone", deviceToken = "token-1"),
+            UserDevice(deviceName = "Tablet", deviceToken = "token-2")
         )
-        whenever(userDeviceRepository.findByUserIdentifier(any(), any()))
-            .thenReturn(PageImpl(devices))
+        whenever(userDeviceRepository.findByUserIdentifier(any()))
+            .thenReturn(devices)
         whenever(sendResponse.messageId).thenReturn("msg-id")
         whenever(batchResponse.responses).thenReturn(listOf(sendResponse, sendResponse))
         whenever(firebaseMessaging.sendEachForMulticast(any())).thenReturn(batchResponse)
