@@ -11,6 +11,8 @@ import com.aamdigital.aambackendservice.notification.repository.UserDeviceReposi
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
+import com.aamdigital.aambackendservice.thirdpartyauthentication.core.AuthenticationProvider
+import com.aamdigital.aambackendservice.thirdpartyauthentication.core.UserModel
 import io.cucumber.java.After
 import io.cucumber.java.Before
 import io.cucumber.java.en.Given
@@ -22,6 +24,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.mockito.kotlin.any
 import org.mockito.kotlin.after
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.timeout
@@ -32,6 +35,7 @@ import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.core.io.ClassPathResource
 import org.springframework.http.HttpMethod
 import java.io.File
+import java.util.Optional
 
 @CucumberContextConfiguration
 class CucumberIntegrationTest(
@@ -53,14 +57,26 @@ class CucumberIntegrationTest(
     @MockBean
     lateinit var triggerWebhookUseCase: TriggerWebhookUseCase
 
+    // mocked so the SSO scenarios never need a reachable Keycloak admin client: the provider is the
+    // only part of third-party-authentication that talks to Keycloak, everything downstream of it
+    // (session storage, redirect binding, HTTP contract) stays real.
+    @MockBean
+    lateinit var authenticationProvider: AuthenticationProvider
+
     private var storedId: String? = null
     private var latestNotificationConfigUserIdentifier: String? = null
+    private var storedSessionId: String? = null
+    private var storedSessionToken: String? = null
 
     @Before
     fun `log scenario start`() {
-        reset(mailSenderService, userEmailProvider, triggerWebhookUseCase)
+        reset(mailSenderService, userEmailProvider, triggerWebhookUseCase, authenticationProvider)
         whenever(userEmailProvider.lookupEmail(any())).thenReturn("integration-test-user@example.com")
         whenever(mailSenderService.sendMail(any<MailSenderRequest>())).thenReturn(MailSenderResponse(success = true))
+        // a scenario that starts a session declares which account it means; this default only keeps
+        // an unstubbed call from failing with a confusing NullPointerException
+        whenever(authenticationProvider.findByEmail(any()))
+            .thenReturn(Optional.of(externalUser("unstubbed-external-user")))
 
         logger.info("[CucumberTest] === Scenario starting ===")
         logger.info("[CucumberTest] SyncEntries before scenario: {}", syncRepository.findAll().map { "${it.database}=${it.latestRef.take(20)}" })
@@ -73,7 +89,10 @@ class CucumberIntegrationTest(
         userDeviceRepository.deleteAll()
         storedId = null
         latestNotificationConfigUserIdentifier = null
+        storedSessionId = null
+        storedSessionToken = null
         authToken = null
+        authSubject = null
     }
 
     @Given("signed in as client {} with secret {} in realm {}")
@@ -368,6 +387,114 @@ class CucumberIntegrationTest(
     fun `the subscribed webhook is triggered`() {
         verify(triggerWebhookUseCase, timeout(10_000).atLeastOnce()).trigger(any())
     }
+
+    /**
+     * Binds the SSO session to the account the test itself is signed in as, so that the
+     * redirect endpoint - which compares the stored userId against `principal.name` - accepts it.
+     */
+    @Given("the external user account already exists")
+    fun `the external user account already exists`() {
+        whenever(authenticationProvider.findByEmail(any()))
+            .thenReturn(Optional.of(externalUser(requireAuthSubject())))
+    }
+
+    @Given("the external user account already exists for another user")
+    fun `the external user account already exists for another user`() {
+        whenever(authenticationProvider.findByEmail(any()))
+            .thenReturn(Optional.of(externalUser("a-different-keycloak-user-id")))
+    }
+
+    @Given("the external user account does not exist yet")
+    fun `the external user account does not exist yet`() {
+        val userId = requireAuthSubject()
+        whenever(authenticationProvider.findByEmail(any())).thenReturn(Optional.empty())
+        whenever(
+            authenticationProvider.createExternalUser(any(), any(), any(), any(), anyOrNull())
+        ).thenReturn(externalUser(userId))
+    }
+
+    @Then("a new account is created in the authentication system")
+    fun `a new account is created in the authentication system`() {
+        verify(authenticationProvider).createExternalUser(any(), any(), any(), any(), anyOrNull())
+    }
+
+    @Given("the client stores the session from the latest response")
+    fun `store session from latest response`() {
+        val body = parseBodyToObjectNode()
+            ?: throw AssertionError("Expected a session response body but none was received")
+        storedSessionId = body.get("sessionId")?.textValue()
+            ?: throw AssertionError("Expected 'sessionId' field in response but was not found")
+        storedSessionToken = body.get("sessionToken")?.textValue()
+            ?: throw AssertionError("Expected 'sessionToken' field in response but was not found")
+    }
+
+    @When("the client calls GET {} with stored session id and session token")
+    @Throws(Throwable::class)
+    fun `the client issues GET endpoint with stored session id and session token`(prefix: String) {
+        exchange("$prefix${requireStoredSessionId()}?session_token=${requireStoredSessionToken()}", HttpMethod.GET)
+    }
+
+    @When("the client calls GET {} with stored session id and session token {word}")
+    @Throws(Throwable::class)
+    fun `the client issues GET endpoint with stored session id and given session token`(
+        prefix: String,
+        sessionToken: String
+    ) {
+        exchange("$prefix${requireStoredSessionId()}?session_token=$sessionToken", HttpMethod.GET)
+    }
+
+    @When("the client calls GET {} with stored session id and suffix {}")
+    @Throws(Throwable::class)
+    fun `the client issues GET endpoint with stored session id and suffix`(
+        prefix: String,
+        suffix: String
+    ) {
+        exchange("$prefix${requireStoredSessionId()}$suffix", HttpMethod.GET)
+    }
+
+    @Then("the client receives a non-empty value for property {word}")
+    @Throws(Throwable::class)
+    fun `the client receives a non-empty value for property`(property: String) {
+        val value = parseBodyToObjectNode()?.get(property)
+        Assert.assertNotNull("Property $property not found in response", value)
+        Assert.assertTrue("Property $property is empty", value!!.asText().isNotBlank())
+    }
+
+    @Then("the client receives the signed-in user id for property {word}")
+    @Throws(Throwable::class)
+    fun `the client receives the signed-in user id for property`(property: String) {
+        Assert.assertEquals(requireAuthSubject(), parseBodyToObjectNode()?.get(property)?.textValue())
+    }
+
+    @Then("database {word} contains {int} document(s)")
+    fun `database contains n documents`(
+        database: String,
+        expectedCount: Int
+    ) {
+        Assert.assertEquals(
+            "Expected $expectedCount document(s) in database $database",
+            expectedCount,
+            couchDbTestingService.countDocuments(database)
+        )
+    }
+
+    private fun externalUser(userId: String) =
+        UserModel(
+            userId = userId,
+            userName = "external-user",
+            firstName = "Ada",
+            lastName = "Lovelace",
+            email = "ada.lovelace@example.com"
+        )
+
+    private fun requireAuthSubject(): String =
+        authSubject ?: throw AssertionError("No signed-in user; the scenario must sign in first")
+
+    private fun requireStoredSessionId(): String =
+        storedSessionId ?: throw AssertionError("No stored session; store the session from a response first")
+
+    private fun requireStoredSessionToken(): String =
+        storedSessionToken ?: throw AssertionError("No stored session; store the session from a response first")
 
     private fun waitUntil(
         timeoutMs: Long,
