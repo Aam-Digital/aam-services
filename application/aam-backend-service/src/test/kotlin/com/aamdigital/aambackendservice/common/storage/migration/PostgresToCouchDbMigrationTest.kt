@@ -111,8 +111,9 @@ class PostgresToCouchDbMigrationTest {
 
         assertThat(devices.byUser.getValue("user-1").map { it.deviceToken })
             .containsExactly("token-a", "token-b")
-        assertThat(devices.byUser.getValue("user-1").first().deviceName).isEqualTo("Phone")
-        assertThat(devices.byUser.getValue("user-1").first().createdAt).isEqualTo(createdAt)
+        val firstDevice = devices.byUser.getValue("user-1").first()
+        assertThat(firstDevice.deviceName).isEqualTo("Phone")
+        assertThat(firstDevice.createdAt).isEqualTo(createdAt)
         assertThat(devices.byUser.getValue("user-2").map { it.deviceToken }).containsExactly("token-c")
     }
 

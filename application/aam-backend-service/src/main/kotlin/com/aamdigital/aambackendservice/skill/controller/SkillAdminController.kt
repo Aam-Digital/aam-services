@@ -95,6 +95,5 @@ class SkillAdminController(
         return ResponseEntity.noContent().build()
     }
 
-    private fun latestSync(): Instant? =
-        skillUserProfileRepository.findAll().mapNotNull { it.latestSyncAt }.maxOrNull()
+    private fun latestSync(): Instant? = skillUserProfileRepository.findAll().mapNotNull { it.latestSyncAt }.maxOrNull()
 }

@@ -1,14 +1,14 @@
 package com.aamdigital.aambackendservice.skill.di
 
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
 import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
-import com.aamdigital.aambackendservice.skill.core.SearchUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.core.InMemorySearchUserProfileUseCase
+import com.aamdigital.aambackendservice.skill.core.SearchUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.core.SyncUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.core.UserProfileUpdatePublisher
-import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.skill.repository.CouchDbSkillUserProfileRepository
 import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
 import com.aamdigital.aambackendservice.skill.skilllab.SkillLabClient

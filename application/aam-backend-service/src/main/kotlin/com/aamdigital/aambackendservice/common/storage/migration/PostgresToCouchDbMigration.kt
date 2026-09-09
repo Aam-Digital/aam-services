@@ -5,9 +5,9 @@ import com.aamdigital.aambackendservice.notification.repository.UserDeviceReposi
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSession
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSessionRepository
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
-import org.springframework.beans.factory.ObjectProvider
 
 /**
  * Copies the two pieces of state that cannot be reconstructed out of PostgreSQL and into CouchDB,
