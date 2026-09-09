@@ -4,11 +4,13 @@ import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
 import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileUseCase
-import com.aamdigital.aambackendservice.skill.core.SqlSearchUserProfileUseCase
+import com.aamdigital.aambackendservice.skill.core.InMemorySearchUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.core.SyncUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.core.UserProfileUpdatePublisher
-import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository
-import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
+import com.aamdigital.aambackendservice.skill.repository.CouchDbSkillUserProfileRepository
+import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
 import com.aamdigital.aambackendservice.skill.skilllab.SkillLabClient
 import com.aamdigital.aambackendservice.skill.skilllab.SkillLabFetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.skilllab.SkillLabSyncUserProfileUseCase
@@ -55,36 +57,50 @@ class SkillConfigurationSkillLab {
         )
 
     @Bean
+    fun skillUserProfileDatabaseRequest(): DatabaseRequest =
+        DatabaseRequest(CouchDbSkillUserProfileRepository.SKILL_USER_PROFILE_DATABASE)
+
+    @Bean
+    fun skillUserProfileRepository(
+        couchDbClient: CouchDbClient,
+        objectMapper: ObjectMapper
+    ): SkillUserProfileRepository =
+        CouchDbSkillUserProfileRepository(
+            couchDbClient = couchDbClient,
+            objectMapper = objectMapper
+        )
+
+    @Bean
     fun skillLabFetchUserProfileUpdatedUseCase(
         skillLabClient: SkillLabClient,
-        skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository,
+        skillUserProfileRepository: SkillUserProfileRepository,
         userProfileUpdatePublisher: UserProfileUpdatePublisher
     ): FetchUserProfileUpdatesUseCase =
         SkillLabFetchUserProfileUpdatesUseCase(
             skillLabClient = skillLabClient,
-            skillLabUserProfileSyncRepository = skillLabUserProfileSyncRepository,
+            skillUserProfileRepository = skillUserProfileRepository,
             userProfileUpdatePublisher = userProfileUpdatePublisher
         )
 
     @Bean
     fun skillLabSyncUserProfileUseCase(
         skillLabClient: SkillLabClient,
-        skillLabUserProfileRepository: SkillLabUserProfileRepository,
+        skillUserProfileRepository: SkillUserProfileRepository,
         objectMapper: ObjectMapper
     ): SyncUserProfileUseCase =
         SkillLabSyncUserProfileUseCase(
             skillLabClient = skillLabClient,
-            skillLabUserProfileRepository = skillLabUserProfileRepository,
+            skillUserProfileRepository = skillUserProfileRepository,
             objectMapper = objectMapper
         )
 
     @Bean
-    fun sqlSearchUserProfileUseCase(
-        skillLabUserProfileRepository: SkillLabUserProfileRepository,
+    fun searchUserProfileUseCase(
+        skillUserProfileRepository: SkillUserProfileRepository,
         objectMapper: ObjectMapper
     ): SearchUserProfileUseCase =
-        SqlSearchUserProfileUseCase(
-            userProfileRepository = skillLabUserProfileRepository,
+        InMemorySearchUserProfileUseCase(
+            userProfileRepository = skillUserProfileRepository,
             objectMapper = objectMapper
         )
 }

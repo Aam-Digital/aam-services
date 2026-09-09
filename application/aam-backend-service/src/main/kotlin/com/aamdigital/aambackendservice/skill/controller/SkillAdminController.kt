@@ -5,7 +5,8 @@ import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
 import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
-import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
+import com.aamdigital.aambackendservice.skill.di.SkillLabApiClientConfiguration
+import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -15,8 +16,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.Instant
-import java.time.ZoneOffset
-import kotlin.jvm.optionals.getOrElse
 
 data class SkillDto(
     val projectId: String,
@@ -34,22 +33,28 @@ enum class SyncModeDto {
 @ConditionalOnSkillLabMode
 class SkillAdminController(
     private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase,
-    private val skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository
+    private val skillUserProfileRepository: SkillUserProfileRepository,
+    private val skillLabApiClientConfiguration: SkillLabApiClientConfiguration
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    /**
+     * The sync state is derived from the stored profiles rather than read from a cursor table:
+     * the newest `latestSyncAt` *is* the point up to which this project is synced.
+     */
     @GetMapping("/sync")
     @PreAuthorize("hasAuthority('ROLE_skill_admin')")
     fun fetchSyncStatus(): ResponseEntity<List<SkillDto>> {
-        val result =
-            skillLabUserProfileSyncRepository.findAll().mapNotNull {
-                SkillDto(
-                    projectId = it.projectId,
-                    latestSync = it.latestSync.toString()
-                )
-            }
+        val latestSync = latestSync() ?: return ResponseEntity.ok().body(emptyList())
 
-        return ResponseEntity.ok().body(result)
+        return ResponseEntity.ok().body(
+            listOf(
+                SkillDto(
+                    projectId = skillLabApiClientConfiguration.projectId,
+                    latestSync = latestSync.toString()
+                )
+            )
+        )
     }
 
     /**
@@ -63,26 +68,14 @@ class SkillAdminController(
         syncMode: SyncModeDto = SyncModeDto.DELTA,
         updatedFrom: String? = null
     ): ResponseEntity<Any> {
-        val result =
-            skillLabUserProfileSyncRepository.findByProjectId(projectId).getOrElse {
-                return ResponseEntity.notFound().build()
-            }
-
-        when (syncMode) {
-            SyncModeDto.DELTA ->
-                if (!updatedFrom.isNullOrBlank()) {
-                    result.latestSync = Instant.parse(updatedFrom).atOffset(ZoneOffset.UTC)
-                    skillLabUserProfileSyncRepository.save(result)
-                }
-
-            SyncModeDto.FULL -> skillLabUserProfileSyncRepository.delete(result)
-        }
-
         try {
             skillLabFetchUserProfileUpdatesUseCase.run(
                 request =
                     FetchUserProfileUpdatesRequest(
-                        projectId = projectId
+                        projectId = projectId,
+                        // an explicit updatedFrom overrides the derived cursor for this run only
+                        updatedFrom = updatedFrom?.takeUnless { it.isBlank() }?.let { Instant.parse(it) },
+                        fullSync = syncMode == SyncModeDto.FULL
                     )
             )
         } catch (ex: Exception) {
@@ -101,4 +94,7 @@ class SkillAdminController(
 
         return ResponseEntity.noContent().build()
     }
+
+    private fun latestSync(): Instant? =
+        skillUserProfileRepository.findAll().mapNotNull { it.latestSyncAt }.maxOrNull()
 }

@@ -15,7 +15,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.junit.jupiter.MockitoExtension
-import org.springframework.data.domain.Pageable
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -180,7 +179,7 @@ class SkillLabClientTest {
             message = "Empty or invalid response from server",
             block = {
                 // when
-                service.fetchUserProfiles(pageable = Pageable.ofSize(10), updatedFrom = null)
+                service.fetchUserProfiles(page = 1, pageSize = 10, updatedFrom = null)
             }
         )
     }
@@ -214,7 +213,8 @@ class SkillLabClientTest {
         // when
         val response =
             service.fetchUserProfiles(
-                pageable = Pageable.ofSize(10),
+                page = 1,
+                pageSize = 10,
                 updatedFrom = " "
             )
 
@@ -248,7 +248,7 @@ class SkillLabClientTest {
             message = "example-exception-message",
             block = {
                 // when
-                service.fetchUserProfiles(pageable = Pageable.ofSize(10), updatedFrom = "2024-09-26T18:58:50.271Z")
+                service.fetchUserProfiles(page = 1, pageSize = 10, updatedFrom = "2024-09-26T18:58:50.271Z")
             }
         )
     }
