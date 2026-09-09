@@ -258,7 +258,7 @@ class CouchDbChangesProcessorTest {
     @Test
     fun `should update sync entry with latest seq after processing`() {
         whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
-        val existingSync = SyncEntry(id = 1, database = "app", latestRef = "seq-0")
+        val existingSync = SyncEntry(database = "app", latestRef = "seq-0")
         whenever(syncRepository.findByDatabase("app")).thenReturn(Optional.of(existingSync))
         whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
             .thenReturn(CouchDbChangesResponse(lastSeq = "seq-5", results = emptyList(), pending = 0))

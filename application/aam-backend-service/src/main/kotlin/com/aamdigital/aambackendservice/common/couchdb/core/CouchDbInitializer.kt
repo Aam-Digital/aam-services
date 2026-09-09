@@ -32,7 +32,8 @@ class CouchDbInitializer(
             listOf(
                 DatabaseRequest("_users"),
                 DatabaseRequest("app"),
-                DatabaseRequest("app-attachments")
+                DatabaseRequest("app-attachments"),
+                DatabaseRequest(BACKEND_STATE_DATABASE)
             )
     }
 
