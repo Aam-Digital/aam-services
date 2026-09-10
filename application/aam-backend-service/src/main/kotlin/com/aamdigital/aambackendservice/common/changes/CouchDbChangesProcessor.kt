@@ -123,10 +123,11 @@ class CouchDbChangesProcessor(
     /**
      * Gives the change to every handler.
      *
-     * A handler that throws is logged and the others still run: change detection feeds several
-     * independent modules, and one of them failing on one document must not stop the others or stall
-     * the feed. This matches how the queue consumers behaved - they acknowledged the message and
-     * logged, leaving recovery to the module itself.
+     * The shared disposition - log and carry on, so one module failing on one document neither
+     * stops the others nor stalls the feed - belongs to [AbstractDocumentChangeHandler] and is
+     * applied before an exception ever gets here. This catch is only a backstop, for a handler that
+     * implements [DocumentChangeHandler] directly or overrides its error handling with something
+     * that throws in turn; either way the remaining handlers must still run.
      */
     private fun handleChange(changeEvent: DocumentChangeEvent) {
         documentChangeHandlers.forEach { handler ->
