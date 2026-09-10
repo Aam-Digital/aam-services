@@ -33,3 +33,24 @@ flowchart TD
     CalculationChange[ReportCalculationChangeUseCase] -- if result changed --> WebhookNotification
     WebhookNotification["NotificationService (call Webhooks)"]
 ```
+
+## Caches on the automatic change-detection path
+
+`ReportDocumentChangeEventConsumer` runs for every changed document in the `app` database (up to
+`CHANGES_LIMIT = 100` per poll tick), so nothing on that path may do per-change CouchDB I/O.
+Two caches keep it in memory:
+
+- **`ReportConfigCache`** — `reportId -> affected entity types`, i.e. the result of
+  `SimpleReportQueryAnalyser`'s SQL regex, computed once per report definition instead of once per
+  document change. Marked stale by `DefaultIdentifyAffectedReportsUseCase` whenever a
+  `ReportConfig:*` change arrives, which is the only thing that can change it: `ReportConfig`
+  documents live in `app`, the one database in `database-change-detection.included-databases`.
+- **`WebhookSubscriptionCache`** — the set of report ids that any webhook is subscribed to. It
+  reads `WebhookEntity` documents directly, so it never decrypts a webhook secret. Webhooks live
+  in the `notification-webhook` database, which is deliberately *not* polled for changes, so this
+  cache is invalidated by `DefaultWebhookStorage` (the only writer of that database) and,
+  additionally, expires after `reporting.webhook-subscription-cache.ttl-millis` (default 1000) to
+  bound staleness from writes this process cannot see.
+
+  It is intentionally not used by `GET /v1/reporting/webhook` or by `NotificationService`, which
+  must always see the current webhook list.

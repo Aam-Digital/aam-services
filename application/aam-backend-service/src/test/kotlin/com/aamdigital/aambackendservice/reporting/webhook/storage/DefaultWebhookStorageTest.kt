@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.time.Duration
 import java.time.Instant
 
 @ExtendWith(MockitoExtension::class)
@@ -29,7 +30,12 @@ class DefaultWebhookStorageTest {
 
     @BeforeEach
     fun setUp() {
-        storage = DefaultWebhookStorage(webhookRepository, cryptoService)
+        // cheap and deterministic - construct for real rather than mocking it
+        storage = DefaultWebhookStorage(
+            webhookRepository,
+            cryptoService,
+            WebhookSubscriptionCache(webhookRepository, Duration.ZERO)
+        )
     }
 
     @Test
