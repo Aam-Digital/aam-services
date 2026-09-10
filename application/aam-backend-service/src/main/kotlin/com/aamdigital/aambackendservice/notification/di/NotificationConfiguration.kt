@@ -22,10 +22,11 @@ import com.aamdigital.aambackendservice.notification.core.create.email.UserEmail
 import com.aamdigital.aambackendservice.notification.core.create.push.PushCreateNotificationHandler
 import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxDrainer
 import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxRepository
+import com.aamdigital.aambackendservice.notification.core.outbox.OutboxUserNotificationPublisher
+import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.core.trigger.DefaultApplyNotificationRulesUseCase
-import com.aamdigital.aambackendservice.notification.queue.OutboxUserNotificationPublisher
-import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
+import com.aamdigital.aambackendservice.notification.core.trigger.NotificationDocumentChangeHandler
 import com.aamdigital.aambackendservice.notification.repository.CouchDbUserDeviceRepository
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -109,6 +110,16 @@ class NotificationConfiguration {
             pushEnabled = pushHandlerAvailable
         )
     }
+
+    @Bean("notification-document-change-handler")
+    fun notificationDocumentChangeHandler(
+        notificationConfigCache: NotificationConfigCache,
+        applyNotificationRulesUseCase: ApplyNotificationRulesUseCase
+    ): NotificationDocumentChangeHandler =
+        NotificationDocumentChangeHandler(
+            notificationConfigCache = notificationConfigCache,
+            applyNotificationRulesUseCase = applyNotificationRulesUseCase
+        )
 
     @Bean("notification-outbox-database-request")
     fun notificationOutboxDatabaseRequest(): DatabaseRequest =

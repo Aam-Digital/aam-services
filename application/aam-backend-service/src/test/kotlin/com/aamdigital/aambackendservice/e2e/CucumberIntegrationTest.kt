@@ -8,8 +8,7 @@ import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.container.TestContainers
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.email.UserEmailProvider
-import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
-import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationTrigger
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.AuthenticationProvider
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.UserModel
@@ -39,7 +38,7 @@ import java.util.Optional
 
 @CucumberContextConfiguration
 class CucumberIntegrationTest(
-    val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher,
+    val reportCalculationTrigger: ReportCalculationTrigger,
     val syncRepository: SyncRepository,
     val notificationConfigCache: NotificationConfigCache
 ) : SpringIntegrationTest() {
@@ -51,8 +50,8 @@ class CucumberIntegrationTest(
     @MockBean
     lateinit var userEmailProvider: UserEmailProvider
 
-    // mocked so the guardrail can verify the webhook is triggered without needing a real HTTP receiver;
-    // the mock still sits downstream of both the report.calculation.completed and notification.webhook queues
+    // mocked so the guardrail can verify the webhook is triggered without needing a real HTTP
+    // receiver; the mock still sits downstream of the calculation and of the delivery executor
     @MockBean
     lateinit var triggerWebhookUseCase: TriggerWebhookUseCase
 
@@ -171,13 +170,8 @@ class CucumberIntegrationTest(
         reportCalculationId: String,
         tenant: String
     ) {
-        reportCalculationEventPublisher.publish(
-            "report.calculation",
-            ReportCalculationEvent(
-//                tenant = tenant, // to prepare multi tenant
-                reportCalculationId = reportCalculationId
-            )
-        )
+        // tenant is not used yet, it is here to prepare multi tenant support
+        reportCalculationTrigger.trigger(reportCalculationId)
     }
 
     @When("the client calls GET {word} with id from latest response")

@@ -7,7 +7,6 @@ import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -16,8 +15,11 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.inOrder
+import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.reset
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.util.*
@@ -32,17 +34,17 @@ class CouchDbChangesProcessorTest {
     lateinit var couchDbClient: CouchDbClient
 
     @Mock
-    lateinit var changeEventPublisher: ChangeEventPublisher
+    lateinit var documentChangeHandler: DocumentChangeHandler
 
     @Mock
     lateinit var syncRepository: SyncRepository
 
     @BeforeEach
     fun setUp() {
-        reset(couchDbClient, changeEventPublisher, syncRepository)
+        reset(couchDbClient, documentChangeHandler, syncRepository)
         service = CouchDbChangesProcessor(
             couchDbClient = couchDbClient,
-            documentChangeEventPublisher = changeEventPublisher,
+            documentChangeHandlers = listOf(documentChangeHandler),
             syncRepository = syncRepository,
             objectMapper = objectMapper,
             changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app")),
@@ -89,7 +91,7 @@ class CouchDbChangesProcessorTest {
     fun `should poll databases added to a custom included-databases allowlist`() {
         service = CouchDbChangesProcessor(
             couchDbClient = couchDbClient,
-            documentChangeEventPublisher = changeEventPublisher,
+            documentChangeHandlers = listOf(documentChangeHandler),
             syncRepository = syncRepository,
             objectMapper = objectMapper,
             changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app", "audit")),
@@ -132,7 +134,7 @@ class CouchDbChangesProcessorTest {
 
         service.checkForChanges()
 
-        verify(changeEventPublisher, never()).publish(any(), any())
+        verify(documentChangeHandler, never()).handle(any())
     }
 
     @Test
@@ -166,8 +168,7 @@ class CouchDbChangesProcessorTest {
 
         service.checkForChanges()
 
-        verify(changeEventPublisher).publish(
-            eq(ChangesQueueConfiguration.DOCUMENT_CHANGES_EXCHANGE),
+        verify(documentChangeHandler).handle(
             argThat { event: DocumentChangeEvent ->
                 event.database == "app" &&
                     event.documentId == "Child:1" &&
@@ -203,8 +204,7 @@ class CouchDbChangesProcessorTest {
 
         service.checkForChanges()
 
-        verify(changeEventPublisher).publish(
-            eq(ChangesQueueConfiguration.DOCUMENT_CHANGES_EXCHANGE),
+        verify(documentChangeHandler).handle(
             argThat { event: DocumentChangeEvent ->
                 event.deleted &&
                     event.documentId == "Child:2" &&
@@ -242,8 +242,7 @@ class CouchDbChangesProcessorTest {
 
         service.checkForChanges()
 
-        verify(changeEventPublisher).publish(
-            eq(ChangesQueueConfiguration.DOCUMENT_CHANGES_EXCHANGE),
+        verify(documentChangeHandler).handle(
             argThat { event: DocumentChangeEvent ->
                 !event.deleted &&
                     event.documentId == "Child:3" &&
@@ -281,11 +280,12 @@ class CouchDbChangesProcessorTest {
     }
 
     @Test
-    fun `should update latestRef to last result seq when results are present`() {
+    fun `should advance latestRef once per change rather than once per batch`() {
+        // a crash part way through a batch then re-processes only the change that was in flight,
+        // instead of everything the batch had already handled
         whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
-        whenever(syncRepository.findByDatabase("app")).thenReturn(
-            Optional.of(SyncEntry(database = "app", latestRef = "seq-0"))
-        )
+        val existingSync = SyncEntry(database = "app", latestRef = "seq-0")
+        whenever(syncRepository.findByDatabase("app")).thenReturn(Optional.of(existingSync))
 
         val doc = objectMapper.createObjectNode().put("_id", "X:1").put("_rev", "1-a")
         val results = listOf(
@@ -300,6 +300,79 @@ class CouchDbChangesProcessorTest {
 
         service.checkForChanges()
 
-        verify(syncRepository).save(argThat<SyncEntry> { latestRef == "seq-2" })
+        val saved = inOrder(syncRepository)
+        saved.verify(syncRepository).save(eq(SyncEntry(database = "app", latestRef = "seq-1")))
+        saved.verify(syncRepository).save(eq(SyncEntry(database = "app", latestRef = "seq-2")))
+        verify(syncRepository, times(2)).save(any())
+    }
+
+    @Test
+    fun `should give the change to every handler`() {
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
+        whenever(syncRepository.findByDatabase("app")).thenReturn(
+            Optional.of(SyncEntry(database = "app", latestRef = "seq-0"))
+        )
+        val secondHandler = mock<DocumentChangeHandler>()
+        service = CouchDbChangesProcessor(
+            couchDbClient = couchDbClient,
+            documentChangeHandlers = listOf(documentChangeHandler, secondHandler),
+            syncRepository = syncRepository,
+            objectMapper = objectMapper,
+            changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app")),
+        )
+
+        val doc = objectMapper.createObjectNode().put("_id", "X:1").put("_rev", "1-a")
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
+            .thenReturn(
+                CouchDbChangesResponse(
+                    lastSeq = "seq-1",
+                    results = listOf(CouchDbChangeResult(id = "X:1", changes = emptyList(), seq = "seq-1", doc = doc)),
+                    pending = 0
+                )
+            )
+        whenever(couchDbClient.getPreviousDocumentRevision(any(), any(), any(), eq(ObjectNode::class)))
+            .thenReturn(Optional.of(objectMapper.createObjectNode()))
+        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
+
+        service.checkForChanges()
+
+        verify(documentChangeHandler).handle(any())
+        verify(secondHandler).handle(any())
+    }
+
+    @Test
+    fun `should keep processing when one handler fails`() {
+        // change detection feeds several independent modules, so one of them failing on one
+        // document must not stop the others or stall the feed
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
+        val existingSync = SyncEntry(database = "app", latestRef = "seq-0")
+        whenever(syncRepository.findByDatabase("app")).thenReturn(Optional.of(existingSync))
+        val secondHandler = mock<DocumentChangeHandler>()
+        service = CouchDbChangesProcessor(
+            couchDbClient = couchDbClient,
+            documentChangeHandlers = listOf(documentChangeHandler, secondHandler),
+            syncRepository = syncRepository,
+            objectMapper = objectMapper,
+            changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app")),
+        )
+        whenever(documentChangeHandler.handle(any())).thenThrow(RuntimeException("handler exploded"))
+
+        val doc = objectMapper.createObjectNode().put("_id", "X:1").put("_rev", "1-a")
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
+            .thenReturn(
+                CouchDbChangesResponse(
+                    lastSeq = "seq-1",
+                    results = listOf(CouchDbChangeResult(id = "X:1", changes = emptyList(), seq = "seq-1", doc = doc)),
+                    pending = 0
+                )
+            )
+        whenever(couchDbClient.getPreviousDocumentRevision(any(), any(), any(), eq(ObjectNode::class)))
+            .thenReturn(Optional.of(objectMapper.createObjectNode()))
+        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
+
+        service.checkForChanges()
+
+        verify(secondHandler).handle(any())
+        verify(syncRepository).save(eq(SyncEntry(database = "app", latestRef = "seq-1")))
     }
 }

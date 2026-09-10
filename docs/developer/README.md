@@ -24,8 +24,6 @@ For some features, we also use third party solutions that are maintained from th
   Services [GitHub](https://github.com/keycloak/keycloak). This stack uses aam-digital's own
   `ghcr.io/aam-digital/keycloak-aam` build (private; bundles the provider plugins from Step 2.1
   below) rather than the public image.
-- *rabbitmq-server*: Multi-protocol messaging and streaming
-  broker. [GitHub](https://github.com/rabbitmq/rabbitmq-server)
 - *carbone*: Fast, Simple and Powerful report generator in any format [GitHub](https://github.com/carboneio/carbone)
 - *structured-query-server (sqs)*: (private; Accessible for aam-digital internals and contributors only)
 An SQL query engine for CouchDB, letting you use SQL SELECT statements to extract
@@ -389,14 +387,6 @@ Only the proxied hostname can reach the backend services and Keycloak.
 
 ### Further Steps (optional):
 
-#### RabbitMQ (needed for some modules)
-
-Whether you run `aam-backend-service` from source (`local-development` profile) or via
-docker-compose, it connects to the same RabbitMQ container using RabbitMQ's built-in defaults —
-the `guest` user on the `/` virtual host. No manual user or virtual host setup is needed; you can
-still open [aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/#/users) (login `guest:guest`)
-to inspect queues.
-
 #### Configure modules
 
 Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific modules like Notification:
@@ -544,7 +534,6 @@ After this you can render single PDFs and bulk PDFs (ZIP or combined) from your 
 - CouchDB: [https://aam.localhost/db/couchdb](https://aam.localhost/db/couchdb)
 - CouchDB Admin: [https://aam.localhost/db/couchdb/_utils/](https://aam.localhost/db/couchdb/_utils/) (the final "/" is
   important!)
-- RabbitMQ: [https://aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/) (the final "/" is important!)
 
 ### developer credentials
 
@@ -554,11 +543,6 @@ Unless otherwise specified, the default credentials are:
 
 - username: `admin`
 - password: `docker`
-
-The default credentials for rabbitmq are:
-
-- username: `guest`
-- password: `guest`
 
 ### Reset http/https redirect cache in chrome
 

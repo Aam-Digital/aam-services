@@ -64,7 +64,10 @@ class DefaultReportCalculationStorage(
         }
     }
 
-    override fun fetchReportCalculations(report: DomainReference): List<ReportCalculation> {
+    override fun fetchReportCalculations(report: DomainReference): List<ReportCalculation> =
+        fetchAllReportCalculations().filter { calculation -> calculation.report.id == report.id }
+
+    override fun fetchAllReportCalculations(): List<ReportCalculation> {
         val calculations =
             try {
                 couchDbClient.getDatabaseDocument(
@@ -77,12 +80,7 @@ class DefaultReportCalculationStorage(
                 throw handleException(ex)
             }
 
-        return calculations.rows
-            .filter { entity ->
-                entity.doc.report.id == report.id
-            }.map { entity ->
-                fromEntity(entity.doc)
-            }
+        return calculations.rows.map { entity -> fromEntity(entity.doc) }
     }
 
     @Throws(

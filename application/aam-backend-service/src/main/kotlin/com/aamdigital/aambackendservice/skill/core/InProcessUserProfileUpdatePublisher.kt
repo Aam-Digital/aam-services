@@ -2,13 +2,8 @@ package com.aamdigital.aambackendservice.skill.core
 
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.common.queue.core.QueueMessage
 import com.aamdigital.aambackendservice.skill.core.event.UserProfileUpdateEvent
 import org.slf4j.LoggerFactory
-import java.time.Instant
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.util.UUID
 
 /**
  * In-process [UserProfileUpdatePublisher]: hands the event straight to [SyncUserProfileUseCase]
@@ -22,20 +17,14 @@ import java.util.UUID
  * advanced regardless. Propagating the failure instead would abort the whole fetch and hold the
  * cursor back, turning one bad profile into a stalled project-wide sync with nowhere to park it.
  * Recovery stays what it is today: the next scheduled SkillLab re-sync.
- *
- * [channel] is ignored; it survives only because the interface still carries the queue-shaped
- * signature that is retired together with `QueueMessage`.
  */
 class InProcessUserProfileUpdatePublisher(
     private val syncUserProfileUseCase: SyncUserProfileUseCase
 ) : UserProfileUpdatePublisher {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    override fun publish(
-        channel: String,
-        event: UserProfileUpdateEvent
-    ): QueueMessage {
-        logger.trace("[InProcessUserProfileUpdatePublisher]: handle {} for channel '{}'", event, channel)
+    override fun publish(event: UserProfileUpdateEvent) {
+        logger.trace("[InProcessUserProfileUpdatePublisher]: handle {}", event)
 
         val outcome =
             syncUserProfileUseCase.run(
@@ -55,16 +44,5 @@ class InProcessUserProfileUpdatePublisher(
                 outcome.cause
             )
         }
-
-        return QueueMessage(
-            id = UUID.randomUUID(),
-            eventType = UserProfileUpdateEvent::class.java.canonicalName,
-            event = event,
-            createdAt =
-                Instant
-                    .now()
-                    .atOffset(ZoneOffset.UTC)
-                    .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-        )
     }
 }

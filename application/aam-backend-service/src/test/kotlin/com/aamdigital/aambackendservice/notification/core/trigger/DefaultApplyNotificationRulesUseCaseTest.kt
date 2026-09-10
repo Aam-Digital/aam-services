@@ -9,10 +9,9 @@ import com.aamdigital.aambackendservice.notification.core.CreateUserNotification
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
 import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
-import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
-import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
+import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -568,7 +567,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // Then
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(1)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         assertThat(eventCaptor.allValues.map { it.notificationChannelType })
@@ -588,7 +586,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // Then
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(4)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         assertThat(eventCaptor.allValues.map { it.details.id }.distinct()).hasSize(1)
@@ -610,7 +607,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // Then
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(4)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         assertThat(eventCaptor.allValues.map { it.details.id }.distinct()).hasSize(2)
@@ -652,7 +648,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
 
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(2)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         assertThat(eventCaptor.allValues.map { it.notificationChannelType })
@@ -702,7 +697,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
 
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(2)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         val channelTypes = eventCaptor.allValues.map { it.notificationChannelType }
@@ -748,7 +742,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
 
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(3)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         val channelTypes = eventCaptor.allValues.map { it.notificationChannelType }
@@ -780,7 +773,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // then
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
         assertEquals(0, (result as UseCaseOutcome.Success).data.notificationsSendCount)
-        verify(userNotificationPublisher, times(0)).publish(any(), any())
+        verify(userNotificationPublisher, times(0)).publish(any())
     }
 
     @Test
@@ -804,7 +797,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // then
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
         assertEquals(0, (result as UseCaseOutcome.Success).data.notificationsSendCount)
-        verify(userNotificationPublisher, times(0)).publish(any(), any())
+        verify(userNotificationPublisher, times(0)).publish(any())
     }
 
     @Test
@@ -851,7 +844,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(2)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         assertThat(eventCaptor.allValues.map { it.notificationChannelType })
@@ -871,7 +863,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // then
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, Mockito.atLeastOnce()).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         val firstEvent = eventCaptor.firstValue
@@ -910,7 +901,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // then
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(3)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         val ids = eventCaptor.allValues.map { it.details.id }.distinct()

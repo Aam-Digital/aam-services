@@ -11,16 +11,7 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 @ConditionalOnSkillApiEnabled
 @ConditionalOnSkillLabMode
-class UserProfileUpdateEventQueueConfiguration {
-    companion object {
-        /**
-         * Kept as the [UserProfileUpdatePublisher.publish] channel name: user profile updates are
-         * handled in process now, so no queue is declared for it, but the interface still carries
-         * the queue-shaped signature. Both go away with RabbitMQ.
-         */
-        const val USER_PROFILE_UPDATE_QUEUE = "skill.userProfile.update"
-    }
-
+class UserProfileUpdateConfiguration {
     @Bean
     fun inProcessUserProfileUpdatePublisher(
         syncUserProfileUseCase: SyncUserProfileUseCase

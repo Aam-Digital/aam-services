@@ -7,10 +7,6 @@ spring:
     deserialization:
       accept-empty-string-as-null-object: true
       read-unknown-enum-values-using-default-value: true
-  rabbitmq:
-    listener:
-      simple:
-        prefetch: 1
   datasource:
     driver-class-name: org.postgresql.Driver
     username: admin

@@ -1,19 +1,22 @@
-package com.aamdigital.aambackendservice.reporting.reportcalculation.queue
+package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.reporting.report.sqs.SqsQueryStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
-import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationData
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationError
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.observation.ObservationRegistry
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
@@ -24,12 +27,12 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.springframework.amqp.AmqpRejectAndDontRequeueException
+import org.slf4j.LoggerFactory
 import java.time.Duration
 
 @ExtendWith(MockitoExtension::class)
-class ReportCalculationEventListenerTest {
-    private lateinit var listener: ReportCalculationEventListener
+class ReportCalculationProcessorTest {
+    private lateinit var processor: ReportCalculationProcessor
 
     @Mock
     lateinit var reportCalculationUseCase: DefaultReportCalculationUseCase
@@ -37,11 +40,11 @@ class ReportCalculationEventListenerTest {
     @Mock
     lateinit var reportCalculationChangeUseCase: ReportCalculationChangeUseCase
 
-    private fun listener(
+    private fun processor(
         attempts: Int = 3,
         // zero so the retry tests do not sleep
         interval: Duration = Duration.ZERO
-    ) = ReportCalculationEventListener(
+    ) = ReportCalculationProcessor(
         observationRegistry = ObservationRegistry.create(),
         reportCalculationUseCase = reportCalculationUseCase,
         objectMapper = jacksonObjectMapper(),
@@ -66,10 +69,21 @@ class ReportCalculationEventListenerTest {
             )
     }
 
+    private lateinit var logger: Logger
+    private lateinit var appender: ListAppender<ILoggingEvent>
+
     @BeforeEach
     fun setUp() {
         reset(reportCalculationUseCase, reportCalculationChangeUseCase)
-        listener = listener()
+        processor = processor()
+        logger = LoggerFactory.getLogger(ReportCalculationProcessor::class.java) as Logger
+        appender = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(appender)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        logger.detachAppender(appender)
     }
 
     @Test
@@ -79,7 +93,7 @@ class ReportCalculationEventListenerTest {
         succeeds(reportCalculationId)
 
         // When
-        listener.handleReportCalculationEvent(ReportCalculationEvent(reportCalculationId))
+        processor.process(reportCalculationId)
 
         // Then
         verify(reportCalculationChangeUseCase).handle(eq(reportCalculationId))
@@ -96,10 +110,75 @@ class ReportCalculationEventListenerTest {
                 )
             )
 
+        // When: the failure is already recorded on the calculation document as FINISHED_ERROR,
+        // and there is no caller to hand an exception to, so nothing is thrown
+        processor.process("ReportCalculation:1")
+
+        // Then
+        verify(reportCalculationChangeUseCase, never()).handle(any())
+    }
+
+    @Test
+    fun `should log a failure caused by invalid input at INFO so it does not reach Sentry`() {
+        // Given a ReportConfig query that SQS rejects with 400: the use case re-wraps the
+        // InvalidArgumentException from SqsQueryStorage into its Failure outcome
+        val sqsRejection =
+            InvalidArgumentException(
+                "[SqsQueryStorage] SQS rejected the query for report 'ReportConfig:1' (400 BAD_REQUEST): " +
+                    "near \"FROM\": syntax error",
+                code = SqsQueryStorage.SqsQueryStorageErrorCode.QUERY_FAILED
+            )
+        whenever(reportCalculationUseCase.run(any()))
+            .thenReturn(
+                UseCaseOutcome.Failure(
+                    errorCode = sqsRejection.code,
+                    errorMessage = sqsRejection.localizedMessage,
+                    cause =
+                        InvalidArgumentException(
+                            sqsRejection.localizedMessage,
+                            sqsRejection,
+                            code = sqsRejection.code
+                        )
+                )
+            )
+
+        // When
+        processor.process("ReportCalculation:1")
+
+        // Then
+        assertThat(appender.list.filter { it.level == Level.ERROR }).isEmpty()
+        val infos = appender.list.filter { it.level == Level.INFO }
+        assertThat(infos).hasSize(1)
+        assertThat(infos.first().formattedMessage).contains("near \"FROM\": syntax error")
+    }
+
+    @Test
+    fun `should log any other failure at ERROR`() {
+        // Given
+        whenever(reportCalculationUseCase.run(any()))
+            .thenReturn(
+                UseCaseOutcome.Failure(
+                    errorCode = ReportCalculationError.UNEXPECTED_ERROR,
+                    errorMessage = "boom",
+                    cause = IllegalStateException("no such column: foo")
+                )
+            )
+
+        // When
+        processor.process("ReportCalculation:1")
+
+        // Then
+        assertThat(appender.list.filter { it.level == Level.ERROR }).hasSize(1)
+    }
+
+    @Test
+    fun `should not let an unexpected failure escape onto the executor thread`() {
+        // Given nothing above this call is on a caller's stack, so an escaping exception would only
+        // reach the thread's default handler and never be logged
+        whenever(reportCalculationUseCase.run(any())).thenThrow(RuntimeException("boom"))
+
         // When / Then
-        assertThrows<AmqpRejectAndDontRequeueException> {
-            listener.handleReportCalculationEvent(ReportCalculationEvent("ReportCalculation:1"))
-        }
+        processor.process("ReportCalculation:1")
         verify(reportCalculationChangeUseCase, never()).handle(any())
     }
 
@@ -113,7 +192,7 @@ class ReportCalculationEventListenerTest {
             .thenAnswer { }
 
         // When
-        listener.handleReportCalculationEvent(ReportCalculationEvent(reportCalculationId))
+        processor.process(reportCalculationId)
 
         // Then
         verify(reportCalculationChangeUseCase, times(2)).handle(eq(reportCalculationId))
@@ -129,7 +208,7 @@ class ReportCalculationEventListenerTest {
             .thenThrow(RuntimeException("couchdb unreachable"))
 
         // When
-        listener.handleReportCalculationEvent(ReportCalculationEvent(reportCalculationId))
+        processor.process(reportCalculationId)
 
         // Then
         verify(reportCalculationChangeUseCase, times(3)).handle(eq(reportCalculationId))
