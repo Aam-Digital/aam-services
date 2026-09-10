@@ -19,7 +19,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
  * backs off on the existing bean), giving the jobs their own pool so they no longer block each
  * other. The pool is sized to the number of scheduled jobs, counting the ones that only exist when
  * their feature module is enabled
- * (`[com.aamdigital.aambackendservice.notification.queue.NotificationDlqReprocessor]`). This only
+ * (`[com.aamdigital.aambackendservice.notification.job.NotificationOutboxDrainJob]`). This only
  * affects scheduling; web request handling and `@Async` keep using virtual threads.
  */
 @Configuration
