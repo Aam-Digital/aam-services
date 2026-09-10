@@ -5,7 +5,7 @@ import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationDebouncer
-import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
+import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookSubscriptionCache
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder
 import org.springframework.amqp.core.FanoutExchange
@@ -39,12 +39,12 @@ class ReportQueueConfiguration {
         messageParser: QueueMessageParser,
         reportCalculationDebouncer: ReportCalculationDebouncer,
         identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
-        webhookStorage: WebhookStorage
+        webhookSubscriptionCache: WebhookSubscriptionCache
     ): ReportDocumentChangeEventConsumer =
         ReportDocumentChangeEventConsumer(
             messageParser,
             reportCalculationDebouncer,
             identifyAffectedReportsUseCase,
-            webhookStorage
+            webhookSubscriptionCache
         )
 }

@@ -8,12 +8,7 @@ import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationDebouncer
-import com.aamdigital.aambackendservice.reporting.webhook.Webhook
-import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthentication
-import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthenticationType
-import com.aamdigital.aambackendservice.reporting.webhook.WebhookTarget
-import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookOwner
-import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
+import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookSubscriptionCache
 import com.rabbitmq.client.Channel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
@@ -28,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.capture
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.never
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -55,7 +51,7 @@ class ReportDocumentChangeEventConsumerTest {
     lateinit var identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase
 
     @Mock
-    lateinit var webhookStorage: WebhookStorage
+    lateinit var webhookSubscriptionCache: WebhookSubscriptionCache
 
     @Captor
     lateinit var requestCaptor: ArgumentCaptor<CreateReportCalculationRequest>
@@ -66,7 +62,7 @@ class ReportDocumentChangeEventConsumerTest {
             messageParser,
             reportCalculationDebouncer,
             identifyAffectedReportsUseCase,
-            webhookStorage
+            webhookSubscriptionCache
         )
 
         service =
@@ -74,7 +70,7 @@ class ReportDocumentChangeEventConsumerTest {
                 messageParser = messageParser,
                 reportCalculationDebouncer = reportCalculationDebouncer,
                 identifyAffectedReportsUseCase = identifyAffectedReportsUseCase,
-                webhookStorage = webhookStorage
+                webhookSubscriptionCache = webhookSubscriptionCache
             )
     }
 
@@ -145,23 +141,8 @@ class ReportDocumentChangeEventConsumerTest {
                     DomainReference("ReportConfig:unsubscribed-report"),
                 )
             )
-        whenever(webhookStorage.fetchAllWebhooks())
-            .thenReturn(
-                listOf(
-                    Webhook(
-                        id = "Webhook:1",
-                        label = "test webhook",
-                        target = WebhookTarget(method = "POST", url = "https://example.org"),
-                        authentication =
-                            WebhookAuthentication(
-                                type = WebhookAuthenticationType.API_KEY,
-                                secret = "secret"
-                            ),
-                        owner = WebhookOwner(creator = "user"),
-                        reportSubscriptions = mutableListOf(DomainReference("ReportConfig:subscribed-report"))
-                    )
-                )
-            )
+        whenever(webhookSubscriptionCache.subscribedReportIds())
+            .thenReturn(setOf("ReportConfig:subscribed-report"))
 
         // when
         service.consume(rawMessage, mockMessage, mockChannel)
@@ -170,5 +151,31 @@ class ReportDocumentChangeEventConsumerTest {
         verify(reportCalculationDebouncer, times(1)).recordChange(capture(requestCaptor))
         assertThat(requestCaptor.value.report.id).isEqualTo("ReportConfig:subscribed-report")
         assertThat(requestCaptor.value.fromAutomaticChangeDetection).isTrue()
+    }
+
+    @Test
+    fun `should not look up webhook subscriptions when no report is affected`() {
+        // given
+        val rawMessage = "foo"
+        val documentChangeEvent =
+            DocumentChangeEvent(
+                database = "app",
+                documentId = "Child:1",
+                rev = "1-abc",
+                currentVersion = mapOf<String, String>(),
+                previousVersion = mapOf<String, String>(),
+                deleted = false
+            )
+
+        whenever(messageParser.getTypeKClass(any())).thenAnswer { DocumentChangeEvent::class }
+        whenever(messageParser.getPayload(any(), eq(DocumentChangeEvent::class))).thenReturn(documentChangeEvent)
+        whenever(identifyAffectedReportsUseCase.analyse(documentChangeEvent)).thenReturn(emptyList())
+
+        // when
+        service.consume(rawMessage, mockMessage, mockChannel)
+
+        // then
+        verify(webhookSubscriptionCache, never()).subscribedReportIds()
+        verify(reportCalculationDebouncer, never()).recordChange(any())
     }
 }

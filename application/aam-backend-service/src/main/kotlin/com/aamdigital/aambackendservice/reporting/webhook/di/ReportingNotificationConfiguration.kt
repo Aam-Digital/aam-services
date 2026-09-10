@@ -16,11 +16,14 @@ import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventPubl
 import com.aamdigital.aambackendservice.reporting.webhook.storage.DefaultWebhookStorage
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookRepository
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
+import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookSubscriptionCache
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.client.RestClient
+import java.time.Duration
 
 @Configuration
 @ConditionalOnReportingEnabled
@@ -61,8 +64,19 @@ class ReportingNotificationConfiguration {
     @Bean
     fun defaultNotificationStorage(
         webhookRepository: WebhookRepository,
-        cryptoService: CryptoService
-    ): WebhookStorage = DefaultWebhookStorage(webhookRepository, cryptoService)
+        cryptoService: CryptoService,
+        webhookSubscriptionCache: WebhookSubscriptionCache
+    ): WebhookStorage = DefaultWebhookStorage(webhookRepository, cryptoService, webhookSubscriptionCache)
+
+    @Bean
+    fun webhookSubscriptionCache(
+        webhookRepository: WebhookRepository,
+        @Value("\${reporting.webhook-subscription-cache.ttl-millis:1000}") ttlMillis: Long
+    ): WebhookSubscriptionCache =
+        WebhookSubscriptionCache(
+            webhookRepository = webhookRepository,
+            ttl = Duration.ofMillis(ttlMillis)
+        )
 
     @Bean
     fun webhookRepository(

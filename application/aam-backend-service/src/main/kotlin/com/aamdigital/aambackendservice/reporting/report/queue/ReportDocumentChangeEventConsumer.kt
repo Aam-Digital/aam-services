@@ -1,14 +1,13 @@
 package com.aamdigital.aambackendservice.reporting.report.queue
 
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
-import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.queue.core.QueueMessageParser
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.di.ReportQueueConfiguration
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationDebouncer
-import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
+import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookSubscriptionCache
 import com.rabbitmq.client.Channel
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.AmqpRejectAndDontRequeueException
@@ -19,7 +18,7 @@ class ReportDocumentChangeEventConsumer(
     private val messageParser: QueueMessageParser,
     private val reportCalculationDebouncer: ReportCalculationDebouncer,
     private val identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
-    private val webhookStorage: WebhookStorage
+    private val webhookSubscriptionCache: WebhookSubscriptionCache
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -53,14 +52,16 @@ class ReportDocumentChangeEventConsumer(
                         documentChangeEvent = payload
                     )
 
-                val webhooks = webhookStorage.fetchAllWebhooks()
+                if (affectedReports.isEmpty()) {
+                    return
+                }
+
+                val subscribedReportIds = webhookSubscriptionCache.subscribedReportIds()
 
                 affectedReports
                     .filter { report ->
                         // we only need to do automatic calculations for reports that are subscribed to
-                        webhooks.any { webhook ->
-                            webhook.reportSubscriptions.contains(DomainReference(report.id))
-                        }
+                        subscribedReportIds.contains(report.id)
                     }.forEach { report ->
                         // debounced: the calculation is only created once changes settle down,
                         // so bursts of document changes result in a single recalculation
