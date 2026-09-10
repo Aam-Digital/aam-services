@@ -31,11 +31,12 @@ class DefaultWebhookStorageTest {
     @BeforeEach
     fun setUp() {
         // cheap and deterministic - construct for real rather than mocking it
-        storage = DefaultWebhookStorage(
-            webhookRepository,
-            cryptoService,
-            WebhookSubscriptionCache(webhookRepository, Duration.ZERO)
-        )
+        storage =
+            DefaultWebhookStorage(
+                webhookRepository,
+                cryptoService,
+                WebhookSubscriptionCache(webhookRepository, Duration.ZERO)
+            )
     }
 
     @Test

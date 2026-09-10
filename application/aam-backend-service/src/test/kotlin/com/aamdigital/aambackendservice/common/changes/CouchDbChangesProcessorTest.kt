@@ -300,13 +300,14 @@ class CouchDbChangesProcessorTest {
             Optional.of(SyncEntry(database = "app", latestRef = "seq-0"))
         )
         val secondHandler = mock<DocumentChangeHandler>()
-        service = CouchDbChangesProcessor(
-            couchDbClient = couchDbClient,
-            documentChangeHandlers = listOf(documentChangeHandler, secondHandler),
-            syncRepository = syncRepository,
-            objectMapper = objectMapper,
-            changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app")),
-        )
+        service =
+            CouchDbChangesProcessor(
+                couchDbClient = couchDbClient,
+                documentChangeHandlers = listOf(documentChangeHandler, secondHandler),
+                syncRepository = syncRepository,
+                objectMapper = objectMapper,
+                changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app"))
+            )
 
         val doc = objectMapper.createObjectNode().put("_id", "X:1").put("_rev", "1-a")
         whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
@@ -335,13 +336,14 @@ class CouchDbChangesProcessorTest {
         val existingSync = SyncEntry(database = "app", latestRef = "seq-0")
         whenever(syncRepository.findByDatabase("app")).thenReturn(Optional.of(existingSync))
         val secondHandler = mock<DocumentChangeHandler>()
-        service = CouchDbChangesProcessor(
-            couchDbClient = couchDbClient,
-            documentChangeHandlers = listOf(documentChangeHandler, secondHandler),
-            syncRepository = syncRepository,
-            objectMapper = objectMapper,
-            changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app")),
-        )
+        service =
+            CouchDbChangesProcessor(
+                couchDbClient = couchDbClient,
+                documentChangeHandlers = listOf(documentChangeHandler, secondHandler),
+                syncRepository = syncRepository,
+                objectMapper = objectMapper,
+                changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app"))
+            )
         whenever(documentChangeHandler.handle(any())).thenThrow(RuntimeException("handler exploded"))
 
         val doc = objectMapper.createObjectNode().put("_id", "X:1").put("_rev", "1-a")

@@ -62,7 +62,7 @@ class ReportCalculationProcessor(
             )
 
         when (response) {
-            is UseCaseOutcome.Failure ->
+            is UseCaseOutcome.Failure -> {
                 logger.error(
                     "Report calculation {} failed: [{}] {}",
                     reportCalculationId,
@@ -70,6 +70,7 @@ class ReportCalculationProcessor(
                     response.errorMessage,
                     response.cause
                 )
+            }
 
             is UseCaseOutcome.Success -> {
                 logger.trace(objectMapper.writeValueAsString(response))

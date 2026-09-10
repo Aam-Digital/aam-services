@@ -49,9 +49,8 @@ class ReportConfiguration {
         )
 
     @Bean
-    fun defaultIdentifyAffectedReportsUseCase(
-        reportConfigCache: ReportConfigCache
-    ): IdentifyAffectedReportsUseCase = DefaultIdentifyAffectedReportsUseCase(reportConfigCache)
+    fun defaultIdentifyAffectedReportsUseCase(reportConfigCache: ReportConfigCache): IdentifyAffectedReportsUseCase =
+        DefaultIdentifyAffectedReportsUseCase(reportConfigCache)
 
     @Bean("report-document-change-handler")
     fun reportDocumentChangeHandler(

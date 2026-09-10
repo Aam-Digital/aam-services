@@ -292,5 +292,4 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             any()
         )
     }
-
 }

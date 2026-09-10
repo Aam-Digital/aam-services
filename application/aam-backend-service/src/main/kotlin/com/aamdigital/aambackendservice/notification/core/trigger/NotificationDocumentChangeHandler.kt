@@ -29,7 +29,7 @@ class NotificationDocumentChangeHandler(
         }
 
         when (val result = applyNotificationRulesUseCase.run(ApplyNotificationRulesRequest(event))) {
-            is UseCaseOutcome.Failure ->
+            is UseCaseOutcome.Failure -> {
                 logger.warn(
                     "ApplyNotificationRules failed for documentId={}: [{}] {}",
                     event.documentId,
@@ -37,13 +37,15 @@ class NotificationDocumentChangeHandler(
                     result.errorMessage,
                     result.cause
                 )
+            }
 
-            is UseCaseOutcome.Success ->
+            is UseCaseOutcome.Success -> {
                 logger.trace(
                     "ApplyNotificationRules completed for documentId={}: {} notifications triggered",
                     event.documentId,
                     result.data.notificationsSendCount
                 )
+            }
         }
     }
 

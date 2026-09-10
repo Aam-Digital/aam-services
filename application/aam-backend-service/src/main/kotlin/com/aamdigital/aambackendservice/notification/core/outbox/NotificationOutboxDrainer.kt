@@ -121,8 +121,9 @@ class NotificationOutboxDrainer(
                     )
                 }
 
-                is UseCaseOutcome.Failure ->
+                is UseCaseOutcome.Failure -> {
                     park(entry, "[${outcome.errorCode}] ${outcome.errorMessage}", outcome.cause)
+                }
             }
         } catch (ex: TransientNotificationException) {
             scheduleRetry(entry, ex)
