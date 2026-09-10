@@ -1,9 +1,13 @@
 package com.aamdigital.aambackendservice.notification.core.trigger
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
@@ -13,6 +17,8 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.slf4j.LoggerFactory
+import ch.qos.logback.classic.Logger as LogbackLogger
 
 @ExtendWith(MockitoExtension::class)
 class NotificationDocumentChangeHandlerTest {
@@ -65,8 +71,9 @@ class NotificationDocumentChangeHandlerTest {
     }
 
     @Test
-    fun `should not propagate a failed rule evaluation so one document cannot stall the feed`() {
-        // Given
+    fun `should report a failed rule evaluation at ERROR without propagating it`() {
+        // Given the cursor advances either way, so the log line is the only record that a
+        // notification was owed and never produced - and WARN is below the Sentry event level
         whenever(applyNotificationRulesUseCase.run(any()))
             .thenReturn(
                 UseCaseOutcome.Failure(
@@ -75,8 +82,26 @@ class NotificationDocumentChangeHandlerTest {
                 )
             )
 
-        // When / Then
-        handler.handle(event("Child:1"))
+        val logger =
+            LoggerFactory.getLogger(NotificationDocumentChangeHandler::class.java) as LogbackLogger
+        val logAppender = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(logAppender)
+
+        // When one document cannot stall the feed, so this must not throw
+        try {
+            handler.handle(event("Child:1"))
+        } finally {
+            logger.detachAppender(logAppender)
+        }
+
+        // Then
+        assertThat(logAppender.list)
+            .anySatisfy { loggingEvent ->
+                assertThat(loggingEvent.level).isEqualTo(Level.ERROR)
+                assertThat(loggingEvent.formattedMessage)
+                    .contains("Child:1")
+                    .contains("PERMISSION_CHECK_FAILED")
+            }
     }
 
     @Test
