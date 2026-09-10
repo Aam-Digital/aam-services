@@ -10,13 +10,9 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.never
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import java.time.Clock
-import java.time.Duration
-import java.time.Instant
-import java.time.ZoneId
-import java.time.ZoneOffset
 
 @ExtendWith(MockitoExtension::class)
 class ReportCalculationSweeperTest {
@@ -26,62 +22,47 @@ class ReportCalculationSweeperTest {
     @Mock
     lateinit var reportCalculationTrigger: ReportCalculationTrigger
 
-    private val now: Instant = Instant.parse("2026-01-01T12:00:00Z")
-    private val clock: Clock =
-        object : Clock() {
-            override fun instant(): Instant = now
-
-            override fun getZone(): ZoneOffset = ZoneOffset.UTC
-
-            override fun withZone(zone: ZoneId): Clock = this
-        }
-
     private val sweeper by lazy {
         ReportCalculationSweeper(
             reportCalculationStorage = reportCalculationStorage,
-            reportCalculationTrigger = reportCalculationTrigger,
-            staleAfter = Duration.ofMinutes(15),
-            clock = clock
+            reportCalculationTrigger = reportCalculationTrigger
         )
     }
 
     private fun calculation(
         id: String,
-        status: ReportCalculationStatus,
-        startedAt: String? = null
+        status: ReportCalculationStatus
     ) = ReportCalculation(
         id = id,
         report = DomainReference("ReportConfig:1"),
         status = status
-    ).also { it.calculationStarted = startedAt }
+    )
 
-    @Test
-    fun `should re-trigger a calculation that is still pending with no start date`() {
-        // Given a calculation is stored before the executor is asked to run it, so a crash in
-        // between leaves a PENDING document nothing is working on
-        whenever(reportCalculationStorage.fetchAllReportCalculations())
-            .thenReturn(listOf(calculation("ReportCalculation:stuck", ReportCalculationStatus.PENDING)))
-
-        // When
-        sweeper.sweepStalePendingCalculations()
-
-        // Then
-        verify(reportCalculationTrigger).trigger(eq("ReportCalculation:stuck"))
+    private fun stored(vararg calculations: ReportCalculation) {
+        whenever(reportCalculationStorage.fetchAllReportCalculations()).thenReturn(calculations.toList())
     }
 
     @Test
-    fun `should leave a pending calculation alone until it is stale`() {
-        // Given a calculation that is simply waiting its turn on the executor
-        whenever(reportCalculationStorage.fetchAllReportCalculations())
-            .thenReturn(
-                listOf(
-                    calculation(
-                        "ReportCalculation:queued",
-                        ReportCalculationStatus.PENDING,
-                        startedAt = now.minus(Duration.ofMinutes(1)).toString()
-                    )
-                )
-            )
+    fun `should re-trigger a pending calculation that nothing is running`() {
+        // Given a crash between storing the document and submitting it leaves a PENDING
+        // calculation the executor knows nothing about
+        stored(calculation("ReportCalculation:orphaned", ReportCalculationStatus.PENDING))
+        whenever(reportCalculationTrigger.inFlight()).thenReturn(emptySet())
+
+        // When: only the second consecutive sighting acts, so the sweeper cannot race a
+        // calculation that was stored moments before the sweep
+        sweeper.sweepStalePendingCalculations()
+        sweeper.sweepStalePendingCalculations()
+
+        // Then
+        verify(reportCalculationTrigger, times(1)).trigger(eq("ReportCalculation:orphaned"))
+    }
+
+    @Test
+    fun `should not re-trigger on the first sighting`() {
+        // Given
+        stored(calculation("ReportCalculation:just-created", ReportCalculationStatus.PENDING))
+        whenever(reportCalculationTrigger.inFlight()).thenReturn(emptySet())
 
         // When
         sweeper.sweepStalePendingCalculations()
@@ -91,39 +72,48 @@ class ReportCalculationSweeperTest {
     }
 
     @Test
-    fun `should re-trigger a pending calculation once it is older than the stale threshold`() {
-        // Given
-        whenever(reportCalculationStorage.fetchAllReportCalculations())
-            .thenReturn(
-                listOf(
-                    calculation(
-                        "ReportCalculation:old",
-                        ReportCalculationStatus.PENDING,
-                        startedAt = now.minus(Duration.ofMinutes(30)).toString()
-                    )
-                )
-            )
+    fun `should leave a pending calculation alone while it is queued on the executor`() {
+        // Given a calculation waiting its turn is PENDING but not orphaned - re-triggering it
+        // would duplicate the SQS load it is queued for
+        stored(calculation("ReportCalculation:queued", ReportCalculationStatus.PENDING))
+        whenever(reportCalculationTrigger.inFlight()).thenReturn(setOf("ReportCalculation:queued"))
 
         // When
         sweeper.sweepStalePendingCalculations()
+        sweeper.sweepStalePendingCalculations()
 
         // Then
-        verify(reportCalculationTrigger).trigger(eq("ReportCalculation:old"))
+        verify(reportCalculationTrigger, never()).trigger(any())
+    }
+
+    @Test
+    fun `should stop re-triggering once the calculation is no longer pending`() {
+        // Given
+        whenever(reportCalculationTrigger.inFlight()).thenReturn(emptySet())
+        whenever(reportCalculationStorage.fetchAllReportCalculations())
+            .thenReturn(listOf(calculation("ReportCalculation:1", ReportCalculationStatus.PENDING)))
+            .thenReturn(listOf(calculation("ReportCalculation:1", ReportCalculationStatus.RUNNING)))
+
+        // When
+        sweeper.sweepStalePendingCalculations()
+        sweeper.sweepStalePendingCalculations()
+
+        // Then
+        verify(reportCalculationTrigger, never()).trigger(any())
     }
 
     @Test
     fun `should ignore calculations that are not pending`() {
         // Given
-        whenever(reportCalculationStorage.fetchAllReportCalculations())
-            .thenReturn(
-                listOf(
-                    calculation("ReportCalculation:running", ReportCalculationStatus.RUNNING),
-                    calculation("ReportCalculation:done", ReportCalculationStatus.FINISHED_SUCCESS),
-                    calculation("ReportCalculation:failed", ReportCalculationStatus.FINISHED_ERROR)
-                )
-            )
+        stored(
+            calculation("ReportCalculation:running", ReportCalculationStatus.RUNNING),
+            calculation("ReportCalculation:done", ReportCalculationStatus.FINISHED_SUCCESS),
+            calculation("ReportCalculation:failed", ReportCalculationStatus.FINISHED_ERROR)
+        )
+        whenever(reportCalculationTrigger.inFlight()).thenReturn(emptySet())
 
         // When
+        sweeper.sweepStalePendingCalculations()
         sweeper.sweepStalePendingCalculations()
 
         // Then

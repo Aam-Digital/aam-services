@@ -99,13 +99,11 @@ class ReportCalculationConfiguration {
     @Bean
     fun reportCalculationSweeper(
         reportCalculationStorage: ReportCalculationStorage,
-        reportCalculationTrigger: ReportCalculationTrigger,
-        @Value("\${report-calculation-sweeper.stale-after-seconds:900}") staleAfterSeconds: Long
+        reportCalculationTrigger: ReportCalculationTrigger
     ): ReportCalculationSweeper =
         ReportCalculationSweeper(
             reportCalculationStorage = reportCalculationStorage,
-            reportCalculationTrigger = reportCalculationTrigger,
-            staleAfter = Duration.ofSeconds(staleAfterSeconds)
+            reportCalculationTrigger = reportCalculationTrigger
         )
     @Bean("report-calculation-database-request")
     fun reportCalculationDatabaseRequest(): DatabaseRequest = DatabaseRequest("report-calculation")

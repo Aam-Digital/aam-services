@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import org.slf4j.LoggerFactory
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executor
 import java.util.concurrent.RejectedExecutionException
 
@@ -21,12 +22,26 @@ class ExecutorReportCalculationTrigger(
 ) : ReportCalculationTrigger {
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    /** Accepted but not yet finished, so the sweeper does not re-trigger work already queued. */
+    private val inFlightCalculations: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    override fun inFlight(): Set<String> = inFlightCalculations.toSet()
+
     override fun trigger(reportCalculationId: String) {
+        // marked before submitting, so a sweep running concurrently with the submission cannot see
+        // this calculation as orphaned
+        inFlightCalculations.add(reportCalculationId)
+
         try {
             reportCalculationExecutor.execute {
-                reportCalculationProcessor.process(reportCalculationId)
+                try {
+                    reportCalculationProcessor.process(reportCalculationId)
+                } finally {
+                    inFlightCalculations.remove(reportCalculationId)
+                }
             }
         } catch (ex: RejectedExecutionException) {
+            inFlightCalculations.remove(reportCalculationId)
             logger.warn(
                 "Report calculation {} was not started because the executor is saturated or shutting " +
                     "down; it stays PENDING and will be picked up again: {}",

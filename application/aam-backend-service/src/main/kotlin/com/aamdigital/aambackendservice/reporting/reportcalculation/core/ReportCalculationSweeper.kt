@@ -2,9 +2,6 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import org.slf4j.LoggerFactory
-import java.time.Clock
-import java.time.Duration
-import java.time.Instant
 
 /**
  * Re-triggers report calculations that were stored as `PENDING` but never ran.
@@ -16,58 +13,43 @@ import java.time.Instant
  * this report and these arguments?" check in `CreateReportCalculationUseCase` treats such a
  * document as in flight, so no further calculation for that report would ever be created.
  *
- * A calculation is only re-triggered once it has been `PENDING` for longer than [staleAfter], so a
- * calculation that is simply waiting its turn on the executor is left alone.
+ * A calculation document carries no creation timestamp - `calculationStarted` is only set on the
+ * move to `RUNNING` - so age cannot be used to tell a stuck calculation from one that is simply
+ * queued. Instead, a `PENDING` calculation counts as orphaned when
+ * [ReportCalculationTrigger.inFlight] does not know about it, and it is only re-triggered once it
+ * has looked orphaned on two consecutive sweeps. That second sighting is what keeps the sweeper
+ * from racing a calculation that was stored moments before the sweep and had not yet been
+ * submitted.
+ *
+ * After a restart nothing is in flight, so everything left `PENDING` is recovered - which is
+ * exactly the case this exists for.
  */
 class ReportCalculationSweeper(
     private val reportCalculationStorage: ReportCalculationStorage,
-    private val reportCalculationTrigger: ReportCalculationTrigger,
-    private val staleAfter: Duration,
-    private val clock: Clock = Clock.systemUTC()
+    private val reportCalculationTrigger: ReportCalculationTrigger
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    private var orphanedInPreviousSweep: Set<String> = emptySet()
+
     fun sweepStalePendingCalculations() {
-        val cutoff = clock.instant().minus(staleAfter)
+        val inFlight = reportCalculationTrigger.inFlight()
 
-        reportCalculationStorage
-            .fetchAllReportCalculations()
-            .filter { calculation -> calculation.status == ReportCalculationStatus.PENDING }
-            .filter { calculation -> createdBefore(calculation.id, calculation.calculationStarted, cutoff) }
-            .forEach { calculation ->
-                logger.warn(
-                    "Report calculation {} has been PENDING since before {}, re-triggering it",
-                    calculation.id,
-                    cutoff
-                )
-                reportCalculationTrigger.trigger(calculation.id)
+        val orphaned =
+            reportCalculationStorage
+                .fetchAllReportCalculations()
+                .filter { calculation -> calculation.status == ReportCalculationStatus.PENDING }
+                .map { calculation -> calculation.id }
+                .filterNot { id -> inFlight.contains(id) }
+                .toSet()
+
+        orphaned
+            .filter { id -> orphanedInPreviousSweep.contains(id) }
+            .forEach { id ->
+                logger.warn("Report calculation {} is PENDING but nothing is running it, re-triggering", id)
+                reportCalculationTrigger.trigger(id)
             }
-    }
 
-    /**
-     * A `PENDING` calculation has no start date yet, so there is no timestamp on the document to
-     * compare against. Treating a missing date as stale is safe: re-triggering is idempotent
-     * (`ReportCalculationUseCase` re-runs it and rewrites the same document) and only a calculation
-     * still `PENDING` at sweep time is considered at all.
-     */
-    private fun createdBefore(
-        reportCalculationId: String,
-        calculationStarted: String?,
-        cutoff: Instant
-    ): Boolean {
-        if (calculationStarted.isNullOrBlank()) {
-            return true
-        }
-
-        return try {
-            Instant.parse(calculationStarted).isBefore(cutoff)
-        } catch (ex: Exception) {
-            logger.debug(
-                "Could not read the start date of report calculation {}, treating it as stale",
-                reportCalculationId,
-                ex
-            )
-            true
-        }
+        orphanedInPreviousSweep = orphaned
     }
 }
