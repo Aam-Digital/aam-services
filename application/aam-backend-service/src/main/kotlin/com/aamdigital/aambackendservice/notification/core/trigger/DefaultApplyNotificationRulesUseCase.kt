@@ -9,11 +9,10 @@ import com.aamdigital.aambackendservice.notification.core.CreateUserNotification
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
 import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
-import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
 import com.aamdigital.aambackendservice.notification.domain.EntityNotificationContext
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
-import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
+import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import org.springframework.web.util.UriComponentsBuilder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -187,14 +186,12 @@ class DefaultApplyNotificationRulesUseCase(
 
         channelTypes.forEach { channelType ->
             userNotificationPublisher.publish(
-                channel = USER_NOTIFICATION_QUEUE,
-                event =
-                    CreateUserNotificationEvent(
-                        userIdentifier = notificationConfig.userIdentifier,
-                        notificationChannelType = channelType,
-                        notificationRule = rule.externalIdentifier,
-                        details = notificationDetails
-                    )
+                CreateUserNotificationEvent(
+                    userIdentifier = notificationConfig.userIdentifier,
+                    notificationChannelType = channelType,
+                    notificationRule = rule.externalIdentifier,
+                    details = notificationDetails
+                )
             )
         }
 

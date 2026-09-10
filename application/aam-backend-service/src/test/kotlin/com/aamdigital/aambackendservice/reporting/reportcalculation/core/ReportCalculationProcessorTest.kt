@@ -1,19 +1,14 @@
-package com.aamdigital.aambackendservice.reporting.reportcalculation.queue
+package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
-import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationData
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationError
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.observation.ObservationRegistry
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
@@ -24,12 +19,11 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import java.time.Duration
 
 @ExtendWith(MockitoExtension::class)
-class ReportCalculationEventListenerTest {
-    private lateinit var listener: ReportCalculationEventListener
+class ReportCalculationProcessorTest {
+    private lateinit var processor: ReportCalculationProcessor
 
     @Mock
     lateinit var reportCalculationUseCase: DefaultReportCalculationUseCase
@@ -37,11 +31,11 @@ class ReportCalculationEventListenerTest {
     @Mock
     lateinit var reportCalculationChangeUseCase: ReportCalculationChangeUseCase
 
-    private fun listener(
+    private fun processor(
         attempts: Int = 3,
         // zero so the retry tests do not sleep
         interval: Duration = Duration.ZERO
-    ) = ReportCalculationEventListener(
+    ) = ReportCalculationProcessor(
         observationRegistry = ObservationRegistry.create(),
         reportCalculationUseCase = reportCalculationUseCase,
         objectMapper = jacksonObjectMapper(),
@@ -69,7 +63,7 @@ class ReportCalculationEventListenerTest {
     @BeforeEach
     fun setUp() {
         reset(reportCalculationUseCase, reportCalculationChangeUseCase)
-        listener = listener()
+        processor = processor()
     }
 
     @Test
@@ -79,7 +73,7 @@ class ReportCalculationEventListenerTest {
         succeeds(reportCalculationId)
 
         // When
-        listener.handleReportCalculationEvent(ReportCalculationEvent(reportCalculationId))
+        processor.process(reportCalculationId)
 
         // Then
         verify(reportCalculationChangeUseCase).handle(eq(reportCalculationId))
@@ -96,10 +90,22 @@ class ReportCalculationEventListenerTest {
                 )
             )
 
+        // When: the failure is already recorded on the calculation document as FINISHED_ERROR,
+        // and there is no caller to hand an exception to, so nothing is thrown
+        processor.process("ReportCalculation:1")
+
+        // Then
+        verify(reportCalculationChangeUseCase, never()).handle(any())
+    }
+
+    @Test
+    fun `should not let an unexpected failure escape onto the executor thread`() {
+        // Given nothing above this call is on a caller's stack, so an escaping exception would only
+        // reach the thread's default handler and never be logged
+        whenever(reportCalculationUseCase.run(any())).thenThrow(RuntimeException("boom"))
+
         // When / Then
-        assertThrows<AmqpRejectAndDontRequeueException> {
-            listener.handleReportCalculationEvent(ReportCalculationEvent("ReportCalculation:1"))
-        }
+        processor.process("ReportCalculation:1")
         verify(reportCalculationChangeUseCase, never()).handle(any())
     }
 
@@ -113,7 +119,7 @@ class ReportCalculationEventListenerTest {
             .thenAnswer { }
 
         // When
-        listener.handleReportCalculationEvent(ReportCalculationEvent(reportCalculationId))
+        processor.process(reportCalculationId)
 
         // Then
         verify(reportCalculationChangeUseCase, times(2)).handle(eq(reportCalculationId))
@@ -129,7 +135,7 @@ class ReportCalculationEventListenerTest {
             .thenThrow(RuntimeException("couchdb unreachable"))
 
         // When
-        listener.handleReportCalculationEvent(ReportCalculationEvent(reportCalculationId))
+        processor.process(reportCalculationId)
 
         // Then
         verify(reportCalculationChangeUseCase, times(3)).handle(eq(reportCalculationId))

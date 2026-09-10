@@ -1,16 +1,12 @@
-package com.aamdigital.aambackendservice.notification.queue
+package com.aamdigital.aambackendservice.notification.core.outbox
 
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.common.queue.core.QueueMessage
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationRequest
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationUseCase
-import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxEntry
-import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxRepository
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import org.slf4j.LoggerFactory
 import java.time.Clock
-import java.util.UUID
 
 /**
  * Records notifications that are owed to a user, replacing the `notification.user` queue.
@@ -24,9 +20,6 @@ import java.util.UUID
  *
  * If the immediate in-app delivery fails, the notification falls back to the outbox rather than
  * being dropped, so the retry policy covers every channel.
- *
- * [channel] is ignored; it survives only because the interface still carries the queue-shaped
- * signature that is retired together with `QueueMessage`.
  */
 class OutboxUserNotificationPublisher(
     private val notificationOutboxRepository: NotificationOutboxRepository,
@@ -35,16 +28,12 @@ class OutboxUserNotificationPublisher(
 ) : UserNotificationPublisher {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    override fun publish(
-        channel: String,
-        event: CreateUserNotificationEvent
-    ): QueueMessage {
+    override fun publish(event: CreateUserNotificationEvent) {
         if (event.notificationChannelType == NotificationChannelType.APP && deliverInApp(event)) {
-            return queueMessage(event)
+            return
         }
 
         enqueue(event)
-        return queueMessage(event)
     }
 
     /** @return true when the in-app notification was stored, false when it must be retried. */
@@ -95,11 +84,4 @@ class OutboxUserNotificationPublisher(
         )
     }
 
-    private fun queueMessage(event: CreateUserNotificationEvent): QueueMessage =
-        QueueMessage(
-            id = UUID.randomUUID(),
-            eventType = CreateUserNotificationEvent::class.java.canonicalName,
-            event = event,
-            createdAt = clock.instant().toString()
-        )
 }

@@ -4,11 +4,9 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.InternalServerException
-import com.aamdigital.aambackendservice.common.queue.core.QueueMessage
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.UserProfileUpdatePublisher
 import com.aamdigital.aambackendservice.skill.core.event.UserProfileUpdateEvent
-import com.aamdigital.aambackendservice.skill.di.UserProfileUpdateEventQueueConfiguration
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncEntity
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
 import okio.IOException
@@ -101,10 +99,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             )
         )
 
-        whenever(userProfileUpdatePublisher.publish(any(), any())).thenReturn(
-            getQueueMessage()
-        )
-
         // when
         val response =
             service.run(
@@ -120,7 +114,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             userProfileUpdatePublisher,
             times(1)
         ).publish(
-            eq(UserProfileUpdateEventQueueConfiguration.USER_PROFILE_UPDATE_QUEUE),
             eq(
                 UserProfileUpdateEvent(
                     projectId = "1",
@@ -133,7 +126,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             userProfileUpdatePublisher,
             times(1)
         ).publish(
-            eq(UserProfileUpdateEventQueueConfiguration.USER_PROFILE_UPDATE_QUEUE),
             eq(
                 UserProfileUpdateEvent(
                     projectId = "1",
@@ -146,7 +138,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             userProfileUpdatePublisher,
             times(1)
         ).publish(
-            eq(UserProfileUpdateEventQueueConfiguration.USER_PROFILE_UPDATE_QUEUE),
             eq(
                 UserProfileUpdateEvent(
                     projectId = "1",
@@ -173,10 +164,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             }
         )
 
-        whenever(userProfileUpdatePublisher.publish(any(), any())).thenReturn(
-            getQueueMessage()
-        )
-
         // when
         val response =
             service.run(
@@ -192,7 +179,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             userProfileUpdatePublisher,
             times(maxResultsLimit)
         ).publish(
-            eq(UserProfileUpdateEventQueueConfiguration.USER_PROFILE_UPDATE_QUEUE),
             any()
         )
     }
@@ -212,7 +198,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             )
         )
 
-        whenever(userProfileUpdatePublisher.publish(any(), any())).thenAnswer {
+        whenever(userProfileUpdatePublisher.publish(any())).thenAnswer {
             throw IOException("mock-error")
         }
 
@@ -258,10 +244,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             )
         )
 
-        whenever(userProfileUpdatePublisher.publish(any(), any())).thenReturn(
-            getQueueMessage()
-        )
-
         // when
         val response =
             service.run(
@@ -292,10 +274,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             )
         )
 
-        whenever(userProfileUpdatePublisher.publish(any(), any())).thenReturn(
-            getQueueMessage()
-        )
-
         // when
         val response =
             service.run(
@@ -315,15 +293,4 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         )
     }
 
-    private fun getQueueMessage(): QueueMessage =
-        QueueMessage(
-            id = UUID.fromString("00000000-0000-0000-0000-000000000000"),
-            eventType = "FOO",
-            event =
-                UserProfileUpdateEvent(
-                    projectId = "1",
-                    userProfileId = "mock"
-                ),
-            createdAt = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-        )
 }

@@ -13,8 +13,8 @@ import org.springframework.web.client.RestClient
 import java.net.URI
 
 /**
- * Thrown when the webhook receiver itself responds with an error status, so the RabbitMQ listener
- * failure log (and the Sentry event it produces) reads as "the receiver rejected our callback"
+ * Thrown when the webhook receiver itself responds with an error status, so the delivery failure
+ * log (and the Sentry event it produces) reads as "the receiver rejected our callback"
  * instead of a bare, unattributed `HttpClientErrorException` message.
  */
 class WebhookCallbackRejectedException(message: String) : RuntimeException(message)

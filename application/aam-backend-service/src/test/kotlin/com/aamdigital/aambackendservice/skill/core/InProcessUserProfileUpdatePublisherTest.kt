@@ -26,10 +26,7 @@ class InProcessUserProfileUpdatePublisherTest {
         val publisher = InProcessUserProfileUpdatePublisher(syncUserProfileUseCase)
 
         // When
-        publisher.publish(
-            channel = "skill.userProfile.update",
-            event = UserProfileUpdateEvent(projectId = "project-1", userProfileId = "profile-1")
-        )
+        publisher.publish(UserProfileUpdateEvent(projectId = "project-1", userProfileId = "profile-1"))
 
         // Then
         val captor = argumentCaptor<SyncUserProfileRequest>()
@@ -52,13 +49,9 @@ class InProcessUserProfileUpdatePublisherTest {
         val publisher = InProcessUserProfileUpdatePublisher(syncUserProfileUseCase)
 
         // When
-        val message =
-            publisher.publish(
-                channel = "skill.userProfile.update",
-                event = UserProfileUpdateEvent(projectId = "project-1", userProfileId = "profile-1")
-            )
+        publisher.publish(UserProfileUpdateEvent(projectId = "project-1", userProfileId = "profile-1"))
 
         // Then
-        assertThat(message.eventType).isEqualTo(UserProfileUpdateEvent::class.java.canonicalName)
+        verify(syncUserProfileUseCase).run(any())
     }
 }

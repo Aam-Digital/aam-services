@@ -35,8 +35,6 @@ Accessible for aam-digital internals and contributors only.
   system [GitHub](https://github.com/postgres/postgres)
 - *keycloak*: Open Source Identity and Access Management For Modern Applications and
   Services [GitHub](https://github.com/keycloak/keycloak)
-- *rabbitmq-server*: Multi-protocol messaging and streaming
-  broker. [GitHub](https://github.com/rabbitmq/rabbitmq-server)
 - *carbone*: Fast, Simple and Powerful report generator in any format [GitHub](https://github.com/carboneio/carbone)
 
 ### used by aam-digital stack, managed by third party (private)
@@ -415,18 +413,6 @@ If you use the default `npm start` command, make sure to update the start comman
 
 ### Further Steps (optional):
 
-#### Set up RabbitMQ (needed for some modules)
-
-To use the queue, you have to create a user and virutal host in the RabbitMQ admin interface:
-
-1. Open [aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/#/users)
-2. Login with the default credentials (guest:guest)
-3. Navigate to the "Admin" section
-4. Create a new virtual host (local) to fit
-   the [application.yaml settings](/application/aam-backend-service/src/main/resources/application.yaml)
-5. Create a new user (local-spring:docker)
-6. Edit that user and assign permissions to the "local" virtual host
-
 #### Configure modules
 
 Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific modules like Notification:
@@ -446,7 +432,6 @@ Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific 
 - CouchDB: [https://aam.localhost/db/couchdb](https://aam.localhost/db/couchdb)
 - CouchDB Admin: [https://aam.localhost/db/couchdb/_utils/](https://aam.localhost/db/couchdb/_utils/) (the final "/" is
   important!)
-- RabbitMQ: [https://aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/) (the final "/" is important!)
 
 ### developer credentials
 
@@ -456,11 +441,6 @@ Unless otherwise specified, the default credentials are:
 
 - username: `admin`
 - password: `docker`
-
-The default credentials for rabbitmq are:
-
-- username: `guest`
-- password: `guest`
 
 ### Reset http/https redirect cache in chrome
 

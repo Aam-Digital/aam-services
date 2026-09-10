@@ -1,39 +1,29 @@
-package com.aamdigital.aambackendservice.reporting.reportcalculation.queue
+package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
-import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationRequest
-import com.aamdigital.aambackendservice.reporting.reportcalculation.di.ReportCalculationQueueConfiguration.Companion.REPORT_CALCULATION_EVENT_QUEUE
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.observation.Observation
 import io.micrometer.observation.ObservationRegistry
 import org.slf4j.LoggerFactory
-import org.springframework.amqp.AmqpRejectAndDontRequeueException
-import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.core.NestedExceptionUtils
 import java.time.Duration
 
 /**
- * Process ReportCalculationEvents from RabbitMQ.
- * When the reporting module is enabled, a RabbitListener is registered which handles incoming events.
+ * Executes one stored report calculation and, when it produced a new result, notifies the webhooks
+ * subscribed to that report.
  *
- * Once a calculation has finished successfully and been stored, the webhook-notification path is
- * started by calling [ReportCalculationChangeUseCase] directly. That call sits in its own
- * try/catch: the calculation is already complete and persisted at that point, so a failure to
- * notify must never re-run it, re-status it, or reject the message.
+ * Called on the report calculation executor (see [ExecutorReportCalculationTrigger]), so it must
+ * never let an exception escape: there is no caller to handle it, and the executor's thread would
+ * only hand it to the default handler. A failed calculation is already recorded on the calculation
+ * document as `FINISHED_ERROR`, which is what the API serves.
  *
- * Notification is attempted [completionRetryAttempts] times with an exponentially growing pause and
- * then given up on with an ERROR log. That is the same disposition as before, when the failure was
- * retried by the listener retry policy and then dead-lettered to
- * `report.calculation.completed.deadLetter` - a queue nothing has ever drained.
- *
- * The pause is deliberately shorter than the broker's 10s x 2.0 was: it now occupies one of this
- * queue's 2-5 consumers rather than a dedicated consumer of its own, and the failures reachable
- * from here are CouchDB reads, for which a few seconds is an adequate transient window.
+ * The webhook notification sits in its own try/catch with a bounded retry, because the calculation
+ * is complete and persisted by then - failing to notify must not re-run it or re-status it. Three
+ * attempts and then give up is the same disposition as before, when the failure was retried by the
+ * listener retry policy and then dead-lettered to a queue nothing has ever drained.
  */
-class ReportCalculationEventListener(
+class ReportCalculationProcessor(
     val observationRegistry: ObservationRegistry,
     val reportCalculationUseCase: DefaultReportCalculationUseCase,
     val objectMapper: ObjectMapper,
@@ -47,40 +37,43 @@ class ReportCalculationEventListener(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    init {
-        logger.debug(
-            "[ReportCalculationEventListener] Initiate RabbitListener " +
-                "for Queue '$REPORT_CALCULATION_EVENT_QUEUE'"
-        )
+    fun process(reportCalculationId: String) {
+        val observation = Observation.createNotStarted("report-calculation-use-case", this.observationRegistry)
+        observation.lowCardinalityKeyValue("reportCalculationId", reportCalculationId)
+        observation.observe {
+            try {
+                runCalculation(reportCalculationId)
+            } catch (ex: Exception) {
+                val rootCause = NestedExceptionUtils.getMostSpecificCause(ex)
+                logger.error(
+                    "Report calculation {} failed unexpectedly: {}",
+                    reportCalculationId,
+                    rootCause.message,
+                    rootCause
+                )
+            }
+        }
     }
 
-    @RabbitListener(
-        queues = [REPORT_CALCULATION_EVENT_QUEUE],
-        concurrency = "2-5"
-    )
-    fun handleReportCalculationEvent(event: ReportCalculationEvent) {
-        val observation = Observation.createNotStarted("report-calculation-use-case", this.observationRegistry)
-        observation.lowCardinalityKeyValue("reportCalculationId", event.reportCalculationId)
-//        observation.lowCardinalityKeyValue("realm", event.tenant) // prepare tenant support
-        observation.observe {
-            val response =
-                reportCalculationUseCase.run(
-                    request =
-                        ReportCalculationRequest(
-                            reportCalculationId = event.reportCalculationId
-                        )
-                )
+    private fun runCalculation(reportCalculationId: String) {
+        val response =
+            reportCalculationUseCase.run(
+                request = ReportCalculationRequest(reportCalculationId = reportCalculationId)
+            )
 
-            when (response) {
-                is UseCaseOutcome.Failure -> throw AmqpRejectAndDontRequeueException(
-                    "[${response.errorCode}] ${response.errorMessage}",
+        when (response) {
+            is UseCaseOutcome.Failure ->
+                logger.error(
+                    "Report calculation {} failed: [{}] {}",
+                    reportCalculationId,
+                    response.errorCode,
+                    response.errorMessage,
                     response.cause
                 )
 
-                is UseCaseOutcome.Success -> {
-                    logger.trace(objectMapper.writeValueAsString(response))
-                    notifyCompletion(event.reportCalculationId)
-                }
+            is UseCaseOutcome.Success -> {
+                logger.trace(objectMapper.writeValueAsString(response))
+                notifyCompletion(reportCalculationId)
             }
         }
     }
@@ -103,8 +96,7 @@ class ReportCalculationEventListener(
                 return
             } catch (ex: Exception) {
                 if (attempt >= completionRetryAttempts) {
-                    // ERROR so this is reported once to Sentry, grouped by its real cause - the same
-                    // visibility QueueErrorHandler gave this failure while it was a queue hop
+                    // ERROR so this is reported once to Sentry, grouped by its real cause
                     val rootCause = NestedExceptionUtils.getMostSpecificCause(ex)
                     logger.error(
                         "Giving up notifying webhook subscribers of completed report calculation {} " +

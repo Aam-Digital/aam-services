@@ -50,8 +50,8 @@ For instructions to enable the backend in an overall system: [ndb-setup README](
 
 ## Deployment topology
 
-In production each Aam Digital instance runs its **own data stack**: its own CouchDB, PostgreSQL and
-RabbitMQ container alongside this service, as defined in
+In production each Aam Digital instance runs its **own data stack**: its own CouchDB and PostgreSQL
+container alongside this service, as defined in
 [ndb-setup's docker-compose.yml](https://github.com/Aam-Digital/ndb-setup/blob/master/docker-compose.yml).
 None of those are shared between instances.
 
@@ -77,7 +77,6 @@ This backend is developed as independent modules that share some common services
 - Spring + Kotlin
 - Spring Boot ([see intro](https://docs.spring.io/spring-boot/reference/using/index.html))
 - Gradle ([see intro](https://docs.gradle.org/current/userguide/getting_started_eng.html))
-- RabbitMQ (AMQP) for message queues ([see Tutorial](https://www.rabbitmq.com/tutorials/tutorial-three-spring-amqp#))
 
 ## Running Tests
 
@@ -97,7 +96,7 @@ All commands should be run from `application/aam-backend-service/`.
 The test suite includes:
 
 - **Unit tests** (JUnit 5 + Mockito) for individual use cases and services
-- **E2E / integration tests** (Cucumber BDD) that spin up real Docker containers via Testcontainers (Keycloak, CouchDB, PostgreSQL, RabbitMQ, Carbone, SQS) and test full API flows. Cucumber feature files are located in `src/test/resources/cucumber/features/`.
+- **E2E / integration tests** (Cucumber BDD) that spin up real Docker containers via Testcontainers (Keycloak, CouchDB, PostgreSQL, Carbone, SQS) and test full API flows. Cucumber feature files are located in `src/test/resources/cucumber/features/`.
 
 Both run together with `./gradlew test`.
 
@@ -245,12 +244,22 @@ respective [API Module docs](#api-modules).
    `@Bean` factory inside.
 3. Register a `FeatureRegistrar` so the module appears in `/actuator/features`
    (see [ReportingFeatureInfoEndpoint](application/aam-backend-service/src/main/kotlin/com/aamdigital/aambackendservice/reporting/ReportingFeatureInfoEndpoint.kt) for the pattern).
-4. If the module consumes `document.changes` events, add a nested
-   `@ConditionalOn<Module>Enabled` class to `ChangesConfiguration.AnyChangeConsumerEnabled`
-   so change-detection auto-activates when the module is enabled.
+4. If the module reacts to document changes, declare a `DocumentChangeHandler` bean in its
+   configuration and add a nested `@ConditionalOn<Module>Enabled` class to
+   `ChangesConfiguration.AnyChangeConsumerEnabled`, so change-detection auto-activates with it.
 5. Document the flag and any required env vars in `docs/modules/<module>.md`.
 
-## Message Queues
+## Asynchronous processing
 
-Most modules use RabbitMQ to decouple processing and allow for asynchronous processing of tasks.
-Refer to the official documentation (the tutorials are quite good) if you are not familiar with the concept or the framework specifically.
+Work that must not block its caller is handed to a bounded executor, and work that must not be lost
+is recorded durably first and picked up by a scheduled job.
+
+- **Document changes** are detected by polling CouchDB's `_changes` feed and handed to every enabled
+  module's `DocumentChangeHandler`, synchronously, with the sync cursor advanced per change. Handlers
+  must therefore keep their inline work in memory.
+- **Report calculations** run on a bounded executor, so a handful of multi-second SQS queries can be
+  in flight without overwhelming SQS. The calculation document is written before the executor is
+  asked to run it, and `ReportCalculationSweeper` re-triggers anything left `PENDING`.
+- **Webhook callbacks** are delivered on their own bounded executor, fire-and-forget.
+- **Notifications** are written to the `notification-outbox` CouchDB database and delivered by
+  `NotificationOutboxDrainJob`, which owns the retry and backoff policy.

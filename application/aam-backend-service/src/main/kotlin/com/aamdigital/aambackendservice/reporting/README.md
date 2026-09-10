@@ -7,9 +7,10 @@ to execute SQL queries on the Aam Digital system's database.
 Queries are defined in as `ReportConfig` entities in the CouchDB and triggered through API requests.
 Results are persisted in a separate "report-calculation" CouchDB and returned through API requests.
 
-Calculations are processed asynchronously: the trigger goes through a RabbitMQ queue, and once a
-calculation has stored a new result the subscribed webhooks are called on a bounded executor so a
-slow subscriber cannot hold up the calculation.
+Calculations are processed asynchronously on a bounded executor, so a handful of multi-second SQS
+queries can be in flight without overwhelming SQS and without holding up the caller. Once a
+calculation has stored a new result the subscribed webhooks are called on a second bounded executor,
+so a slow subscriber cannot hold up the calculation either.
 
 ```mermaid
 flowchart TD
@@ -18,18 +19,19 @@ flowchart TD
         externalDocChange>"CouchDB app doc changed"]
     end
 
-    externalDocChange -.-> Q_DocChanges
-    Q_DocChanges[[Queue: document.changes.report]] -.-> ChangeEventConsumer
-    ChangeEventConsumer(ReportDocumentChangeEventConsumer) --> CreateCalculation
+    externalDocChange --> ChangeHandler
+    ChangeHandler(ReportDocumentChangeHandler) --> Debouncer
+    Debouncer[ReportCalculationDebouncer - coalesce bursts] --> CreateCalculation
     calculationRequest --> CreateCalculation
 
-    CreateCalculation[CreateReportCalculationUseCase] -.-> Q_Calculation
-    Q_Calculation[[Queue: report.calculation]] -.-> CalculationListener
-    CalculationListener(ReportCalculationEventListener) --> Calculation
+    CreateCalculation[CreateReportCalculationUseCase - stores it PENDING] -.-> E_Calculation
+    E_Calculation[/report calculation executor/] -.-> CalculationProcessor
+    Sweeper[ReportCalculationSweeper - re-triggers stale PENDING] -.-> E_Calculation
+    CalculationProcessor(ReportCalculationProcessor) --> Calculation
     Calculation[ReportCalculationUseCase]
     style Calculation fill:#00C853
 
-    CalculationListener -- if FINISHED_SUCCESS --> CalculationChange
+    CalculationProcessor -- if FINISHED_SUCCESS --> CalculationChange
     CalculationChange[ReportCalculationChangeUseCase] -- if result changed --> WebhookNotification
     WebhookNotification["NotificationService"] -.-> E_Webhook
     E_Webhook[/webhook delivery executor/] -.-> TriggerWebhook
@@ -38,8 +40,9 @@ flowchart TD
 
 ## Caches on the automatic change-detection path
 
-`ReportDocumentChangeEventConsumer` runs for every changed document in the `app` database (up to
-`CHANGES_LIMIT = 100` per poll tick), so nothing on that path may do per-change CouchDB I/O.
+`ReportDocumentChangeHandler` runs for every changed document in the `app` database (up to
+`CHANGES_LIMIT = 100` per poll tick) and, since change handling is synchronous, on the polling
+thread itself - so nothing on that path may do per-change CouchDB I/O.
 Two caches keep it in memory:
 
 - **`ReportConfigCache`** — `reportId -> affected entity types`, i.e. the result of

@@ -1,12 +1,10 @@
-package com.aamdigital.aambackendservice.notification.queue
+package com.aamdigital.aambackendservice.notification.core.outbox
 
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationUseCase
-import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxEntry
-import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxRepository
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
@@ -63,7 +61,7 @@ class OutboxUserNotificationPublisherTest {
             )
 
         // When
-        publisher().publish("notification.user", event(NotificationChannelType.APP))
+        publisher().publish(event(NotificationChannelType.APP))
 
         // Then
         verify(createNotificationUseCase).run(any())
@@ -76,7 +74,7 @@ class OutboxUserNotificationPublisherTest {
         val publisher = publisher()
 
         // When
-        publisher.publish("notification.user", event(NotificationChannelType.PUSH))
+        publisher.publish(event(NotificationChannelType.PUSH))
 
         // Then
         val captor = argumentCaptor<NotificationOutboxEntry>()
@@ -94,7 +92,7 @@ class OutboxUserNotificationPublisherTest {
         val publisher = publisher()
 
         // When
-        publisher.publish("notification.user", event(NotificationChannelType.EMAIL))
+        publisher.publish(event(NotificationChannelType.EMAIL))
 
         // Then
         val captor = argumentCaptor<NotificationOutboxEntry>()
@@ -115,7 +113,7 @@ class OutboxUserNotificationPublisherTest {
             )
 
         // When
-        publisher().publish("notification.user", event(NotificationChannelType.APP))
+        publisher().publish(event(NotificationChannelType.APP))
 
         // Then
         val captor = argumentCaptor<NotificationOutboxEntry>()
@@ -129,7 +127,7 @@ class OutboxUserNotificationPublisherTest {
         whenever(createNotificationUseCase.run(any())).thenThrow(RuntimeException("boom"))
 
         // When
-        publisher().publish("notification.user", event(NotificationChannelType.APP))
+        publisher().publish(event(NotificationChannelType.APP))
 
         // Then
         verify(notificationOutboxRepository).storeIfAbsent(any())
