@@ -7,7 +7,9 @@ to execute SQL queries on the Aam Digital system's database.
 Queries are defined in as `ReportConfig` entities in the CouchDB and triggered through API requests.
 Results are persisted in a separate "report-calculation" CouchDB and returned through API requests.
 
-Processing is asynchronous and decoupled using RabbitMQ messages.
+Calculations are processed asynchronously: the trigger goes through a RabbitMQ queue, and once a
+calculation has stored a new result the subscribed webhooks are called on a bounded executor so a
+slow subscriber cannot hold up the calculation.
 
 ```mermaid
 flowchart TD
@@ -27,11 +29,11 @@ flowchart TD
     Calculation[ReportCalculationUseCase]
     style Calculation fill:#00C853
 
-    CalculationListener -- if FINISHED_SUCCESS --> Q_Completed
-    Q_Completed[[Queue: report.calculation.completed]] -.-> CompletedConsumer
-    CompletedConsumer(ReportCalculationCompletedEventConsumer) --> CalculationChange
+    CalculationListener -- if FINISHED_SUCCESS --> CalculationChange
     CalculationChange[ReportCalculationChangeUseCase] -- if result changed --> WebhookNotification
-    WebhookNotification["NotificationService (call Webhooks)"]
+    WebhookNotification["NotificationService"] -.-> E_Webhook
+    E_Webhook[/webhook delivery executor/] -.-> TriggerWebhook
+    TriggerWebhook(TriggerWebhookUseCase - call the webhook)
 ```
 
 ## Caches on the automatic change-detection path

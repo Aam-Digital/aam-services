@@ -4,9 +4,9 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.reporting.webhook.core.WebhookCallbackRejectedException
-import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventConsumer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -16,6 +16,8 @@ import org.springframework.amqp.AmqpRejectAndDontRequeueException
 import org.springframework.amqp.rabbit.support.ListenerExecutionFailedException
 
 class QueueErrorHandlerTest {
+    private enum class TestErrorCode : AamErrorCode { USECASE_ERROR }
+
     private val handler = QueueErrorHandler()
     private lateinit var logger: Logger
     private lateinit var appender: ListAppender<ILoggingEvent>
@@ -51,10 +53,10 @@ class QueueErrorHandlerTest {
     }
 
     @Test
-    fun `logs the webhook receiver's clear rejection message rather than the raw HTTP exception`() {
+    fun `logs a leaf exception's clear message rather than the wrapper it arrives in`() {
         // mirrors the real chain: container wrapper -> AmqpRejectAndDontRequeueException ->
-        // ExternalSystemException (built in WebhookEventConsumer) -> our leaf exception (no cause),
-        // which is what makes it the "most specific cause" QueueErrorHandler logs.
+        // ExternalSystemException built by a consumer -> a leaf exception with no cause, which is
+        // what makes it the "most specific cause" QueueErrorHandler logs.
         val rejection =
             WebhookCallbackRejectedException(
                 "Webhook receiver example.org rejected our callback for webhook webhook-1: " +
@@ -64,7 +66,7 @@ class QueueErrorHandlerTest {
             ExternalSystemException(
                 "[USECASE_ERROR] ${rejection.localizedMessage}",
                 rejection,
-                code = WebhookEventConsumer.WebhookError.WEBHOOK_EVENT_TRIGGER_ERROR
+                code = TestErrorCode.USECASE_ERROR
             )
         val wrapped =
             ListenerExecutionFailedException(
