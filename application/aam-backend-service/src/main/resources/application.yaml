@@ -3,6 +3,14 @@ spring:
     name: aam-backend-service
   main:
     banner-mode: off
+  task:
+    execution:
+      # The bounded executors for report calculation and webhook delivery are Executor beans, and
+      # Boot's applicationTaskExecutor is @ConditionalOnMissingBean(Executor). Without this the
+      # virtual-thread applicationTaskExecutor would disappear as soon as the reporting module is
+      # enabled, so Spring MVC async and any future @Async would silently fall back to an
+      # unbounded per-task executor.
+      mode: force
   jackson:
     deserialization:
       accept-empty-string-as-null-object: true
