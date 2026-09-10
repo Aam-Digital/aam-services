@@ -33,8 +33,21 @@ class NotificationDocumentChangeHandler(
 
         when (val result = applyNotificationRulesUseCase.run(ApplyNotificationRulesRequest(event))) {
             is UseCaseOutcome.Failure -> {
-                logger.warn(
-                    "ApplyNotificationRules failed for documentId={}: [{}] {}",
+                // ERROR, not WARN, and deliberately not rethrown.
+                //
+                // Not rethrown because the cursor advances either way, so there is nothing to
+                // redeliver: throwing would only skip the sibling handlers for this document.
+                // Which makes the log line the *only* record that a user's notification was owed
+                // and never produced - and WARN sits below the Sentry minimum event level, so this
+                // used to drop notifications indefinitely against a green dashboard.
+                //
+                // Note DomainUseCase.run() turns every exception into a Failure, so this branch
+                // covers transient infrastructure faults (CouchDB, Keycloak) as well as rule
+                // outcomes. Making those actually recoverable needs a per-handler cursor, not a
+                // rethrow here.
+                logger.error(
+                    "ApplyNotificationRules failed for documentId={}, so no notification was " +
+                        "created for any channel: [{}] {}",
                     event.documentId,
                     result.errorCode,
                     result.errorMessage,
