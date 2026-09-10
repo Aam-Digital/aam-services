@@ -77,7 +77,7 @@ class ReportCalculationProcessor(
             )
 
         when (response) {
-            is UseCaseOutcome.Failure ->
+            is UseCaseOutcome.Failure -> {
                 if (isInvalidInput(response.cause)) {
                     logger.info(
                         "Report calculation {} rejected invalid input: [{}] {}",
@@ -95,6 +95,7 @@ class ReportCalculationProcessor(
                         response.cause
                     )
                 }
+            }
 
             is UseCaseOutcome.Success -> {
                 logger.trace(objectMapper.writeValueAsString(response))

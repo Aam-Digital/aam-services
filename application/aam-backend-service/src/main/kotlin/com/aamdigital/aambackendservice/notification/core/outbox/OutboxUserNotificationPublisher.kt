@@ -40,7 +40,10 @@ class OutboxUserNotificationPublisher(
     private fun deliverInApp(event: CreateUserNotificationEvent): Boolean =
         try {
             when (val outcome = createNotificationUseCase.run(CreateNotificationRequest(event))) {
-                is UseCaseOutcome.Success -> true
+                is UseCaseOutcome.Success -> {
+                    true
+                }
+
                 is UseCaseOutcome.Failure -> {
                     logger.warn(
                         "[{}] could not store in-app notification {} for user {}, moving it to the outbox: {}",
@@ -83,5 +86,4 @@ class OutboxUserNotificationPublisher(
             )
         )
     }
-
 }
