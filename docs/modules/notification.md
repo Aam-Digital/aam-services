@@ -95,8 +95,8 @@ Notes:
 ### Email delivery retries and failure handling
 
 If sending an email fails, the service automatically retries up to 3 times before giving up.
-Failed notifications are held in a queue (technically: a dead-letter queue `notification.user.dlq`)
-so no notifications are silently lost.
+Notifications that are still owed are held in the `notification-outbox` CouchDB database, so no
+notifications are silently lost.
 
 When the service restarts, all held notifications are automatically retried once.
 This means the recovery path for any delivery problem is always the same:
@@ -104,8 +104,17 @@ This means the recovery path for any delivery problem is always the same:
 
 Examples:
 
-- SMTP server temporarily unreachable → retried immediately up to 3 times, then held until next restart
+- SMTP server temporarily unreachable → retried up to 3 times with a growing pause, then held until next restart
 - Wrong SMTP credentials → held immediately (retrying wouldn't help), fixed after updating credentials and restarting
+
+To see what is currently held, list the outbox and look at `attempts` and `lastError`:
+
+```
+GET /notification-outbox/_all_docs?include_docs=true
+```
+
+An entry whose `attempts` has reached the maximum is waiting for a restart. Entries are deleted as
+soon as they are delivered, so an empty database means nothing is outstanding.
 
 ### Multi-language Email Templates & Runtime Override
 
