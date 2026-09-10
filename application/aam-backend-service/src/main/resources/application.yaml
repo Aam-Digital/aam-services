@@ -3,20 +3,18 @@ spring:
     name: aam-backend-service
   main:
     banner-mode: off
+  task:
+    execution:
+      # The bounded executors for report calculation and webhook delivery are Executor beans, and
+      # Boot's applicationTaskExecutor is @ConditionalOnMissingBean(Executor). Without this the
+      # virtual-thread applicationTaskExecutor would disappear as soon as the reporting module is
+      # enabled, so Spring MVC async and any future @Async would silently fall back to an
+      # unbounded per-task executor.
+      mode: force
   jackson:
     deserialization:
       accept-empty-string-as-null-object: true
       read-unknown-enum-values-using-default-value: true
-  rabbitmq:
-    listener:
-      simple:
-        prefetch: 1
-        retry:
-          enabled: true
-          max-attempts: 3
-          initial-interval: 10000
-          multiplier: 2.0
-          max-interval: 60000
   mail:
     properties:
       mail:
@@ -144,17 +142,6 @@ spring:
         local-development:
           truststore:
             certificate: "classpath:reverse-proxy.crt" # this is the certificate of the local running caddy proxy
-  rabbitmq:
-    virtual-host: local
-    listener:
-      direct:
-        retry:
-          enabled: true
-          max-attempts: 5
-      simple:
-        observation-enabled: true
-    username: local-spring
-    password: docker
   mail:
     host: ${SPRING_MAIL_HOST:localhost}
     port: ${SPRING_MAIL_PORT:1025}
@@ -179,7 +166,6 @@ server:
 
 logging:
   level:
-    #    org.springframework.amqp.rabbit: warn
     #    org.springframework.web: debug
     #    org.springframework.http: debug
     #    org.springframework.security: debug

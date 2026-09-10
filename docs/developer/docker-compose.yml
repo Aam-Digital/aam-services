@@ -90,27 +90,6 @@ services:
       - "5401:5432"
 
   # ***************************************************************
-  # rabbitmq
-  # ***************************************************************
-
-  rabbitmq:
-    image: rabbitmq:4.3-management-alpine
-    hostname: rabbitmq
-    networks:
-      - aam-digital
-    volumes:
-      - ./container-data/rabbitmq/data:/var/lib/rabbitmq/
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
-      interval: 10s
-      timeout: 10s
-      retries: 12
-      start_period: 30s
-
-  # ***************************************************************
   # replication-backend
   # ***************************************************************
 
@@ -164,8 +143,6 @@ services:
     external_links:
       - reverse-proxy:aam.localhost
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       aam-backend-service-db:
         condition: service_started
     env_file:
@@ -174,8 +151,6 @@ services:
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-} # (macOS only) bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
       # In container, use Docker service DNS for postgres instead of localhost
       SPRING_DATASOURCE_URL: jdbc:postgresql://aam-backend-service-db:5432/aam-backend-service
-      # In container, use Docker service DNS for RabbitMQ instead of localhost
-      SPRING_RABBITMQ_HOST: rabbitmq
       # Use mounted Caddy CA cert instead of classpath resource in prebuilt Docker image
       SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE: file:/opt/app/reverse-proxy.crt
 

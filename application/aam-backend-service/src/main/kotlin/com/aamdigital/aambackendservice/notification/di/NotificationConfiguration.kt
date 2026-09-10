@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
+import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
@@ -19,9 +20,13 @@ import com.aamdigital.aambackendservice.notification.core.create.email.EmailCrea
 import com.aamdigital.aambackendservice.notification.core.create.email.KeycloakUserEmailProvider
 import com.aamdigital.aambackendservice.notification.core.create.email.UserEmailProvider
 import com.aamdigital.aambackendservice.notification.core.create.push.PushCreateNotificationHandler
+import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxDrainer
+import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxRepository
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.core.trigger.DefaultApplyNotificationRulesUseCase
-import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
+import com.aamdigital.aambackendservice.notification.core.trigger.NotificationDocumentChangeHandler
+import com.aamdigital.aambackendservice.notification.core.outbox.OutboxUserNotificationPublisher
+import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.firebase.messaging.FirebaseMessaging
@@ -33,6 +38,7 @@ import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import java.time.Duration
 
 @Configuration
 @ConditionalOnNotificationApiEnabled
@@ -83,21 +89,78 @@ class NotificationConfiguration {
         permissionCheckClient: PermissionCheckClient,
         applicationConfig: ApplicationConfig,
         @Value("\${features.notification-api.email.enabled:false}") emailEnabled: Boolean,
-        @Value("\${keycloak.server-url:}") keycloakServerUrl: String
+        @Value("\${keycloak.server-url:}") keycloakServerUrl: String,
+        @Value("\${features.notification-api.mode:}") notificationMode: String
     ): ApplyNotificationRulesUseCase {
         // Only emit EMAIL events when an EmailCreateNotificationHandler can exist. That handler requires both
         // the email feature flag and a configured Keycloak (used to resolve recipient addresses) — the same
         // gates applied to the handler bean below. Emitting EMAIL events without a handler turns them into
         // poison messages that loop through the DLQ on every restart.
         val emailHandlerAvailable = emailEnabled && keycloakServerUrl.isNotBlank()
+        // Same reasoning for PUSH: PushCreateNotificationHandler only exists in firebase mode
+        // (see @ConditionalOnNotificationFirebaseMode on the bean below).
+        val pushHandlerAvailable = notificationMode == "firebase"
         return DefaultApplyNotificationRulesUseCase(
             notificationConfigCache = notificationConfigCache,
             userNotificationPublisher = userNotificationPublisher,
             permissionCheckClient = permissionCheckClient,
             applicationConfig = applicationConfig,
-            emailEnabled = emailHandlerAvailable
+            emailEnabled = emailHandlerAvailable,
+            pushEnabled = pushHandlerAvailable
         )
     }
+
+    @Bean("notification-document-change-handler")
+    fun notificationDocumentChangeHandler(
+        notificationConfigCache: NotificationConfigCache,
+        applyNotificationRulesUseCase: ApplyNotificationRulesUseCase
+    ): NotificationDocumentChangeHandler =
+        NotificationDocumentChangeHandler(
+            notificationConfigCache = notificationConfigCache,
+            applyNotificationRulesUseCase = applyNotificationRulesUseCase
+        )
+
+    @Bean("notification-outbox-database-request")
+    fun notificationOutboxDatabaseRequest(): DatabaseRequest =
+        DatabaseRequest(NotificationOutboxRepository.OUTBOX_DATABASE)
+
+    @Bean
+    fun notificationOutboxRepository(
+        couchDbClient: CouchDbClient,
+        couchDbInitializer: CouchDbInitializer,
+        objectMapper: ObjectMapper
+    ): NotificationOutboxRepository =
+        NotificationOutboxRepository(
+            couchDbClient = couchDbClient,
+            couchDbInitializer = couchDbInitializer,
+            objectMapper = objectMapper
+        )
+
+    @Bean
+    fun outboxUserNotificationPublisher(
+        notificationOutboxRepository: NotificationOutboxRepository,
+        createNotificationUseCase: CreateNotificationUseCase
+    ): UserNotificationPublisher =
+        OutboxUserNotificationPublisher(
+            notificationOutboxRepository = notificationOutboxRepository,
+            createNotificationUseCase = createNotificationUseCase
+        )
+
+    @Bean
+    fun notificationOutboxDrainer(
+        notificationOutboxRepository: NotificationOutboxRepository,
+        createNotificationUseCase: CreateNotificationUseCase,
+        @Value("\${notification.outbox.max-attempts:3}") maxAttempts: Int,
+        @Value("\${notification.outbox.retry-initial-interval-seconds:10}") retryInitialIntervalSeconds: Long,
+        @Value("\${notification.outbox.retry-max-interval-seconds:60}") retryMaxIntervalSeconds: Long
+    ): NotificationOutboxDrainer =
+        NotificationOutboxDrainer(
+            notificationOutboxRepository = notificationOutboxRepository,
+            createNotificationUseCase = createNotificationUseCase,
+            maxAttempts = maxAttempts,
+            initialRetryInterval = Duration.ofSeconds(retryInitialIntervalSeconds),
+            maxRetryInterval = Duration.ofSeconds(retryMaxIntervalSeconds)
+        )
 
     @Bean
     fun defaultCreateNotificationUseCase(

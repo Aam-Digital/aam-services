@@ -12,19 +12,57 @@ import com.aamdigital.aambackendservice.reporting.webhook.core.DefaultUriParser
 import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationService
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.core.UriParser
-import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventPublisher
 import com.aamdigital.aambackendservice.reporting.webhook.storage.DefaultWebhookStorage
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookRepository
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
+import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookSubscriptionCache
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import org.springframework.web.client.RestClient
+import java.time.Duration
+import java.util.concurrent.Executor
 
 @Configuration
 @ConditionalOnReportingEnabled
 class ReportingNotificationConfiguration {
+    companion object {
+        /**
+         * Webhook delivery is one outbound HTTP call per subscribed report per new calculation
+         * result: low volume, but each call is external and has no client timeout yet, so the pool
+         * stays small and the backlog is bounded rather than unbounded like the queue it replaces.
+         *
+         * Two core threads is a modest widening of the single `notification.webhook` consumer
+         * (`prefetch: 1`) this replaces; the pool grows to four only once the backlog fills.
+         */
+        private const val WEBHOOK_EXECUTOR_CORE_POOL_SIZE = 2
+        private const val WEBHOOK_EXECUTOR_MAX_POOL_SIZE = 4
+        private const val WEBHOOK_EXECUTOR_QUEUE_CAPACITY = 500
+        private const val WEBHOOK_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 30
+    }
+
+    /**
+     * Delivers webhook callbacks off the caller's thread.
+     *
+     * On shutdown, in-flight and queued callbacks are given
+     * [WEBHOOK_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS] to drain, matching the best-effort flush
+     * `ReportCalculationDebouncer` does for its pending triggers.
+     */
+    @Bean("webhook-notification-executor")
+    fun webhookNotificationExecutor(): Executor =
+        ThreadPoolTaskExecutor().apply {
+            corePoolSize = WEBHOOK_EXECUTOR_CORE_POOL_SIZE
+            maxPoolSize = WEBHOOK_EXECUTOR_MAX_POOL_SIZE
+            setQueueCapacity(WEBHOOK_EXECUTOR_QUEUE_CAPACITY)
+            setThreadNamePrefix("webhook-notification-")
+            setWaitForTasksToCompleteOnShutdown(true)
+            setAwaitTerminationSeconds(WEBHOOK_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS)
+            initialize()
+        }
+
     @Bean
     fun defaultAddWebhookSubscription(
         webhookStorage: WebhookStorage,
@@ -61,8 +99,19 @@ class ReportingNotificationConfiguration {
     @Bean
     fun defaultNotificationStorage(
         webhookRepository: WebhookRepository,
-        cryptoService: CryptoService
-    ): WebhookStorage = DefaultWebhookStorage(webhookRepository, cryptoService)
+        cryptoService: CryptoService,
+        webhookSubscriptionCache: WebhookSubscriptionCache
+    ): WebhookStorage = DefaultWebhookStorage(webhookRepository, cryptoService, webhookSubscriptionCache)
+
+    @Bean
+    fun webhookSubscriptionCache(
+        webhookRepository: WebhookRepository,
+        @Value("\${reporting.webhook-subscription-cache.ttl-millis:1000}") ttlMillis: Long
+    ): WebhookSubscriptionCache =
+        WebhookSubscriptionCache(
+            webhookRepository = webhookRepository,
+            ttl = Duration.ofMillis(ttlMillis)
+        )
 
     @Bean
     fun webhookRepository(
@@ -73,6 +122,7 @@ class ReportingNotificationConfiguration {
     @Bean
     fun notificationService(
         webhookStorage: WebhookStorage,
-        webhookEventPublisher: WebhookEventPublisher
-    ): NotificationService = NotificationService(webhookStorage, webhookEventPublisher)
+        triggerWebhookUseCase: TriggerWebhookUseCase,
+        @Qualifier("webhook-notification-executor") webhookNotificationExecutor: Executor
+    ): NotificationService = NotificationService(webhookStorage, triggerWebhookUseCase, webhookNotificationExecutor)
 }

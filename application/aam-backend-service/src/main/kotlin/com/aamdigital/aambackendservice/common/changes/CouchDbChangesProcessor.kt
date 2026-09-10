@@ -12,14 +12,19 @@ import org.slf4j.LoggerFactory
 /**
  * Polls CouchDB `_changes` feeds for the databases allowlisted in
  * [ChangeDetectionProperties.includedDatabases], enriches each change with
- * the current and previous document revision, and publishes a [DocumentChangeEvent]
- * to the RabbitMQ fanout exchange.
+ * the current and previous document revision, and hands it to every registered
+ * [DocumentChangeHandler].
  *
  * Triggered periodically by [CouchDbChangesPollingJob].
+ *
+ * Handlers are called synchronously and the sync cursor is saved after each change rather than once
+ * per batch, so a crash re-processes at most the one change that was in flight instead of the whole
+ * batch. Change handling is expected to be idempotent - notification ids, for instance, are derived
+ * from the change that caused them so a replay does not deliver twice.
  */
 class CouchDbChangesProcessor(
     private val couchDbClient: CouchDbClient,
-    private val documentChangeEventPublisher: ChangeEventPublisher,
+    private val documentChangeHandlers: List<DocumentChangeHandler>,
     private val syncRepository: SyncRepository,
     private val objectMapper: ObjectMapper,
     private val changeDetectionProperties: ChangeDetectionProperties,
@@ -86,8 +91,6 @@ class CouchDbChangesProcessor(
                 queryParams = queryParams
             )
 
-        var latestSeq = syncEntry.latestRef
-
         changes.results.forEach { couchDbChangeResult ->
             val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
 
@@ -100,16 +103,48 @@ class CouchDbChangesProcessor(
                     currentDoc = couchDbChangeResult.doc,
                 )
 
-                documentChangeEventPublisher.publish(
-                    ChangesQueueConfiguration.DOCUMENT_CHANGES_EXCHANGE, changeEvent
-                )
+                handleChange(changeEvent)
             }
 
-            latestSeq = couchDbChangeResult.seq
+            // Saved per change, not per batch: a failure part way through then re-processes only
+            // this one change instead of everything already handled in this batch.
+            syncEntry.latestRef = couchDbChangeResult.seq
+            syncRepository.save(syncEntry)
         }
 
-        syncEntry.latestRef = latestSeq
-        syncRepository.save(syncEntry)
+        if (changes.results.isEmpty()) {
+            // Nothing to process, but a cursor created just now still has to be persisted:
+            // otherwise every tick would re-anchor a fresh database to "now" and silently skip
+            // whatever changed between two ticks.
+            syncRepository.save(syncEntry)
+        }
+    }
+
+    /**
+     * Gives the change to every handler.
+     *
+     * The shared disposition - log and carry on, so one module failing on one document neither
+     * stops the others nor stalls the feed - belongs to [AbstractDocumentChangeHandler] and is
+     * applied before an exception ever gets here. This catch is only a backstop, for a handler that
+     * implements [DocumentChangeHandler] directly or overrides its error handling with something
+     * that throws in turn; either way the remaining handlers must still run.
+     */
+    private fun handleChange(changeEvent: DocumentChangeEvent) {
+        documentChangeHandlers.forEach { handler ->
+            try {
+                handler.handle(changeEvent)
+            } catch (ex: Exception) {
+                logger.error(
+                    "Change handler {} failed for db={}, documentId={}, rev={}: {}",
+                    handler.javaClass.simpleName,
+                    changeEvent.database,
+                    changeEvent.documentId,
+                    changeEvent.rev,
+                    ex.message,
+                    ex
+                )
+            }
+        }
     }
 
     private fun enrichChange(

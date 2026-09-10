@@ -10,6 +10,14 @@ interface ReportCalculationStorage {
     @Throws(AamException::class)
     fun fetchReportCalculations(report: DomainReference): List<ReportCalculation>
 
+    /**
+     * Every stored calculation, for jobs that work across reports rather than within one.
+     *
+     * todo Pagination
+     */
+    @Throws(AamException::class)
+    fun fetchAllReportCalculations(): List<ReportCalculation>
+
     @Throws(AamException::class)
     fun fetchReportCalculation(calculation: DomainReference): ReportCalculation
 

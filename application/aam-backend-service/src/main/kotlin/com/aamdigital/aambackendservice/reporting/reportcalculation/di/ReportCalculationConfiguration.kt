@@ -7,10 +7,13 @@ import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ExecutorReportCalculationTrigger
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationDebouncer
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationProcessor
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
-import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationSweeper
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationTrigger
 import com.aamdigital.aambackendservice.reporting.reportcalculation.storage.DefaultReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultCreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationChangeUseCase
@@ -21,15 +24,87 @@ import com.aamdigital.aambackendservice.reporting.transformation.SqlToDateTransf
 import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationService
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.springframework.amqp.rabbit.core.RabbitTemplate
+import io.micrometer.observation.ObservationRegistry
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import java.time.Duration
+import java.util.concurrent.Executor
 
 @Configuration
 @ConditionalOnReportingEnabled
 class ReportCalculationConfiguration {
+    companion object {
+        /**
+         * A calculation holds an SQS query open for seconds to minutes and SQS is effectively
+         * single-threaded, so only a few may run at once. These bounds reproduce the concurrency
+         * cap the `report.calculation` queue's consumers used to provide.
+         */
+        private const val CALCULATION_EXECUTOR_CORE_POOL_SIZE = 2
+        private const val CALCULATION_EXECUTOR_MAX_POOL_SIZE = 5
+        private const val CALCULATION_EXECUTOR_QUEUE_CAPACITY = 500
+        private const val CALCULATION_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 60
+    }
+
+    /**
+     * Runs report calculations off the thread that requested them.
+     *
+     * On shutdown, queued and in-flight calculations get
+     * [CALCULATION_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS] to finish; anything still queued stays
+     * `PENDING` and is picked up by [ReportCalculationSweeper] after the restart.
+     */
+    @Bean("report-calculation-executor")
+    fun reportCalculationExecutor(): Executor =
+        ThreadPoolTaskExecutor().apply {
+            corePoolSize = CALCULATION_EXECUTOR_CORE_POOL_SIZE
+            maxPoolSize = CALCULATION_EXECUTOR_MAX_POOL_SIZE
+            setQueueCapacity(CALCULATION_EXECUTOR_QUEUE_CAPACITY)
+            setThreadNamePrefix("report-calculation-")
+            setWaitForTasksToCompleteOnShutdown(true)
+            setAwaitTerminationSeconds(CALCULATION_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS)
+            initialize()
+        }
+
+    @Bean
+    fun reportCalculationProcessor(
+        observationRegistry: ObservationRegistry,
+        reportCalculationUseCase: DefaultReportCalculationUseCase,
+        objectMapper: ObjectMapper,
+        reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
+        @Value("\${report-calculation-completion.retry-attempts:3}") completionRetryAttempts: Int,
+        @Value("\${report-calculation-completion.retry-initial-interval-millis:1000}")
+        completionRetryInitialIntervalMillis: Long
+    ): ReportCalculationProcessor =
+        ReportCalculationProcessor(
+            observationRegistry,
+            reportCalculationUseCase,
+            objectMapper,
+            reportCalculationChangeUseCase,
+            completionRetryAttempts,
+            Duration.ofMillis(completionRetryInitialIntervalMillis)
+        )
+
+    @Bean
+    fun reportCalculationTrigger(
+        @Qualifier("report-calculation-executor") reportCalculationExecutor: Executor,
+        reportCalculationProcessor: ReportCalculationProcessor
+    ): ReportCalculationTrigger =
+        ExecutorReportCalculationTrigger(
+            reportCalculationExecutor = reportCalculationExecutor,
+            reportCalculationProcessor = reportCalculationProcessor
+        )
+
+    @Bean
+    fun reportCalculationSweeper(
+        reportCalculationStorage: ReportCalculationStorage,
+        reportCalculationTrigger: ReportCalculationTrigger
+    ): ReportCalculationSweeper =
+        ReportCalculationSweeper(
+            reportCalculationStorage = reportCalculationStorage,
+            reportCalculationTrigger = reportCalculationTrigger
+        )
     @Bean("report-calculation-database-request")
     fun reportCalculationDatabaseRequest(): DatabaseRequest = DatabaseRequest("report-calculation")
 
@@ -52,8 +127,8 @@ class ReportCalculationConfiguration {
     @Bean
     fun defaultCreateReportCalculationUseCase(
         reportCalculationStorage: ReportCalculationStorage,
-        reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher
-    ) = DefaultCreateReportCalculationUseCase(reportCalculationStorage, reportCalculationEventPublisher)
+        reportCalculationTrigger: ReportCalculationTrigger
+    ) = DefaultCreateReportCalculationUseCase(reportCalculationStorage, reportCalculationTrigger)
 
     @Bean
     fun reportCalculationDebouncer(
@@ -75,13 +150,6 @@ class ReportCalculationConfiguration {
 
     @Bean
     fun getJsonFactory(objectMapper: ObjectMapper): JsonFactory = JsonFactory().setCodec(objectMapper)
-
-    @Bean
-    fun rabbitMqReportCalculationEventPublisher(
-        objectMapper: ObjectMapper,
-        rabbitTemplate: RabbitTemplate
-    ): RabbitMqReportCalculationEventPublisher =
-        RabbitMqReportCalculationEventPublisher(objectMapper, rabbitTemplate)
 
     @Bean
     fun defaultReportCalculationUseCase(

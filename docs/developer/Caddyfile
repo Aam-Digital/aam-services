@@ -36,10 +36,6 @@ aam.localhost:80, aam.localhost:443 {
         reverse_proxy carbone-io:4000
     }
 
-    handle_path /rabbitmq/* {
-        reverse_proxy rabbitmq:15672
-    }
-
     handle_path /nominatim/* {
         reverse_proxy https://nominatim.openstreetmap.org
     }

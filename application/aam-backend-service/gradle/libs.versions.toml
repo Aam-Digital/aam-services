@@ -58,7 +58,6 @@ parsson = { module = "org.eclipse.parsson:parsson", version.ref = "parsson" }
 okhttp-client = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "okhttp" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
-testcontainers-rabbitmq = { module = "org.testcontainers:rabbitmq", version.ref = "testcontainers" }
 testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version.ref = "testcontainersKeycloak" }
 swagger-request-validator-core = { module = "com.atlassian.oai:swagger-request-validator-core", version.ref = "swaggerRequestValidator" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commonsCompress" }

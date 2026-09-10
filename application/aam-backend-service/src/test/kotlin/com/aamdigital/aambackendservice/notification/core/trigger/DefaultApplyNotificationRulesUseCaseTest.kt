@@ -9,10 +9,9 @@ import com.aamdigital.aambackendservice.notification.core.CreateUserNotification
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
 import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
-import com.aamdigital.aambackendservice.notification.di.NotificationQueueConfiguration.Companion.USER_NOTIFICATION_QUEUE
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
-import com.aamdigital.aambackendservice.notification.queue.UserNotificationPublisher
+import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -58,7 +57,8 @@ class DefaultApplyNotificationRulesUseCaseTest {
                 userNotificationPublisher = userNotificationPublisher,
                 permissionCheckClient = permissionCheckClient,
                 applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
-                emailEnabled = true
+                emailEnabled = true,
+                pushEnabled = true
             )
 
         Mockito.lenient().`when`(permissionCheckClient.checkPermissions(any(), any(), any())).thenReturn(
@@ -526,6 +526,92 @@ class DefaultApplyNotificationRulesUseCaseTest {
         assertEquals(notificationsSendCount, (result as UseCaseOutcome.Success).data.notificationsSendCount)
     }
 
+    private fun singleRuleConfig() =
+        listOf(
+            NotificationConfigCacheEntry(
+                channelPush = false,
+                channelEmail = false,
+                userIdentifier = "user-1",
+                rules =
+                    listOf(
+                        NotificationRuleCacheEntry(
+                            label = "Rule 1",
+                            externalIdentifier = "ext-1",
+                            notificationType = NotificationType.ENTITY_CHANGE,
+                            entityType = "Child",
+                            changeType = "created",
+                            conditions = emptyList(),
+                            enabled = true
+                        )
+                    )
+            )
+        )
+
+    @Test
+    fun `should not publish PUSH notification when no push handler is configured`() {
+        // Given a channel with no handler produces notifications that can never be delivered
+        val serviceWithoutPush =
+            DefaultApplyNotificationRulesUseCase(
+                notificationConfigCache = notificationConfigCache,
+                userNotificationPublisher = userNotificationPublisher,
+                permissionCheckClient = permissionCheckClient,
+                applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
+                emailEnabled = false,
+                pushEnabled = false
+            )
+        whenever(notificationConfigCache.findAll()).thenReturn(singleRuleConfig())
+
+        // When
+        serviceWithoutPush.run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+
+        // Then
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, times(1)).publish(
+            eventCaptor.capture()
+        )
+        assertThat(eventCaptor.allValues.map { it.notificationChannelType })
+            .containsExactly(NotificationChannelType.APP)
+    }
+
+    @Test
+    fun `should derive the same notification id when the same change is processed twice`() {
+        // Given reprocessing a change must not deliver the notification a second time, so the id
+        // is derived from the change rather than generated fresh
+        whenever(notificationConfigCache.findAll()).thenReturn(singleRuleConfig())
+
+        // When
+        service.run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+        service.run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+
+        // Then
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, times(4)).publish(
+            eventCaptor.capture()
+        )
+        assertThat(eventCaptor.allValues.map { it.details.id }.distinct()).hasSize(1)
+    }
+
+    @Test
+    fun `should derive a different notification id for a different document revision`() {
+        // Given
+        whenever(notificationConfigCache.findAll()).thenReturn(singleRuleConfig())
+
+        // When
+        service.run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+        service.run(
+            ApplyNotificationRulesRequest(
+                documentChangeEvent = documentCreateEvent.copy(rev = "1-different")
+            )
+        )
+
+        // Then
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, times(4)).publish(
+            eventCaptor.capture()
+        )
+        assertThat(eventCaptor.allValues.map { it.details.id }.distinct()).hasSize(2)
+    }
+
     @Test
     fun `should always publish APP notification for every matched rule`() {
         // given
@@ -562,7 +648,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
 
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(2)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         assertThat(eventCaptor.allValues.map { it.notificationChannelType })
@@ -612,7 +697,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
 
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(2)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         val channelTypes = eventCaptor.allValues.map { it.notificationChannelType }
@@ -658,7 +742,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
 
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(3)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         val channelTypes = eventCaptor.allValues.map { it.notificationChannelType }
@@ -690,7 +773,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // then
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
         assertEquals(0, (result as UseCaseOutcome.Success).data.notificationsSendCount)
-        verify(userNotificationPublisher, times(0)).publish(any(), any())
+        verify(userNotificationPublisher, times(0)).publish(any())
     }
 
     @Test
@@ -714,7 +797,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // then
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
         assertEquals(0, (result as UseCaseOutcome.Success).data.notificationsSendCount)
-        verify(userNotificationPublisher, times(0)).publish(any(), any())
+        verify(userNotificationPublisher, times(0)).publish(any())
     }
 
     @Test
@@ -726,7 +809,8 @@ class DefaultApplyNotificationRulesUseCaseTest {
                 userNotificationPublisher = userNotificationPublisher,
                 permissionCheckClient = permissionCheckClient,
                 applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
-                emailEnabled = false
+                emailEnabled = false,
+                pushEnabled = true
             )
         whenever(notificationConfigCache.findAll()).thenReturn(
             listOf(
@@ -760,7 +844,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(2)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         assertThat(eventCaptor.allValues.map { it.notificationChannelType })
@@ -780,7 +863,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // then
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, Mockito.atLeastOnce()).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         val firstEvent = eventCaptor.firstValue
@@ -819,7 +901,6 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // then
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(3)).publish(
-            eq(USER_NOTIFICATION_QUEUE),
             eventCaptor.capture()
         )
         val ids = eventCaptor.allValues.map { it.details.id }.distinct()
