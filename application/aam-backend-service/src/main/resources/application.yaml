@@ -74,6 +74,14 @@ management:
     sampling:
       probability: 1
 
+# One-shot copy of the data that used to live in PostgreSQL into CouchDB, run on startup.
+# Enabled by default so an upgrade is safe without being configured. Turn it off once every
+# instance has been migrated - the release that removes the JDBC driver removes this too.
+# See PostgresToCouchDbMigration.
+migration:
+  postgres-to-couchdb:
+    enabled: true
+
 features:
   reporting:
     enabled: true

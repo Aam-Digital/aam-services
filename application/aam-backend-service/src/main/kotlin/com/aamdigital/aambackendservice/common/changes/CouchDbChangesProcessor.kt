@@ -108,8 +108,7 @@ class CouchDbChangesProcessor(
             latestSeq = couchDbChangeResult.seq
         }
 
-        syncEntry.latestRef = latestSeq
-        syncRepository.save(syncEntry)
+        syncRepository.save(syncEntry.copy(latestRef = latestSeq))
     }
 
     private fun enrichChange(

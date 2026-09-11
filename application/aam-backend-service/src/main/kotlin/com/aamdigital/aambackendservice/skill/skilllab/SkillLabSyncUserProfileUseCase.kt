@@ -8,10 +8,11 @@ import com.aamdigital.aambackendservice.skill.core.SyncUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.domain.EscoSkill
 import com.aamdigital.aambackendservice.skill.domain.SkillUsage
 import com.aamdigital.aambackendservice.skill.domain.UserProfile
-import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileEntity
-import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository
-import com.aamdigital.aambackendservice.skill.repository.SkillReferenceEntity
+import com.aamdigital.aambackendservice.skill.repository.SkillReference
+import com.aamdigital.aambackendservice.skill.repository.SkillUserProfile
+import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
 import com.fasterxml.jackson.databind.ObjectMapper
+import java.time.Instant
 
 enum class SkillLabSyncUserProfileErrorCode : AamErrorCode {
     IO_ERROR
@@ -22,7 +23,7 @@ enum class SkillLabSyncUserProfileErrorCode : AamErrorCode {
  */
 class SkillLabSyncUserProfileUseCase(
     private val skillLabClient: SkillLabClient,
-    private val skillLabUserProfileRepository: SkillLabUserProfileRepository,
+    private val skillUserProfileRepository: SkillUserProfileRepository,
     private val objectMapper: ObjectMapper
 ) : SyncUserProfileUseCase() {
     override fun apply(request: SyncUserProfileRequest): UseCaseOutcome<SyncUserProfileData> {
@@ -31,19 +32,11 @@ class SkillLabSyncUserProfileUseCase(
                 externalIdentifier = request.userProfile
             )
 
-        val allSkillsEntities = getSkillEntities(userProfile.profile)
-        val userProfileEntity = fetchUserProfileEntity(userProfile.profile, allSkillsEntities)
-
-        userProfileEntity.mobileNumber.let {
-            if (!it.isNullOrBlank()) {
-                userProfileEntity.mobileNumber = formatMobileNumber(it)
-            }
-        }
+        val allSkills = getSkills(userProfile.profile)
+        val profile = mergeWithStoredProfile(userProfile.profile, allSkills)
 
         try {
-            skillLabUserProfileRepository.save(
-                userProfileEntity
-            )
+            skillUserProfileRepository.save(profile)
         } catch (ex: Exception) {
             return UseCaseOutcome.Failure(
                 errorCode = SkillLabSyncUserProfileErrorCode.IO_ERROR,
@@ -57,12 +50,12 @@ class SkillLabSyncUserProfileUseCase(
                 SyncUserProfileData(
                     result =
                         UserProfile(
-                            id = userProfileEntity.externalIdentifier,
-                            fullName = userProfileEntity.fullName,
-                            phone = userProfileEntity.mobileNumber,
-                            email = userProfileEntity.email,
+                            id = profile.externalIdentifier,
+                            fullName = profile.fullName,
+                            phone = profile.mobileNumber,
+                            email = profile.email,
                             skills =
-                                allSkillsEntities.map { skill ->
+                                allSkills.map { skill ->
                                     EscoSkill(
                                         usage =
                                             objectMapper.convertValue(
@@ -72,9 +65,9 @@ class SkillLabSyncUserProfileUseCase(
                                         escoUri = skill.escoUri
                                     )
                                 },
-                            updatedAtExternalSystem = userProfileEntity.updatedAt,
-                            importedAt = userProfileEntity.importedAt?.toInstant(),
-                            latestSyncAt = userProfileEntity.latestSyncAt?.toInstant()
+                            updatedAtExternalSystem = profile.updatedAt,
+                            importedAt = profile.importedAt,
+                            latestSyncAt = profile.latestSyncAt
                         )
                 )
         )
@@ -86,38 +79,34 @@ class SkillLabSyncUserProfileUseCase(
             .replace("-", "")
             .trim()
 
-    private fun fetchUserProfileEntity(
+    private fun mergeWithStoredProfile(
         userProfile: SkillLabProfileDto,
-        allSkillsEntities: Set<SkillReferenceEntity>
-    ): SkillLabUserProfileEntity =
-        if (skillLabUserProfileRepository.existsByExternalIdentifier(userProfile.id)) {
-            val entity = skillLabUserProfileRepository.findByExternalIdentifier(userProfile.id)
-            entity.fullName = userProfile.fullName
-            entity.mobileNumber = userProfile.mobileNumber
-            entity.email = userProfile.email
-            entity.skills = allSkillsEntities
-            entity.updatedAt = userProfile.updatedAt
+        allSkills: List<SkillReference>
+    ): SkillUserProfile {
+        val now = Instant.now()
+        val stored = skillUserProfileRepository.findByExternalIdentifier(userProfile.id)
 
-            entity
-        } else {
-            SkillLabUserProfileEntity(
-                externalIdentifier = userProfile.id,
-                fullName = userProfile.fullName,
-                mobileNumber = userProfile.mobileNumber,
-                email = userProfile.email,
-                skills = allSkillsEntities.toSet(),
-                updatedAt = userProfile.updatedAt
-            )
-        }
+        return SkillUserProfile(
+            externalIdentifier = userProfile.id,
+            fullName = userProfile.fullName,
+            // a blank number is stored as-is, matching the previous behaviour
+            mobileNumber = userProfile.mobileNumber?.let { if (it.isBlank()) it else formatMobileNumber(it) },
+            email = userProfile.email,
+            skills = allSkills,
+            updatedAt = userProfile.updatedAt,
+            latestSyncAt = now,
+            importedAt = stored?.importedAt ?: now
+        )
+    }
 
-    private fun getSkillEntities(userProfile: SkillLabProfileDto): Set<SkillReferenceEntity> =
+    private fun getSkills(userProfile: SkillLabProfileDto): List<SkillReference> =
         userProfile.experiences
             .flatMap { it.experiencesSkills }
             .map {
-                SkillReferenceEntity(
+                SkillReference(
                     externalIdentifier = it.id.toString(),
                     escoUri = it.externalId,
                     usage = it.choice
                 )
-            }.toSet()
+            }.distinct()
 }

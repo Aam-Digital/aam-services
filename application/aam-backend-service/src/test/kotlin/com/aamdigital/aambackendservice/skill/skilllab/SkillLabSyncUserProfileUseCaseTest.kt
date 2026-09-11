@@ -3,9 +3,9 @@ package com.aamdigital.aambackendservice.skill.skilllab
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.skill.core.SyncUserProfileRequest
-import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileEntity
-import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository
-import com.aamdigital.aambackendservice.skill.repository.SkillReferenceEntity
+import com.aamdigital.aambackendservice.skill.repository.SkillReference
+import com.aamdigital.aambackendservice.skill.repository.SkillUserProfile
+import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -14,38 +14,74 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
-import org.mockito.kotlin.eq
 import org.mockito.kotlin.reset
-import org.mockito.kotlin.times
-import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder
 import java.io.IOException
+import java.time.Instant
 import java.util.*
 
 @ExtendWith(MockitoExtension::class)
 class SkillLabSyncUserProfileUseCaseTest {
     private lateinit var service: SkillLabSyncUserProfileUseCase
+    private lateinit var repository: FakeSkillUserProfileRepository
 
     @Mock
     lateinit var skillLabClient: SkillLabClient
 
-    @Mock
-    lateinit var skillLabUserProfileRepository: SkillLabUserProfileRepository
+    /** Asserts on what ends up stored rather than on how the store was called. */
+    private class FakeSkillUserProfileRepository : SkillUserProfileRepository {
+        val stored = mutableMapOf<String, SkillUserProfile>()
+        var failOnSave: Exception? = null
+
+        override fun findByExternalIdentifier(externalIdentifier: String) = stored[externalIdentifier]
+
+        override fun findAll(): List<SkillUserProfile> = stored.values.toList()
+
+        override fun save(profile: SkillUserProfile) {
+            failOnSave?.let { throw it }
+            stored[profile.externalIdentifier] = profile
+        }
+    }
+
+    private val expectedSkills =
+        listOf(
+            SkillReference(
+                externalIdentifier = "00000000-0000-0000-0000-000000000001",
+                escoUri = "http://link-to-esco-skill-1",
+                usage = "always"
+            ),
+            SkillReference(
+                externalIdentifier = "00000000-0000-0000-0000-000000000002",
+                escoUri = "http://link-to-esco-skill-2",
+                usage = "always"
+            ),
+            SkillReference(
+                externalIdentifier = "00000000-0000-0000-0000-000000000003",
+                escoUri = "http://link-to-esco-skill-3",
+                usage = "always"
+            )
+        )
 
     @BeforeEach
     fun setUp() {
-        reset(
-            skillLabClient,
-            skillLabUserProfileRepository
-        )
+        reset(skillLabClient)
+        repository = FakeSkillUserProfileRepository()
         service =
             SkillLabSyncUserProfileUseCase(
                 skillLabClient = skillLabClient,
-                skillLabUserProfileRepository = skillLabUserProfileRepository,
+                skillUserProfileRepository = repository,
                 objectMapper = Jackson2ObjectMapperBuilder().build()
             )
     }
+
+    private fun sync() =
+        service.run(
+            SyncUserProfileRequest(
+                userProfile = DomainReference("user-profile-1"),
+                project = DomainReference("project-1")
+            )
+        )
 
     @Test
     fun `should store new user profile and return Success`() {
@@ -53,117 +89,69 @@ class SkillLabSyncUserProfileUseCaseTest {
         whenever(skillLabClient.fetchUserProfile(any())).thenReturn(
             getSkillLabProfileResponseDto("user-profile-1", mobileNumber = "")
         )
-        whenever(skillLabUserProfileRepository.existsByExternalIdentifier(eq("user-profile-1"))).thenReturn(false)
 
         // when
-        val response =
-            service.run(
-                SyncUserProfileRequest(
-                    userProfile = DomainReference("user-profile-1"),
-                    project = DomainReference("project-1")
-                )
-            )
+        val response = sync()
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
 
-        verify(
-            skillLabUserProfileRepository,
-            times(1)
-        ).save(
-            eq(
-                SkillLabUserProfileEntity(
-                    id = 0L,
-                    externalIdentifier = "user-profile-1",
-                    fullName = "Max Muster",
-                    mobileNumber = "",
-                    email = "max.muster@fake.local",
-                    skills =
-                        setOf(
-                            SkillReferenceEntity(
-                                externalIdentifier = "00000000-0000-0000-0000-000000000001",
-                                escoUri = "http://link-to-esco-skill-1",
-                                usage = "always"
-                            ),
-                            SkillReferenceEntity(
-                                externalIdentifier = "00000000-0000-0000-0000-000000000002",
-                                escoUri = "http://link-to-esco-skill-2",
-                                usage = "always"
-                            ),
-                            SkillReferenceEntity(
-                                externalIdentifier = "00000000-0000-0000-0000-000000000003",
-                                escoUri = "http://link-to-esco-skill-3",
-                                usage = "always"
-                            )
-                        ),
-                    updatedAt = "2022-02-02T22:22Z",
-                    latestSyncAt = null,
-                    importedAt = null
-                )
-            )
-        )
+        val stored = repository.stored.getValue("user-profile-1")
+        assertThat(stored.fullName).isEqualTo("Max Muster")
+        assertThat(stored.email).isEqualTo("max.muster@fake.local")
+        // a blank number is stored unchanged
+        assertThat(stored.mobileNumber).isEqualTo("")
+        assertThat(stored.updatedAt).isEqualTo("2022-02-02T22:22Z")
+        assertThat(stored.skills).isEqualTo(expectedSkills)
+        assertThat(stored.latestSyncAt).isNotNull()
+        assertThat(stored.importedAt).isEqualTo(stored.latestSyncAt)
     }
 
     @Test
-    fun `should update existing user profile  and return Success`() {
-        val existingEntity =
-            SkillLabUserProfileEntity(
-                id = 0L,
-                externalIdentifier = "user-profile-1",
-                fullName = "Max Muster",
-                mobileNumber = "+49123456789",
-                email = "max.muster@fake.local",
-                skills =
-                    setOf(
-                        SkillReferenceEntity(
-                            externalIdentifier = "00000000-0000-0000-0000-000000000001",
-                            escoUri = "http://link-to-esco-skill-1",
-                            usage = "always"
-                        ),
-                        SkillReferenceEntity(
-                            externalIdentifier = "00000000-0000-0000-0000-000000000002",
-                            escoUri = "http://link-to-esco-skill-2",
-                            usage = "always"
-                        ),
-                        SkillReferenceEntity(
-                            externalIdentifier = "00000000-0000-0000-0000-000000000003",
-                            escoUri = "http://link-to-esco-skill-3",
-                            usage = "always"
-                        )
-                    ),
-                updatedAt = "2022-02-02T22:22Z",
-                latestSyncAt = null,
-                importedAt = null
-            )
-
+    fun `should strip spaces and dashes from the mobile number`() {
         // given
         whenever(skillLabClient.fetchUserProfile(any())).thenReturn(
             getSkillLabProfileResponseDto("user-profile-1")
         )
-        whenever(skillLabUserProfileRepository.existsByExternalIdentifier(eq("user-profile-1"))).thenReturn(true)
-        whenever(skillLabUserProfileRepository.findByExternalIdentifier(eq("user-profile-1")))
-            .thenReturn(
-                existingEntity
-            )
 
         // when
-        val response =
-            service.run(
-                SyncUserProfileRequest(
-                    userProfile = DomainReference("user-profile-1"),
-                    project = DomainReference("project-1")
-                )
+        val response = sync()
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        assertThat(repository.stored.getValue("user-profile-1").mobileNumber).isEqualTo("+49123456789")
+    }
+
+    @Test
+    fun `should update existing user profile and keep its importedAt`() {
+        // given
+        val importedAt = Instant.parse("2020-01-01T00:00:00Z")
+        repository.stored["user-profile-1"] =
+            SkillUserProfile(
+                externalIdentifier = "user-profile-1",
+                fullName = "Old Name",
+                mobileNumber = "+490000",
+                email = "old@fake.local",
+                skills = emptyList(),
+                updatedAt = "2020-01-01T00:00Z",
+                latestSyncAt = importedAt,
+                importedAt = importedAt
             )
+        whenever(skillLabClient.fetchUserProfile(any())).thenReturn(
+            getSkillLabProfileResponseDto("user-profile-1")
+        )
+
+        // when
+        val response = sync()
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
 
-        verify(
-            skillLabUserProfileRepository,
-            times(1)
-        ).save(
-            eq(existingEntity)
-        )
+        val stored = repository.stored.getValue("user-profile-1")
+        assertThat(stored.fullName).isEqualTo("Max Muster")
+        assertThat(stored.skills).isEqualTo(expectedSkills)
+        assertThat(stored.importedAt).isEqualTo(importedAt)
+        assertThat(stored.latestSyncAt).isAfter(importedAt)
     }
 
     @Test
@@ -172,53 +160,10 @@ class SkillLabSyncUserProfileUseCaseTest {
         whenever(skillLabClient.fetchUserProfile(any())).thenReturn(
             getSkillLabProfileResponseDto("user-profile-1")
         )
-        whenever(skillLabUserProfileRepository.existsByExternalIdentifier(eq("user-profile-1"))).thenReturn(false)
-
-        whenever(
-            skillLabUserProfileRepository.save(
-                eq(
-                    SkillLabUserProfileEntity(
-                        id = 0L,
-                        externalIdentifier = "user-profile-1",
-                        fullName = "Max Muster",
-                        mobileNumber = "+49123456789",
-                        email = "max.muster@fake.local",
-                        skills =
-                            setOf(
-                                SkillReferenceEntity(
-                                    externalIdentifier = "00000000-0000-0000-0000-000000000001",
-                                    escoUri = "http://link-to-esco-skill-1",
-                                    usage = "always"
-                                ),
-                                SkillReferenceEntity(
-                                    externalIdentifier = "00000000-0000-0000-0000-000000000002",
-                                    escoUri = "http://link-to-esco-skill-2",
-                                    usage = "always"
-                                ),
-                                SkillReferenceEntity(
-                                    externalIdentifier = "00000000-0000-0000-0000-000000000003",
-                                    escoUri = "http://link-to-esco-skill-3",
-                                    usage = "always"
-                                )
-                            ),
-                        updatedAt = "2022-02-02T22:22Z",
-                        latestSyncAt = null,
-                        importedAt = null
-                    )
-                )
-            )
-        ).thenAnswer {
-            throw IOException("mock-error")
-        }
+        repository.failOnSave = IOException("mock-error")
 
         // when
-        val response =
-            service.run(
-                SyncUserProfileRequest(
-                    userProfile = DomainReference("user-profile-1"),
-                    project = DomainReference("project-1")
-                )
-            )
+        val response = sync()
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)

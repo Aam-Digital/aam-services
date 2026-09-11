@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.common
 
+import com.aamdigital.aambackendservice.common.couchdb.core.BACKEND_STATE_DATABASE
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
@@ -13,7 +14,21 @@ class CouchDbTestingService(
     private val restTemplate: RestTemplate
 ) {
     companion object {
-        private val DEFAULT_DATABASES = listOf("app", "notification-webhook", "report-calculation")
+        private val DEFAULT_DATABASES =
+            listOf("app", "notification-webhook", "report-calculation", BACKEND_STATE_DATABASE)
+
+        /**
+         * Databases [reset] leaves alone.
+         *
+         * The change-detection poller writes its cursor into [BACKEND_STATE_DATABASE] every second
+         * in the e2e profile. Deleting it between scenarios would sooner or later drop a write,
+         * and a failed poll parks change detection on [ScheduledJobBackoff] for at least five
+         * seconds - long enough to time out the scenarios that wait for notifications. The cursor
+         * was never reset between scenarios while it lived in PostgreSQL either.
+         *
+         * Per-scenario state inside it is cleared explicitly instead, see [deleteDocumentsByPrefix].
+         */
+        private val PRESERVED_DATABASES = setOf(BACKEND_STATE_DATABASE)
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -30,10 +45,44 @@ class CouchDbTestingService(
                     !it.textValue().startsWith("_")
                 }?.map {
                     it.textValue()
+                }?.filter {
+                    it !in PRESERVED_DATABASES
                 } ?: emptyList()
 
         dbs.forEach {
             deleteDatabase(it)
+        }
+    }
+
+    /** Deletes every document in [database] whose id starts with `<prefix>:`. */
+    fun deleteDocumentsByPrefix(
+        database: String,
+        prefix: String
+    ) {
+        val response =
+            try {
+                restTemplate.exchange(
+                    "/$database/_all_docs",
+                    HttpMethod.GET,
+                    HttpEntity.EMPTY,
+                    ObjectNode::class.java
+                )
+            } catch (e: HttpClientErrorException) {
+                if (e.statusCode.value() == 404) return else throw e
+            }
+
+        // filtered here rather than with startkey/endkey: this runs against a handful of documents
+        // and keeps the CouchDB key-encoding rules out of the test helper
+        response.body?.get("rows")?.forEach { row ->
+            val id = row.get("id")?.textValue() ?: return@forEach
+            if (!id.startsWith("$prefix:")) return@forEach
+            val rev = row.get("value")?.get("rev")?.textValue() ?: return@forEach
+            restTemplate.exchange(
+                "/$database/$id?rev=$rev",
+                HttpMethod.DELETE,
+                HttpEntity.EMPTY,
+                ObjectNode::class.java
+            )
         }
     }
 

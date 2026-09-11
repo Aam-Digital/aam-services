@@ -27,6 +27,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserSession'
+        400:
+          description: The session could not be created for the given user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         401:
           description: No Authentication provided
           content:
@@ -55,6 +61,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserSessionDataDto'
+        400:
+          description: The session is unknown, already used, expired, or the token does not match (errorCode is one of INVALID_SESSION, INVALID_SESSION_TOKEN, SESSION_ALREADY_USED, SESSION_EXPIRED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         401:
           description: No Authentication provided
           content:
@@ -82,6 +94,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserSessionRedirectDto'
+        400:
+          description: The session is unknown, belongs to another user, or carries no redirect url (errorCode is one of INVALID_SESSION, INVALID_USER_SESSION, NO_REDIRECT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         401:
           description: No Authentication provided
           content:

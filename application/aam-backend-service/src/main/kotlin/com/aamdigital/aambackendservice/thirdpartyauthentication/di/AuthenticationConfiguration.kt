@@ -6,50 +6,70 @@ import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUs
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.AuthenticationProvider
+import com.aamdigital.aambackendservice.thirdpartyauthentication.core.AuthenticationSessionStore
+import com.aamdigital.aambackendservice.thirdpartyauthentication.core.CaffeineAuthenticationSessionStore
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.DefaultCreateSessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.DefaultSessionRedirectUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.DefaultVerifySessionUseCase
-import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.AuthenticationSessionRepository
+import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.CouchDbThirdPartyAuthSessionRepository
+import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSessionRepository
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.crypto.password.PasswordEncoder
+import java.time.Duration
 
 @ConditionalOnThirdPartyAuthenticationEnabled
 @Configuration
 class AuthenticationConfiguration {
+    companion object {
+        /** How long a login ticket can be redeemed after it was issued. */
+        val SESSION_VALIDITY: Duration = Duration.ofMinutes(5)
+    }
+
     @Bean
     fun passwordEncoder(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
 
     @Bean
+    fun authenticationSessionStore(): AuthenticationSessionStore =
+        CaffeineAuthenticationSessionStore(sessionValidity = SESSION_VALIDITY)
+
+    @Bean
+    fun thirdPartyAuthSessionRepository(couchDbClient: CouchDbClient): ThirdPartyAuthSessionRepository =
+        CouchDbThirdPartyAuthSessionRepository(couchDbClient = couchDbClient)
+
+    @Bean
     fun defaultCreateSessionUseCase(
-        authenticationSessionRepository: AuthenticationSessionRepository,
+        authenticationSessionStore: AuthenticationSessionStore,
+        thirdPartyAuthSessionRepository: ThirdPartyAuthSessionRepository,
         passwordEncoder: PasswordEncoder,
         authenticationProvider: AuthenticationProvider,
         couchDbClient: CouchDbClient
     ): CreateSessionUseCase =
         DefaultCreateSessionUseCase(
-            authenticationSessionRepository = authenticationSessionRepository,
+            authenticationSessionStore = authenticationSessionStore,
+            thirdPartyAuthSessionRepository = thirdPartyAuthSessionRepository,
             passwordEncoder = passwordEncoder,
             authenticationProvider = authenticationProvider,
-            couchDbClient = couchDbClient
+            couchDbClient = couchDbClient,
+            sessionValidity = SESSION_VALIDITY
         )
 
     @Bean
     fun defaultSessionRedirectUseCase(
-        authenticationSessionRepository: AuthenticationSessionRepository
+        thirdPartyAuthSessionRepository: ThirdPartyAuthSessionRepository
     ): SessionRedirectUseCase =
         DefaultSessionRedirectUseCase(
-            authenticationSessionRepository = authenticationSessionRepository
+            thirdPartyAuthSessionRepository = thirdPartyAuthSessionRepository
         )
 
     @Bean
     fun defaultVerifySessionUseCase(
-        authenticationSessionRepository: AuthenticationSessionRepository,
+        authenticationSessionStore: AuthenticationSessionStore,
         passwordEncoder: PasswordEncoder
     ): VerifySessionUseCase =
         DefaultVerifySessionUseCase(
-            authenticationSessionRepository = authenticationSessionRepository,
+            authenticationSessionStore = authenticationSessionStore,
             passwordEncoder = passwordEncoder
         )
 }

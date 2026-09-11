@@ -12,7 +12,6 @@ import com.google.firebase.messaging.WebpushConfig
 import com.google.firebase.messaging.WebpushFcmOptions
 import com.google.firebase.messaging.WebpushNotification
 import org.slf4j.LoggerFactory
-import org.springframework.data.domain.Pageable
 
 /**
  * Sends push notifications via Firebase Cloud Messaging to registered user devices.
@@ -33,12 +32,8 @@ class PushCreateNotificationHandler(
     override fun createMessage(createUserNotificationEvent: CreateUserNotificationEvent): CreateNotificationData {
         val userDevices =
             userDeviceRepository
-                .findByUserIdentifier(
-                    createUserNotificationEvent.userIdentifier,
-                    Pageable.unpaged()
-                ).map {
-                    it.deviceToken
-                }.toList()
+                .findByUserIdentifier(createUserNotificationEvent.userIdentifier)
+                .map { it.deviceToken }
 
         if (userDevices.isEmpty()) {
             return CreateNotificationData(

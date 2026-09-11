@@ -21,7 +21,6 @@ class ChangesConfigurationConditionalTest {
             )
             .withBean(CouchDbClient::class.java, { mock<CouchDbClient>() })
             .withBean(ChangeEventPublisher::class.java, { mock<ChangeEventPublisher>() })
-            .withBean(SyncRepository::class.java, { mock<SyncRepository>() })
             .withBean(ObjectMapper::class.java, { ObjectMapper() })
             .withBean(ChangeDetectionProperties::class.java, { ChangeDetectionProperties() })
 

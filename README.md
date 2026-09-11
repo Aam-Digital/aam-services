@@ -58,6 +58,29 @@ None of those are shared between instances.
 What instances _do_ share is the layer underneath and in front of them — the host they run on, the
 `external_web` Docker network (declared `external: true`, created outside the instance stack).
 
+### PostgreSQL is being retired
+
+Everything this service used to keep in PostgreSQL now lives in CouchDB
+(see [#209](https://github.com/Aam-Digital/aam-services/issues/209)):
+
+| what | where it lives now |
+| --- | --- |
+| change-detection cursor | `aam-backend-state`, `SyncEntry:<database>` |
+| push device registrations | `aam-backend-state`, `UserDevice:<userId>` |
+| third-party-auth redirect bindings | `aam-backend-state`, `ThirdPartyAuthSession:<sessionId>` |
+| third-party-auth login tickets | nowhere — in memory, they expire within minutes |
+| SkillLab profile mirror | `skill-user-profile`, `SkillProfile:<externalId>` |
+| SkillLab sync cursor | nowhere — derived from the newest mirrored profile |
+
+Neither new database is in `database-change-detection.included-databases`, and neither is meant to
+be reachable by clients through replication-backend.
+
+**PostgreSQL is still required for one more release.** On startup this service copies the two
+pieces of state that cannot be reconstructed — push device tokens and redirect bindings — out of
+PostgreSQL and into CouchDB. That migration is idempotent and cannot fail startup. Only once every
+instance has run it can the PostgreSQL container and its volume be removed, in the release that
+drops the JDBC driver. Set `migration.postgres-to-couchdb.enabled: false` to skip it.
+
 The individual modules like "Reporting" require some setup and environment variables.
 Please refer to the respective READMEs in the "API Modules" list above for instructions about each API Module.
 

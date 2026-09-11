@@ -1,22 +1,29 @@
 package com.aamdigital.aambackendservice.notification.repository
 
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
-import org.springframework.data.repository.CrudRepository
-import org.springframework.data.repository.PagingAndSortingRepository
-import java.util.*
+import com.aamdigital.aambackendservice.notification.domain.UserDevice
 
-interface UserDeviceRepository :
-    PagingAndSortingRepository<UserDeviceEntity, Long>,
-    CrudRepository<UserDeviceEntity, Long> {
-    fun findByUserIdentifier(
+/**
+ * Stores the push devices registered per user.
+ *
+ * Every operation is scoped to a user: both REST endpoints carry the caller's JWT and push
+ * delivery looks devices up by user, so there is no access path that needs a global lookup by
+ * device token.
+ */
+interface UserDeviceRepository {
+    fun findByUserIdentifier(userIdentifier: String): List<UserDevice>
+
+    fun findDevice(
         userIdentifier: String,
-        pageable: Pageable
-    ): Page<UserDeviceEntity>
+        deviceToken: String
+    ): UserDevice?
 
-    fun findByDeviceToken(deviceToken: String): Optional<UserDeviceEntity>
+    fun addDevice(
+        userIdentifier: String,
+        device: UserDevice
+    )
 
-    fun existsByDeviceToken(deviceToken: String): Boolean
-
-    fun deleteByDeviceToken(deviceToken: String)
+    fun removeDevice(
+        userIdentifier: String,
+        deviceToken: String
+    )
 }

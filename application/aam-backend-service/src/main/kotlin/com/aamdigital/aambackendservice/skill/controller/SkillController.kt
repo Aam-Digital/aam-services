@@ -10,7 +10,7 @@ import com.aamdigital.aambackendservice.skill.core.SearchUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.domain.EscoSkill
 import com.aamdigital.aambackendservice.skill.domain.SkillUsage
 import com.aamdigital.aambackendservice.skill.domain.UserProfile
-import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository
+import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -38,7 +38,7 @@ data class FetchUserProfilesDto(
 @ConditionalOnSkillLabMode
 class SkillController(
     private val searchUserProfileUseCase: SearchUserProfileUseCase,
-    private val userProfileRepository: SkillLabUserProfileRepository,
+    private val userProfileRepository: SkillUserProfileRepository,
     private val objectMapper: ObjectMapper
 ) {
     companion object {
@@ -116,35 +116,35 @@ class SkillController(
     @PreAuthorize("hasAuthority('ROLE_skill_reader')")
     fun fetchUserProfile(
         @PathVariable id: String
-    ): ResponseEntity<Any> =
-        if (!userProfileRepository.existsByExternalIdentifier(id)) {
-            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                HttpErrorDto(
-                    errorCode = "NOT_FOUND",
-                    errorMessage = "No UserProfile found with this id: $id"
+    ): ResponseEntity<Any> {
+        val profile =
+            userProfileRepository.findByExternalIdentifier(id)
+                ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    HttpErrorDto(
+                        errorCode = "NOT_FOUND",
+                        errorMessage = "No UserProfile found with this id: $id"
+                    )
                 )
+
+        return ResponseEntity.ok().body(
+            UserProfile(
+                id = profile.externalIdentifier,
+                fullName = profile.fullName,
+                phone = profile.mobileNumber,
+                email = profile.email,
+                skills =
+                    profile.skills.map {
+                        EscoSkill(
+                            usage = objectMapper.convertValue(it.usage.uppercase(), SkillUsage::class.java),
+                            escoUri = it.escoUri
+                        )
+                    },
+                updatedAtExternalSystem = profile.updatedAt,
+                importedAt = profile.importedAt,
+                latestSyncAt = profile.latestSyncAt
             )
-        } else {
-            val entity = userProfileRepository.findByExternalIdentifier(id)
-            ResponseEntity.ok().body(
-                UserProfile(
-                    id = entity.externalIdentifier,
-                    fullName = entity.fullName,
-                    phone = entity.mobileNumber,
-                    email = entity.email,
-                    skills =
-                        entity.skills.map {
-                            EscoSkill(
-                                usage = objectMapper.convertValue(it.usage.uppercase(), SkillUsage::class.java),
-                                escoUri = it.escoUri
-                            )
-                        },
-                    updatedAtExternalSystem = entity.updatedAt,
-                    importedAt = entity.importedAt?.toInstant(),
-                    latestSyncAt = entity.latestSyncAt?.toInstant()
-                )
-            )
-        }
+        )
+    }
 
     private fun getBadRequestResponse(message: String): ResponseEntity<Any> =
         ResponseEntity.badRequest().body(
