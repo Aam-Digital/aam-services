@@ -51,7 +51,7 @@ services:
   # ***************************************************************
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.7.2
+    image: ghcr.io/aam-digital/keycloak-aam:26.7.1-0
     container_name: keycloak
     depends_on:
       db-keycloak:
@@ -72,9 +72,9 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: docker
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-} # (macOS only) bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
-    volumes:
-      - ./container-data/keycloak/providers:/opt/keycloak/providers
-    # - ./container-data/keycloak/themes:/opt/keycloak/themes
+    # volumes:
+    #   - ./container-data/keycloak/providers:/opt/keycloak/providers
+    #   - ./container-data/keycloak/themes:/opt/keycloak/themes
 
   db-keycloak:
     image: postgres:16
@@ -176,6 +176,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://aam-backend-service-db:5432/aam-backend-service
       # In container, use Docker service DNS for RabbitMQ instead of localhost
       SPRING_RABBITMQ_HOST: rabbitmq
+      # Local Keycloak issuer isn't in the default (production-only) allow-list
+      AAM_SECURITY_ALLOWED_ISSUERS: https://keycloak.localhost/realms/dummy-realm
       # Use mounted Caddy CA cert instead of classpath resource in prebuilt Docker image
       SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE: file:/opt/app/reverse-proxy.crt
 
