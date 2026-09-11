@@ -16,6 +16,17 @@ services:
       - "80:80" # http
       - "443:443" # https
       - "2019:2019" # caddy api
+    healthcheck:
+      # Caddy generates its local CA (root.crt) a few seconds after startup. Other services
+      # bind-mount that single file — on a fresh clone it doesn't exist yet, and if they start
+      # first Docker creates an empty directory in its place instead, which then blocks Caddy
+      # from ever writing the real file there. Gating those services on this healthcheck avoids
+      # the race.
+      test: ["CMD", "test", "-f", "/data/caddy/pki/authorities/local/root.crt"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
 
   maildev:
     image: maildev/maildev:2.2.1
@@ -55,7 +66,7 @@ services:
     container_name: keycloak
     depends_on:
       db-keycloak:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "8080:8080"
     networks:
@@ -88,6 +99,12 @@ services:
       POSTGRES_PASSWORD: docker
     ports:
       - "5401:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   # ***************************************************************
   # rabbitmq
@@ -118,6 +135,8 @@ services:
     image: ghcr.io/aam-digital/replication-backend:latest
     depends_on:
       db-couch:
+        condition: service_healthy
+      reverse-proxy:
         condition: service_healthy
     networks:
       - aam-digital
@@ -168,6 +187,8 @@ services:
         condition: service_healthy
       aam-backend-service-db:
         condition: service_started
+      reverse-proxy:
+        condition: service_healthy
     env_file:
       - .env
     environment:

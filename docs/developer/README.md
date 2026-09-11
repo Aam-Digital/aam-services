@@ -9,25 +9,12 @@ For some features, we also use third party solutions that are maintained from th
 - *ndb-core*: main angular frontend application [GitHub](https://github.com/Aam-Digital/ndb-core)
 - *replication-backend*: (optional) layer between frontend and the couchdb for handling document
   permissions [GitHub](https://github.com/Aam-Digital/replication-backend)
-- *aam-backend-services*: main backend spring boot application, modulith
+- *aam-backend-services*: (optional) main backend spring boot application, modulith
   architecture [GitHub](https://github.com/Aam-Digital/aam-services/tree/main/application/aam-backend-service)
-
-additionally, as multi-tenant services:
-
-- *account-backend*: simple backend service to handle user account related tasks for the frontend in
-  Keycloak [GitHub](https://github.com/Aam-Digital/account-backend)
-- *ndb-core CLI*: admin CLI for statistics, config migrations, and CouchDB operations;
-  built into ndb-core [CLI docs](https://github.com/Aam-Digital/ndb-core/blob/master/cli/README.md)
-
-### managed by aam-digital (private)
-
-Accessible for aam-digital internals and contributors only.
-
-- *aam-external-mock-service*: mock of external systems are subject to a duty of non-disclosure in some cases.
 
 ---
 
-### used by aam-digital stack, managed by third party (public)
+### used by aam-digital stack, managed by third party
 
 - *couchdb*: Seamless multi-master syncing database with an intuitive HTTP/JSON API, designed for
   reliability [GitHub](https://github.com/apache/couchdb)
@@ -38,12 +25,8 @@ Accessible for aam-digital internals and contributors only.
 - *rabbitmq-server*: Multi-protocol messaging and streaming
   broker. [GitHub](https://github.com/rabbitmq/rabbitmq-server)
 - *carbone*: Fast, Simple and Powerful report generator in any format [GitHub](https://github.com/carboneio/carbone)
-
-### used by aam-digital stack, managed by third party (private)
-
-Accessible for aam-digital internals and contributors only.
-
-- *structured-query-server (sqs)*: An SQL query engine for CouchDB, letting you use SQL SELECT statements to extract
+- *structured-query-server (sqs)*: (private; Accessible for aam-digital internals and contributors only)
+An SQL query engine for CouchDB, letting you use SQL SELECT statements to extract
   information from a CouchDB
   database. [Homepage](https://neighbourhood.ie/products-and-services/structured-query-server)
 
@@ -56,156 +39,78 @@ Accessible for aam-digital internals and contributors only.
 
 -----
 
-## Running a full system locally
+## Full local setup with Docker and docker-compose
 
-After completing the setup steps below once
-you can simply use the docker compose file in this directory:
+All services run as docker containers, communicating over a dedicated docker network (`aam-digital`).
+The steps below are a **one-time setup**; afterwards, starting the stack again is just
+`docker compose up -d` from `docs/developer` — no need to repeat Steps 1-5.
 
-```shell
-docker compose up -d
-```
+### Step 1: start the local development stack
 
-(!) Make sure to access the frontend at [http://aam.localhost/](http://aam.localhost/)
-instead of "localhost:4200". Otherwise, the connections to backend services like sync will not work.
+1. Create the docker network (once per machine):
 
-Also see the "Tips and tricks" section at the end of this file for possible adjustments.
-
------
-
-## Setup of development environment
-
-To make development as simple as possible, we provide all services as docker containers. You can start them with the
-docker-compose file provided [here in this folder](./docker-compose.yml)  
-All container will communicate directly over a separate docker network: `aam-digital`
-
-You need to create the docker network initial:
-
-```bash
-docker network create aam-digital
-```
-
-##### (bugfix) macOS with M4:
-
-Fix bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85:
-
-Add this to your .env file:
-
-```env
-JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
-```
-
-##### (limitation) arm64 hosts: Carbone PDF rendering fails locally
-
-The `carbone/carbone-ee` image is published only for `linux/amd64`. On any `arm64` host — Apple Silicon Macs (M1 / M2 / M3 / M4), Windows on ARM (e.g. Surface Pro X, Snapdragon devices), Linux on arm64 — it runs through emulation, and the embedded Chromium process used to convert documents to PDF crashes during every render (qemu/GPU errors). The container starts and `/status` responds, but `POST /render/{templateId}` either hangs or returns an empty/failed result. The frontend's bulk-PDF action will show "Generated 0 of N files." in this state.
-
-There is no fix on the local side. You need a Carbone container running on an `x86_64` Linux host and tunnel it back to your machine, then point the local backend at the tunnel.
-
-- **External / open-source contributors:** you do **not** have access to the Aam-Digital dev server. Two options:
-  - **Recommended:** open a discussion on the PR or issue asking the maintainers for help. We can confirm your feature works on our infrastructure during review.
-  - **Self-hosted:** if you need to verify PDF rendering yourself, run an `x86_64` Linux VM (any cloud, e.g. a small Hetzner / AWS / DigitalOcean instance) and start the Carbone container there using the same steps below.
-
-Once you have an `x86_64` host you can reach over SSH, follow the workaround:
-
-Quick steps:
-
-1. On an `x86_64` Linux host you have SSH access to, start a temp Carbone container:
    ```bash
-   NAME=<test-container>-carbone
-   WORKDIR=/tmp/$NAME
-   mkdir -p "$WORKDIR/config" "$WORKDIR/template" "$WORKDIR/render"
-   cat > "$WORKDIR/config/config.json" <<'EOF'
-   {
-     "port": 4000,
-     "bind": "127.0.0.1",
-     "factories": 1,
-     "authentication": false,
-     "jwtAudience": "carbone-ee",
-     "templatePathRetention": 0,
-     "maxDataSize": 62914560,
-     "nbReportMaxPerBatch": 200
-   }
-   EOF
-   docker run -d --name "$NAME" \
-     -p 127.0.0.1:4001:4000 \
-     -v "$WORKDIR/config":/app/config \
-     -v "$WORKDIR/template":/app/template \
-     -v "$WORKDIR/render":/app/render \
-     --restart unless-stopped \
-     carbone/carbone-ee
+   docker network create aam-digital
    ```
 
-2. On your local machine, open the tunnel (keep this terminal open for the session). Works in macOS Terminal, Linux shells, Windows PowerShell, WSL, or Git Bash:
-   ```bash
-   ssh -N -L 0.0.0.0:4001:127.0.0.1:4001 <dev-server-host>
+   > **macOS M4 bugfix:** Sequoia 15.2 on M4 chips hits [corretto-21#85](https://github.com/corretto/corretto-21/issues/85).
+   > Add this to your `.env` (created in the next step) if you're on that combination:
+   > ```env
+   > JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
+   > ```
+   >
+   > **arm64 hosts (Apple Silicon, Windows/Linux on ARM):** the `carbone/carbone-ee` image is
+   > `linux/amd64`-only and runs under emulation, which crashes on every PDF render
+   > (`POST /render/{templateId}` hangs or returns empty; the frontend shows
+   > "Generated 0 of N files."). There is no local fix — see
+   > [arm64 Carbone workaround](#arm64-hosts-carbone-pdf-rendering-workaround) below if you need to
+   > verify PDF rendering yourself; otherwise this is safe to ignore.
+
+2. Create a `.env` file by copying the example:
+
+   ```shell
+   # /aam-services/docs/developer
+   cp .env.example .env
    ```
-   The bind address must be `0.0.0.0` because the local backend container reaches the tunnel through `host.docker.internal`, not `localhost`.
 
-3. In `docs/developer/.env`, set the render base path to the tunnel:
-   ```env
-   AAM_RENDER_API_CLIENT_CONFIGURATION_BASE_PATH=http://host.docker.internal:4001
-   ```
-   Keep the rest of your local dummy-Keycloak auth values; do not copy any dev/prod secrets.
+3. Start all services:
 
-4. Restart only the backend so it picks up the new base path:
-   ```bash
-   cd docs/developer
-   docker compose up -d --force-recreate aam-backend-service
+   ```shell
+   # /aam-services/docs/developer
+   docker compose up -d
    ```
 
-5. Re-upload your template through the running app's Admin → Export Templates view. Carbone stores template IDs inside the engine, and the temp container starts empty.
+   - If needed, switch the sqs image in `docker-compose.yml` from `aam-sqs-mac` to `aam-sqs-linux` for compatibility.
+   - Attention: sqs is a private repository for internal use only. If you don't have permissions,
+     reach out to us or disable this block in the `docker-compose.yml` file
 
-After this you can render single PDFs and bulk PDFs (ZIP or combined) from your local frontend the same way x86_64 developers can.
+4. Test the running proxy: open [https://aam.localhost/hello](https://aam.localhost/hello) — you should see a
+   welcome message. If you get a certificate warning, continue to Step 1b below first.
 
-**Note on `nbReportMaxPerBatch`:** the config field above is also required on dev / staging / prod Carbone instances if you intend to use the bulk render endpoint (`POST /v1/export/render-batch/{templateId}`). Without it set to a positive number, Carbone returns: `Unable to generate the document. Batch processing deactivated. nbReportMaxPerBatch = 0`.
+### Step 1b: trust the reverse-proxy certificate
 
----
+The stack includes a caddy reverse-proxy on `https://aam.localhost/` with a self-signed certificate
+that needs to be trusted manually, and uses two hostnames: `aam.localhost` and `keycloak.localhost`.
 
-### reverse-proxy
-
-The stack includes a caddy reverse-proxy that runs on https://aam.localhost/ - SSL is enabled by default. However, this
-certificate is self-signed and must be added manually as trustworthy.
-
-You also need to adapt your `/etc/hosts` file and add an entry for `aam.localhost` to `127.0.0.1`:
+On macOS and on Linux with systemd-resolved, any `*.localhost` name already resolves to
+`127.0.0.1` and you can skip the hosts-file part below. Everywhere else, add both to your
+`/etc/hosts`:
 
 ```bash
 sudo nano /etc/hosts
 ```
 
-Add another line for `aam.localhost`:
+Add a line for each hostname:
 
 ```
 127.0.0.1       localhost
 127.0.0.1       aam.localhost
+127.0.0.1       keycloak.localhost
 ```
 
 #### add self-signed certificate
 
-You can add import the auto generated caddy certificate after the aam-stack is started.
-
-##### link certificate to aam-backend-service
-
-To be able to verify https connections, the `aam-backend-service` need the generated caddy certificate.  
-You can copy the certificate to the resources directory of the `aam-backend-service`:
-
-```shell
-# /aam-services
-cp docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
-```
-
-##### link certificate to replication-backend
-
-When running the `replication-backend` locally (outside Docker), Node.js must trust the Caddy CA for HTTPS calls to `keycloak.localhost`.  
-Set the `NODE_EXTRA_CA_CERTS` environment variable before starting the service:
-
-```shell
-export NODE_EXTRA_CA_CERTS=/absolute/path/to/aam-services/docs/developer/container-data/caddy-authorities/root.crt
-```
-
-The certificate file is created by Docker as root, so you may need to make it readable first:
-
-```shell
-sudo chmod 644 docs/developer/container-data/caddy-authorities/root.crt
-```
+You can import the auto generated caddy certificate after the stack is started (step 3 above).
 
 ##### MacOS
 
@@ -241,45 +146,56 @@ sudo chown $USER:$USER aam.localhost.crt
 
     todo
 
-## Full local setup with Docker and docker-compose
+##### link certificate to aam-backend-service
 
-### Step 1: start the local development stack
+Only needed when running `aam-backend-service` **from source**, outside Docker — the
+docker-compose setup already bind-mounts this certificate for you. See
+["Running services locally instead of docker images"](#running-services-locally-instead-of-docker-images)
+in Tips and tricks.
 
-Create a `.env` file by copying the example:
+##### link certificate to replication-backend
 
-```shell
-# /aam-services/docs/developer
-cp .env.example .env
-```
-
-You can start all services needed for the local development with docker-compose:
-
-```shell
-# /aam-services/docs/developer
-docker compose -f docker-compose.yml up -d
-```
-
-or in the same directory just
+When running the `replication-backend` locally (outside Docker), Node.js must trust the Caddy CA for HTTPS calls to `keycloak.localhost`.  
+Set the `NODE_EXTRA_CA_CERTS` environment variable before starting the service:
 
 ```shell
-# /aam-services/docs/developer
-docker compose up -d
+export NODE_EXTRA_CA_CERTS=/absolute/path/to/aam-services/docs/developer/container-data/caddy-authorities/root.crt
 ```
 
-- If needed, switch the sqs image in `docker-compose.yml` from `aam-sqs-mac` to `aam-sqs-linux` for compatibility.
-- Attention: sqs is a private repository for internal use only. If you don't have permissions,
-  reach out to us or disable this block in the `docker-compose.yml` file
+The certificate file is created by Docker as root, so you may need to make it readable first:
 
-You can test the running proxy by open [https://aam.localhost/hello](https://aam.localhost/hello) - You should see a
-welcome message.
-When you see a SSL warning, follow the steps in `add self-signed certificate`
+```shell
+sudo chmod 644 docs/developer/container-data/caddy-authorities/root.crt
+```
 
 ### Step 2: Configure Keycloak
 
-> WARNING! We currently use Keycloak 23 in production. For local development the latest Keycloak 26 is also supported.
-> The docker-compose offers both options. Enable one with code comments or profiles
-> 
-> Note that switching between the two Keycloak containers means the realm setup is different and the public key (`REPLICATION_BACKEND_PUBLIC_KEY`) has to be updated in .env
+> The stack runs the Keycloak version pinned in `docker-compose.yml`. If you change it, note
+> that the realm setup differs between versions and the public key
+> (`REPLICATION_BACKEND_PUBLIC_KEY`) has to be updated in .env.
+
+#### 2.1 Install the Keycloak provider plugins (required)
+
+Do this **first**. The realm imported in the next step wires these plugins into its browser
+authentication flow, so without them nobody can log in — Keycloak fails the login with
+`Unable to find factory for AuthenticatorFactory: ...` and the browser only shows a generic
+"Unexpected error when handling authentication request".
+
+```bash
+cd ./container-data/keycloak/providers # (create folder if necessary)
+sudo wget https://github.com/aerogear/keycloak-metrics-spi/releases/download/6.0.0/keycloak-metrics-spi-6.0.0.jar && \
+sudo wget https://github.com/wouterh-dev/keycloak-spi-trusted-device/releases/download/v0.0.1-22/keycloak-spi-trusted-device-0.0.1-22.jar && \
+sudo wget https://static.aam-digital.net/keycloak-2fa-email-authenticator-1.0-SNAPSHOT.jar && \
+sudo wget https://github.com/Aam-Digital/aam-services/releases/download/keycloak-third-party-authentication/v0.2.0/keycloak-third-party-authentication.jar
+```
+
+Keycloak only loads providers at startup, so restart it afterwards:
+
+```shell
+docker compose restart keycloak
+```
+
+#### 2.2 Import the realm and clients
 
 - Open the Keycloak Admin UI at [https://keycloak.localhost](https://keycloak.localhost) with the credentials defined in
   the docker-compose file.
@@ -289,19 +205,55 @@ When you see a SSL warning, follow the steps in `add self-signed certificate`
 - Under **Keycloak Realm > Clients
   ** ([https://keycloak.localhost/admin/master/console/#/dummy-realm/clients](https://keycloak.localhost/admin/master/console/#/dummy-realm/clients)),
   import the client configuration using [client_config.json from the ndb-setup](https://github.com/Aam-Digital/ndb-setup/tree/master/keycloak).
+
+#### 2.3 Create the `aam-backend` client
+
+The imported files only create the public `app` client used by the frontend. Both
+`replication-backend` and `aam-backend-service` additionally authenticate against the Keycloak
+Admin API as a confidential client named `aam-backend` (see
+`REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_ID` and the `keycloak.client-id` setting), which you
+have to create yourself:
+
+- Create a client with client ID **`aam-backend`**.
+- Turn **Client authentication** on (confidential) and enable **Service accounts roles**.
+  Standard flow and direct access grants are not needed.
+- On the client's **Service accounts roles** tab, assign the `manage-realm`, `query-users`,
+  `view-users` and `manage-users` roles from the **realm-management** client — the same four a
+  real instance gets automatically from `createKeycloakBackendClient()` in
+  [ndb-setup's `scripts/lib/keycloak.sh`](https://github.com/Aam-Digital/ndb-setup/blob/master/scripts/lib/keycloak.sh).
+  Without them the backends can resolve tokens but not look up or manage user roles.
+- Copy the secret from the **Credentials** tab into `REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_SECRET`
+  in your `.env` (see Step 4).
+
+> As of [ndb-setup#118](https://github.com/Aam-Digital/ndb-setup/pull/118), importing
+> `keycloak/client_config_aam-backend.json` from ndb-setup creates this client for you — once
+> that's merged, skip straight to the role assignment above instead of creating the client by
+> hand.
+
+#### 2.4 Create a user
+
 - In the new realm, create a user and assign relevant roles.
   (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.  
   If the roles are not visible in "Assign roles" dialog, you may need to change the "Filter by realm roles".)
-- Add additional providers (plugins):
-```bash
-cd ./container-data/keycloak/providers # (create folder if necessary)
-sudo wget https://github.com/aerogear/keycloak-metrics-spi/releases/download/6.0.0/keycloak-metrics-spi-6.0.0.jar && \
-sudo wget https://github.com/wouterh-dev/keycloak-spi-trusted-device/releases/download/v0.0.1-22/keycloak-spi-trusted-device-0.0.1-22.jar && \
-sudo wget https://static.aam-digital.net/keycloak-2fa-email-authenticator-1.0-SNAPSHOT.jar && \
-sudo wget https://github.com/Aam-Digital/aam-services/releases/download/keycloak-third-party-authentication/v0.2.0/keycloak-third-party-authentication.jar
-```
+- Note that the imported realm enforces a password policy, so the `docker` password used
+  elsewhere in this guide is rejected here — the password needs at least one upper-case
+  character.
 
 ### Step 3: Set Up CouchDB (todo: improve this by automatic script)
+
+The `app`, `app-attachments`, `report-calculation` and `notification-webhook` databases are
+created automatically by `aam-backend-service` the first time it starts successfully — you do
+not create them by hand. If CouchDB is still empty here, `aam-backend-service` did not come up;
+check `docker compose logs aam-backend-service` before continuing.
+
+> Because of that ordering, `replication-backend` may have started while `app` did not yet
+> exist. It gives up permanently after a few attempts and logs
+> `SUSTAINED OUTAGE: Changes feed request failed` with `Database does not exist`.
+> Restart it once the databases are there:
+>
+> ```shell
+> docker compose restart replication-backend
+> ```
 
 - Access CouchDB
   at [https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs](https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs).
@@ -372,15 +324,20 @@ docker compose down && docker compose up -d
 
 In your local repository of [ndb-core](https://github.com/Aam-Digital/ndb-core):
 
-1. Update `environment.ts` or `assets/config.json` with the following settings, in order to run the app in "synced" mode
-   using the backend services:
+1. Create `src/assets/config.json` with the following settings, in order to run the app in "synced" mode
+   using the backend services. That file overrides `environment.ts` and is git-ignored, so your
+   local setup stays out of `git status`; editing the tracked `environment.ts` works too, but is
+   easy to commit by accident:
 
-```
-session_type: "synced",
-demo_mode: false
+```json
+{
+  "session_type": "synced",
+  "demo_mode": false
+}
 ```
 
-2. Update `assets/keycloak.json` with the following settings
+2. Update `assets/keycloak.json` with the following settings (the values below are already the
+   defaults committed in ndb-core, so usually there is nothing to change)
 
 ```
 {
@@ -398,43 +355,139 @@ demo_mode: false
 
 ```shell
 # https://github.com/Aam-Digital/ndb-core
-ng serve --host 0.0.0.0
+npm start
 ```
+
+`npm start` already runs `ng serve --host 0.0.0.0`, which is what the reverse-proxy needs — no
+change to `package.json` required.
 
 **Attention**
 
-If you use the default `npm start` command, make sure to update the start command in the `package.json` to:
-
-```json
-{
-  "scripts": {
-    "start": "ng serve --host 0.0.0.0"
-  }
-}
-```
+Open the app at [https://aam.localhost/](https://aam.localhost/), not at `localhost:4200`.
+Only the proxied hostname can reach the backend services and Keycloak.
 
 ### Further Steps (optional):
 
-#### Set up RabbitMQ (needed for some modules)
+#### RabbitMQ (needed for some modules)
 
-To use the queue, you have to create a user and virutal host in the RabbitMQ admin interface:
-
-1. Open [aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/#/users)
-2. Login with the default credentials (guest:guest)
-3. Navigate to the "Admin" section
-4. Create a new virtual host (local) to fit
-   the [application.yaml settings](/application/aam-backend-service/src/main/resources/application.yaml)
-5. Create a new user (local-spring:docker)
-6. Edit that user and assign permissions to the "local" virtual host
+Whether you run `aam-backend-service` from source (`local-development` profile) or via
+docker-compose, it connects to the same RabbitMQ container using RabbitMQ's built-in defaults —
+the `guest` user on the `/` virtual host. No manual user or virtual host setup is needed; you can
+still open [aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/#/users) (login `guest:guest`)
+to inspect queues.
 
 #### Configure modules
 
 Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific modules like Notification:
 
+Note that `FEATURES_NOTIFICATIONAPI_ENABLED=true` in `.env.example` only enables the module — it
+stays non-functional until you supply real Firebase credentials for
+`NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64`, which ships as a placeholder. The
+service reports what it actually resolved on startup:
+
+```
+Notification startup diagnostics: emailFeatureEnabled=false, keycloakBeanAvailable=false, mailHostConfigured=false
+```
+
+Similarly, don't set `FEATURES_EXPORTAPI_ENABLED=true` without also configuring
+`aam-render-api-client-configuration` (base-path, client-id, client-secret, token-endpoint) — it
+ships with no defaults outside the `local-development` profile, so enabling the feature without
+them crashes the service on startup. You also need a reachable Carbone instance for it to actually
+render anything; see ["arm64 hosts: Carbone PDF rendering workaround"](#arm64-hosts-carbone-pdf-rendering-workaround)
+in Tips and tricks if you're not on `x86_64`.
+
+-----
+
+## Verify your setup
+
+Once you have worked through the steps above:
+
+```shell
+# all containers up; aam-backend-service must NOT be restarting or exited
+docker compose ps
+
+# reverse-proxy answers
+curl https://aam.localhost/hello
+
+# the backend created its databases
+curl -s -u admin:docker https://aam.localhost/db/couchdb/_all_dbs
+# -> ["_users","app","app-attachments","notification-webhook","report-calculation"]
+```
+
+Then open [https://aam.localhost/](https://aam.localhost/) and log in with the user you created
+in Step 2.4. You should reach the app's dashboard, not the demo setup wizard.
+
+If `aam-backend-service` keeps exiting, its log names the reason on the last few lines —
+missing datasource credentials and unbound configuration properties both show up there as
+startup failures.
 
 -----
 
 ## Tips and tricks
+
+### arm64 hosts: Carbone PDF rendering workaround
+
+The `carbone/carbone-ee` image is published only for `linux/amd64`. On any `arm64` host — Apple Silicon Macs (M1 / M2 / M3 / M4), Windows on ARM (e.g. Surface Pro X, Snapdragon devices), Linux on arm64 — it runs through emulation, and the embedded Chromium process used to convert documents to PDF crashes during every render (qemu/GPU errors). The container starts and `/status` responds, but `POST /render/{templateId}` either hangs or returns an empty/failed result. The frontend's bulk-PDF action will show "Generated 0 of N files." in this state.
+
+There is no fix on the local side. You need a Carbone container running on an `x86_64` Linux host and tunnel it back to your machine, then point the local backend at the tunnel.
+
+- **External / open-source contributors:** you do **not** have access to the Aam-Digital dev server. Two options:
+  - **Recommended:** open a discussion on the PR or issue asking the maintainers for help. We can confirm your feature works on our infrastructure during review.
+  - **Self-hosted:** if you need to verify PDF rendering yourself, run an `x86_64` Linux VM (any cloud, e.g. a small Hetzner / AWS / DigitalOcean instance) and start the Carbone container there using the same steps below.
+
+Once you have an `x86_64` host you can reach over SSH, follow the workaround:
+
+Quick steps:
+
+1. On an `x86_64` Linux host you have SSH access to, start a temp Carbone container:
+   ```bash
+   NAME=<test-container>-carbone
+   WORKDIR=/tmp/$NAME
+   mkdir -p "$WORKDIR/config" "$WORKDIR/template" "$WORKDIR/render"
+   cat > "$WORKDIR/config/config.json" <<'EOF'
+   {
+     "port": 4000,
+     "bind": "127.0.0.1",
+     "factories": 1,
+     "authentication": false,
+     "jwtAudience": "carbone-ee",
+     "templatePathRetention": 0,
+     "maxDataSize": 62914560,
+     "nbReportMaxPerBatch": 200
+   }
+   EOF
+   docker run -d --name "$NAME" \
+     -p 127.0.0.1:4001:4000 \
+     -v "$WORKDIR/config":/app/config \
+     -v "$WORKDIR/template":/app/template \
+     -v "$WORKDIR/render":/app/render \
+     --restart unless-stopped \
+     carbone/carbone-ee
+   ```
+
+2. On your local machine, open the tunnel (keep this terminal open for the session). Works in macOS Terminal, Linux shells, Windows PowerShell, WSL, or Git Bash:
+   ```bash
+   ssh -N -L 0.0.0.0:4001:127.0.0.1:4001 <dev-server-host>
+   ```
+   The bind address must be `0.0.0.0` because the local backend container reaches the tunnel through `host.docker.internal`, not `localhost`.
+
+3. In `docs/developer/.env`, set the render base path to the tunnel:
+   ```env
+   AAM_RENDER_API_CLIENT_CONFIGURATION_BASE_PATH=http://host.docker.internal:4001
+   ```
+   Keep the rest of your local dummy-Keycloak auth values; do not copy any dev/prod secrets.
+
+4. Restart only the backend so it picks up the new base path:
+   ```bash
+   cd docs/developer
+   docker compose up -d --force-recreate aam-backend-service
+   ```
+
+5. Re-upload your template through the running app's Admin → Export Templates view. Carbone stores template IDs inside the engine, and the temp container starts empty.
+
+After this you can render single PDFs and bulk PDFs (ZIP or combined) from your local frontend the same way x86_64 developers can.
+
+**Note on `nbReportMaxPerBatch`:** the config field above is also required on dev / staging / prod Carbone instances if you intend to use the bulk render endpoint (`POST /v1/export/render-batch/{templateId}`). Without it set to a positive number, Carbone returns: `Unable to generate the document. Batch processing deactivated. nbReportMaxPerBatch = 0`.
 
 ### Accessing the Local Environment
 
@@ -485,3 +538,14 @@ to use an address through `host.docker.internal` to point to your local machine
 
 Please note that the .env files here in this directory are not automatically used as environment variables
 in a locally started service like this code base.
+
+**`aam-backend-service` needs the Caddy certificate on its classpath.** The docker-compose setup
+already bind-mounts this certificate into the container and points
+`SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE` at it, so this is only needed when
+running `aam-backend-service` from source, outside Docker. To verify https connections, copy the
+generated Caddy certificate into the service's resources directory:
+
+```shell
+# /aam-services
+cp docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
+```
