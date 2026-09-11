@@ -389,6 +389,13 @@ service reports what it actually resolved on startup:
 Notification startup diagnostics: emailFeatureEnabled=false, keycloakBeanAvailable=false, mailHostConfigured=false
 ```
 
+Similarly, don't set `FEATURES_EXPORTAPI_ENABLED=true` without also configuring
+`aam-render-api-client-configuration` (base-path, client-id, client-secret, token-endpoint) — it
+ships with no defaults outside the `local-development` profile, so enabling the feature without
+them crashes the service on startup. You also need a reachable Carbone instance for it to actually
+render anything; see ["arm64 hosts: Carbone PDF rendering workaround"](#arm64-hosts-carbone-pdf-rendering-workaround)
+in Tips and tricks if you're not on `x86_64`.
+
 -----
 
 ## Verify your setup

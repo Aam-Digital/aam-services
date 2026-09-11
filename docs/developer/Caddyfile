@@ -3,7 +3,11 @@
   auto_https disable_redirects
 }
 
-aam.localhost:80, aam.localhost:443 {
+aam.localhost:80 {
+  redir https://{host}{uri} permanent
+}
+
+aam.localhost:443 {
     handle_path /auth* {
         reverse_proxy keycloak:8080 {
             header_up Host {host}
