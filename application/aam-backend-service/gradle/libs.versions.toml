@@ -10,7 +10,7 @@
 [versions]
 # --- build tooling ---
 kotlin = "2.4.10"
-springBoot = "3.5.16"
+springBoot = "4.1.1"
 springDependencyManagement = "1.1.7"
 sentryPlugin = "6.21.0"
 ktlintPlugin = "14.2.0"
