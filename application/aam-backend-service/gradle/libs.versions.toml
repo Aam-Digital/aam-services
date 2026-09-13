@@ -9,10 +9,10 @@
 
 [versions]
 # --- build tooling ---
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 springBoot = "3.5.16"
 springDependencyManagement = "1.1.7"
-sentryPlugin = "6.21.0"
+sentryPlugin = "6.22.0"
 ktlintPlugin = "14.2.0"
 # ktlint and jacoco are tool versions consumed by the ktlint {} and jacoco {} blocks.
 # Leaving them unset is not an option: Gradle 9.6.1 defaults to JaCoCo 0.8.14 and the
@@ -42,7 +42,7 @@ swaggerRequestValidator = "3.0.0"
 
 # --- security constraints (see the constraints block in build.gradle.kts) ---
 commonsCompress = "1.28.0"
-mime4jCore = "0.8.14"
+mime4jCore = "0.8.15"
 
 [libraries]
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloakAdminClient" }
