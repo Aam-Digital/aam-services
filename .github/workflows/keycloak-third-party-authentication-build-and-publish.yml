@@ -115,7 +115,7 @@ jobs:
         run: rustup update --no-self-update
 
       - name: Install conventional_commits_next_version
-        run: cargo install conventional_commits_next_version --version ^6
+        run: cargo install conventional_commits_next_version --version ^7.0.0
 
       - name: Set current tag and version
         run: |
