@@ -21,7 +21,9 @@ For some features, we also use third party solutions that are maintained from th
 - *postgresql*: PostgreSQL is an advanced object-relational database management
   system [GitHub](https://github.com/postgres/postgres)
 - *keycloak*: Open Source Identity and Access Management For Modern Applications and
-  Services [GitHub](https://github.com/keycloak/keycloak)
+  Services [GitHub](https://github.com/keycloak/keycloak). This stack uses aam-digital's own
+  `ghcr.io/aam-digital/keycloak-aam` build (private; bundles the provider plugins from Step 2.1
+  below) rather than the public image.
 - *rabbitmq-server*: Multi-protocol messaging and streaming
   broker. [GitHub](https://github.com/rabbitmq/rabbitmq-server)
 - *carbone*: Fast, Simple and Powerful report generator in any format [GitHub](https://github.com/carboneio/carbone)
@@ -66,14 +68,25 @@ The steps below are a **one-time setup**; afterwards, starting the stack again i
    > [arm64 Carbone workaround](#arm64-hosts-carbone-pdf-rendering-workaround) below if you need to
    > verify PDF rendering yourself; otherwise this is safe to ignore.
 
-2. Create a `.env` file by copying the example:
+2. Log in to `ghcr.io` — the `keycloak` image (`ghcr.io/aam-digital/keycloak-aam`) is a private
+   aam-digital image required to start the stack at all, so this step isn't optional. Create a
+   [GitHub personal access token](https://github.com/settings/tokens) with the `read:packages`
+   scope, then:
+
+   ```shell
+   echo "<your-github-pat>" | docker login ghcr.io -u <your-github-username> --password-stdin
+   ```
+
+   If you don't have access to aam-digital's private images, reach out to us.
+
+3. Create a `.env` file by copying the example:
 
    ```shell
    # /aam-services/docs/developer
    cp .env.example .env
    ```
 
-3. Start all services:
+4. Start all services:
 
    ```shell
    # /aam-services/docs/developer
@@ -81,10 +94,10 @@ The steps below are a **one-time setup**; afterwards, starting the stack again i
    ```
 
    - If needed, switch the sqs image in `docker-compose.yml` from `aam-sqs-mac` to `aam-sqs-linux` for compatibility.
-   - Attention: sqs is a private repository for internal use only. If you don't have permissions,
-     reach out to us or disable this block in the `docker-compose.yml` file
+   - sqs is optional and also private — if you're logged in per Step 2 above it just works; otherwise
+     disable this block in `docker-compose.yml` (unlike `keycloak`, the stack runs without it).
 
-4. Test the running proxy: open [https://aam.localhost/hello](https://aam.localhost/hello) — you should see a
+5. Test the running proxy: open [https://aam.localhost/hello](https://aam.localhost/hello) — you should see a
    welcome message. If you get a certificate warning, continue to Step 1b below first.
 
 ### Step 1b: trust the reverse-proxy certificate
@@ -174,12 +187,16 @@ sudo chmod 644 docs/developer/container-data/caddy-authorities/root.crt
 > that the realm setup differs between versions and the public key
 > (`REPLICATION_BACKEND_PUBLIC_KEY`) has to be updated in .env.
 
-#### 2.1 Install the Keycloak provider plugins (required)
+#### 2.1 Install the Keycloak provider plugins (not needed for the default image)
 
-Do this **first**. The realm imported in the next step wires these plugins into its browser
-authentication flow, so without them nobody can log in — Keycloak fails the login with
-`Unable to find factory for AuthenticatorFactory: ...` and the browser only shows a generic
-"Unexpected error when handling authentication request".
+The `ghcr.io/aam-digital/keycloak-aam` image this stack uses by default already bundles the 4
+plugins below — skip straight to [2.2](#22-import-the-realm-and-clients).
+
+Only do this if you've swapped `docker-compose.yml` back to the plain upstream
+`quay.io/keycloak/keycloak` image. In that case, do this **first**: the realm imported in the next
+step wires these plugins into its browser authentication flow, so without them nobody can log
+in — Keycloak fails the login with `Unable to find factory for AuthenticatorFactory: ...` and the
+browser only shows a generic "Unexpected error when handling authentication request".
 
 ```bash
 cd ./container-data/keycloak/providers # (create folder if necessary)
@@ -189,7 +206,9 @@ sudo wget https://static.aam-digital.net/keycloak-2fa-email-authenticator-1.0-SN
 sudo wget https://github.com/Aam-Digital/aam-services/releases/download/keycloak-third-party-authentication/v0.2.0/keycloak-third-party-authentication.jar
 ```
 
-Keycloak only loads providers at startup, so restart it afterwards:
+You'll also need to uncomment the `volumes:` block under the `keycloak` service in
+`docker-compose.yml` to actually mount this folder. Keycloak only loads providers at startup, so
+restart it afterwards:
 
 ```shell
 docker compose restart keycloak
@@ -217,18 +236,18 @@ have to create yourself:
 - Create a client with client ID **`aam-backend`**.
 - Turn **Client authentication** on (confidential) and enable **Service accounts roles**.
   Standard flow and direct access grants are not needed.
-- On the client's **Service accounts roles** tab, assign the `manage-realm`, `query-users`,
-  `view-users` and `manage-users` roles from the **realm-management** client — the same four a
-  real instance gets automatically from `createKeycloakBackendClient()` in
-  [ndb-setup's `scripts/lib/keycloak.sh`](https://github.com/Aam-Digital/ndb-setup/blob/master/scripts/lib/keycloak.sh).
-  Without them the backends can resolve tokens but not look up or manage user roles.
+- Under the client's **Client scopes** tab, add `roles` as a **Default** scope.
+- On its **Service accounts roles** tab, assign the `manage-realm`, `query-users`, `view-users`
+  and `manage-users` roles from the **realm-management** client.
 - Copy the secret from the **Credentials** tab into `REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_SECRET`
   in your `.env` (see Step 4).
 
-> As of [ndb-setup#118](https://github.com/Aam-Digital/ndb-setup/pull/118), importing
-> `keycloak/client_config_aam-backend.json` from ndb-setup creates this client for you — once
-> that's merged, skip straight to the role assignment above instead of creating the client by
-> hand.
+> `keycloak/client_config.json` from [ndb-setup](https://github.com/Aam-Digital/ndb-setup/tree/master/keycloak)
+> already includes this client — importing it via **Realm settings > Action > Partial import**
+> (see [ndb-setup#118](https://github.com/Aam-Digital/ndb-setup/pull/118)) creates it for you, but
+> you still need to do the `roles` scope and role-assignment steps above by hand afterward; only
+> `scripts/lib/keycloak.sh`'s `createKeycloakBackendClient()` (used for real instances) does both
+> automatically.
 
 #### 2.4 Create a user
 
@@ -303,8 +322,10 @@ check `docker compose logs aam-backend-service` before continuing.
 ### Step 4: Configure the replication-backend
 
 Retrieve the `public_key` for **dummy-realm**
-from [https://keycloak.localhost/realms/dummy-realm](https://keycloak.localhost/realms/dummy-realm) and add it to the
-`.env` file as `REPLICATION_BACKEND_PUBLIC_KEY`:
+from [https://keycloak.localhost/realms/dummy-realm](https://keycloak.localhost/realms/dummy-realm) (a single
+value) and add it to the `.env` file as `REPLICATION_BACKEND_PUBLIC_KEY`. If you instead look under
+Admin Console > Realm settings > Keys, you'll see several — use the **public key from the `RS256`
+algorithm** entry, not `HS256`/`AES` or the others.
 
 ```
 # from
@@ -389,12 +410,29 @@ service reports what it actually resolved on startup:
 Notification startup diagnostics: emailFeatureEnabled=false, keycloakBeanAvailable=false, mailHostConfigured=false
 ```
 
-Similarly, don't set `FEATURES_EXPORTAPI_ENABLED=true` without also configuring
-`aam-render-api-client-configuration` (base-path, client-id, client-secret, token-endpoint) — it
-ships with no defaults outside the `local-development` profile, so enabling the feature without
-them crashes the service on startup. You also need a reachable Carbone instance for it to actually
-render anything; see ["arm64 hosts: Carbone PDF rendering workaround"](#arm64-hosts-carbone-pdf-rendering-workaround)
-in Tips and tricks if you're not on `x86_64`.
+Similarly, PDF reports (`FEATURES_EXPORTAPI_ENABLED`) need `aam-render-api-client-configuration`
+set up — it ships with no defaults outside the `local-development` profile (which docker-compose
+doesn't activate), so just flipping the feature flag crashes the service on startup. To enable it:
+
+1. Create a confidential Keycloak client for Carbone auth in **dummy-realm** (same steps as
+   [2.3](#23-create-the-aam-backend-client), client ID e.g. `aam-backend-pdf-client`, client
+   authentication on, service account roles enabled — no realm-management roles needed here) and
+   copy its secret from the **Credentials** tab.
+2. Add to your `.env`:
+   ```env
+   FEATURES_EXPORTAPI_ENABLED=true
+   AAM_RENDER_API_CLIENT_CONFIGURATION_BASE_PATH=https://aam.localhost/carbone-io
+   AAM_RENDER_API_CLIENT_CONFIGURATION_AUTH_CONFIG_CLIENT_ID=aam-backend-pdf-client
+   AAM_RENDER_API_CLIENT_CONFIGURATION_AUTH_CONFIG_CLIENT_SECRET=<secret from step 1>
+   AAM_RENDER_API_CLIENT_CONFIGURATION_AUTH_CONFIG_TOKEN_ENDPOINT=https://keycloak.localhost/realms/dummy-realm/protocol/openid-connect/token
+   ```
+   (the `local-development` profile's own default for this last one points at a realm called
+   `aam-digital`, which doesn't exist in this local setup — use `dummy-realm` instead.)
+
+You also need a reachable Carbone instance for this to actually render anything — `carbone-io` in
+`docker-compose.yml` is `linux/amd64`-only; see
+["arm64 hosts: Carbone PDF rendering workaround"](#arm64-hosts-carbone-pdf-rendering-workaround) in
+Tips and tricks if you're not on `x86_64`.
 
 -----
 
