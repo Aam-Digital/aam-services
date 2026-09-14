@@ -738,6 +738,11 @@ components:
           items:
             type: string
           example: [ "report_id_1", "report_id_2", "report_id_3" ]
+        createdAt:
+          description: When the webhook was registered. Absent for webhooks created before this field was introduced.
+          type: string
+          format: date-time
+          nullable: true
 
     ReportData:
       type: array

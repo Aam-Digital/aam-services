@@ -80,9 +80,20 @@ jobs:
   publish:
     name: Publish keycloak-third-party-authentication Release
     runs-on: ubuntu-latest
-    if: ${{ github.event.ref  != '' }} # release
+    # Only main pushes compute and create the next release; the tag push this job creates
+    # re-triggers this workflow (to build the versioned artifact in the build job above)
+    # but must not re-run this job, or it wastes the concurrency slot below re-doing a
+    # no-op release computation.
+    if: ${{ github.ref == 'refs/heads/main' }} # release
     needs:
       - build
+    # Serializes releases across overlapping main-branch pushes (e.g. several PRs merged
+    # within minutes of each other). Without this, two runs can both read the same
+    # last-released tag before either creates the next one and race to create the same
+    # release.
+    concurrency:
+      group: keycloak-third-party-authentication-publish
+      cancel-in-progress: false
     permissions:
       contents: write # to be able to publish a GitHub release
     defaults:
@@ -134,5 +145,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           TAG_NAME=keycloak-third-party-authentication/${{ env.NEXT_VERSION }}
-          gh release create "$TAG_NAME" --generate-notes
-          gh release upload "$TAG_NAME" keycloak-third-party-authentication.jar 
+          gh release create "$TAG_NAME" --target "${{ github.sha }}" --generate-notes
+          gh release upload "$TAG_NAME" keycloak-third-party-authentication.jar

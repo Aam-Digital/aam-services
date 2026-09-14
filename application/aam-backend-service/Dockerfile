@@ -1,4 +1,4 @@
-FROM gradle:9.6.1-jdk21-alpine AS BUILD
+FROM gradle:9.7.1-jdk21-alpine AS BUILD
 WORKDIR /opt/app
 COPY . .
 # With SENTRY_UPLOAD_SOURCES=true the sources of this build are bundled and uploaded, so Sentry
