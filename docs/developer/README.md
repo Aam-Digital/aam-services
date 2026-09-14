@@ -9,41 +9,26 @@ For some features, we also use third party solutions that are maintained from th
 - *ndb-core*: main angular frontend application [GitHub](https://github.com/Aam-Digital/ndb-core)
 - *replication-backend*: (optional) layer between frontend and the couchdb for handling document
   permissions [GitHub](https://github.com/Aam-Digital/replication-backend)
-- *aam-backend-services*: main backend spring boot application, modulith
+- *aam-backend-services*: (optional) main backend spring boot application, modulith
   architecture [GitHub](https://github.com/Aam-Digital/aam-services/tree/main/application/aam-backend-service)
-
-additionally, as multi-tenant services:
-
-- *account-backend*: simple backend service to handle user account related tasks for the frontend in
-  Keycloak [GitHub](https://github.com/Aam-Digital/account-backend)
-- *ndb-core CLI*: admin CLI for statistics, config migrations, and CouchDB operations;
-  built into ndb-core [CLI docs](https://github.com/Aam-Digital/ndb-core/blob/master/cli/README.md)
-
-### managed by aam-digital (private)
-
-Accessible for aam-digital internals and contributors only.
-
-- *aam-external-mock-service*: mock of external systems are subject to a duty of non-disclosure in some cases.
 
 ---
 
-### used by aam-digital stack, managed by third party (public)
+### used by aam-digital stack, managed by third party
 
 - *couchdb*: Seamless multi-master syncing database with an intuitive HTTP/JSON API, designed for
   reliability [GitHub](https://github.com/apache/couchdb)
 - *postgresql*: PostgreSQL is an advanced object-relational database management
   system [GitHub](https://github.com/postgres/postgres)
 - *keycloak*: Open Source Identity and Access Management For Modern Applications and
-  Services [GitHub](https://github.com/keycloak/keycloak)
+  Services [GitHub](https://github.com/keycloak/keycloak). This stack uses aam-digital's own
+  `ghcr.io/aam-digital/keycloak-aam` build (private; bundles the provider plugins from Step 2.1
+  below) rather than the public image.
 - *rabbitmq-server*: Multi-protocol messaging and streaming
   broker. [GitHub](https://github.com/rabbitmq/rabbitmq-server)
 - *carbone*: Fast, Simple and Powerful report generator in any format [GitHub](https://github.com/carboneio/carbone)
-
-### used by aam-digital stack, managed by third party (private)
-
-Accessible for aam-digital internals and contributors only.
-
-- *structured-query-server (sqs)*: An SQL query engine for CouchDB, letting you use SQL SELECT statements to extract
+- *structured-query-server (sqs)*: (private; Accessible for aam-digital internals and contributors only)
+An SQL query engine for CouchDB, letting you use SQL SELECT statements to extract
   information from a CouchDB
   database. [Homepage](https://neighbourhood.ie/products-and-services/structured-query-server)
 
@@ -56,45 +41,429 @@ Accessible for aam-digital internals and contributors only.
 
 -----
 
-## Running a full system locally
+## Full local setup with Docker and docker-compose
 
-After completing the setup steps below once
-you can simply use the docker compose file in this directory:
+All services run as docker containers, communicating over a dedicated docker network (`aam-digital`).
+The steps below are a **one-time setup**; afterwards, starting the stack again is just
+`docker compose up -d` from `docs/developer` — no need to repeat Steps 1-5.
 
-```shell
-docker compose up -d
+### Step 1: start the local development stack
+
+1. Create the docker network (once per machine):
+
+   ```bash
+   docker network create aam-digital
+   ```
+
+   > **macOS M4 bugfix:** Sequoia 15.2 on M4 chips hits [corretto-21#85](https://github.com/corretto/corretto-21/issues/85).
+   > Add this to your `.env` (created in the next step) if you're on that combination:
+   > ```env
+   > JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
+   > ```
+   >
+   > **arm64 hosts (Apple Silicon, Windows/Linux on ARM):** the `carbone/carbone-ee` image is
+   > `linux/amd64`-only and runs under emulation, which crashes on every PDF render
+   > (`POST /render/{templateId}` hangs or returns empty; the frontend shows
+   > "Generated 0 of N files."). There is no local fix — see
+   > [arm64 Carbone workaround](#arm64-hosts-carbone-pdf-rendering-workaround) below if you need to
+   > verify PDF rendering yourself; otherwise this is safe to ignore.
+
+2. Log in to `ghcr.io` — the `keycloak` image (`ghcr.io/aam-digital/keycloak-aam`) is a private
+   aam-digital image required to start the stack at all, so this step isn't optional. Create a
+   [GitHub personal access token](https://github.com/settings/tokens) with the `read:packages`
+   scope, then:
+
+   ```shell
+   echo "<your-github-pat>" | docker login ghcr.io -u <your-github-username> --password-stdin
+   ```
+
+   If you don't have access to aam-digital's private images, reach out to us.
+
+3. Create a `.env` file by copying the example:
+
+   ```shell
+   # /aam-services/docs/developer
+   cp .env.example .env
+   ```
+
+4. Start all services:
+
+   ```shell
+   # /aam-services/docs/developer
+   docker compose up -d
+   ```
+
+   - If needed, switch the sqs image in `docker-compose.yml` from `aam-sqs-mac` to `aam-sqs-linux` for compatibility.
+   - sqs is optional and also private — if you're logged in per Step 2 above it just works; otherwise
+     disable this block in `docker-compose.yml` (unlike `keycloak`, the stack runs without it).
+
+5. Test the running proxy: open [https://aam.localhost/hello](https://aam.localhost/hello) — you should see a
+   welcome message. If you get a certificate warning, continue to Step 1b below first.
+
+### Step 1b: trust the reverse-proxy certificate
+
+The stack includes a caddy reverse-proxy on `https://aam.localhost/` with a self-signed certificate
+that needs to be trusted manually, and uses two hostnames: `aam.localhost` and `keycloak.localhost`.
+
+On macOS and on Linux with systemd-resolved, any `*.localhost` name already resolves to
+`127.0.0.1` and you can skip the hosts-file part below. Everywhere else, add both to your
+`/etc/hosts`:
+
+```bash
+sudo nano /etc/hosts
 ```
 
-(!) Make sure to access the frontend at [http://aam.localhost/](http://aam.localhost/)
-instead of "localhost:4200". Otherwise, the connections to backend services like sync will not work.
+Add a line for each hostname:
 
-Also see the "Tips and tricks" section at the end of this file for possible adjustments.
+```
+127.0.0.1       localhost
+127.0.0.1       aam.localhost
+127.0.0.1       keycloak.localhost
+```
+
+#### add self-signed certificate
+
+You can import the auto generated caddy certificate after the stack is started (step 3 above).
+
+##### MacOS
+
+1. Open Keychain Access (`Cmd` + `Space` and search for it)
+2. Switch to System `Keychains` -> `System` -> `Certificates`  
+   ![Keychain Access](../assets/keychain-access-1.png)
+3. Drag and Drop the `./container-data/caddy-authorities/root.crt` into Keychain Access
+4. Open certificate details by double-click the certificate
+5. Trust the certificate for SSL by setting `Trust` -> `Secure Sockets Layer (SSL)` to `Always Trust`  
+   ![Keychain Access](../assets/keychain-access-2.png)
+
+##### Linux (debian/ubuntu)
+
+Install the locally generated root CA certificate from `docs/developer/container-data/caddy-authorities/root.crt`
+as [described here](https://documentation.ubuntu.com/server/how-to/security/install-a-root-ca-certificate-in-the-trust-store).
+
+If your browser still does not recognize the certificates of aam.localhost connections you can add it manually in your
+browser:
+
+1. Copy the root certificate
+2. Make it for non-root users
+
+```shell
+sudo cp container-data/caddy-authorities/root.crt aam.localhost.crt
+sudo chown $USER:$USER aam.localhost.crt
+```
+
+3. In Chrome / Chromium: Open Settings > Privacy and security > Security > Manage certificates
+4. In the "Authorities" tab, Import the certificate
+   ![Chromium Import Certificate](../assets/certificate-import_linux-chromium.png)
+
+##### Windows
+
+    todo
+
+##### link certificate to aam-backend-service
+
+Only needed when running `aam-backend-service` **from source**, outside Docker — the
+docker-compose setup already bind-mounts this certificate for you. See
+["Running services locally instead of docker images"](#running-services-locally-instead-of-docker-images)
+in Tips and tricks.
+
+##### link certificate to replication-backend
+
+When running the `replication-backend` locally (outside Docker), Node.js must trust the Caddy CA for HTTPS calls to `keycloak.localhost`.  
+Set the `NODE_EXTRA_CA_CERTS` environment variable before starting the service:
+
+```shell
+export NODE_EXTRA_CA_CERTS=/absolute/path/to/aam-services/docs/developer/container-data/caddy-authorities/root.crt
+```
+
+The certificate file is created by Docker as root, so you may need to make it readable first:
+
+```shell
+sudo chmod 644 docs/developer/container-data/caddy-authorities/root.crt
+```
+
+### Step 2: Configure Keycloak
+
+> The stack runs the Keycloak version pinned in `docker-compose.yml`. If you change it, note
+> that the realm setup differs between versions and the public key
+> (`REPLICATION_BACKEND_PUBLIC_KEY`) has to be updated in .env.
+
+#### 2.1 Install the Keycloak provider plugins (not needed for the default image)
+
+The `ghcr.io/aam-digital/keycloak-aam` image this stack uses by default already bundles the 4
+plugins below — skip straight to [2.2](#22-import-the-realm-and-clients).
+
+Only do this if you've swapped `docker-compose.yml` back to the plain upstream
+`quay.io/keycloak/keycloak` image. In that case, do this **first**: the realm imported in the next
+step wires these plugins into its browser authentication flow, so without them nobody can log
+in — Keycloak fails the login with `Unable to find factory for AuthenticatorFactory: ...` and the
+browser only shows a generic "Unexpected error when handling authentication request".
+
+```bash
+cd ./container-data/keycloak/providers # (create folder if necessary)
+sudo wget https://github.com/aerogear/keycloak-metrics-spi/releases/download/6.0.0/keycloak-metrics-spi-6.0.0.jar && \
+sudo wget https://github.com/wouterh-dev/keycloak-spi-trusted-device/releases/download/v0.0.1-22/keycloak-spi-trusted-device-0.0.1-22.jar && \
+sudo wget https://static.aam-digital.net/keycloak-2fa-email-authenticator-1.0-SNAPSHOT.jar && \
+sudo wget https://github.com/Aam-Digital/aam-services/releases/download/keycloak-third-party-authentication/v0.2.0/keycloak-third-party-authentication.jar
+```
+
+You'll also need to uncomment the `volumes:` block under the `keycloak` service in
+`docker-compose.yml` to actually mount this folder. Keycloak only loads providers at startup, so
+restart it afterwards:
+
+```shell
+docker compose restart keycloak
+```
+
+#### 2.2 Import the realm and clients
+
+- Open the Keycloak Admin UI at [https://keycloak.localhost](https://keycloak.localhost) with the credentials defined in
+  the docker-compose file.
+
+- Create a new realm called **dummy-realm** by importing
+  the realm configuration file [realm_config.json from the ndb-setup](https://github.com/Aam-Digital/ndb-setup/tree/master/keycloak).
+- Under **Keycloak Realm > Clients
+  ** ([https://keycloak.localhost/admin/master/console/#/dummy-realm/clients](https://keycloak.localhost/admin/master/console/#/dummy-realm/clients)),
+  import the client configuration using [client_config.json from the ndb-setup](https://github.com/Aam-Digital/ndb-setup/tree/master/keycloak).
+
+#### 2.3 Create the `aam-backend` client
+
+The imported files only create the public `app` client used by the frontend. Both
+`replication-backend` and `aam-backend-service` additionally authenticate against the Keycloak
+Admin API as a confidential client named `aam-backend` (see
+`REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_ID` and the `keycloak.client-id` setting), which you
+have to create yourself:
+
+- Create a client with client ID **`aam-backend`**.
+- Turn **Client authentication** on (confidential) and enable **Service accounts roles**.
+  Standard flow and direct access grants are not needed.
+- Under the client's **Client scopes** tab, add `roles` as a **Default** scope.
+- On its **Service accounts roles** tab, assign the `manage-realm`, `query-users`, `view-users`
+  and `manage-users` roles from the **realm-management** client.
+- Copy the secret from the **Credentials** tab into `REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_SECRET`
+  in your `.env` (see Step 4).
+
+> `keycloak/client_config.json` from [ndb-setup](https://github.com/Aam-Digital/ndb-setup/tree/master/keycloak)
+> already includes this client — importing it via **Realm settings > Action > Partial import**
+> (see [ndb-setup#118](https://github.com/Aam-Digital/ndb-setup/pull/118)) creates it for you, but
+> you still need to do the `roles` scope and role-assignment steps above by hand afterward; only
+> `scripts/lib/keycloak.sh`'s `createKeycloakBackendClient()` (used for real instances) does both
+> automatically.
+
+#### 2.4 Create a user
+
+- In the new realm, create a user and assign relevant roles.
+  (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.  
+  If the roles are not visible in "Assign roles" dialog, you may need to change the "Filter by realm roles".)
+- Note that the imported realm enforces a password policy, so the `docker` password used
+  elsewhere in this guide is rejected here — the password needs at least one upper-case
+  character.
+
+### Step 3: Set Up CouchDB (todo: improve this by automatic script)
+
+The `app`, `app-attachments`, `report-calculation` and `notification-webhook` databases are
+created automatically by `aam-backend-service` the first time it starts successfully — you do
+not create them by hand. If CouchDB is still empty here, `aam-backend-service` did not come up;
+check `docker compose logs aam-backend-service` before continuing.
+
+> Because of that ordering, `replication-backend` may have started while `app` did not yet
+> exist. It gives up permanently after a few attempts and logs
+> `SUSTAINED OUTAGE: Changes feed request failed` with `Database does not exist`.
+> Restart it once the databases are there:
+>
+> ```shell
+> docker compose restart replication-backend
+> ```
+
+- Access CouchDB
+  at [https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs](https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs).
+    - username: `admin`
+    - password: `docker`
+- Add a document of type **Config:CONFIG_ENTITY** to the `app` database
+    - e.g.,
+      from [dev.aam-digital.net CouchDB instance](https://dev.aam-digital.net/db/couchdb/_utils/#database/app/Config%3ACONFIG_ENTITY).
+      **Note: If you get an error while adding a document (e.g. document update conflict warning) remove the "_rev": "
+      value".**
+    - or in a demo system with generated data, navigate to "Admin > Admin Overview" and click "Download
+      configuration". (the downloaded json needs to be copied into a new CouchDb Document
+      `{ "_id": "Config:CONFIG_ENTITY", "data": <downloaded config> }`)
+- Add a document of type **Config:Permissions** to the `app` database:
+
+```
+{
+  "_id": "Config:Permissions",
+  "data": {
+    "public": [
+      {
+        "subject": [
+          "Config",
+          "SiteSettings",
+          "PublicFormConfig",
+          "ConfigurableEnum"
+        ],
+        "action": "read"
+      }
+    ],
+    "default": [
+      {
+        "subject": "all",
+        "action": "read"
+      }
+    ],
+    "admin_app": [
+      {
+        "subject": "all",
+        "action": "manage"
+      }
+    ]
+  }
+}
+```
+
+### Step 4: Configure the replication-backend
+
+Retrieve the `public_key` for **dummy-realm**
+from [https://keycloak.localhost/realms/dummy-realm](https://keycloak.localhost/realms/dummy-realm) (a single
+value) and add it to the `.env` file as `REPLICATION_BACKEND_PUBLIC_KEY`. If you instead look under
+Admin Console > Realm settings > Keys, you'll see several — use the **public key from the `RS256`
+algorithm** entry, not `HS256`/`AES` or the others.
+
+```
+# from
+REPLICATION_BACKEND_PUBLIC_KEY=<the-content-of-"public_key"-from-here-https://keycloak.localhost/realms/dummy-realm>
+
+# to
+REPLICATION_BACKEND_PUBLIC_KEY=MIIBI....
+```
+
+Restart the deployment to use the updated settings:
+
+```shell
+docker compose down && docker compose up -d
+```
+
+### Step 5: Start the Frontend
+
+In your local repository of [ndb-core](https://github.com/Aam-Digital/ndb-core):
+
+1. Create `src/assets/config.json` with the following settings, in order to run the app in "synced" mode
+   using the backend services. That file overrides `environment.ts` and is git-ignored, so your
+   local setup stays out of `git status`; editing the tracked `environment.ts` works too, but is
+   easy to commit by accident:
+
+```json
+{
+  "session_type": "synced",
+  "demo_mode": false
+}
+```
+
+2. Update `assets/keycloak.json` with the following settings (the values below are already the
+   defaults committed in ndb-core, so usually there is nothing to change)
+
+```
+{
+  "realm": "dummy-realm",
+  "auth-server-url": "https://keycloak.localhost",
+  "ssl-required": "external",
+  "resource": "app",
+  "public-client": true,
+  "confidential-port": 0
+}
+
+```
+
+3. Start the frontend:
+
+```shell
+# https://github.com/Aam-Digital/ndb-core
+npm start
+```
+
+`npm start` already runs `ng serve --host 0.0.0.0`, which is what the reverse-proxy needs — no
+change to `package.json` required.
+
+**Attention**
+
+Open the app at [https://aam.localhost/](https://aam.localhost/), not at `localhost:4200`.
+Only the proxied hostname can reach the backend services and Keycloak.
+
+### Further Steps (optional):
+
+#### RabbitMQ (needed for some modules)
+
+Whether you run `aam-backend-service` from source (`local-development` profile) or via
+docker-compose, it connects to the same RabbitMQ container using RabbitMQ's built-in defaults —
+the `guest` user on the `/` virtual host. No manual user or virtual host setup is needed; you can
+still open [aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/#/users) (login `guest:guest`)
+to inspect queues.
+
+#### Configure modules
+
+Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific modules like Notification:
+
+Note that `FEATURES_NOTIFICATIONAPI_ENABLED=true` in `.env.example` only enables the module — it
+stays non-functional until you supply real Firebase credentials for
+`NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64`, which ships as a placeholder. The
+service reports what it actually resolved on startup:
+
+```
+Notification startup diagnostics: emailFeatureEnabled=false, keycloakBeanAvailable=false, mailHostConfigured=false
+```
+
+Similarly, PDF reports (`FEATURES_EXPORTAPI_ENABLED`) need `aam-render-api-client-configuration`
+set up — it ships with no defaults outside the `local-development` profile (which docker-compose
+doesn't activate), so just flipping the feature flag crashes the service on startup. To enable it:
+
+1. Create a confidential Keycloak client for Carbone auth in **dummy-realm** (same steps as
+   [2.3](#23-create-the-aam-backend-client), client ID e.g. `aam-backend-pdf-client`, client
+   authentication on, service account roles enabled — no realm-management roles needed here) and
+   copy its secret from the **Credentials** tab.
+2. Add to your `.env`:
+   ```env
+   FEATURES_EXPORTAPI_ENABLED=true
+   AAM_RENDER_API_CLIENT_CONFIGURATION_BASE_PATH=https://aam.localhost/carbone-io
+   AAM_RENDER_API_CLIENT_CONFIGURATION_AUTH_CONFIG_CLIENT_ID=aam-backend-pdf-client
+   AAM_RENDER_API_CLIENT_CONFIGURATION_AUTH_CONFIG_CLIENT_SECRET=<secret from step 1>
+   AAM_RENDER_API_CLIENT_CONFIGURATION_AUTH_CONFIG_TOKEN_ENDPOINT=https://keycloak.localhost/realms/dummy-realm/protocol/openid-connect/token
+   ```
+   (the `local-development` profile's own default for this last one points at a realm called
+   `aam-digital`, which doesn't exist in this local setup — use `dummy-realm` instead.)
+
+You also need a reachable Carbone instance for this to actually render anything — `carbone-io` in
+`docker-compose.yml` is `linux/amd64`-only; see
+["arm64 hosts: Carbone PDF rendering workaround"](#arm64-hosts-carbone-pdf-rendering-workaround) in
+Tips and tricks if you're not on `x86_64`.
 
 -----
 
-## Setup of development environment
+## Verify your setup
 
-To make development as simple as possible, we provide all services as docker containers. You can start them with the
-docker-compose file provided [here in this folder](./docker-compose.yml)  
-All container will communicate directly over a separate docker network: `aam-digital`
+Once you have worked through the steps above:
 
-You need to create the docker network initial:
+```shell
+# all containers up; aam-backend-service must NOT be restarting or exited
+docker compose ps
 
-```bash
-docker network create aam-digital
+# reverse-proxy answers
+curl https://aam.localhost/hello
+
+# the backend created its databases
+curl -s -u admin:docker https://aam.localhost/db/couchdb/_all_dbs
+# -> ["_users","app","app-attachments","notification-webhook","report-calculation"]
 ```
 
-##### (bugfix) macOS with M4:
+Then open [https://aam.localhost/](https://aam.localhost/) and log in with the user you created
+in Step 2.4. You should reach the app's dashboard, not the demo setup wizard.
 
-Fix bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85:
+If `aam-backend-service` keeps exiting, its log names the reason on the last few lines —
+missing datasource credentials and unbound configuration properties both show up there as
+startup failures.
 
-Add this to your .env file:
+-----
 
-```env
-JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
-```
+## Tips and tricks
 
-##### (limitation) arm64 hosts: Carbone PDF rendering fails locally
+### arm64 hosts: Carbone PDF rendering workaround
 
 The `carbone/carbone-ee` image is published only for `linux/amd64`. On any `arm64` host — Apple Silicon Macs (M1 / M2 / M3 / M4), Windows on ARM (e.g. Surface Pro X, Snapdragon devices), Linux on arm64 — it runs through emulation, and the embedded Chromium process used to convert documents to PDF crashes during every render (qemu/GPU errors). The container starts and `/status` responds, but `POST /render/{templateId}` either hangs or returns an empty/failed result. The frontend's bulk-PDF action will show "Generated 0 of N files." in this state.
 
@@ -105,6 +474,13 @@ There is no fix on the local side. You need a Carbone container running on an `x
   - **Self-hosted:** if you need to verify PDF rendering yourself, run an `x86_64` Linux VM (any cloud, e.g. a small Hetzner / AWS / DigitalOcean instance) and start the Carbone container there using the same steps below.
 
 Once you have an `x86_64` host you can reach over SSH, follow the workaround:
+
+> **Aam-Digital internal contributors:** rather than standing up a temp container, you can point
+> your local backend straight at the existing dev-cluster Carbone instance
+> (`https://pdf.dev-cluster.aam-digital.net`) and copy the render-api auth values from
+> `config/aam-backend-service/application.env` on that server into your local `.env`. Simpler than
+> the tunnel below, but only works if you have access to that server — external contributors
+> should use the steps below instead.
 
 Quick steps:
 
@@ -158,284 +534,6 @@ After this you can render single PDFs and bulk PDFs (ZIP or combined) from your 
 
 **Note on `nbReportMaxPerBatch`:** the config field above is also required on dev / staging / prod Carbone instances if you intend to use the bulk render endpoint (`POST /v1/export/render-batch/{templateId}`). Without it set to a positive number, Carbone returns: `Unable to generate the document. Batch processing deactivated. nbReportMaxPerBatch = 0`.
 
----
-
-### reverse-proxy
-
-The stack includes a caddy reverse-proxy that runs on https://aam.localhost/ - SSL is enabled by default. However, this
-certificate is self-signed and must be added manually as trustworthy.
-
-You also need to adapt your `/etc/hosts` file and add an entry for `aam.localhost` to `127.0.0.1`:
-
-```bash
-sudo nano /etc/hosts
-```
-
-Add another line for `aam.localhost`:
-
-```
-127.0.0.1       localhost
-127.0.0.1       aam.localhost
-```
-
-#### add self-signed certificate
-
-You can add import the auto generated caddy certificate after the aam-stack is started.
-
-##### link certificate to aam-backend-service
-
-To be able to verify https connections, the `aam-backend-service` need the generated caddy certificate.  
-You can copy the certificate to the resources directory of the `aam-backend-service`:
-
-```shell
-# /aam-services
-cp docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
-```
-
-##### link certificate to replication-backend
-
-When running the `replication-backend` locally (outside Docker), Node.js must trust the Caddy CA for HTTPS calls to `keycloak.localhost`.  
-Set the `NODE_EXTRA_CA_CERTS` environment variable before starting the service:
-
-```shell
-export NODE_EXTRA_CA_CERTS=/absolute/path/to/aam-services/docs/developer/container-data/caddy-authorities/root.crt
-```
-
-The certificate file is created by Docker as root, so you may need to make it readable first:
-
-```shell
-sudo chmod 644 docs/developer/container-data/caddy-authorities/root.crt
-```
-
-##### MacOS
-
-1. Open Keychain Access (`Cmd` + `Space` and search for it)
-2. Switch to System `Keychains` -> `System` -> `Certificates`  
-   ![Keychain Access](../assets/keychain-access-1.png)
-3. Drag and Drop the `./container-data/caddy-authorities/root.crt` into Keychain Access
-4. Open certificate details by double-click the certificate
-5. Trust the certificate for SSL by setting `Trust` -> `Secure Sockets Layer (SSL)` to `Always Trust`  
-   ![Keychain Access](../assets/keychain-access-2.png)
-
-##### Linux (debian/ubuntu)
-
-Install the locally generated root CA certificate from `docs/developer/container-data/caddy-authorities/root.crt`
-as [described here](https://documentation.ubuntu.com/server/how-to/security/install-a-root-ca-certificate-in-the-trust-store).
-
-If your browser still does not recognize the certificates of aam.localhost connections you can add it manually in your
-browser:
-
-1. Copy the root certificate
-2. Make it for non-root users
-
-```shell
-sudo cp container-data/caddy-authorities/root.crt aam.localhost.crt
-sudo chown $USER:$USER aam.localhost.crt
-```
-
-3. In Chrome / Chromium: Open Settings > Privacy and security > Security > Manage certificates
-4. In the "Authorities" tab, Import the certificate
-   ![Chromium Import Certificate](../assets/certificate-import_linux-chromium.png)
-
-##### Windows
-
-    todo
-
-## Full local setup with Docker and docker-compose
-
-### Step 1: start the local development stack
-
-Create a `.env` file by copying the example:
-
-```shell
-# /aam-services/docs/developer
-cp .env.example .env
-```
-
-You can start all services needed for the local development with docker-compose:
-
-```shell
-# /aam-services/docs/developer
-docker compose -f docker-compose.yml up -d
-```
-
-or in the same directory just
-
-```shell
-# /aam-services/docs/developer
-docker compose up -d
-```
-
-- If needed, switch the sqs image in `docker-compose.yml` from `aam-sqs-mac` to `aam-sqs-linux` for compatibility.
-- Attention: sqs is a private repository for internal use only. If you don't have permissions,
-  reach out to us or disable this block in the `docker-compose.yml` file
-
-You can test the running proxy by open [https://aam.localhost/hello](https://aam.localhost/hello) - You should see a
-welcome message.
-When you see a SSL warning, follow the steps in `add self-signed certificate`
-
-### Step 2: Configure Keycloak
-
-> WARNING! We currently use Keycloak 23 in production. For local development the latest Keycloak 26 is also supported.
-> The docker-compose offers both options. Enable one with code comments or profiles
-> 
-> Note that switching between the two Keycloak containers means the realm setup is different and the public key (`REPLICATION_BACKEND_PUBLIC_KEY`) has to be updated in .env
-
-- Open the Keycloak Admin UI at [https://keycloak.localhost](https://keycloak.localhost) with the credentials defined in
-  the docker-compose file.
-
-- Create a new realm called **dummy-realm** by importing
-  the realm configuration file [realm_config.json from the ndb-setup](https://github.com/Aam-Digital/ndb-setup/tree/master/keycloak).
-- Under **Keycloak Realm > Clients
-  ** ([https://keycloak.localhost/admin/master/console/#/dummy-realm/clients](https://keycloak.localhost/admin/master/console/#/dummy-realm/clients)),
-  import the client configuration using [client_config.json from the ndb-setup](https://github.com/Aam-Digital/ndb-setup/tree/master/keycloak).
-- In the new realm, create a user and assign relevant roles.
-  (Usually you will want at least "user_app" and/or "admin_app" role to be able to load the basic app config.  
-  If the roles are not visible in "Assign roles" dialog, you may need to change the "Filter by realm roles".)
-- Add additional providers (plugins):
-```bash
-cd ./container-data/keycloak/providers # (create folder if necessary)
-sudo wget https://github.com/aerogear/keycloak-metrics-spi/releases/download/6.0.0/keycloak-metrics-spi-6.0.0.jar && \
-sudo wget https://github.com/wouterh-dev/keycloak-spi-trusted-device/releases/download/v0.0.1-22/keycloak-spi-trusted-device-0.0.1-22.jar && \
-sudo wget https://static.aam-digital.net/keycloak-2fa-email-authenticator-1.0-SNAPSHOT.jar && \
-sudo wget https://github.com/Aam-Digital/aam-services/releases/download/keycloak-third-party-authentication/v0.2.0/keycloak-third-party-authentication.jar
-```
-
-### Step 3: Set Up CouchDB (todo: improve this by automatic script)
-
-- Access CouchDB
-  at [https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs](https://aam.localhost/db/couchdb/_utils/#database/app/_all_docs).
-    - username: `admin`
-    - password: `docker`
-- Add a document of type **Config:CONFIG_ENTITY** to the `app` database
-    - e.g.,
-      from [dev.aam-digital.net CouchDB instance](https://dev.aam-digital.net/db/couchdb/_utils/#database/app/Config%3ACONFIG_ENTITY).
-      **Note: If you get an error while adding a document (e.g. document update conflict warning) remove the "_rev": "
-      value".**
-    - or in a demo system with generated data, navigate to "Admin > Admin Overview" and click "Download
-      configuration". (the downloaded json needs to be copied into a new CouchDb Document
-      `{ "_id": "Config:CONFIG_ENTITY", "data": <downloaded config> }`)
-- Add a document of type **Config:Permissions** to the `app` database:
-
-```
-{
-  "_id": "Config:Permissions",
-  "data": {
-    "public": [
-      {
-        "subject": [
-          "Config",
-          "SiteSettings",
-          "PublicFormConfig",
-          "ConfigurableEnum"
-        ],
-        "action": "read"
-      }
-    ],
-    "default": [
-      {
-        "subject": "all",
-        "action": "read"
-      }
-    ],
-    "admin_app": [
-      {
-        "subject": "all",
-        "action": "manage"
-      }
-    ]
-  }
-}
-```
-
-### Step 4: Configure the replication-backend
-
-Retrieve the `public_key` for **dummy-realm**
-from [https://keycloak.localhost/realms/dummy-realm](https://keycloak.localhost/realms/dummy-realm) and add it to the
-`.env` file as `REPLICATION_BACKEND_PUBLIC_KEY`:
-
-```
-# from
-REPLICATION_BACKEND_PUBLIC_KEY=<the-content-of-"public_key"-from-here-https://keycloak.localhost/realms/dummy-realm>
-
-# to
-REPLICATION_BACKEND_PUBLIC_KEY=MIIBI....
-```
-
-Restart the deployment to use the updated settings:
-
-```shell
-docker compose down && docker compose up -d
-```
-
-### Step 5: Start the Frontend
-
-In your local repository of [ndb-core](https://github.com/Aam-Digital/ndb-core):
-
-1. Update `environment.ts` or `assets/config.json` with the following settings, in order to run the app in "synced" mode
-   using the backend services:
-
-```
-session_type: "synced",
-demo_mode: false
-```
-
-2. Update `assets/keycloak.json` with the following settings
-
-```
-{
-  "realm": "dummy-realm",
-  "auth-server-url": "https://keycloak.localhost",
-  "ssl-required": "external",
-  "resource": "app",
-  "public-client": true,
-  "confidential-port": 0
-}
-
-```
-
-3. Start the frontend:
-
-```shell
-# https://github.com/Aam-Digital/ndb-core
-ng serve --host 0.0.0.0
-```
-
-**Attention**
-
-If you use the default `npm start` command, make sure to update the start command in the `package.json` to:
-
-```json
-{
-  "scripts": {
-    "start": "ng serve --host 0.0.0.0"
-  }
-}
-```
-
-### Further Steps (optional):
-
-#### Set up RabbitMQ (needed for some modules)
-
-To use the queue, you have to create a user and virutal host in the RabbitMQ admin interface:
-
-1. Open [aam.localhost/rabbitmq/](https://aam.localhost/rabbitmq/#/users)
-2. Login with the default credentials (guest:guest)
-3. Navigate to the "Admin" section
-4. Create a new virtual host (local) to fit
-   the [application.yaml settings](/application/aam-backend-service/src/main/resources/application.yaml)
-5. Create a new user (local-spring:docker)
-6. Edit that user and assign permissions to the "local" virtual host
-
-#### Configure modules
-
-Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific modules like Notification:
-
-
------
-
-## Tips and tricks
-
 ### Accessing the Local Environment
 
 - ndb-core (frontend): [https://aam.localhost/](https://aam.localhost/)
@@ -485,3 +583,14 @@ to use an address through `host.docker.internal` to point to your local machine
 
 Please note that the .env files here in this directory are not automatically used as environment variables
 in a locally started service like this code base.
+
+**`aam-backend-service` needs the Caddy certificate on its classpath.** The docker-compose setup
+already bind-mounts this certificate into the container and points
+`SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE` at it, so this is only needed when
+running `aam-backend-service` from source, outside Docker. To verify https connections, copy the
+generated Caddy certificate into the service's resources directory:
+
+```shell
+# /aam-services
+cp docs/developer/container-data/caddy-authorities/root.crt application/aam-backend-service/src/main/resources/reverse-proxy.crt
+```

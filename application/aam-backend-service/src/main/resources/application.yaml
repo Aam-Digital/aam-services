@@ -145,7 +145,8 @@ spring:
           truststore:
             certificate: "classpath:reverse-proxy.crt" # this is the certificate of the local running caddy proxy
   rabbitmq:
-    virtual-host: local
+    # No host/user/vhost override needed: Spring's defaults (localhost:5672, guest/guest, "/")
+    # reach the same docker-compose RabbitMQ container the dockerized service connects to.
     listener:
       direct:
         retry:
@@ -153,8 +154,6 @@ spring:
           max-attempts: 5
       simple:
         observation-enabled: true
-    username: local-spring
-    password: docker
   mail:
     host: ${SPRING_MAIL_HOST:localhost}
     port: ${SPRING_MAIL_PORT:1025}
