@@ -475,6 +475,13 @@ There is no fix on the local side. You need a Carbone container running on an `x
 
 Once you have an `x86_64` host you can reach over SSH, follow the workaround:
 
+> **Aam-Digital internal contributors:** rather than standing up a temp container, you can point
+> your local backend straight at the existing dev-cluster Carbone instance
+> (`https://pdf.dev-cluster.aam-digital.net`) and copy the render-api auth values from
+> `config/aam-backend-service/application.env` on that server into your local `.env`. Simpler than
+> the tunnel below, but only works if you have access to that server — external contributors
+> should use the steps below instead.
+
 Quick steps:
 
 1. On an `x86_64` Linux host you have SSH access to, start a temp Carbone container:
