@@ -205,6 +205,21 @@ class DefaultCouchDbClient(
             )
 
         val etag = documentHeaders.eTag?.replace("\"", "")
+
+        return putDatabaseDocumentAtRevision(
+            database = database,
+            documentId = documentId,
+            body = body,
+            expectedRev = etag
+        )
+    }
+
+    override fun putDatabaseDocumentAtRevision(
+        database: String,
+        documentId: String,
+        body: Any,
+        expectedRev: String?
+    ): DocSuccess {
         val requestBody = serializeBody(body)
 
         return httpClient
@@ -215,8 +230,8 @@ class DefaultCouchDbClient(
             }.contentType(MediaType.APPLICATION_JSON)
             .body(requestBody)
             .headers {
-                if (etag.isNullOrBlank().not()) {
-                    it.set("If-Match", etag)
+                if (expectedRev.isNullOrBlank().not()) {
+                    it.set("If-Match", expectedRev)
                 }
             }.accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->

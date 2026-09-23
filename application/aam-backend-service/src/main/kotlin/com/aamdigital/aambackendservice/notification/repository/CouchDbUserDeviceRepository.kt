@@ -5,6 +5,7 @@ import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.notification.domain.UserDevice
+import com.fasterxml.jackson.annotation.JsonProperty
 import org.slf4j.LoggerFactory
 
 /**
@@ -18,6 +19,13 @@ data class UserDeviceRegistrations(
     val devices: List<UserDevice> = emptyList()
 )
 
+/** [UserDeviceRegistrations] as read back, with the revision a write has to be based on. */
+internal data class StoredUserDeviceRegistrations(
+    @JsonProperty("_rev")
+    val rev: String?,
+    val devices: List<UserDevice> = emptyList()
+)
+
 class CouchDbUserDeviceRepository(
     private val couchDbClient: CouchDbClient
 ) : UserDeviceRepository {
@@ -25,8 +33,10 @@ class CouchDbUserDeviceRepository(
         const val DOCUMENT_PREFIX = "UserDevice"
 
         /**
-         * A user registering two devices at the same moment can lose one: the client reads, then
-         * writes with the revision it read. Retrying re-reads the document the winner wrote.
+         * A user registering two devices at the same moment would otherwise lose one: each request
+         * reads the document, changes its device list and writes it back. The write is pinned to
+         * the revision that was read, so the slower request gets a conflict and retries on top of
+         * the document the faster one wrote.
          */
         private const val WRITE_ATTEMPTS = 3
     }
@@ -62,17 +72,18 @@ class CouchDbUserDeviceRepository(
         var lastError: AamException? = null
 
         repeat(WRITE_ATTEMPTS) { attempt ->
-            val current = fetch(userIdentifier)?.devices.orEmpty()
+            val current = fetch(userIdentifier)
 
             try {
-                couchDbClient.putDatabaseDocument(
+                couchDbClient.putDatabaseDocumentAtRevision(
                     database = BACKEND_STATE_DATABASE,
                     documentId = documentId(userIdentifier),
                     body =
                         UserDeviceRegistrations(
                             userIdentifier = userIdentifier,
-                            devices = change(current)
-                        )
+                            devices = change(current?.devices.orEmpty())
+                        ),
+                    expectedRev = current?.rev
                 )
                 return
             } catch (ex: AamException) {
@@ -84,12 +95,12 @@ class CouchDbUserDeviceRepository(
         throw lastError ?: IllegalStateException("Could not store devices for user $userIdentifier")
     }
 
-    private fun fetch(userIdentifier: String): UserDeviceRegistrations? =
+    private fun fetch(userIdentifier: String): StoredUserDeviceRegistrations? =
         try {
             couchDbClient.getDatabaseDocument(
                 database = BACKEND_STATE_DATABASE,
                 documentId = documentId(userIdentifier),
-                kClass = UserDeviceRegistrations::class
+                kClass = StoredUserDeviceRegistrations::class
             )
         } catch (_: NotFoundException) {
             null

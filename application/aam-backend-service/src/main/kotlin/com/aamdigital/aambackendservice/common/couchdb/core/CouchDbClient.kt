@@ -48,10 +48,29 @@ interface CouchDbClient {
         kClass: KClass<T>
     ): T
 
+    /**
+     * Writes [body] over whatever revision the document is at right now. The revision is looked up
+     * immediately before the write, so this does *not* protect a read-modify-write: a change made
+     * since the caller read the document is silently overwritten. Use
+     * [putDatabaseDocumentAtRevision] for that.
+     */
     fun putDatabaseDocument(
         database: String,
         documentId: String,
         body: Any
+    ): DocSuccess
+
+    /**
+     * Writes [body] only if the document is still at [expectedRev], or - with `null` - only if it
+     * does not exist yet. A concurrent write since [expectedRev] was read makes CouchDB answer
+     * 409, which is thrown as an [ExternalSystemException].
+     */
+    @Throws(ExternalSystemException::class)
+    fun putDatabaseDocumentAtRevision(
+        database: String,
+        documentId: String,
+        body: Any,
+        expectedRev: String?
     ): DocSuccess
 
     fun deleteDatabaseDocument(
