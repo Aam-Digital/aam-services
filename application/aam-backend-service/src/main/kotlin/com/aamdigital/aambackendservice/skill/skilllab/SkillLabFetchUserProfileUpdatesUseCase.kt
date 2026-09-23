@@ -12,6 +12,7 @@ import com.aamdigital.aambackendservice.skill.core.event.UserProfileUpdateEvent
 import com.aamdigital.aambackendservice.skill.di.UserProfileUpdateEventQueueConfiguration
 import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
 import java.time.Instant
+import java.time.OffsetDateTime
 
 enum class SkillLabFetchUserProfileUpdatesErrorCode : AamErrorCode {
     EXTERNAL_SYSTEM_ERROR,
@@ -21,10 +22,16 @@ enum class SkillLabFetchUserProfileUpdatesErrorCode : AamErrorCode {
 /**
  * Fetch latest changes for this SkillLab tenant and create SyncUserProfileEvents for each changed UserProfile
  *
- * The delta cursor is derived from the stored profiles rather than kept in a table of its own: the
- * newest `latestSyncAt` is by definition the point up to which profiles were actually persisted.
- * That also makes it self-healing - a run whose events never reached the consumer does not advance
- * the cursor, so the next run picks those profiles up again. An empty store means a full sync.
+ * The delta cursor is derived from the stored profiles rather than kept in a table of its own: it
+ * is the newest `updatedAt` the external system reported for any stored profile. That timestamp
+ * comes from the external system's own clock, the same clock `updated_from` is compared against,
+ * so a profile changed there after this run fetched its list normally stays newer than the cursor
+ * and is picked up next time. Our own `latestSyncAt` would be a worse cursor: it is taken when the
+ * queued update is consumed, possibly minutes later, and would skip everything changed in between.
+ * One narrower gap remains: if another profile of the same run is changed again before it is
+ * consumed, its newer `updatedAt` can overtake a profile changed in the meantime - a FULL sync
+ * repairs that. A run whose events never reached the consumer does not advance the cursor. An
+ * empty store means a full sync.
  */
 class SkillLabFetchUserProfileUpdatesUseCase(
     private val skillLabClient: SkillLabClient,
@@ -88,6 +95,17 @@ class SkillLabFetchUserProfileUpdatesUseCase(
         )
     }
 
-    /** The delta cursor: the most recent point at which a profile was successfully stored. */
-    private fun latestSync(): Instant? = skillUserProfileRepository.findAll().mapNotNull { it.latestSyncAt }.maxOrNull()
+    /**
+     * The delta cursor, see the class documentation. Falls back to our own `latestSyncAt` only if
+     * the external system reported no parsable `updatedAt` at all.
+     */
+    private fun latestSync(): Instant? {
+        val profiles = skillUserProfileRepository.findAll()
+
+        return profiles.mapNotNull { parseExternalTimestamp(it.updatedAt) }.maxOrNull()
+            ?: profiles.mapNotNull { it.latestSyncAt }.maxOrNull()
+    }
+
+    private fun parseExternalTimestamp(value: String?): Instant? =
+        value?.takeIf { it.isNotBlank() }?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
 }

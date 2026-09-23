@@ -85,7 +85,7 @@ paths:
   /sync:
     get:
       summary: Return sync status for projects
-      description: Returns a list of all configured projects and the latest sync attempt
+      description: Returns the configured project with the time the most recently synced profile was stored. The list is empty until a first profile has been synced.
       tags:
         - admin
       responses:
@@ -113,7 +113,7 @@ paths:
               - DELTA
               - FULL
         - name: updatedFrom
-          description: Define the start date for the Delta load. Just used in syncMode DELTA, uses latest sync date if not defined manually.
+          description: Define the start date for the Delta load, for this run only. Just used in syncMode DELTA. If not defined, the newest updatedAt the SkillProvider reported for any stored profile is used.
           in: query
           required: false
           schema:

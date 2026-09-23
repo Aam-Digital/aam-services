@@ -235,7 +235,29 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
     }
 
     @Test
-    fun `derives updatedFrom from the newest stored profile`() {
+    fun `derives updatedFrom from the newest updatedAt reported by the external system`() {
+        // given
+        whenever(skillUserProfileRepository.findAll()).thenReturn(
+            listOf(
+                // stored long after it changed externally: our own timestamp must not be the cursor
+                storedProfile("user-profile-1", Instant.parse("2024-06-01T10:00:00Z"), "2024-05-01T08:00:00.000Z"),
+                storedProfile("user-profile-2", Instant.parse("2024-06-01T09:00:00Z"), "2024-05-02T08:00+02:00"),
+                storedProfile("user-profile-3", Instant.parse("2024-06-01T11:00:00Z"), "not-a-timestamp")
+            )
+        )
+        `when`(skillLabClient.fetchUserProfiles(eq(1), eq(50), anyOrNull())).thenReturn(emptyList())
+
+        // when
+        val response = service.run(FetchUserProfileUpdatesRequest(projectId = "1"))
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        verify(skillLabClient, times(1))
+            .fetchUserProfiles(eq(1), eq(50), eq(Instant.parse("2024-05-02T06:00:00Z").toString()))
+    }
+
+    @Test
+    fun `falls back to latestSyncAt when the external system reports no updatedAt`() {
         // given
         val newest = Instant.parse("2024-06-01T10:00:00Z")
         whenever(skillUserProfileRepository.findAll()).thenReturn(
@@ -301,13 +323,14 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
 
     private fun storedProfile(
         id: String,
-        latestSyncAt: Instant?
+        latestSyncAt: Instant?,
+        updatedAt: String? = null
     ) = SkillUserProfile(
         externalIdentifier = id,
         fullName = null,
         mobileNumber = null,
         email = null,
-        updatedAt = null,
+        updatedAt = updatedAt,
         latestSyncAt = latestSyncAt
     )
 

@@ -25,12 +25,14 @@ data class SkillUserProfile(
     val mobileNumber: String?,
     val email: String?,
     val skills: List<SkillReference> = emptyList(),
-    /** latest update at the external system, as reported by it */
+    /**
+     * Latest update at the external system, as reported by it. Doubles as the delta-sync cursor:
+     * the next fetch asks the external system for everything changed since the newest of these,
+     * so no separate cursor has to be stored.
+     */
     val updatedAt: String?,
     /**
-     * Latest update within our system. Doubles as the delta-sync cursor: the next fetch asks the
-     * external system for everything changed since the newest of these, so no separate cursor has
-     * to be stored.
+     * Latest update within our system.
      *
      * The shared ObjectMapper leaves WRITE_DATES_AS_TIMESTAMPS enabled, so without the annotation
      * an Instant is stored as a numeric epoch value instead of a readable ISO-8601 string.
