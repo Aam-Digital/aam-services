@@ -22,7 +22,7 @@ paths:
         204:
           description: Device registration successful
         400:
-          description: Bad request (e.g. the device is already registered, or no subject in the token)
+          description: Bad request (e.g. the device is already registered for the calling user, or no subject in the token)
           content:
             application/json:
               schema:
@@ -46,14 +46,8 @@ paths:
       tags:
         - device
       responses:
-        403:
-          description: Device does not belong to user
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         404:
-          description: Device registration does not exist
+          description: The calling user has no registration for this device (registrations of other users are not visible)
         200:
           description: Device registration exists
           content:
@@ -71,14 +65,8 @@ paths:
       tags:
         - device
       responses:
-        403:
-          description: Device does not belong to user
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         404:
-          description: Device registration does not exist
+          description: The calling user has no registration for this device (registrations of other users are not visible)
         204:
           description: Device registration was removed
 
