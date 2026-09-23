@@ -20,8 +20,9 @@ class CouchDbTestingService(
         /**
          * Databases [reset] leaves alone.
          *
-         * The change-detection poller writes its cursor into [BACKEND_STATE_DATABASE] every second
-         * in the e2e profile. Deleting it between scenarios would sooner or later drop a write,
+         * The change-detection poller writes its cursor into [BACKEND_STATE_DATABASE] whenever it
+         * processed changes, which in the e2e profile it checks for every second. Deleting the
+         * database between scenarios would sooner or later drop a write,
          * and a failed poll parks change detection on [ScheduledJobBackoff] for at least five
          * seconds - long enough to time out the scenarios that wait for notifications. The cursor
          * was never reset between scenarios while it lived in PostgreSQL either.

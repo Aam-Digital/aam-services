@@ -62,14 +62,12 @@ class CouchDbChangesProcessor(
         }
 
     private fun fetchChangesForDatabase(database: String) {
+        val storedEntry = syncRepository.findByDatabase(database).orElse(null)
         val syncEntry =
-            syncRepository
-                .findByDatabase(database)
-                .orElseGet {
-                    // On first run we intentionally skip historic changes and start from "now"
-                    // to avoid replaying the full backlog into downstream consumers.
-                    SyncEntry(database = database, latestRef = getLatestRef(database))
-                }
+            storedEntry
+                // On first run we intentionally skip historic changes and start from "now"
+                // to avoid replaying the full backlog into downstream consumers.
+                ?: SyncEntry(database = database, latestRef = getLatestRef(database))
 
         val queryParams = getEmptyQueryParams()
 
@@ -108,7 +106,11 @@ class CouchDbChangesProcessor(
             latestSeq = couchDbChangeResult.seq
         }
 
-        syncRepository.save(syncEntry.copy(latestRef = latestSeq))
+        // Every save is a new CouchDB revision, and this runs every few seconds: an idle poll must
+        // not write. A first run is still saved, so the "start from now" cursor sticks.
+        if (storedEntry == null || latestSeq != storedEntry.latestRef) {
+            syncRepository.save(syncEntry.copy(latestRef = latestSeq))
+        }
     }
 
     private fun enrichChange(
