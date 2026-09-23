@@ -17,6 +17,7 @@ import java.time.Instant
 class PostgresToCouchDbMigrationTest {
     private lateinit var devices: FakeUserDeviceRepository
     private lateinit var sessions: FakeThirdPartyAuthSessionRepository
+    private lateinit var state: FakeMigrationStateStore
 
     private class FakeUserDeviceRepository : UserDeviceRepository {
         val byUser = mutableMapOf<String, MutableList<UserDevice>>()
@@ -53,6 +54,16 @@ class PostgresToCouchDbMigrationTest {
         }
     }
 
+    private class FakeMigrationStateStore : MigrationStateStore {
+        val completed = mutableSetOf<String>()
+
+        override fun isCompleted(step: String) = step in completed
+
+        override fun markCompleted(step: String) {
+            completed.add(step)
+        }
+    }
+
     private class FakeSource(
         private val tables: Set<String> =
             setOf(
@@ -82,17 +93,22 @@ class PostgresToCouchDbMigrationTest {
         override fun getIfUnique(): T? = value
     }
 
-    private fun migration(source: LegacyPostgresSource?) =
-        PostgresToCouchDbMigration(
-            legacyPostgresSource = { source },
-            userDeviceRepository = Provider(devices),
-            thirdPartyAuthSessionRepository = Provider(sessions)
-        )
+    private fun migration(
+        source: LegacyPostgresSource?,
+        userDeviceRepository: UserDeviceRepository? = devices,
+        thirdPartyAuthSessionRepository: ThirdPartyAuthSessionRepository? = sessions
+    ) = PostgresToCouchDbMigration(
+        legacyPostgresSource = { source },
+        userDeviceRepository = Provider(userDeviceRepository),
+        thirdPartyAuthSessionRepository = Provider(thirdPartyAuthSessionRepository),
+        migrationStateStore = state
+    )
 
     @BeforeEach
     fun setUp() {
         devices = FakeUserDeviceRepository()
         sessions = FakeThirdPartyAuthSessionRepository()
+        state = FakeMigrationStateStore()
     }
 
     @Test
@@ -149,6 +165,101 @@ class PostgresToCouchDbMigrationTest {
     }
 
     @Test
+    fun `records each completed step`() {
+        migration(FakeSource()).run(null)
+
+        assertThat(state.completed).containsExactlyInAnyOrder(
+            PostgresToCouchDbMigration.USER_DEVICES_STEP,
+            PostgresToCouchDbMigration.REDIRECT_BINDINGS_STEP
+        )
+    }
+
+    /**
+     * PostgreSQL is no longer written to, so an unregistration only reaches CouchDB. Copying again
+     * on the next start would bring the device back.
+     */
+    @Test
+    fun `does not bring back a device unregistered after the migration`() {
+        val source = FakeSource(userDevices = listOf(LegacyUserDevice("user-1", "token-a", "Phone", null)))
+
+        migration(source).run(null)
+        devices.removeDevice("user-1", "token-a")
+        migration(source).run(null)
+
+        assertThat(devices.findByUserIdentifier("user-1")).isEmpty()
+    }
+
+    @Test
+    fun `does not touch the legacy database once every step completed`() {
+        state.completed.addAll(
+            listOf(PostgresToCouchDbMigration.USER_DEVICES_STEP, PostgresToCouchDbMigration.REDIRECT_BINDINGS_STEP)
+        )
+        var sourceResolved = false
+
+        PostgresToCouchDbMigration(
+            legacyPostgresSource = {
+                sourceResolved = true
+                FakeSource()
+            },
+            userDeviceRepository = Provider(devices),
+            thirdPartyAuthSessionRepository = Provider(sessions),
+            migrationStateStore = state
+        ).run(null)
+
+        assertThat(sourceResolved).isFalse()
+    }
+
+    @Test
+    fun `leaves a step pending while its module is disabled`() {
+        val source = FakeSource(userDevices = listOf(LegacyUserDevice("user-1", "token-a", "Phone", null)))
+
+        migration(source, userDeviceRepository = null).run(null)
+        assertThat(state.completed).doesNotContain(PostgresToCouchDbMigration.USER_DEVICES_STEP)
+
+        // the module is enabled on a later start
+        migration(source).run(null)
+        assertThat(devices.findByUserIdentifier("user-1").map { it.deviceToken }).containsExactly("token-a")
+    }
+
+    @Test
+    fun `a failed step stays pending and skips what an earlier attempt already copied`() {
+        val rows =
+            listOf(
+                LegacyUserDevice("user-1", "token-a", "Phone", null),
+                LegacyUserDevice("user-2", "token-b", "Tablet", null)
+            )
+        var failAfterFirstUser = true
+        val flaky =
+            object : LegacyPostgresSource {
+                override fun tableExists(table: String) = true
+
+                override fun readUserDevices() = rows
+
+                override fun readRedirectBindings() = emptyList<LegacyRedirectBinding>()
+            }
+        val failingRepository =
+            object : UserDeviceRepository by devices {
+                override fun addDevice(
+                    userIdentifier: String,
+                    device: UserDevice
+                ) {
+                    if (failAfterFirstUser && userIdentifier == "user-2") throw IllegalStateException("couchdb is gone")
+                    devices.addDevice(userIdentifier, device)
+                }
+            }
+
+        migration(flaky, userDeviceRepository = failingRepository).run(null)
+        assertThat(state.completed).doesNotContain(PostgresToCouchDbMigration.USER_DEVICES_STEP)
+
+        failAfterFirstUser = false
+        migration(flaky, userDeviceRepository = failingRepository).run(null)
+
+        assertThat(state.completed).contains(PostgresToCouchDbMigration.USER_DEVICES_STEP)
+        assertThat(devices.findByUserIdentifier("user-1")).hasSize(1)
+        assertThat(devices.findByUserIdentifier("user-2")).hasSize(1)
+    }
+
+    @Test
     fun `does nothing when the tables are gone`() {
         migration(
             FakeSource(
@@ -185,5 +296,6 @@ class PostgresToCouchDbMigrationTest {
         migration(failing).run(null)
 
         assertThat(devices.byUser).isEmpty()
+        assertThat(state.completed).isEmpty()
     }
 }

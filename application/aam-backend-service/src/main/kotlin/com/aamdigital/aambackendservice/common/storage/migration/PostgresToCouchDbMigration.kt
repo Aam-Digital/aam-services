@@ -25,9 +25,12 @@ import org.springframework.boot.ApplicationRunner
  * This is throwaway code. It exists only so the release that stops writing to PostgreSQL can be
  * deployed without losing data; the release that removes the JDBC driver removes this class too.
  *
- * Safe to run repeatedly and safe to run against an instance whose PostgreSQL is already gone: a
- * document that already exists is left alone, a missing table is skipped, and no failure here can
- * stop the service from starting.
+ * Each step runs until it has completed once, which is recorded in [MigrationStateStore]; after
+ * that it never reads PostgreSQL again. That matters because PostgreSQL is no longer written to:
+ * re-copying on every start would bring back devices users have unregistered since. A step is
+ * only attempted while its module is enabled, so enabling a module later still migrates its data.
+ * Within a step, a document that already exists is left alone, so a step that failed halfway can
+ * simply run again on the next start. No failure here can stop the service from starting.
  */
 class PostgresToCouchDbMigration(
     /**
@@ -36,11 +39,23 @@ class PostgresToCouchDbMigration(
      */
     private val legacyPostgresSource: () -> LegacyPostgresSource?,
     private val userDeviceRepository: ObjectProvider<UserDeviceRepository>,
-    private val thirdPartyAuthSessionRepository: ObjectProvider<ThirdPartyAuthSessionRepository>
+    private val thirdPartyAuthSessionRepository: ObjectProvider<ThirdPartyAuthSessionRepository>,
+    private val migrationStateStore: MigrationStateStore
 ) : ApplicationRunner {
+    companion object {
+        const val USER_DEVICES_STEP = "postgres-to-couchdb:user-devices"
+        const val REDIRECT_BINDINGS_STEP = "postgres-to-couchdb:redirect-bindings"
+    }
+
     private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun run(args: ApplicationArguments?) {
+        val deviceRepository = userDeviceRepository.getIfAvailable()?.takeIf { isPending(USER_DEVICES_STEP) }
+        val sessionRepository =
+            thirdPartyAuthSessionRepository.getIfAvailable()?.takeIf { isPending(REDIRECT_BINDINGS_STEP) }
+
+        if (deviceRepository == null && sessionRepository == null) return
+
         val source =
             try {
                 legacyPostgresSource()
@@ -54,21 +69,42 @@ class PostgresToCouchDbMigration(
             return
         }
 
-        try {
-            migrateUserDevices(source)
-        } catch (ex: Exception) {
-            logger.error("[PostgresToCouchDbMigration] could not migrate push device registrations", ex)
+        deviceRepository?.let { repository ->
+            runStep(USER_DEVICES_STEP, "push device registrations") { migrateUserDevices(source, repository) }
         }
 
-        try {
-            migrateRedirectBindings(source)
-        } catch (ex: Exception) {
-            logger.error("[PostgresToCouchDbMigration] could not migrate third-party-auth redirect bindings", ex)
+        sessionRepository?.let { repository ->
+            runStep(REDIRECT_BINDINGS_STEP, "third-party-auth redirect bindings") {
+                migrateRedirectBindings(source, repository)
+            }
         }
     }
 
-    private fun migrateUserDevices(source: LegacyPostgresSource) {
-        val repository = userDeviceRepository.getIfAvailable() ?: return
+    private fun isPending(step: String): Boolean =
+        try {
+            !migrationStateStore.isCompleted(step)
+        } catch (ex: Exception) {
+            logger.error("[PostgresToCouchDbMigration] could not read the state of step {}", step, ex)
+            false
+        }
+
+    private fun runStep(
+        step: String,
+        description: String,
+        migrate: () -> Unit
+    ) {
+        try {
+            migrate()
+            migrationStateStore.markCompleted(step)
+        } catch (ex: Exception) {
+            logger.error("[PostgresToCouchDbMigration] could not migrate {}", description, ex)
+        }
+    }
+
+    private fun migrateUserDevices(
+        source: LegacyPostgresSource,
+        repository: UserDeviceRepository
+    ) {
         if (!source.tableExists(JdbcLegacyPostgresSource.USER_DEVICE_TABLE)) return
 
         var migrated = 0
@@ -95,17 +131,17 @@ class PostgresToCouchDbMigration(
             }
         }
 
-        if (migrated > 0 || skipped > 0) {
-            logger.info(
-                "[PostgresToCouchDbMigration] push device registrations: {} migrated, {} already present",
-                migrated,
-                skipped
-            )
-        }
+        logger.info(
+            "[PostgresToCouchDbMigration] push device registrations: {} migrated, {} already present",
+            migrated,
+            skipped
+        )
     }
 
-    private fun migrateRedirectBindings(source: LegacyPostgresSource) {
-        val repository = thirdPartyAuthSessionRepository.getIfAvailable() ?: return
+    private fun migrateRedirectBindings(
+        source: LegacyPostgresSource,
+        repository: ThirdPartyAuthSessionRepository
+    ) {
         if (!source.tableExists(JdbcLegacyPostgresSource.AUTHENTICATION_SESSION_TABLE)) return
 
         var migrated = 0
@@ -127,12 +163,10 @@ class PostgresToCouchDbMigration(
             }
         }
 
-        if (migrated > 0 || skipped > 0) {
-            logger.info(
-                "[PostgresToCouchDbMigration] redirect bindings: {} migrated, {} already present",
-                migrated,
-                skipped
-            )
-        }
+        logger.info(
+            "[PostgresToCouchDbMigration] redirect bindings: {} migrated, {} already present",
+            migrated,
+            skipped
+        )
     }
 }
