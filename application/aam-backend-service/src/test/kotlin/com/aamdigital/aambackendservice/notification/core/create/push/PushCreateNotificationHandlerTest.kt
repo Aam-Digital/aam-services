@@ -91,10 +91,11 @@ class PushCreateNotificationHandlerTest {
     @Test
     fun `should send push notification when user has registered devices`() {
         // Given
-        val device = UserDevice(
-            deviceName = "My Phone",
-            deviceToken = "device-token-abc"
-        )
+        val device =
+            UserDevice(
+                deviceName = "My Phone",
+                deviceToken = "device-token-abc"
+            )
         whenever(userDeviceRepository.findByUserIdentifier(any()))
             .thenReturn(listOf(device))
         whenever(sendResponse.messageId).thenReturn("firebase-msg-id-1")

@@ -421,8 +421,9 @@ class CucumberIntegrationTest(
 
     @Given("the client stores the session from the latest response")
     fun `store session from latest response`() {
-        val body = parseBodyToObjectNode()
-            ?: throw AssertionError("Expected a session response body but none was received")
+        val body =
+            parseBodyToObjectNode()
+                ?: throw AssertionError("Expected a session response body but none was received")
         storedSessionId = body.get("sessionId")?.textValue()
             ?: throw AssertionError("Expected 'sessionId' field in response but was not found")
         storedSessionToken = body.get("sessionToken")?.textValue()
