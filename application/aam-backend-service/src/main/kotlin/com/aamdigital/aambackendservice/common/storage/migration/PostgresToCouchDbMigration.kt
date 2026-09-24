@@ -1,18 +1,19 @@
 package com.aamdigital.aambackendservice.common.storage.migration
 
+import com.aamdigital.aambackendservice.common.changes.SyncEntry
+import com.aamdigital.aambackendservice.common.changes.SyncRepository
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSession
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSessionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
-import org.springframework.boot.ApplicationArguments
-import org.springframework.boot.ApplicationRunner
+import org.springframework.beans.factory.SmartInitializingSingleton
 import java.time.ZoneOffset
 
 /**
- * Copies the two pieces of state that cannot be reconstructed out of PostgreSQL and into CouchDB,
- * once, on startup.
+ * Copies the state that cannot be reconstructed out of PostgreSQL and into CouchDB, once, on
+ * startup.
  *
  * - **Push device tokens.** Minted by Firebase on the client, so unreconstructable server-side.
  *   Losing them is not self-healing either: ndb-core checks its registration on load but only
@@ -20,8 +21,15 @@ import java.time.ZoneOffset
  * - **Third-party-auth redirect bindings.** Losing them makes the "go to the external system"
  *   button fail until the user next enters through that system.
  *
- * The change-detection cursor and the SkillLab profile mirror are deliberately not migrated: both
- * rebuild themselves.
+ * - **Change-detection cursors.** Without one, change detection starts from "now", and every
+ *   change made while the service was down for the upgrade would never reach notifications or
+ *   report calculation.
+ *
+ * The SkillLab profile mirror is deliberately not migrated: it rebuilds itself.
+ *
+ * Runs once all beans exist, before the web server and the `@Scheduled` jobs start. The cursors
+ * depend on that: the first poll would otherwise already have saved a "now" cursor, which this
+ * then leaves alone as an existing document. It also means no request sees a half-copied store.
  *
  * This is throwaway code. It exists only so the release that stops writing to PostgreSQL can be
  * deployed without losing data; the release that removes the JDBC driver removes this class too.
@@ -44,21 +52,26 @@ class PostgresToCouchDbMigration(
     private val legacyPostgresSource: () -> LegacyPostgresSource?,
     private val userDeviceRepository: ObjectProvider<UserDeviceRepository>,
     private val thirdPartyAuthSessionRepository: ObjectProvider<ThirdPartyAuthSessionRepository>,
+    private val syncRepository: ObjectProvider<SyncRepository>,
     private val migrationStateStore: MigrationStateStore
-) : ApplicationRunner {
+) : SmartInitializingSingleton {
     companion object {
         const val USER_DEVICES_STEP = "postgres-to-couchdb:user-devices"
         const val REDIRECT_BINDINGS_STEP = "postgres-to-couchdb:redirect-bindings"
+        const val SYNC_CURSORS_STEP = "postgres-to-couchdb:sync-cursors"
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    override fun run(args: ApplicationArguments?) {
+    override fun afterSingletonsInstantiated() = run()
+
+    fun run() {
         val deviceRepository = userDeviceRepository.getIfAvailable()?.takeIf { isPending(USER_DEVICES_STEP) }
         val sessionRepository =
             thirdPartyAuthSessionRepository.getIfAvailable()?.takeIf { isPending(REDIRECT_BINDINGS_STEP) }
+        val cursorRepository = syncRepository.getIfAvailable()?.takeIf { isPending(SYNC_CURSORS_STEP) }
 
-        if (deviceRepository == null && sessionRepository == null) return
+        if (deviceRepository == null && sessionRepository == null && cursorRepository == null) return
 
         val source =
             try {
@@ -81,6 +94,10 @@ class PostgresToCouchDbMigration(
             runStep(REDIRECT_BINDINGS_STEP, "third-party-auth redirect bindings") {
                 migrateRedirectBindings(source, repository)
             }
+        }
+
+        cursorRepository?.let { repository ->
+            runStep(SYNC_CURSORS_STEP, "change-detection cursors") { migrateSyncCursors(source, repository) }
         }
     }
 
@@ -107,7 +124,9 @@ class PostgresToCouchDbMigration(
     ) {
         try {
             val result = migrate()
-            if (result != null) {
+            if (result == null) {
+                logger.info("[PostgresToCouchDbMigration] {}: no legacy table, nothing to migrate", description)
+            } else {
                 logger.info(
                     "[PostgresToCouchDbMigration] {}: {} migrated, {} already present, {} failed",
                     description,
@@ -191,6 +210,24 @@ class PostgresToCouchDbMigration(
                     )
                 )
             }
+        )
+    }
+
+    /**
+     * A cursor already in CouchDB is left alone: it can only have been written by change detection
+     * on an earlier start of this release, and is newer than the one in PostgreSQL.
+     */
+    private fun migrateSyncCursors(
+        source: LegacyPostgresSource,
+        repository: SyncRepository
+    ): StepResult? {
+        if (!source.tableExists(JdbcLegacyPostgresSource.SYNC_ENTRY_TABLE)) return null
+
+        return copyRows(
+            rows = source.readSyncEntries(),
+            describe = { "the change-detection cursor of database ${it.database}" },
+            present = { repository.findByDatabase(it.database).isPresent },
+            copy = { entry -> repository.save(SyncEntry(database = entry.database, latestRef = entry.latestRef)) }
         )
     }
 }

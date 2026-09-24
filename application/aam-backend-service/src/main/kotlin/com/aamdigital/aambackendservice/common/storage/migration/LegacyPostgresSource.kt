@@ -20,6 +20,12 @@ data class LegacyRedirectBinding(
     val createdAt: Instant?
 )
 
+/** The durable part of a row of the retired `couchdb_sync_entry` table. */
+data class LegacySyncEntry(
+    val database: String,
+    val latestRef: String
+)
+
 /**
  * Read access to the tables this service used to own, for [PostgresToCouchDbMigration].
  *
@@ -33,6 +39,8 @@ interface LegacyPostgresSource {
     fun readUserDevices(): List<LegacyUserDevice>
 
     fun readRedirectBindings(): List<LegacyRedirectBinding>
+
+    fun readSyncEntries(): List<LegacySyncEntry>
 }
 
 class JdbcLegacyPostgresSource(
@@ -41,6 +49,7 @@ class JdbcLegacyPostgresSource(
     companion object {
         const val USER_DEVICE_TABLE = "user_device_entity"
         const val AUTHENTICATION_SESSION_TABLE = "authentication_session_entity"
+        const val SYNC_ENTRY_TABLE = "couchdb_sync_entry"
     }
 
     override fun tableExists(table: String): Boolean =
@@ -77,6 +86,24 @@ class JdbcLegacyPostgresSource(
                 userId = rs.getString("user_id"),
                 redirectUrl = rs.getString("redirect_url"),
                 createdAt = rs.getTimestamp("created_at")?.toInstantOrNull()
+            )
+        }
+
+    /**
+     * The newest cursor per database, in case two were ever stored: nothing made `database`
+     * unique. A blank cursor is left out, since resuming from it would replay the database's whole
+     * history.
+     */
+    override fun readSyncEntries(): List<LegacySyncEntry> =
+        jdbcTemplate.query(
+            "SELECT DISTINCT ON (database) database, latest_ref " +
+                "FROM $SYNC_ENTRY_TABLE " +
+                "WHERE latest_ref IS NOT NULL AND latest_ref <> '' " +
+                "ORDER BY database, id DESC"
+        ) { rs, _ ->
+            LegacySyncEntry(
+                database = rs.getString("database"),
+                latestRef = rs.getString("latest_ref")
             )
         }
 

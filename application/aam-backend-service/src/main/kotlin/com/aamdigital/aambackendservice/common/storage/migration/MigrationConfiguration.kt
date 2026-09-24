@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.common.storage.migration
 
+import com.aamdigital.aambackendservice.common.changes.SyncRepository
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSessionRepository
@@ -29,6 +30,7 @@ class MigrationConfiguration {
         jdbcTemplate: ObjectProvider<JdbcTemplate>,
         userDeviceRepository: ObjectProvider<UserDeviceRepository>,
         thirdPartyAuthSessionRepository: ObjectProvider<ThirdPartyAuthSessionRepository>,
+        syncRepository: ObjectProvider<SyncRepository>,
         couchDbClient: CouchDbClient
     ): PostgresToCouchDbMigration =
         PostgresToCouchDbMigration(
@@ -37,6 +39,7 @@ class MigrationConfiguration {
             legacyPostgresSource = { jdbcTemplate.getIfAvailable()?.let { JdbcLegacyPostgresSource(it) } },
             userDeviceRepository = userDeviceRepository,
             thirdPartyAuthSessionRepository = thirdPartyAuthSessionRepository,
+            syncRepository = syncRepository,
             migrationStateStore = CouchDbMigrationStateStore(couchDbClient)
         )
 }

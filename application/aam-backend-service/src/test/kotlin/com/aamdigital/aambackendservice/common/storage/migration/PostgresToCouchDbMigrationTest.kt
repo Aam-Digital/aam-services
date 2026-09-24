@@ -1,10 +1,13 @@
 package com.aamdigital.aambackendservice.common.storage.migration
 
+import com.aamdigital.aambackendservice.common.changes.SyncEntry
+import com.aamdigital.aambackendservice.common.changes.SyncRepository
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSession
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSessionRepository
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.entry
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.ObjectProvider
@@ -21,6 +24,7 @@ import java.util.*
 class PostgresToCouchDbMigrationTest {
     private lateinit var devices: FakeUserDeviceRepository
     private lateinit var sessions: FakeThirdPartyAuthSessionRepository
+    private lateinit var cursors: FakeSyncRepository
     private lateinit var state: FakeMigrationStateStore
 
     private class FakeUserDeviceRepository : UserDeviceRepository {
@@ -58,6 +62,19 @@ class PostgresToCouchDbMigrationTest {
         }
     }
 
+    private class FakeSyncRepository : SyncRepository {
+        val byDatabase = mutableMapOf<String, SyncEntry>()
+
+        override fun findByDatabase(database: String) = Optional.ofNullable(byDatabase[database])
+
+        override fun findAll() = byDatabase.values.toList()
+
+        override fun save(syncEntry: SyncEntry): SyncEntry {
+            byDatabase[syncEntry.database] = syncEntry
+            return syncEntry
+        }
+    }
+
     private class FakeMigrationStateStore : MigrationStateStore {
         val completed = mutableSetOf<String>()
 
@@ -72,16 +89,20 @@ class PostgresToCouchDbMigrationTest {
         private val tables: Set<String> =
             setOf(
                 JdbcLegacyPostgresSource.USER_DEVICE_TABLE,
-                JdbcLegacyPostgresSource.AUTHENTICATION_SESSION_TABLE
+                JdbcLegacyPostgresSource.AUTHENTICATION_SESSION_TABLE,
+                JdbcLegacyPostgresSource.SYNC_ENTRY_TABLE
             ),
         private val userDevices: List<LegacyUserDevice> = emptyList(),
-        private val redirectBindings: List<LegacyRedirectBinding> = emptyList()
+        private val redirectBindings: List<LegacyRedirectBinding> = emptyList(),
+        private val syncEntries: List<LegacySyncEntry> = emptyList()
     ) : LegacyPostgresSource {
         override fun tableExists(table: String) = table in tables
 
         override fun readUserDevices() = userDevices
 
         override fun readRedirectBindings() = redirectBindings
+
+        override fun readSyncEntries() = syncEntries
     }
 
     /** A minimal ObjectProvider that always yields the given value. */
@@ -100,11 +121,13 @@ class PostgresToCouchDbMigrationTest {
     private fun migration(
         source: LegacyPostgresSource?,
         userDeviceRepository: UserDeviceRepository? = devices,
-        thirdPartyAuthSessionRepository: ThirdPartyAuthSessionRepository? = sessions
+        thirdPartyAuthSessionRepository: ThirdPartyAuthSessionRepository? = sessions,
+        syncRepository: SyncRepository? = cursors
     ) = PostgresToCouchDbMigration(
         legacyPostgresSource = { source },
         userDeviceRepository = Provider(userDeviceRepository),
         thirdPartyAuthSessionRepository = Provider(thirdPartyAuthSessionRepository),
+        syncRepository = Provider(syncRepository),
         migrationStateStore = state
     )
 
@@ -112,6 +135,7 @@ class PostgresToCouchDbMigrationTest {
     fun setUp() {
         devices = FakeUserDeviceRepository()
         sessions = FakeThirdPartyAuthSessionRepository()
+        cursors = FakeSyncRepository()
         state = FakeMigrationStateStore()
     }
 
@@ -127,7 +151,7 @@ class PostgresToCouchDbMigrationTest {
                         LegacyUserDevice("user-2", "token-c", null, null)
                     )
             )
-        ).run(null)
+        ).run()
 
         assertThat(devices.tokensOf("user-1")).containsExactly("token-a", "token-b")
         val firstDevice = devices.byToken.getValue("token-a")
@@ -145,7 +169,7 @@ class PostgresToCouchDbMigrationTest {
                         LegacyRedirectBinding("session-1", "user-1", "https://external/1", null)
                     )
             )
-        ).run(null)
+        ).run()
 
         assertThat(sessions.stored.keys).containsExactly("session-1")
         assertThat(sessions.stored.getValue("session-1").userId).isEqualTo("user-1")
@@ -160,8 +184,8 @@ class PostgresToCouchDbMigrationTest {
                 redirectBindings = listOf(LegacyRedirectBinding("session-1", "user-1", "https://external/1", null))
             )
 
-        migration(source).run(null)
-        migration(source).run(null)
+        migration(source).run()
+        migration(source).run()
 
         assertThat(devices.byToken).hasSize(1)
         assertThat(sessions.stored).hasSize(1)
@@ -169,11 +193,12 @@ class PostgresToCouchDbMigrationTest {
 
     @Test
     fun `records each completed step`() {
-        migration(FakeSource()).run(null)
+        migration(FakeSource()).run()
 
         assertThat(state.completed).containsExactlyInAnyOrder(
             PostgresToCouchDbMigration.USER_DEVICES_STEP,
-            PostgresToCouchDbMigration.REDIRECT_BINDINGS_STEP
+            PostgresToCouchDbMigration.REDIRECT_BINDINGS_STEP,
+            PostgresToCouchDbMigration.SYNC_CURSORS_STEP
         )
     }
 
@@ -185,9 +210,9 @@ class PostgresToCouchDbMigrationTest {
     fun `does not bring back a device unregistered after the migration`() {
         val source = FakeSource(userDevices = listOf(LegacyUserDevice("user-1", "token-a", "Phone", null)))
 
-        migration(source).run(null)
+        migration(source).run()
         devices.deleteByDeviceToken("token-a")
-        migration(source).run(null)
+        migration(source).run()
 
         assertThat(devices.tokensOf("user-1")).isEmpty()
     }
@@ -195,7 +220,11 @@ class PostgresToCouchDbMigrationTest {
     @Test
     fun `does not touch the legacy database once every step completed`() {
         state.completed.addAll(
-            listOf(PostgresToCouchDbMigration.USER_DEVICES_STEP, PostgresToCouchDbMigration.REDIRECT_BINDINGS_STEP)
+            listOf(
+                PostgresToCouchDbMigration.USER_DEVICES_STEP,
+                PostgresToCouchDbMigration.REDIRECT_BINDINGS_STEP,
+                PostgresToCouchDbMigration.SYNC_CURSORS_STEP
+            )
         )
         var sourceResolved = false
 
@@ -206,8 +235,9 @@ class PostgresToCouchDbMigrationTest {
             },
             userDeviceRepository = Provider(devices),
             thirdPartyAuthSessionRepository = Provider(sessions),
+            syncRepository = Provider(cursors),
             migrationStateStore = state
-        ).run(null)
+        ).run()
 
         assertThat(sourceResolved).isFalse()
     }
@@ -216,12 +246,41 @@ class PostgresToCouchDbMigrationTest {
     fun `leaves a step pending while its module is disabled`() {
         val source = FakeSource(userDevices = listOf(LegacyUserDevice("user-1", "token-a", "Phone", null)))
 
-        migration(source, userDeviceRepository = null).run(null)
+        migration(source, userDeviceRepository = null).run()
         assertThat(state.completed).doesNotContain(PostgresToCouchDbMigration.USER_DEVICES_STEP)
 
         // the module is enabled on a later start
-        migration(source).run(null)
+        migration(source).run()
         assertThat(devices.tokensOf("user-1")).containsExactly("token-a")
+    }
+
+    /** Without the cursor, changes made while the service was down would never be processed. */
+    @Test
+    fun `copies change-detection cursors`() {
+        migration(
+            FakeSource(
+                syncEntries =
+                    listOf(
+                        LegacySyncEntry("app", "seq-1"),
+                        LegacySyncEntry("notification-webhook", "seq-2")
+                    )
+            )
+        ).run()
+
+        assertThat(cursors.byDatabase).containsOnly(
+            entry("app", SyncEntry("app", "seq-1")),
+            entry("notification-webhook", SyncEntry("notification-webhook", "seq-2"))
+        )
+    }
+
+    /** A cursor already in CouchDB was written by change detection itself, and is the newer one. */
+    @Test
+    fun `keeps a cursor that change detection already wrote`() {
+        cursors.save(SyncEntry("app", "seq-9"))
+
+        migration(FakeSource(syncEntries = listOf(LegacySyncEntry("app", "seq-1")))).run()
+
+        assertThat(cursors.byDatabase.getValue("app").latestRef).isEqualTo("seq-9")
     }
 
     /** A device repository that rejects every save for the given users. */
@@ -251,7 +310,7 @@ class PostgresToCouchDbMigrationTest {
                     )
             )
 
-        migration(source, userDeviceRepository = repositoryFailingFor("user-2")).run(null)
+        migration(source, userDeviceRepository = repositoryFailingFor("user-2")).run()
 
         assertThat(devices.byToken.keys).containsExactlyInAnyOrder("token-a", "token-c")
         assertThat(state.completed).contains(PostgresToCouchDbMigration.USER_DEVICES_STEP)
@@ -269,11 +328,11 @@ class PostgresToCouchDbMigrationTest {
                     )
             )
 
-        migration(source, userDeviceRepository = repositoryFailingFor("user-1", "user-2")).run(null)
+        migration(source, userDeviceRepository = repositoryFailingFor("user-1", "user-2")).run()
         assertThat(state.completed).doesNotContain(PostgresToCouchDbMigration.USER_DEVICES_STEP)
 
         // CouchDB is back on the next start
-        migration(source).run(null)
+        migration(source).run()
 
         assertThat(devices.byToken.keys).containsExactlyInAnyOrder("token-a", "token-b")
         assertThat(state.completed).contains(PostgresToCouchDbMigration.USER_DEVICES_STEP)
@@ -285,17 +344,19 @@ class PostgresToCouchDbMigrationTest {
             FakeSource(
                 tables = emptySet(),
                 userDevices = listOf(LegacyUserDevice("user-1", "token-a", null, null)),
-                redirectBindings = listOf(LegacyRedirectBinding("session-1", "user-1", "https://external/1", null))
+                redirectBindings = listOf(LegacyRedirectBinding("session-1", "user-1", "https://external/1", null)),
+                syncEntries = listOf(LegacySyncEntry("app", "seq-1"))
             )
-        ).run(null)
+        ).run()
 
         assertThat(devices.byToken).isEmpty()
         assertThat(sessions.stored).isEmpty()
+        assertThat(cursors.byDatabase).isEmpty()
     }
 
     @Test
     fun `does nothing when no datasource is configured`() {
-        migration(null).run(null)
+        migration(null).run()
 
         assertThat(devices.byToken).isEmpty()
         assertThat(sessions.stored).isEmpty()
@@ -311,9 +372,11 @@ class PostgresToCouchDbMigrationTest {
 
                 override fun readRedirectBindings(): List<LegacyRedirectBinding> =
                     throw IllegalStateException("db is gone")
+
+                override fun readSyncEntries(): List<LegacySyncEntry> = throw IllegalStateException("db is gone")
             }
 
-        migration(failing).run(null)
+        migration(failing).run()
 
         assertThat(devices.byToken).isEmpty()
         assertThat(state.completed).isEmpty()
