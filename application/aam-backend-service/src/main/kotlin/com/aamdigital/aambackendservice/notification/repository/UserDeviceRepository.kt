@@ -1,29 +1,24 @@
 package com.aamdigital.aambackendservice.notification.repository
 
-import com.aamdigital.aambackendservice.notification.domain.UserDevice
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import java.util.*
 
-/**
- * Stores the push devices registered per user.
- *
- * Every operation is scoped to a user: both REST endpoints carry the caller's JWT and push
- * delivery looks devices up by user, so there is no access path that needs a global lookup by
- * device token.
- */
 interface UserDeviceRepository {
-    fun findByUserIdentifier(userIdentifier: String): List<UserDevice>
-
-    fun findDevice(
+    fun findByUserIdentifier(
         userIdentifier: String,
-        deviceToken: String
-    ): UserDevice?
+        pageable: Pageable
+    ): Page<UserDeviceEntity>
 
-    fun addDevice(
-        userIdentifier: String,
-        device: UserDevice
-    )
+    fun findByDeviceToken(deviceToken: String): Optional<UserDeviceEntity>
 
-    fun removeDevice(
-        userIdentifier: String,
-        deviceToken: String
-    )
+    fun existsByDeviceToken(deviceToken: String): Boolean
+
+    fun deleteByDeviceToken(deviceToken: String)
+
+    /**
+     * Registers a new device. A device token can only be registered once, across all users; saving
+     * a token that is already registered fails.
+     */
+    fun save(userDevice: UserDeviceEntity)
 }

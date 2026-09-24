@@ -2,118 +2,122 @@ package com.aamdigital.aambackendservice.notification.repository
 
 import com.aamdigital.aambackendservice.common.couchdb.core.BACKEND_STATE_DATABASE
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.dto.DocSuccess
+import com.aamdigital.aambackendservice.common.couchdb.dto.FindResponse
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
-import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
-import com.aamdigital.aambackendservice.notification.domain.UserDevice
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
+import org.springframework.http.HttpHeaders
+import java.time.OffsetDateTime
 
 class CouchDbUserDeviceRepositoryTest {
     private val couchDbClient = mock<CouchDbClient>()
     private val repository = CouchDbUserDeviceRepository(couchDbClient)
 
-    private val documentId = "UserDevice:user-1"
-    private val phone = UserDevice(deviceToken = "token-phone", deviceName = "Phone")
-    private val tablet = UserDevice(deviceToken = "token-tablet", deviceName = "Tablet")
+    private val phone = UserDeviceEntity(deviceName = "Phone", deviceToken = "token-phone", userIdentifier = "user-1")
+    private val tablet = phone.copy(deviceName = "Tablet", deviceToken = "token-tablet")
 
-    private fun stubReads(vararg results: StoredUserDeviceRegistrations?) {
-        var stubbing =
-            whenever(
-                couchDbClient.getDatabaseDocument(
-                    eq(BACKEND_STATE_DATABASE),
-                    eq(documentId),
-                    any(),
-                    eq(StoredUserDeviceRegistrations::class)
-                )
+    private fun stubFind(vararg devices: UserDeviceEntity) {
+        whenever(
+            couchDbClient.findDatabaseDocuments(
+                eq(BACKEND_STATE_DATABASE),
+                any(),
+                any(),
+                eq(UserDeviceEntity::class)
             )
-        results.forEach { result ->
-            stubbing =
-                if (result == null) {
-                    stubbing.thenThrow(NotFoundException(code = TestErrorCode.TEST_EXCEPTION))
-                } else {
-                    stubbing.thenReturn(result)
-                }
-        }
+        ).thenReturn(FindResponse(docs = devices.toList()))
     }
 
-    private fun conflict() = ExternalSystemException(message = "409 conflict", code = TestErrorCode.TEST_EXCEPTION)
-
+    /** A token registered by another user must not be taken over, as the unique column prevented before. */
     @Test
-    fun `writes against the revision it read`() {
-        stubReads(StoredUserDeviceRegistrations(rev = "1-a", devices = listOf(phone)))
-
-        repository.addDevice("user-1", tablet)
+    fun `creates the device document only if it does not exist yet`() {
+        repository.save(phone)
 
         verify(couchDbClient).putDatabaseDocumentAtRevision(
             eq(BACKEND_STATE_DATABASE),
-            eq(documentId),
-            eq(UserDeviceRegistrations(userIdentifier = "user-1", devices = listOf(phone, tablet))),
-            eq("1-a")
-        )
-    }
-
-    @Test
-    fun `creates the document only if it does not exist yet`() {
-        stubReads(null)
-
-        repository.addDevice("user-1", phone)
-
-        verify(couchDbClient).putDatabaseDocumentAtRevision(
-            eq(BACKEND_STATE_DATABASE),
-            eq(documentId),
-            eq(UserDeviceRegistrations(userIdentifier = "user-1", devices = listOf(phone))),
+            eq("UserDevice:token-phone"),
+            argThat<UserDeviceEntity> { userIdentifier == "user-1" && createdAt != null },
             isNull()
         )
     }
 
-    /** Two registrations racing: the loser must re-read and keep the winner's device. */
     @Test
-    fun `retries on a conflict on top of the concurrent write`() {
-        stubReads(
-            StoredUserDeviceRegistrations(rev = "1-a", devices = emptyList()),
-            StoredUserDeviceRegistrations(rev = "2-b", devices = listOf(phone))
-        )
-        whenever(couchDbClient.putDatabaseDocumentAtRevision(any(), any(), any(), eq("1-a")))
-            .thenThrow(conflict())
-        whenever(couchDbClient.putDatabaseDocumentAtRevision(any(), any(), any(), eq("2-b")))
-            .thenReturn(DocSuccess(ok = true, id = documentId, rev = "3-c"))
+    fun `keeps a given creation time`() {
+        val createdAt = OffsetDateTime.parse("2024-01-01T00:00:00Z")
 
-        repository.addDevice("user-1", tablet)
+        repository.save(phone.copy(createdAt = createdAt))
 
         verify(couchDbClient).putDatabaseDocumentAtRevision(
-            eq(BACKEND_STATE_DATABASE),
-            eq(documentId),
-            argThat<UserDeviceRegistrations> { devices == listOf(phone, tablet) },
-            eq("2-b")
+            any(),
+            any(),
+            argThat<UserDeviceEntity> { this.createdAt == createdAt },
+            isNull()
         )
     }
 
     @Test
-    fun `gives up after repeated conflicts`() {
-        stubReads(StoredUserDeviceRegistrations(rev = "1-a", devices = emptyList()))
-        whenever(couchDbClient.putDatabaseDocumentAtRevision(any(), any(), any(), any()))
-            .thenThrow(conflict())
+    fun `queries the devices of a user among the device documents only`() {
+        stubFind(phone, tablet)
 
-        assertThrows<ExternalSystemException> { repository.removeDevice("user-1", "token-phone") }
+        val result = repository.findByUserIdentifier("user-1", Pageable.unpaged())
 
-        verify(couchDbClient, times(3)).putDatabaseDocumentAtRevision(any(), any(), any(), any())
+        assertThat(result.content).containsExactly(phone, tablet)
+        verify(couchDbClient).findDatabaseDocuments(
+            eq(BACKEND_STATE_DATABASE),
+            argThat<Map<String, Any>> {
+                this["selector"] ==
+                    mapOf(
+                        "_id" to mapOf("\$gt" to "UserDevice:", "\$lt" to "UserDevice:￰"),
+                        "userIdentifier" to "user-1"
+                    ) &&
+                    this["limit"] != null
+            },
+            any(),
+            eq(UserDeviceEntity::class)
+        )
     }
 
     @Test
-    fun `reads the devices of a user`() {
-        stubReads(StoredUserDeviceRegistrations(rev = "1-a", devices = listOf(phone, tablet)))
+    fun `pages the devices of a user`() {
+        stubFind(phone, tablet)
 
-        assertThat(repository.findDevice("user-1", "token-tablet")).isEqualTo(tablet)
+        val result = repository.findByUserIdentifier("user-1", PageRequest.of(1, 1))
+
+        assertThat(result.content).containsExactly(tablet)
+        assertThat(result.totalElements).isEqualTo(2)
+    }
+
+    @Test
+    fun `finds nothing for an unknown token`() {
+        whenever(
+            couchDbClient.getDatabaseDocument(
+                eq(BACKEND_STATE_DATABASE),
+                eq("UserDevice:unknown"),
+                any(),
+                eq(UserDeviceEntity::class)
+            )
+        ).thenThrow(NotFoundException(code = TestErrorCode.TEST_EXCEPTION))
+
+        assertThat(repository.findByDeviceToken("unknown")).isEmpty()
+    }
+
+    @Test
+    fun `a device exists when its document has a revision`() {
+        whenever(couchDbClient.headDatabaseDocument(BACKEND_STATE_DATABASE, "UserDevice:token-phone"))
+            .thenReturn(HttpHeaders().apply { eTag = "\"1-a\"" })
+        whenever(couchDbClient.headDatabaseDocument(BACKEND_STATE_DATABASE, "UserDevice:unknown"))
+            .thenReturn(HttpHeaders())
+
+        assertThat(repository.existsByDeviceToken("token-phone")).isTrue()
+        assertThat(repository.existsByDeviceToken("unknown")).isFalse()
     }
 }

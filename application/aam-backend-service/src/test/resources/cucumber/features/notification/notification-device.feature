@@ -49,3 +49,14 @@ Feature: Notification device registration API
         Then the client receives status code of 204
         When the client calls GET /v1/notification/device/test-device-token-1
         Then the client receives status code of 404
+
+    Scenario: Re-register a device after deletion
+        Given signed in as client dummy-client with secret client-secret in realm dummy-realm
+        When the client calls POST /v1/notification/device with body DeviceRegistration_1
+        Then the client receives status code of 204
+        When the client calls DELETE /v1/notification/device/test-device-token-1
+        Then the client receives status code of 204
+        When the client calls POST /v1/notification/device with body DeviceRegistration_1
+        Then the client receives status code of 204
+        When the client calls GET /v1/notification/device/test-device-token-1
+        Then the client receives status code of 200

@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.common.storage.migration
 
-import com.aamdigital.aambackendservice.notification.domain.UserDevice
+import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSession
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSessionRepository
@@ -8,7 +8,11 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.Pageable
 import java.time.Instant
+import java.time.ZoneOffset
+import java.util.*
 
 /**
  * The migration runs once, against real production data, and cannot be exercised by the e2e suite
@@ -20,27 +24,27 @@ class PostgresToCouchDbMigrationTest {
     private lateinit var state: FakeMigrationStateStore
 
     private class FakeUserDeviceRepository : UserDeviceRepository {
-        val byUser = mutableMapOf<String, MutableList<UserDevice>>()
+        val byToken = mutableMapOf<String, UserDeviceEntity>()
 
-        override fun findByUserIdentifier(userIdentifier: String) = byUser[userIdentifier].orEmpty()
+        fun tokensOf(userIdentifier: String) =
+            byToken.values.filter { it.userIdentifier == userIdentifier }.map { it.deviceToken }
 
-        override fun findDevice(
+        override fun findByUserIdentifier(
             userIdentifier: String,
-            deviceToken: String
-        ) = findByUserIdentifier(userIdentifier).firstOrNull { it.deviceToken == deviceToken }
+            pageable: Pageable
+        ) = PageImpl(byToken.values.filter { it.userIdentifier == userIdentifier })
 
-        override fun addDevice(
-            userIdentifier: String,
-            device: UserDevice
-        ) {
-            byUser.getOrPut(userIdentifier) { mutableListOf() }.add(device)
+        override fun findByDeviceToken(deviceToken: String) = Optional.ofNullable(byToken[deviceToken])
+
+        override fun existsByDeviceToken(deviceToken: String) = deviceToken in byToken
+
+        override fun deleteByDeviceToken(deviceToken: String) {
+            byToken.remove(deviceToken)
         }
 
-        override fun removeDevice(
-            userIdentifier: String,
-            deviceToken: String
-        ) {
-            byUser[userIdentifier]?.removeIf { it.deviceToken == deviceToken }
+        override fun save(userDevice: UserDeviceEntity) {
+            check(userDevice.deviceToken !in byToken) { "device token already registered" }
+            byToken[userDevice.deviceToken] = userDevice
         }
     }
 
@@ -112,7 +116,7 @@ class PostgresToCouchDbMigrationTest {
     }
 
     @Test
-    fun `copies device registrations grouped by user`() {
+    fun `copies device registrations`() {
         val createdAt = Instant.parse("2024-01-01T00:00:00Z")
         migration(
             FakeSource(
@@ -125,12 +129,11 @@ class PostgresToCouchDbMigrationTest {
             )
         ).run(null)
 
-        assertThat(devices.byUser.getValue("user-1").map { it.deviceToken })
-            .containsExactly("token-a", "token-b")
-        val firstDevice = devices.byUser.getValue("user-1").first()
+        assertThat(devices.tokensOf("user-1")).containsExactly("token-a", "token-b")
+        val firstDevice = devices.byToken.getValue("token-a")
         assertThat(firstDevice.deviceName).isEqualTo("Phone")
-        assertThat(firstDevice.createdAt).isEqualTo(createdAt)
-        assertThat(devices.byUser.getValue("user-2").map { it.deviceToken }).containsExactly("token-c")
+        assertThat(firstDevice.createdAt).isEqualTo(createdAt.atOffset(ZoneOffset.UTC))
+        assertThat(devices.tokensOf("user-2")).containsExactly("token-c")
     }
 
     @Test
@@ -160,7 +163,7 @@ class PostgresToCouchDbMigrationTest {
         migration(source).run(null)
         migration(source).run(null)
 
-        assertThat(devices.byUser.getValue("user-1")).hasSize(1)
+        assertThat(devices.byToken).hasSize(1)
         assertThat(sessions.stored).hasSize(1)
     }
 
@@ -183,10 +186,10 @@ class PostgresToCouchDbMigrationTest {
         val source = FakeSource(userDevices = listOf(LegacyUserDevice("user-1", "token-a", "Phone", null)))
 
         migration(source).run(null)
-        devices.removeDevice("user-1", "token-a")
+        devices.deleteByDeviceToken("token-a")
         migration(source).run(null)
 
-        assertThat(devices.findByUserIdentifier("user-1")).isEmpty()
+        assertThat(devices.tokensOf("user-1")).isEmpty()
     }
 
     @Test
@@ -218,7 +221,7 @@ class PostgresToCouchDbMigrationTest {
 
         // the module is enabled on a later start
         migration(source).run(null)
-        assertThat(devices.findByUserIdentifier("user-1").map { it.deviceToken }).containsExactly("token-a")
+        assertThat(devices.tokensOf("user-1")).containsExactly("token-a")
     }
 
     @Test
@@ -239,12 +242,11 @@ class PostgresToCouchDbMigrationTest {
             }
         val failingRepository =
             object : UserDeviceRepository by devices {
-                override fun addDevice(
-                    userIdentifier: String,
-                    device: UserDevice
-                ) {
-                    if (failAfterFirstUser && userIdentifier == "user-2") throw IllegalStateException("couchdb is gone")
-                    devices.addDevice(userIdentifier, device)
+                override fun save(userDevice: UserDeviceEntity) {
+                    if (failAfterFirstUser && userDevice.userIdentifier == "user-2") {
+                        throw IllegalStateException("couchdb is gone")
+                    }
+                    devices.save(userDevice)
                 }
             }
 
@@ -255,8 +257,8 @@ class PostgresToCouchDbMigrationTest {
         migration(flaky, userDeviceRepository = failingRepository).run(null)
 
         assertThat(state.completed).contains(PostgresToCouchDbMigration.USER_DEVICES_STEP)
-        assertThat(devices.findByUserIdentifier("user-1")).hasSize(1)
-        assertThat(devices.findByUserIdentifier("user-2")).hasSize(1)
+        assertThat(devices.tokensOf("user-1")).hasSize(1)
+        assertThat(devices.tokensOf("user-2")).hasSize(1)
     }
 
     @Test
@@ -269,7 +271,7 @@ class PostgresToCouchDbMigrationTest {
             )
         ).run(null)
 
-        assertThat(devices.byUser).isEmpty()
+        assertThat(devices.byToken).isEmpty()
         assertThat(sessions.stored).isEmpty()
     }
 
@@ -277,7 +279,7 @@ class PostgresToCouchDbMigrationTest {
     fun `does nothing when no datasource is configured`() {
         migration(null).run(null)
 
-        assertThat(devices.byUser).isEmpty()
+        assertThat(devices.byToken).isEmpty()
         assertThat(sessions.stored).isEmpty()
     }
 
@@ -295,7 +297,7 @@ class PostgresToCouchDbMigrationTest {
 
         migration(failing).run(null)
 
-        assertThat(devices.byUser).isEmpty()
+        assertThat(devices.byToken).isEmpty()
         assertThat(state.completed).isEmpty()
     }
 }

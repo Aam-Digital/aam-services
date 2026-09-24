@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.common.storage.migration
 
-import com.aamdigital.aambackendservice.notification.domain.UserDevice
+import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSession
 import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSessionRepository
@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
+import java.time.ZoneOffset
 
 /**
  * Copies the two pieces of state that cannot be reconstructed out of PostgreSQL and into CouchDB,
@@ -110,24 +111,19 @@ class PostgresToCouchDbMigration(
         var migrated = 0
         var skipped = 0
 
-        source.readUserDevices().groupBy { it.userIdentifier }.forEach { (userIdentifier, devices) ->
-            val existing = repository.findByUserIdentifier(userIdentifier).map { it.deviceToken }.toSet()
-
-            devices.forEach { device ->
-                if (device.deviceToken in existing) {
-                    skipped += 1
-                } else {
-                    repository.addDevice(
-                        userIdentifier = userIdentifier,
-                        device =
-                            UserDevice(
-                                deviceToken = device.deviceToken,
-                                deviceName = device.deviceName,
-                                createdAt = device.createdAt
-                            )
+        source.readUserDevices().forEach { device ->
+            if (repository.existsByDeviceToken(device.deviceToken)) {
+                skipped += 1
+            } else {
+                repository.save(
+                    UserDeviceEntity(
+                        userIdentifier = device.userIdentifier,
+                        deviceToken = device.deviceToken,
+                        deviceName = device.deviceName,
+                        createdAt = device.createdAt?.atOffset(ZoneOffset.UTC)
                     )
-                    migrated += 1
-                }
+                )
+                migrated += 1
             }
         }
 

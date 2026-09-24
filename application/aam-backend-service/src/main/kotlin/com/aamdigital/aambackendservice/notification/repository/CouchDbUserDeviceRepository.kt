@@ -2,109 +2,94 @@ package com.aamdigital.aambackendservice.notification.repository
 
 import com.aamdigital.aambackendservice.common.couchdb.core.BACKEND_STATE_DATABASE
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
-import com.aamdigital.aambackendservice.notification.domain.UserDevice
-import com.fasterxml.jackson.annotation.JsonProperty
-import org.slf4j.LoggerFactory
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.Pageable
+import java.time.OffsetDateTime
+import java.util.*
 
 /**
- * The registrations of a single user, stored as one CouchDB document.
- *
- * One document per user rather than per device: push delivery reads by user, which makes that the
- * hot path a plain document read, and both REST endpoints know the caller from their JWT.
+ * [UserDeviceRepository] backed by one CouchDB document per device, keyed by the device token -
+ * the same shape as the PostgreSQL table it replaces.
  */
-data class UserDeviceRegistrations(
-    val userIdentifier: String,
-    val devices: List<UserDevice> = emptyList()
-)
-
-/** [UserDeviceRegistrations] as read back, with the revision a write has to be based on. */
-internal data class StoredUserDeviceRegistrations(
-    @JsonProperty("_rev")
-    val rev: String?,
-    val devices: List<UserDevice> = emptyList()
-)
-
 class CouchDbUserDeviceRepository(
     private val couchDbClient: CouchDbClient
 ) : UserDeviceRepository {
     companion object {
         const val DOCUMENT_PREFIX = "UserDevice"
 
-        /**
-         * A user registering two devices at the same moment would otherwise lose one: each request
-         * reads the document, changes its device list and writes it back. The write is pinned to
-         * the revision that was read, so the slower request gets a conflict and retries on top of
-         * the document the faster one wrote.
-         */
-        private const val WRITE_ATTEMPTS = 3
+        /** CouchDB's `_find` returns only 25 documents unless a limit is given. */
+        private const val MAX_DEVICES_PER_USER = 1000
     }
 
-    private val logger = LoggerFactory.getLogger(javaClass)
-
-    override fun findByUserIdentifier(userIdentifier: String): List<UserDevice> =
-        fetch(userIdentifier)?.devices.orEmpty()
-
-    override fun findDevice(
+    override fun findByUserIdentifier(
         userIdentifier: String,
-        deviceToken: String
-    ): UserDevice? = findByUserIdentifier(userIdentifier).firstOrNull { it.deviceToken == deviceToken }
-
-    override fun addDevice(
-        userIdentifier: String,
-        device: UserDevice
-    ) = update(userIdentifier) { devices ->
-        devices.filterNot { it.deviceToken == device.deviceToken } + device
-    }
-
-    override fun removeDevice(
-        userIdentifier: String,
-        deviceToken: String
-    ) = update(userIdentifier) { devices ->
-        devices.filterNot { it.deviceToken == deviceToken }
-    }
-
-    private fun update(
-        userIdentifier: String,
-        change: (List<UserDevice>) -> List<UserDevice>
-    ) {
-        var lastError: AamException? = null
-
-        repeat(WRITE_ATTEMPTS) { attempt ->
-            val current = fetch(userIdentifier)
-
-            try {
-                couchDbClient.putDatabaseDocumentAtRevision(
+        pageable: Pageable
+    ): Page<UserDeviceEntity> {
+        val devices =
+            couchDbClient
+                .findDatabaseDocuments(
                     database = BACKEND_STATE_DATABASE,
-                    documentId = documentId(userIdentifier),
                     body =
-                        UserDeviceRegistrations(
-                            userIdentifier = userIdentifier,
-                            devices = change(current?.devices.orEmpty())
+                        mapOf(
+                            "selector" to
+                                mapOf(
+                                    // the _id range keeps the query on the primary index, so it only scans
+                                    // device documents and not the other backend state in this database
+                                    "_id" to mapOf("\$gt" to "$DOCUMENT_PREFIX:", "\$lt" to "$DOCUMENT_PREFIX:￰"),
+                                    "userIdentifier" to userIdentifier
+                                ),
+                            "limit" to MAX_DEVICES_PER_USER
                         ),
-                    expectedRev = current?.rev
-                )
-                return
-            } catch (ex: AamException) {
-                lastError = ex
-                logger.debug("[CouchDbUserDeviceRepository] write attempt {} failed", attempt + 1, ex)
-            }
-        }
+                    kClass = UserDeviceEntity::class
+                ).docs
 
-        throw lastError ?: IllegalStateException("Could not store devices for user $userIdentifier")
+        if (pageable.isUnpaged) return PageImpl(devices)
+
+        val page = devices.drop(pageable.offset.toInt()).take(pageable.pageSize)
+        return PageImpl(page, pageable, devices.size.toLong())
     }
 
-    private fun fetch(userIdentifier: String): StoredUserDeviceRegistrations? =
+    override fun findByDeviceToken(deviceToken: String): Optional<UserDeviceEntity> =
         try {
-            couchDbClient.getDatabaseDocument(
-                database = BACKEND_STATE_DATABASE,
-                documentId = documentId(userIdentifier),
-                kClass = StoredUserDeviceRegistrations::class
+            Optional.of(
+                couchDbClient.getDatabaseDocument(
+                    database = BACKEND_STATE_DATABASE,
+                    documentId = documentId(deviceToken),
+                    kClass = UserDeviceEntity::class
+                )
             )
         } catch (_: NotFoundException) {
-            null
+            Optional.empty()
         }
 
-    private fun documentId(userIdentifier: String) = "$DOCUMENT_PREFIX:$userIdentifier"
+    override fun existsByDeviceToken(deviceToken: String): Boolean =
+        couchDbClient
+            .headDatabaseDocument(
+                database = BACKEND_STATE_DATABASE,
+                documentId = documentId(deviceToken)
+            ).eTag != null
+
+    override fun deleteByDeviceToken(deviceToken: String) {
+        couchDbClient.deleteDatabaseDocument(
+            database = BACKEND_STATE_DATABASE,
+            documentId = documentId(deviceToken)
+        )
+    }
+
+    /**
+     * Written only if no document exists for the token yet, which keeps the token unique across
+     * users like the unique column of the PostgreSQL table did.
+     */
+    override fun save(userDevice: UserDeviceEntity) {
+        couchDbClient.putDatabaseDocumentAtRevision(
+            database = BACKEND_STATE_DATABASE,
+            documentId = documentId(userDevice.deviceToken),
+            body = userDevice.copy(createdAt = userDevice.createdAt ?: OffsetDateTime.now()),
+            expectedRev = null
+        )
+    }
+
+    private fun documentId(deviceToken: String) = "$DOCUMENT_PREFIX:$deviceToken"
 }
