@@ -25,6 +25,13 @@ data class DeviceRegistrationDto(
 )
 
 /**
+ * Characters that would change the meaning of the CouchDB request path the token is placed in:
+ * a `/` in `UserDevice:<token>` would address an attachment of another user's device document.
+ * Deliberately a denylist - rejecting a real token would silently stop push delivery for that user.
+ */
+private val UNSAFE_DEVICE_TOKEN_CHARACTERS = Regex("""[/?#%\s\p{Cntrl}]""")
+
+/**
  * Controller for registering and unregistering devices of a user for push notifications.
  */
 @RestController
@@ -46,6 +53,16 @@ class NotificationDeviceController(
                 HttpErrorDto(
                     errorCode = "Bad Request",
                     errorMessage = "No subject found in the token."
+                )
+            )
+        }
+
+        val deviceToken = deviceRegistrationDto.deviceToken
+        if (deviceToken.isBlank() || UNSAFE_DEVICE_TOKEN_CHARACTERS.containsMatchIn(deviceToken)) {
+            return ResponseEntity.badRequest().body(
+                HttpErrorDto(
+                    errorCode = "Bad Request",
+                    errorMessage = "The device token is invalid."
                 )
             )
         }
