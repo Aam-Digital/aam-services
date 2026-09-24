@@ -30,11 +30,17 @@ class CouchDbThirdPartyAuthSessionRepository(
             null
         }
 
+    /**
+     * Create-only, which saves looking up a revision first: every session id is a fresh UUID, and
+     * the migration checks for an existing session before it saves. Saving a session id that
+     * already exists fails with a 409 conflict.
+     */
     override fun save(session: ThirdPartyAuthSession) {
-        couchDbClient.putDatabaseDocument(
+        couchDbClient.putDatabaseDocumentAtRevision(
             database = BACKEND_STATE_DATABASE,
             documentId = documentId(session.sessionId),
-            body = session
+            body = session,
+            expectedRev = null
         )
     }
 

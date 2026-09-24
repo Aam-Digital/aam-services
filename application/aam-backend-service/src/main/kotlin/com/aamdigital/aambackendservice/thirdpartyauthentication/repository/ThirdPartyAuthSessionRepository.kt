@@ -29,5 +29,6 @@ data class ThirdPartyAuthSession(
 interface ThirdPartyAuthSessionRepository {
     fun findBySessionId(sessionId: String): ThirdPartyAuthSession?
 
+    /** Stores a new session; a session is never updated after it was created. */
     fun save(session: ThirdPartyAuthSession)
 }
