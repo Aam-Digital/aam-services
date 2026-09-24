@@ -14,8 +14,6 @@ on:
       - '.github/workflows/aam-backend-service-build-and-publish.yml'
       - 'application/aam-backend-service/**'
 env:
-  # Named after the repository rather than the module, consistent with the other
-  # Aam Digital images (ndb-core, replication-backend).
   REGISTRY_IMAGE: ghcr.io/aam-digital/aam-services
 
 permissions:
