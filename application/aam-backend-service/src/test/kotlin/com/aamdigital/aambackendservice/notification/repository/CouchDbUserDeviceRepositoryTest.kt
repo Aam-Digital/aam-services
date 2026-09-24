@@ -155,12 +155,25 @@ class CouchDbUserDeviceRepositoryTest {
         assertThatCode { repository.deleteByDeviceToken("token-phone") }.doesNotThrowAnyException()
     }
 
-    /** CouchDB answers 409 to a delete that has no revision left to delete. */
+    /** CouchDB answers 409 to a delete whose revision a concurrent delete removed first. */
     @Test
     fun `deleting a device whose revision is already gone does nothing`() {
         stubDeleteFailure(DefaultCouchDbClientErrorCode.CONFLICT)
+        whenever(couchDbClient.headDatabaseDocument(BACKEND_STATE_DATABASE, "UserDevice:token-phone"))
+            .thenReturn(HttpHeaders())
 
         assertThatCode { repository.deleteByDeviceToken("token-phone") }.doesNotThrowAnyException()
+    }
+
+    /** The token was registered again between looking up the revision and deleting it. */
+    @Test
+    fun `does not report a device as deleted that still exists after a conflict`() {
+        stubDeleteFailure(DefaultCouchDbClientErrorCode.CONFLICT)
+        whenever(couchDbClient.headDatabaseDocument(BACKEND_STATE_DATABASE, "UserDevice:token-phone"))
+            .thenReturn(HttpHeaders().apply { eTag = "\"3-c\"" })
+
+        assertThatThrownBy { repository.deleteByDeviceToken("token-phone") }
+            .isInstanceOf(ExternalSystemException::class.java)
     }
 
     @Test
