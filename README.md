@@ -72,8 +72,9 @@ Everything this service used to keep in PostgreSQL now lives in CouchDB
 | SkillLab profile mirror | `skill-user-profile`, `SkillProfile:<externalId>` |
 | SkillLab sync cursor | `skill-user-profile`, `SkillLabUserProfileSync:<projectId>` |
 
-Neither new database is in `database-change-detection.included-databases`, and neither is meant to
-be reachable by clients through replication-backend.
+Neither new database is in `database-change-detection.included-databases`.
+replication-backend does not block these databases, so users whose permission rules grant broad access
+(e.g. `manage all`) can read them, which is accepted.
 
 **PostgreSQL is still required for one more release.** On startup this service copies the two
 pieces of state that cannot be reconstructed — push device tokens and redirect bindings — out of
