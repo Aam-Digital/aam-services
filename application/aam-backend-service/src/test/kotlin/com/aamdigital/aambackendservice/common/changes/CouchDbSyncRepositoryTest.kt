@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.common.couchdb.dto.DocSuccess
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.rest.ObjectMapperConfiguration
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -117,5 +118,15 @@ class CouchDbSyncRepositoryTest {
             .isInstanceOf(ExternalSystemException::class.java)
 
         assertThat(repository.findByDatabase("app")).contains(SyncEntry("app", "seq-0"))
+    }
+
+    /** Every restart reads the stored cursor back; a mapping error there would stop change detection. */
+    @Test
+    fun `reads a cursor document as CouchDB returns it`() {
+        val json = """{"_id":"SyncEntry:app","_rev":"1-a","database":"app","latestRef":"seq-1"}"""
+
+        val document = ObjectMapperConfiguration().objectMapper().readValue(json, SyncEntryDocument::class.java)
+
+        assertThat(document).isEqualTo(SyncEntryDocument(database = "app", latestRef = "seq-1", rev = "1-a"))
     }
 }
