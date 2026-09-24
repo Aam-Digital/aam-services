@@ -111,8 +111,8 @@ jobs:
           tags: |
             type=ref,enable=true,event=pr
             type=ref,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=branch
-            # {{version}} rather than {{raw}}: drops the git tag's `v` prefix, so image tags are
-            # plain versions (e.g. `1.22.14`) like those of ndb-core.
+            # {{version}} rather than {{raw}}: plain versions (e.g. `1.22.14`) like those of
+            # ndb-core, also for a rebuild of an older `v`-prefixed tag.
             type=semver,enable=true,pattern={{version}},priority=600,value=${{ env.TAG }},event=tag
             # Moving tag for the latest release, like ndb-core's; `latest` is added
             # automatically for semver tags.
@@ -209,8 +209,8 @@ jobs:
           tags: |
             type=ref,enable=true,event=pr
             type=ref,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=branch
-            # {{version}} rather than {{raw}}: drops the git tag's `v` prefix, so image tags are
-            # plain versions (e.g. `1.22.14`) like those of ndb-core.
+            # {{version}} rather than {{raw}}: plain versions (e.g. `1.22.14`) like those of
+            # ndb-core, also for a rebuild of an older `v`-prefixed tag.
             type=semver,enable=true,pattern={{version}},priority=600,value=${{ env.TAG }},event=tag
             # Moving tag for the latest release, like ndb-core's; `latest` is added
             # automatically for semver tags.
@@ -267,8 +267,11 @@ jobs:
 
       - name: Set current tag and version
         run: |
-          CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'aam-backend-service/v*')
-          CURRENT_VERSION=$(echo $CURRENT_TAG | cut -d'/' -f2)
+          # Releases are tagged `aam-backend-service/<version>`; the `v*` match finds the
+          # older `aam-backend-service/v<version>` tags until the first release without it.
+          CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'aam-backend-service/[0-9]*' --match 'aam-backend-service/v*')
+          CURRENT_VERSION=${CURRENT_TAG#aam-backend-service/}
+          CURRENT_VERSION=${CURRENT_VERSION#v}
           echo "CURRENT_TAG=$CURRENT_TAG" >> $GITHUB_ENV
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
 
@@ -279,7 +282,7 @@ jobs:
 
       - name: Calculate next version
         run: |
-          NEXT_VERSION=v$(conventional_commits_next_version \
+          NEXT_VERSION=$(conventional_commits_next_version \
             --calculation-mode "Batch" \
             --from-commit-hash ${{ env.FROM_COMMIT_HASH }} \
             --from-version ${{ env.CURRENT_VERSION }} \
