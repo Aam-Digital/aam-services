@@ -168,7 +168,7 @@ services:
   # ***************************************************************
 
   aam-backend-service:
-    image: ghcr.io/aam-digital/aam-backend-service:${AAM_BACKEND_SERVICE_VERSION:-latest}
+    image: ghcr.io/aam-digital/aam-services:${AAM_BACKEND_SERVICE_VERSION:-latest}
     command:
       - sh
       - -c
