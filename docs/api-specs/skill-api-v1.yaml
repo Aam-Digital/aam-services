@@ -113,13 +113,13 @@ paths:
               - DELTA
               - FULL
         - name: updatedFrom
-          description: Define the start date for the Delta load, for this run only. Just used in syncMode DELTA. If not defined, the newest updatedAt the SkillProvider reported for any stored profile is used.
+          description: Define the start date for the Delta load, for this run only. Just used in syncMode DELTA. If not defined, the newest updatedAt the SkillProvider reported for any stored profile is used. If no stored updatedAt can be parsed, the newest latestSyncAt of the stored profiles is used instead. If no profile is stored yet, no start date is sent and the whole project is fetched.
           in: query
           required: false
           schema:
             type: string
-            default: "2024-12-03T11:50:00.231Z"
             format: date-time
+            example: "2024-12-03T11:50:00.231Z"
         - name: projectId
           in: path
           required: true
@@ -128,6 +128,10 @@ paths:
       responses:
         '204':
           description: Sync process started, can take some minutes until all changes are imported.
+        '400':
+          description: updatedFrom is not a valid ISO-8601 date-time.
+        '404':
+          description: projectId is not the project this service is configured for.
 
 components:
   schemas:

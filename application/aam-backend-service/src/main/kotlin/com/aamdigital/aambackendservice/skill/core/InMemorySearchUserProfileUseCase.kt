@@ -86,7 +86,7 @@ class InMemorySearchUserProfileUseCase(
         pageSize: Int
     ): SearchUserProfileData {
         val ordered = matches.sortedBy { it.externalIdentifier }
-        val fromIndex = ((page - 1) * pageSize).coerceAtMost(ordered.size)
+        val fromIndex = ((page - 1).toLong() * pageSize).coerceIn(0L, ordered.size.toLong()).toInt()
         val toIndex = (fromIndex + pageSize).coerceAtMost(ordered.size)
 
         return SearchUserProfileData(

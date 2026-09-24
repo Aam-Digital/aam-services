@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.Instant
+import java.time.format.DateTimeParseException
 
 data class SkillDto(
     val projectId: String,
@@ -68,13 +69,29 @@ class SkillAdminController(
         syncMode: SyncModeDto = SyncModeDto.DELTA,
         updatedFrom: String? = null
     ): ResponseEntity<Any> {
+        if (projectId != skillLabApiClientConfiguration.projectId) {
+            return ResponseEntity.notFound().build()
+        }
+
+        // an explicit updatedFrom overrides the derived cursor for this run only
+        val updatedFromInstant =
+            try {
+                updatedFrom?.takeUnless { it.isBlank() }?.let { Instant.parse(it) }
+            } catch (ex: DateTimeParseException) {
+                return ResponseEntity.badRequest().body(
+                    HttpErrorDto(
+                        errorCode = "BAD_REQUEST",
+                        errorMessage = "updatedFrom must be an ISO-8601 instant"
+                    )
+                )
+            }
+
         try {
             skillLabFetchUserProfileUpdatesUseCase.run(
                 request =
                     FetchUserProfileUpdatesRequest(
                         projectId = projectId,
-                        // an explicit updatedFrom overrides the derived cursor for this run only
-                        updatedFrom = updatedFrom?.takeUnless { it.isBlank() }?.let { Instant.parse(it) },
+                        updatedFrom = updatedFromInstant,
                         fullSync = syncMode == SyncModeDto.FULL
                     )
             )

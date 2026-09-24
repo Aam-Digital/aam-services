@@ -11,8 +11,9 @@ data class FetchUserProfileUpdatesRequest(
     /**
      * Only fetch profiles the external system changed at or after this point.
      *
-     * `null` requests a full sync. Left unset, the use case derives it from the profiles already
-     * stored, so no sync cursor has to be persisted anywhere.
+     * Left `null`, the use case derives the cursor from the profiles already stored and runs a
+     * delta sync, so no sync cursor has to be persisted anywhere. Set [fullSync] to request a full
+     * sync; it takes precedence over this value.
      */
     val updatedFrom: Instant? = null,
     val fullSync: Boolean = false

@@ -11,7 +11,7 @@ import org.springframework.boot.ApplicationRunner
 
 /**
  * Copies the two pieces of state that cannot be reconstructed out of PostgreSQL and into CouchDB,
- * once, on startup (see #209).
+ * once, on startup.
  *
  * - **Push device tokens.** Minted by Firebase on the client, so unreconstructable server-side.
  *   Losing them is not self-healing either: ndb-core checks its registration on load but only
