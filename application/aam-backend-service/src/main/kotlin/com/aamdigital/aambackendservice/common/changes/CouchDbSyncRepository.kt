@@ -6,8 +6,17 @@ import com.aamdigital.aambackendservice.common.couchdb.core.fetchAllDocumentsByP
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
+
+/** A [SyncEntry] document as read back, with the revision the next write has to name. */
+internal data class SyncEntryDocument(
+    val database: String,
+    val latestRef: String,
+    @JsonProperty("_rev") val rev: String
+)
 
 /**
  * [SyncRepository] backed by one CouchDB document per watched database.
@@ -20,6 +29,12 @@ import java.util.Optional
  * given when the cursor document is really absent: [CouchDbClient.getDatabaseDocument] reports any
  * 4xx as [NotFoundException], and treating a missing database or an auth error as a first run
  * would move the cursor forward on every poll and silently skip every change in between.
+ *
+ * Change detection is the only writer and polls every few seconds, so each cursor is kept in memory
+ * with the revision of its last write: a poll does not read it again, and a save names that
+ * revision instead of looking it up first. A failed save forgets the cursor, so the next poll reads
+ * it afresh. That is also how a cursor edited by hand in CouchDB is picked up: on the next save
+ * for that database, which fails on the stale revision, or on a restart.
  */
 class CouchDbSyncRepository(
     private val couchDbClient: CouchDbClient,
@@ -33,14 +48,29 @@ class CouchDbSyncRepository(
         STATE_DATABASE_MISSING
     }
 
-    override fun findByDatabase(database: String): Optional<SyncEntry> =
+    /** The last cursor read or written per database, with the revision that write produced. */
+    private data class KnownEntry(
+        val entry: SyncEntry,
+        val rev: String
+    )
+
+    private val known = ConcurrentHashMap<String, KnownEntry>()
+
+    override fun findByDatabase(database: String): Optional<SyncEntry> {
+        known[database]?.let { return Optional.of(it.entry) }
+
+        val document = readDocument(database) ?: return Optional.empty()
+        val entry = SyncEntry(database = document.database, latestRef = document.latestRef)
+        known[database] = KnownEntry(entry, document.rev)
+        return Optional.of(entry)
+    }
+
+    private fun readDocument(database: String): SyncEntryDocument? =
         try {
-            Optional.of(
-                couchDbClient.getDatabaseDocument(
-                    database = BACKEND_STATE_DATABASE,
-                    documentId = documentId(database),
-                    kClass = SyncEntry::class
-                )
+            couchDbClient.getDatabaseDocument(
+                database = BACKEND_STATE_DATABASE,
+                documentId = documentId(database),
+                kClass = SyncEntryDocument::class
             )
         } catch (ex: NotFoundException) {
             // throws on its own for any 4xx other than 404, e.g. an auth error
@@ -51,7 +81,7 @@ class CouchDbSyncRepository(
                     code = CouchDbSyncRepositoryError.STATE_DATABASE_MISSING
                 )
             }
-            Optional.empty()
+            null
         }
 
     override fun findAll(): List<SyncEntry> =
@@ -63,12 +93,21 @@ class CouchDbSyncRepository(
             kClass = SyncEntry::class
         )
 
+    /** Creates the cursor if none was found, and otherwise writes over the revision last seen. */
     override fun save(syncEntry: SyncEntry): SyncEntry {
-        couchDbClient.putDatabaseDocument(
-            database = BACKEND_STATE_DATABASE,
-            documentId = documentId(syncEntry.database),
-            body = syncEntry
-        )
+        val result =
+            try {
+                couchDbClient.putDatabaseDocumentAtRevision(
+                    database = BACKEND_STATE_DATABASE,
+                    documentId = documentId(syncEntry.database),
+                    body = syncEntry,
+                    expectedRev = known[syncEntry.database]?.rev
+                )
+            } catch (ex: Exception) {
+                known.remove(syncEntry.database)
+                throw ex
+            }
+        known[syncEntry.database] = KnownEntry(syncEntry, result.rev)
         return syncEntry
     }
 
