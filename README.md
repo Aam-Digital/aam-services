@@ -78,8 +78,10 @@ replication-backend does not block these databases, so users whose permission ru
 
 **PostgreSQL is still required for one more release.** On startup this service copies the two
 pieces of state that cannot be reconstructed — push device tokens and redirect bindings — out of
-PostgreSQL and into CouchDB. Each part runs until it has succeeded once, which is recorded as a
+PostgreSQL and into CouchDB. Each part runs until it has completed once, which is recorded as a
 `Migration:<step>` document in `aam-backend-state`, and it never reads PostgreSQL again after that.
+A row that cannot be copied is logged and dropped. Only a part in which every row failed is retried
+on the next start.
 A part is only run while its module is enabled, and no failure in it can stop startup. Only once
 every instance has run it can the PostgreSQL container and its volume be removed, in the release
 that drops the JDBC driver. Set `migration.postgres-to-couchdb.enabled: false` to skip it.

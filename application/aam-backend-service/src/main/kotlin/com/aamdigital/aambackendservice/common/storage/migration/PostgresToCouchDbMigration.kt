@@ -30,8 +30,11 @@ import java.time.ZoneOffset
  * that it never reads PostgreSQL again. That matters because PostgreSQL is no longer written to:
  * re-copying on every start would bring back devices users have unregistered since. A step is
  * only attempted while its module is enabled, so enabling a module later still migrates its data.
- * Within a step, a document that already exists is left alone, so a step that failed halfway can
- * simply run again on the next start. No failure here can stop the service from starting.
+ * Within a step, a document that already exists is left alone. A row that cannot be copied is
+ * logged and dropped, and the step still counts as completed: running it again would re-copy every
+ * row and so bring back what was deleted since. Only a step that copied nothing because every row
+ * failed (CouchDB is down, say) stays pending, since there is nothing it could bring back. No failure
+ * here can stop the service from starting.
  */
 class PostgresToCouchDbMigration(
     /**
@@ -89,32 +92,73 @@ class PostgresToCouchDbMigration(
             false
         }
 
+    /** Rows copied, rows already present, and rows that could not be copied. */
+    private data class StepResult(
+        val migrated: Int = 0,
+        val skipped: Int = 0,
+        val failed: Int = 0
+    )
+
+    /** @param migrate returns null if there is no legacy table to copy from */
     private fun runStep(
         step: String,
         description: String,
-        migrate: () -> Unit
+        migrate: () -> StepResult?
     ) {
         try {
-            migrate()
+            val result = migrate()
+            if (result != null) {
+                logger.info(
+                    "[PostgresToCouchDbMigration] {}: {} migrated, {} already present, {} failed",
+                    description,
+                    result.migrated,
+                    result.skipped,
+                    result.failed
+                )
+                if (result.migrated == 0 && result.failed > 0) return
+            }
             migrationStateStore.markCompleted(step)
         } catch (ex: Exception) {
             logger.error("[PostgresToCouchDbMigration] could not migrate {}", description, ex)
         }
     }
 
+    /**
+     * Copies each row that is not [present] yet, isolating failures to the row.
+     *
+     * @param describe names a row in the log without exposing a secret like a device token
+     */
+    private fun <T> copyRows(
+        rows: List<T>,
+        describe: (T) -> String,
+        present: (T) -> Boolean,
+        copy: (T) -> Unit
+    ): StepResult =
+        rows.fold(StepResult()) { result, row ->
+            try {
+                if (present(row)) {
+                    result.copy(skipped = result.skipped + 1)
+                } else {
+                    copy(row)
+                    result.copy(migrated = result.migrated + 1)
+                }
+            } catch (ex: Exception) {
+                logger.error("[PostgresToCouchDbMigration] could not copy {}", describe(row), ex)
+                result.copy(failed = result.failed + 1)
+            }
+        }
+
     private fun migrateUserDevices(
         source: LegacyPostgresSource,
         repository: UserDeviceRepository
-    ) {
-        if (!source.tableExists(JdbcLegacyPostgresSource.USER_DEVICE_TABLE)) return
+    ): StepResult? {
+        if (!source.tableExists(JdbcLegacyPostgresSource.USER_DEVICE_TABLE)) return null
 
-        var migrated = 0
-        var skipped = 0
-
-        source.readUserDevices().forEach { device ->
-            if (repository.existsByDeviceToken(device.deviceToken)) {
-                skipped += 1
-            } else {
+        return copyRows(
+            rows = source.readUserDevices(),
+            describe = { "a push device registration of user ${it.userIdentifier}" },
+            present = { repository.existsByDeviceToken(it.deviceToken) },
+            copy = { device ->
                 repository.save(
                     UserDeviceEntity(
                         userIdentifier = device.userIdentifier,
@@ -123,30 +167,21 @@ class PostgresToCouchDbMigration(
                         createdAt = device.createdAt?.atOffset(ZoneOffset.UTC)
                     )
                 )
-                migrated += 1
             }
-        }
-
-        logger.info(
-            "[PostgresToCouchDbMigration] push device registrations: {} migrated, {} already present",
-            migrated,
-            skipped
         )
     }
 
     private fun migrateRedirectBindings(
         source: LegacyPostgresSource,
         repository: ThirdPartyAuthSessionRepository
-    ) {
-        if (!source.tableExists(JdbcLegacyPostgresSource.AUTHENTICATION_SESSION_TABLE)) return
+    ): StepResult? {
+        if (!source.tableExists(JdbcLegacyPostgresSource.AUTHENTICATION_SESSION_TABLE)) return null
 
-        var migrated = 0
-        var skipped = 0
-
-        source.readRedirectBindings().forEach { binding ->
-            if (repository.findBySessionId(binding.sessionId) != null) {
-                skipped += 1
-            } else {
+        return copyRows(
+            rows = source.readRedirectBindings(),
+            describe = { "a redirect binding of user ${it.userId}" },
+            present = { repository.findBySessionId(it.sessionId) != null },
+            copy = { binding ->
                 repository.save(
                     ThirdPartyAuthSession(
                         sessionId = binding.sessionId,
@@ -155,14 +190,7 @@ class PostgresToCouchDbMigration(
                         createdAt = binding.createdAt
                     )
                 )
-                migrated += 1
             }
-        }
-
-        logger.info(
-            "[PostgresToCouchDbMigration] redirect bindings: {} migrated, {} already present",
-            migrated,
-            skipped
         )
     }
 }

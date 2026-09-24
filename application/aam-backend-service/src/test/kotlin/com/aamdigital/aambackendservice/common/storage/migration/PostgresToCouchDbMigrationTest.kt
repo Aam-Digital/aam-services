@@ -224,41 +224,59 @@ class PostgresToCouchDbMigrationTest {
         assertThat(devices.tokensOf("user-1")).containsExactly("token-a")
     }
 
+    /** A device repository that rejects every save for the given users. */
+    private fun repositoryFailingFor(vararg userIdentifiers: String) =
+        object : UserDeviceRepository by devices {
+            val failFor = userIdentifiers.toMutableSet()
+
+            override fun save(userDevice: UserDeviceEntity) {
+                if (userDevice.userIdentifier in failFor) throw IllegalStateException("couchdb rejected it")
+                devices.save(userDevice)
+            }
+        }
+
+    /**
+     * Running the step again would re-copy every row, bringing back devices unregistered since, so
+     * a row that cannot be copied is dropped rather than retried.
+     */
     @Test
-    fun `a failed step stays pending and skips what an earlier attempt already copied`() {
-        val rows =
-            listOf(
-                LegacyUserDevice("user-1", "token-a", "Phone", null),
-                LegacyUserDevice("user-2", "token-b", "Tablet", null)
+    fun `drops a row that cannot be copied and completes the step`() {
+        val source =
+            FakeSource(
+                userDevices =
+                    listOf(
+                        LegacyUserDevice("user-1", "token-a", "Phone", null),
+                        LegacyUserDevice("user-2", "token-b", "Tablet", null),
+                        LegacyUserDevice("user-3", "token-c", "Laptop", null)
+                    )
             )
-        var failAfterFirstUser = true
-        val flaky =
-            object : LegacyPostgresSource {
-                override fun tableExists(table: String) = true
 
-                override fun readUserDevices() = rows
+        migration(source, userDeviceRepository = repositoryFailingFor("user-2")).run(null)
 
-                override fun readRedirectBindings() = emptyList<LegacyRedirectBinding>()
-            }
-        val failingRepository =
-            object : UserDeviceRepository by devices {
-                override fun save(userDevice: UserDeviceEntity) {
-                    if (failAfterFirstUser && userDevice.userIdentifier == "user-2") {
-                        throw IllegalStateException("couchdb is gone")
-                    }
-                    devices.save(userDevice)
-                }
-            }
+        assertThat(devices.byToken.keys).containsExactlyInAnyOrder("token-a", "token-c")
+        assertThat(state.completed).contains(PostgresToCouchDbMigration.USER_DEVICES_STEP)
+    }
 
-        migration(flaky, userDeviceRepository = failingRepository).run(null)
+    /** A step that wrote nothing cannot bring anything back, so it is safe to retry. */
+    @Test
+    fun `leaves a step pending when every row failed`() {
+        val source =
+            FakeSource(
+                userDevices =
+                    listOf(
+                        LegacyUserDevice("user-1", "token-a", "Phone", null),
+                        LegacyUserDevice("user-2", "token-b", "Tablet", null)
+                    )
+            )
+
+        migration(source, userDeviceRepository = repositoryFailingFor("user-1", "user-2")).run(null)
         assertThat(state.completed).doesNotContain(PostgresToCouchDbMigration.USER_DEVICES_STEP)
 
-        failAfterFirstUser = false
-        migration(flaky, userDeviceRepository = failingRepository).run(null)
+        // CouchDB is back on the next start
+        migration(source).run(null)
 
+        assertThat(devices.byToken.keys).containsExactlyInAnyOrder("token-a", "token-b")
         assertThat(state.completed).contains(PostgresToCouchDbMigration.USER_DEVICES_STEP)
-        assertThat(devices.tokensOf("user-1")).hasSize(1)
-        assertThat(devices.tokensOf("user-2")).hasSize(1)
     }
 
     @Test
