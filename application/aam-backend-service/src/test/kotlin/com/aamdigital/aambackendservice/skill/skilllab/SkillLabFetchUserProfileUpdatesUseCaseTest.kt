@@ -9,8 +9,8 @@ import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesReques
 import com.aamdigital.aambackendservice.skill.core.UserProfileUpdatePublisher
 import com.aamdigital.aambackendservice.skill.core.event.UserProfileUpdateEvent
 import com.aamdigital.aambackendservice.skill.di.UserProfileUpdateEventQueueConfiguration
-import com.aamdigital.aambackendservice.skill.repository.SkillUserProfile
-import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
+import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncEntity
+import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
 import okio.IOException
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
@@ -27,7 +27,8 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import java.time.Instant
+import org.springframework.data.domain.Pageable
+import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -40,7 +41,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
     lateinit var skillLabClient: SkillLabClient
 
     @Mock
-    lateinit var skillUserProfileRepository: SkillUserProfileRepository
+    lateinit var skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository
 
     @Mock
     lateinit var userProfileUpdatePublisher: UserProfileUpdatePublisher
@@ -49,13 +50,13 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
     fun setup() {
         reset(
             skillLabClient,
-            skillUserProfileRepository,
+            skillLabUserProfileSyncRepository,
             userProfileUpdatePublisher
         )
         service =
             SkillLabFetchUserProfileUpdatesUseCase(
                 skillLabClient = skillLabClient,
-                skillUserProfileRepository = skillUserProfileRepository,
+                skillLabUserProfileSyncRepository = skillLabUserProfileSyncRepository,
                 userProfileUpdatePublisher = userProfileUpdatePublisher
             )
     }
@@ -63,7 +64,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
     @Test
     fun `should return Failure when SkillLabClient throws exception`() {
         // given
-        whenever(skillLabClient.fetchUserProfiles(any(), any(), anyOrNull()))
+        whenever(skillLabClient.fetchUserProfiles(any(), anyOrNull()))
             .thenAnswer {
                 throw InternalServerException(
                     message = "error",
@@ -92,7 +93,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
     @Test
     fun `should publish UserProfileUpdateEvent for each UserProfile fetched from skillLabClient`() {
         // given
-        `when`(skillLabClient.fetchUserProfiles(eq(1), eq(50), anyOrNull())).thenReturn(
+        `when`(skillLabClient.fetchUserProfiles(eq(Pageable.ofSize(50).withPage(1)), anyOrNull())).thenReturn(
             listOf(
                 DomainReference("user-profile-1"),
                 DomainReference("user-profile-2"),
@@ -164,7 +165,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         whenever(
             skillLabClient.fetchUserProfiles(
                 any(),
-                any(),
                 anyOrNull()
             )
         ).thenReturn(
@@ -203,7 +203,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         whenever(
             skillLabClient.fetchUserProfiles(
                 any(),
-                any(),
                 anyOrNull()
             )
         ).thenReturn(
@@ -235,104 +234,85 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
     }
 
     @Test
-    fun `derives updatedFrom from the newest updatedAt reported by the external system`() {
+    fun `should store latestSyncEntity when SyncEntity exist for this projectId`() {
+        val syncEntity =
+            SkillLabUserProfileSyncEntity(
+                projectId = "1",
+                latestSync = OffsetDateTime.parse("2024-01-01T00:00:00Z")
+            )
+
         // given
-        whenever(skillUserProfileRepository.findAll()).thenReturn(
+        whenever(skillLabUserProfileSyncRepository.findByProjectId(any()))
+            .thenReturn(
+                Optional.of(
+                    syncEntity
+                )
+            )
+
+        `when`(skillLabClient.fetchUserProfiles(eq(Pageable.ofSize(50).withPage(1)), anyOrNull())).thenReturn(
             listOf(
-                // stored long after it changed externally: our own timestamp must not be the cursor
-                storedProfile("user-profile-1", Instant.parse("2024-06-01T10:00:00Z"), "2024-05-01T08:00:00.000Z"),
-                storedProfile("user-profile-2", Instant.parse("2024-06-01T09:00:00Z"), "2024-05-02T08:00+02:00"),
-                storedProfile("user-profile-3", Instant.parse("2024-06-01T11:00:00Z"), "not-a-timestamp")
+                DomainReference("user-profile-1"),
+                DomainReference("user-profile-2"),
+                DomainReference("user-profile-3")
             )
         )
-        `when`(skillLabClient.fetchUserProfiles(eq(1), eq(50), anyOrNull())).thenReturn(emptyList())
 
-        // when
-        val response = service.run(FetchUserProfileUpdatesRequest(projectId = "1"))
-
-        // then
-        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
-        verify(skillLabClient, times(1))
-            .fetchUserProfiles(eq(1), eq(50), eq(Instant.parse("2024-05-02T06:00:00Z").toString()))
-    }
-
-    @Test
-    fun `falls back to latestSyncAt when the external system reports no updatedAt`() {
-        // given
-        val newest = Instant.parse("2024-06-01T10:00:00Z")
-        whenever(skillUserProfileRepository.findAll()).thenReturn(
-            listOf(
-                storedProfile("user-profile-1", Instant.parse("2024-01-01T00:00:00Z")),
-                storedProfile("user-profile-2", newest),
-                storedProfile("user-profile-3", null)
-            )
+        whenever(userProfileUpdatePublisher.publish(any(), any())).thenReturn(
+            getQueueMessage()
         )
-        `when`(skillLabClient.fetchUserProfiles(eq(1), eq(50), anyOrNull())).thenReturn(emptyList())
-
-        // when
-        val response = service.run(FetchUserProfileUpdatesRequest(projectId = "1"))
-
-        // then
-        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
-        verify(skillLabClient, times(1)).fetchUserProfiles(eq(1), eq(50), eq(newest.toString()))
-    }
-
-    @Test
-    fun `requests a full sync when nothing is stored yet`() {
-        // given
-        whenever(skillUserProfileRepository.findAll()).thenReturn(emptyList())
-        `when`(skillLabClient.fetchUserProfiles(eq(1), eq(50), anyOrNull())).thenReturn(emptyList())
-
-        // when
-        val response = service.run(FetchUserProfileUpdatesRequest(projectId = "1"))
-
-        // then
-        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
-        verify(skillLabClient, times(1)).fetchUserProfiles(eq(1), eq(50), eq(null))
-    }
-
-    @Test
-    fun `a full sync request ignores the derived cursor`() {
-        // given
-        `when`(skillLabClient.fetchUserProfiles(eq(1), eq(50), anyOrNull())).thenReturn(emptyList())
-
-        // when
-        val response = service.run(FetchUserProfileUpdatesRequest(projectId = "1", fullSync = true))
-
-        // then
-        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
-        verify(skillLabClient, times(1)).fetchUserProfiles(eq(1), eq(50), eq(null))
-        verify(skillUserProfileRepository, times(0)).findAll()
-    }
-
-    @Test
-    fun `an explicit updatedFrom overrides the derived cursor`() {
-        // given
-        val explicit = Instant.parse("2023-03-03T03:03:03Z")
-        `when`(skillLabClient.fetchUserProfiles(eq(1), eq(50), anyOrNull())).thenReturn(emptyList())
 
         // when
         val response =
-            service.run(FetchUserProfileUpdatesRequest(projectId = "1", updatedFrom = explicit))
+            service.run(
+                FetchUserProfileUpdatesRequest(
+                    projectId = "1"
+                )
+            )
 
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
-        verify(skillLabClient, times(1)).fetchUserProfiles(eq(1), eq(50), eq(explicit.toString()))
-        verify(skillUserProfileRepository, times(0)).findAll()
+
+        verify(
+            skillLabUserProfileSyncRepository,
+            times(1)
+        ).save(
+            eq(syncEntity)
+        )
     }
 
-    private fun storedProfile(
-        id: String,
-        latestSyncAt: Instant?,
-        updatedAt: String? = null
-    ) = SkillUserProfile(
-        externalIdentifier = id,
-        fullName = null,
-        mobileNumber = null,
-        email = null,
-        updatedAt = updatedAt,
-        latestSyncAt = latestSyncAt
-    )
+    @Test
+    fun `should store latestSyncEntity when no SyncEntity exist for this projectId`() {
+        // given
+        `when`(skillLabClient.fetchUserProfiles(eq(Pageable.ofSize(50).withPage(1)), anyOrNull())).thenReturn(
+            listOf(
+                DomainReference("user-profile-1"),
+                DomainReference("user-profile-2"),
+                DomainReference("user-profile-3")
+            )
+        )
+
+        whenever(userProfileUpdatePublisher.publish(any(), any())).thenReturn(
+            getQueueMessage()
+        )
+
+        // when
+        val response =
+            service.run(
+                FetchUserProfileUpdatesRequest(
+                    projectId = "1"
+                )
+            )
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+
+        verify(
+            skillLabUserProfileSyncRepository,
+            times(1)
+        ).save(
+            any()
+        )
+    }
 
     private fun getQueueMessage(): QueueMessage =
         QueueMessage(

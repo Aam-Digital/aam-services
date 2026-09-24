@@ -5,6 +5,7 @@ import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.data.domain.Pageable
 import org.springframework.http.MediaType
 import org.springframework.web.client.RestClient
 import java.util.*
@@ -119,15 +120,14 @@ class SkillLabClient(
         )
 
     fun fetchUserProfiles(
-        page: Int,
-        pageSize: Int,
+        pageable: Pageable,
         updatedFrom: String?
     ): List<DomainReference> {
         val uri =
             if (updatedFrom.isNullOrBlank()) {
-                "/profiles?page=$page&perPage=$pageSize"
+                "/profiles?page=${pageable.pageNumber}&perPage=${pageable.pageSize}"
             } else {
-                "/profiles?page=$page&perPage=$pageSize&updated_from=$updatedFrom"
+                "/profiles?page=${pageable.pageNumber}&perPage=${pageable.pageSize}&updated_from=$updatedFrom"
             }
 
         return http

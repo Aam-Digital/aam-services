@@ -10,9 +10,12 @@ import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCas
 import com.aamdigital.aambackendservice.skill.core.UserProfileUpdatePublisher
 import com.aamdigital.aambackendservice.skill.core.event.UserProfileUpdateEvent
 import com.aamdigital.aambackendservice.skill.di.UserProfileUpdateEventQueueConfiguration
-import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
+import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncEntity
+import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
+import org.springframework.data.domain.Pageable
 import java.time.Instant
-import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import kotlin.jvm.optionals.getOrNull
 
 enum class SkillLabFetchUserProfileUpdatesErrorCode : AamErrorCode {
     EXTERNAL_SYSTEM_ERROR,
@@ -21,21 +24,10 @@ enum class SkillLabFetchUserProfileUpdatesErrorCode : AamErrorCode {
 
 /**
  * Fetch latest changes for this SkillLab tenant and create SyncUserProfileEvents for each changed UserProfile
- *
- * The delta cursor is derived from the stored profiles rather than kept in a table of its own: it
- * is the newest `updatedAt` the external system reported for any stored profile. That timestamp
- * comes from the external system's own clock, the same clock `updated_from` is compared against,
- * so a profile changed there after this run fetched its list normally stays newer than the cursor
- * and is picked up next time. Our own `latestSyncAt` would be a worse cursor: it is taken when the
- * queued update is consumed, possibly minutes later, and would skip everything changed in between.
- * One narrower gap remains: if another profile of the same run is changed again before it is
- * consumed, its newer `updatedAt` can overtake a profile changed in the meantime - a FULL sync
- * repairs that. A run whose events never reached the consumer does not advance the cursor. An
- * empty store means a full sync.
  */
 class SkillLabFetchUserProfileUpdatesUseCase(
     private val skillLabClient: SkillLabClient,
-    private val skillUserProfileRepository: SkillUserProfileRepository,
+    private val skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository,
     private val userProfileUpdatePublisher: UserProfileUpdatePublisher
 ) : FetchUserProfileUpdatesUseCase() {
     companion object {
@@ -45,16 +37,15 @@ class SkillLabFetchUserProfileUpdatesUseCase(
 
     override fun apply(request: FetchUserProfileUpdatesRequest): UseCaseOutcome<FetchUserProfileUpdatesData> {
         val results = mutableListOf<DomainReference>()
-        val updatedFrom = if (request.fullSync) null else request.updatedFrom ?: latestSync()
+        var currentSync = skillLabUserProfileSyncRepository.findByProjectId(request.projectId).getOrNull()
         var page = 1
 
         do {
             val batch =
                 try {
-                    skillLabClient.fetchUserProfiles(
-                        page = page++,
-                        pageSize = PAGE_SIZE,
-                        updatedFrom = updatedFrom?.toString()
+                    fetchNextBatch(
+                        pageable = Pageable.ofSize(PAGE_SIZE).withPage(page++),
+                        currentSync = currentSync
                     )
                 } catch (ex: AamException) {
                     return UseCaseOutcome.Failure(
@@ -84,6 +75,18 @@ class SkillLabFetchUserProfileUpdatesUseCase(
             }
         }
 
+        if (currentSync != null) {
+            currentSync.latestSync = Instant.now().atOffset(ZoneOffset.UTC)
+        } else {
+            currentSync =
+                SkillLabUserProfileSyncEntity(
+                    projectId = request.projectId,
+                    latestSync = Instant.now().atOffset(ZoneOffset.UTC)
+                )
+        }
+
+        skillLabUserProfileSyncRepository.save(currentSync)
+
         return UseCaseOutcome.Success(
             data =
                 FetchUserProfileUpdatesData(
@@ -95,17 +98,19 @@ class SkillLabFetchUserProfileUpdatesUseCase(
         )
     }
 
-    /**
-     * The delta cursor, see the class documentation. Falls back to our own `latestSyncAt` only if
-     * the external system reported no parsable `updatedAt` at all.
-     */
-    private fun latestSync(): Instant? {
-        val profiles = skillUserProfileRepository.findAll()
-
-        return profiles.mapNotNull { parseExternalTimestamp(it.updatedAt) }.maxOrNull()
-            ?: profiles.mapNotNull { it.latestSyncAt }.maxOrNull()
-    }
-
-    private fun parseExternalTimestamp(value: String?): Instant? =
-        value?.takeIf { it.isNotBlank() }?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
+    private fun fetchNextBatch(
+        pageable: Pageable,
+        currentSync: SkillLabUserProfileSyncEntity?
+    ): List<DomainReference> =
+        if (currentSync == null) {
+            skillLabClient.fetchUserProfiles(
+                pageable = pageable,
+                updatedFrom = null
+            )
+        } else {
+            skillLabClient.fetchUserProfiles(
+                pageable = pageable,
+                updatedFrom = currentSync.latestSync.toString()
+            )
+        }
 }

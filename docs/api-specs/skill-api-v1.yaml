@@ -85,7 +85,7 @@ paths:
   /sync:
     get:
       summary: Return sync status for projects
-      description: Returns the configured project with the time the most recently synced profile was stored. The list is empty until a first profile has been synced.
+      description: Returns a list of all configured projects and the latest sync attempt
       tags:
         - admin
       responses:
@@ -113,13 +113,13 @@ paths:
               - DELTA
               - FULL
         - name: updatedFrom
-          description: Define the start date for the Delta load, for this run only. Just used in syncMode DELTA. If not defined, the newest updatedAt the SkillProvider reported for any stored profile is used. If no stored updatedAt can be parsed, the newest latestSyncAt of the stored profiles is used instead. If no profile is stored yet, no start date is sent and the whole project is fetched.
+          description: Define the start date for the Delta load. Just used in syncMode DELTA, uses latest sync date if not defined manually.
           in: query
           required: false
           schema:
             type: string
+            default: "2024-12-03T11:50:00.231Z"
             format: date-time
-            example: "2024-12-03T11:50:00.231Z"
         - name: projectId
           in: path
           required: true
@@ -128,10 +128,6 @@ paths:
       responses:
         '204':
           description: Sync process started, can take some minutes until all changes are imported.
-        '400':
-          description: updatedFrom is not a valid ISO-8601 date-time.
-        '404':
-          description: projectId is not the project this service is configured for.
 
 components:
   schemas:

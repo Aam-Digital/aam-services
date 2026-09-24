@@ -4,19 +4,9 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.DomainUseCase
 import com.aamdigital.aambackendservice.common.domain.UseCaseData
 import com.aamdigital.aambackendservice.common.domain.UseCaseRequest
-import java.time.Instant
 
 data class FetchUserProfileUpdatesRequest(
-    val projectId: String,
-    /**
-     * Only fetch profiles the external system changed at or after this point.
-     *
-     * Left `null`, the use case derives the cursor from the profiles already stored and runs a
-     * delta sync, so no sync cursor has to be persisted anywhere. Set [fullSync] to request a full
-     * sync; it takes precedence over this value.
-     */
-    val updatedFrom: Instant? = null,
-    val fullSync: Boolean = false
+    val projectId: String
 ) : UseCaseRequest
 
 /**

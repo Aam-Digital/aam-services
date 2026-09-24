@@ -4,8 +4,8 @@ import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.skill.domain.EscoSkill
 import com.aamdigital.aambackendservice.skill.domain.SkillUsage
 import com.aamdigital.aambackendservice.skill.domain.UserProfile
-import com.aamdigital.aambackendservice.skill.repository.SkillUserProfile
-import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
+import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileEntity
+import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 
 /**
@@ -23,7 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
  * module is ever adopted at scale, caching the profile list is the first thing to add.
  */
 class InMemorySearchUserProfileUseCase(
-    private val userProfileRepository: SkillUserProfileRepository,
+    private val userProfileRepository: SkillLabUserProfileRepository,
     private val objectMapper: ObjectMapper
 ) : SearchUserProfileUseCase() {
     override fun apply(request: SearchUserProfileRequest): UseCaseOutcome<SearchUserProfileData> {
@@ -39,25 +39,25 @@ class InMemorySearchUserProfileUseCase(
     }
 
     private fun matchByEmail(
-        profiles: List<SkillUserProfile>,
+        profiles: List<SkillLabUserProfileEntity>,
         email: String?
-    ): List<SkillUserProfile> {
+    ): List<SkillLabUserProfileEntity> {
         if (email.isNullOrBlank()) return emptyList()
         return profiles.filter { it.email.equals(email, ignoreCase = true) }
     }
 
     private fun matchByPhone(
-        profiles: List<SkillUserProfile>,
+        profiles: List<SkillLabUserProfileEntity>,
         phone: String?
-    ): List<SkillUserProfile> {
+    ): List<SkillLabUserProfileEntity> {
         if (phone.isNullOrBlank()) return emptyList()
         return profiles.filter { it.mobileNumber?.contains(phone, ignoreCase = true) == true }
     }
 
     private fun matchByName(
-        profiles: List<SkillUserProfile>,
+        profiles: List<SkillLabUserProfileEntity>,
         fullName: String?
-    ): List<SkillUserProfile> {
+    ): List<SkillLabUserProfileEntity> {
         if (fullName.isNullOrBlank()) return emptyList()
         return profiles.filter { it.fullName?.contains(fullName, ignoreCase = true) == true }
     }
@@ -67,9 +67,9 @@ class InMemorySearchUserProfileUseCase(
      * are searched separately and the results combined.
      */
     private fun matchByNameParts(
-        profiles: List<SkillUserProfile>,
+        profiles: List<SkillLabUserProfileEntity>,
         fullName: String?
-    ): List<SkillUserProfile> {
+    ): List<SkillLabUserProfileEntity> {
         if (fullName.isNullOrBlank()) return emptyList()
 
         val nameParts = fullName.split(" ").filter { it.isNotBlank() }
@@ -81,7 +81,7 @@ class InMemorySearchUserProfileUseCase(
     }
 
     private fun page(
-        matches: List<SkillUserProfile>,
+        matches: List<SkillLabUserProfileEntity>,
         page: Int,
         pageSize: Int
     ): SearchUserProfileData {
@@ -96,7 +96,7 @@ class InMemorySearchUserProfileUseCase(
         )
     }
 
-    private fun toDto(profile: SkillUserProfile): UserProfile =
+    private fun toDto(profile: SkillLabUserProfileEntity): UserProfile =
         UserProfile(
             id = profile.externalIdentifier,
             fullName = profile.fullName,
@@ -109,8 +109,8 @@ class InMemorySearchUserProfileUseCase(
                         escoUri = skill.escoUri
                     )
                 },
-            latestSyncAt = profile.latestSyncAt,
-            importedAt = profile.importedAt,
+            latestSyncAt = profile.latestSyncAt?.toInstant(),
+            importedAt = profile.importedAt?.toInstant(),
             updatedAtExternalSystem = profile.updatedAt
         )
 }

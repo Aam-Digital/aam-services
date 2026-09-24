@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.skill.core
 
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
-import com.aamdigital.aambackendservice.skill.repository.SkillUserProfile
-import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
+import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileEntity
+import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -20,16 +20,19 @@ class InMemorySearchUserProfileUseCaseTest {
     private lateinit var service: InMemorySearchUserProfileUseCase
 
     private class FakeSkillUserProfileRepository(
-        private val profiles: MutableList<SkillUserProfile> = mutableListOf()
-    ) : SkillUserProfileRepository {
+        private val profiles: MutableList<SkillLabUserProfileEntity> = mutableListOf()
+    ) : SkillLabUserProfileRepository {
+        override fun existsByExternalIdentifier(externalIdentifier: String) =
+            profiles.any { it.externalIdentifier == externalIdentifier }
+
         override fun findByExternalIdentifier(externalIdentifier: String) =
-            profiles.firstOrNull { it.externalIdentifier == externalIdentifier }
+            profiles.first { it.externalIdentifier == externalIdentifier }
 
-        override fun findAll(): List<SkillUserProfile> = profiles.toList()
+        override fun findAll(): List<SkillLabUserProfileEntity> = profiles.toList()
 
-        override fun save(profile: SkillUserProfile) {
-            profiles.removeIf { it.externalIdentifier == profile.externalIdentifier }
-            profiles.add(profile)
+        override fun save(entity: SkillLabUserProfileEntity) {
+            profiles.removeIf { it.externalIdentifier == entity.externalIdentifier }
+            profiles.add(entity)
         }
     }
 
@@ -49,11 +52,12 @@ class InMemorySearchUserProfileUseCaseTest {
         email: String? = null,
         phone: String? = null
     ) = repository.save(
-        SkillUserProfile(
+        SkillLabUserProfileEntity(
             externalIdentifier = id,
             fullName = fullName,
             mobileNumber = phone,
             email = email,
+            skills = emptySet(),
             updatedAt = null
         )
     )

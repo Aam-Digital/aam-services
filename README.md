@@ -66,11 +66,11 @@ Everything this service used to keep in PostgreSQL now lives in CouchDB
 | what | where it lives now |
 | --- | --- |
 | change-detection cursor | `aam-backend-state`, `SyncEntry:<database>` |
-| push device registrations | `aam-backend-state`, `UserDevice:<userId>` |
+| push device registrations | `aam-backend-state`, `UserDevice:<deviceToken>` |
 | third-party-auth redirect bindings | `aam-backend-state`, `ThirdPartyAuthSession:<sessionId>` |
 | third-party-auth login tickets | nowhere — in memory, they expire within minutes |
 | SkillLab profile mirror | `skill-user-profile`, `SkillProfile:<externalId>` |
-| SkillLab sync cursor | nowhere — derived from the newest mirrored profile |
+| SkillLab sync cursor | `skill-user-profile`, `SkillLabUserProfileSync:<projectId>` |
 
 Neither new database is in `database-change-detection.included-databases`, and neither is meant to
 be reachable by clients through replication-backend.

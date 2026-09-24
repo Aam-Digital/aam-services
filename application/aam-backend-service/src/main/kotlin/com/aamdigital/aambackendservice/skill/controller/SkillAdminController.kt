@@ -5,8 +5,7 @@ import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
 import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
-import com.aamdigital.aambackendservice.skill.di.SkillLabApiClientConfiguration
-import com.aamdigital.aambackendservice.skill.repository.SkillUserProfileRepository
+import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -16,7 +15,8 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.Instant
-import java.time.format.DateTimeParseException
+import java.time.ZoneOffset
+import kotlin.jvm.optionals.getOrElse
 
 data class SkillDto(
     val projectId: String,
@@ -34,28 +34,22 @@ enum class SyncModeDto {
 @ConditionalOnSkillLabMode
 class SkillAdminController(
     private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase,
-    private val skillUserProfileRepository: SkillUserProfileRepository,
-    private val skillLabApiClientConfiguration: SkillLabApiClientConfiguration
+    private val skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    /**
-     * The sync state is derived from the stored profiles rather than read from a cursor table:
-     * the newest `latestSyncAt` *is* the point up to which this project is synced.
-     */
     @GetMapping("/sync")
     @PreAuthorize("hasAuthority('ROLE_skill_admin')")
     fun fetchSyncStatus(): ResponseEntity<List<SkillDto>> {
-        val latestSync = latestSync() ?: return ResponseEntity.ok().body(emptyList())
-
-        return ResponseEntity.ok().body(
-            listOf(
+        val result =
+            skillLabUserProfileSyncRepository.findAll().mapNotNull {
                 SkillDto(
-                    projectId = skillLabApiClientConfiguration.projectId,
-                    latestSync = latestSync.toString()
+                    projectId = it.projectId,
+                    latestSync = it.latestSync.toString()
                 )
-            )
-        )
+            }
+
+        return ResponseEntity.ok().body(result)
     }
 
     /**
@@ -69,30 +63,26 @@ class SkillAdminController(
         syncMode: SyncModeDto = SyncModeDto.DELTA,
         updatedFrom: String? = null
     ): ResponseEntity<Any> {
-        if (projectId != skillLabApiClientConfiguration.projectId) {
-            return ResponseEntity.notFound().build()
-        }
-
-        // an explicit updatedFrom overrides the derived cursor for this run only
-        val updatedFromInstant =
-            try {
-                updatedFrom?.takeUnless { it.isBlank() }?.let { Instant.parse(it) }
-            } catch (ex: DateTimeParseException) {
-                return ResponseEntity.badRequest().body(
-                    HttpErrorDto(
-                        errorCode = "BAD_REQUEST",
-                        errorMessage = "updatedFrom must be an ISO-8601 instant"
-                    )
-                )
+        val result =
+            skillLabUserProfileSyncRepository.findByProjectId(projectId).getOrElse {
+                return ResponseEntity.notFound().build()
             }
+
+        when (syncMode) {
+            SyncModeDto.DELTA ->
+                if (!updatedFrom.isNullOrBlank()) {
+                    result.latestSync = Instant.parse(updatedFrom).atOffset(ZoneOffset.UTC)
+                    skillLabUserProfileSyncRepository.save(result)
+                }
+
+            SyncModeDto.FULL -> skillLabUserProfileSyncRepository.delete(result)
+        }
 
         try {
             skillLabFetchUserProfileUpdatesUseCase.run(
                 request =
                     FetchUserProfileUpdatesRequest(
-                        projectId = projectId,
-                        updatedFrom = updatedFromInstant,
-                        fullSync = syncMode == SyncModeDto.FULL
+                        projectId = projectId
                     )
             )
         } catch (ex: Exception) {
@@ -111,6 +101,4 @@ class SkillAdminController(
 
         return ResponseEntity.noContent().build()
     }
-
-    private fun latestSync(): Instant? = skillUserProfileRepository.findAll().mapNotNull { it.latestSyncAt }.maxOrNull()
 }
