@@ -34,6 +34,7 @@ class DefaultCouchDbClient(
         PARSING_ERROR,
         EMPTY_RESPONSE,
         NOT_FOUND,
+        CONFLICT,
         CLIENT_ERROR,
         OTHER_COUCHDB_ERROR
     }
@@ -346,6 +347,7 @@ class DefaultCouchDbClient(
             val errorCode =
                 when {
                     statusCode.value() == 404 -> DefaultCouchDbClientErrorCode.NOT_FOUND
+                    statusCode.value() == 409 -> DefaultCouchDbClientErrorCode.CONFLICT
                     statusCode.is4xxClientError -> DefaultCouchDbClientErrorCode.CLIENT_ERROR
                     else -> DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR
                 }

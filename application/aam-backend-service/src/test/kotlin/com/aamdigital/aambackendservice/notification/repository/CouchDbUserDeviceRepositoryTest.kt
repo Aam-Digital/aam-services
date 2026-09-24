@@ -2,10 +2,14 @@ package com.aamdigital.aambackendservice.notification.repository
 
 import com.aamdigital.aambackendservice.common.couchdb.core.BACKEND_STATE_DATABASE
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
 import com.aamdigital.aambackendservice.common.couchdb.dto.FindResponse
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
@@ -119,5 +123,51 @@ class CouchDbUserDeviceRepositoryTest {
 
         assertThat(repository.existsByDeviceToken("token-phone")).isTrue()
         assertThat(repository.existsByDeviceToken("unknown")).isFalse()
+    }
+
+    /** Two tabs registering the same token at once: the second must be told, not get a 500. */
+    @Test
+    fun `reports a token that is already registered`() {
+        whenever(couchDbClient.putDatabaseDocumentAtRevision(any(), any(), any(), isNull()))
+            .thenThrow(ExternalSystemException(code = DefaultCouchDbClientErrorCode.CONFLICT))
+
+        assertThatThrownBy { repository.save(phone) }.isInstanceOf(DeviceAlreadyRegisteredException::class.java)
+    }
+
+    @Test
+    fun `passes on other failures to register`() {
+        whenever(couchDbClient.putDatabaseDocumentAtRevision(any(), any(), any(), isNull()))
+            .thenThrow(ExternalSystemException(code = DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR))
+
+        assertThatThrownBy { repository.save(phone) }.isInstanceOf(ExternalSystemException::class.java)
+    }
+
+    private fun stubDeleteFailure(code: DefaultCouchDbClientErrorCode) {
+        whenever(couchDbClient.deleteDatabaseDocument(BACKEND_STATE_DATABASE, "UserDevice:token-phone"))
+            .thenAnswer { throw ExternalSystemException(code = code) }
+    }
+
+    /** Two concurrent unregistrations: whichever comes second finds nothing left to delete. */
+    @Test
+    fun `deleting a device that is already gone does nothing`() {
+        stubDeleteFailure(DefaultCouchDbClientErrorCode.NOT_FOUND)
+
+        assertThatCode { repository.deleteByDeviceToken("token-phone") }.doesNotThrowAnyException()
+    }
+
+    /** CouchDB answers 409 to a delete that has no revision left to delete. */
+    @Test
+    fun `deleting a device whose revision is already gone does nothing`() {
+        stubDeleteFailure(DefaultCouchDbClientErrorCode.CONFLICT)
+
+        assertThatCode { repository.deleteByDeviceToken("token-phone") }.doesNotThrowAnyException()
+    }
+
+    @Test
+    fun `passes on other failures to delete`() {
+        stubDeleteFailure(DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR)
+
+        assertThatThrownBy { repository.deleteByDeviceToken("token-phone") }
+            .isInstanceOf(ExternalSystemException::class.java)
     }
 }

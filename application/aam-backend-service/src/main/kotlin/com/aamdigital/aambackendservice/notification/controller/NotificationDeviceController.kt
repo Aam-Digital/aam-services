@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.notification.controller
 
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
+import com.aamdigital.aambackendservice.notification.repository.DeviceAlreadyRegisteredException
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import org.slf4j.LoggerFactory
@@ -67,7 +68,16 @@ class NotificationDeviceController(
             )
         }
 
-        if (userDeviceRepository.existsByDeviceToken(deviceRegistrationDto.deviceToken)) {
+        // no check beforehand: the create-only save is the check, and cannot lose a race
+        try {
+            userDeviceRepository.save(
+                UserDeviceEntity(
+                    userIdentifier = authentication.name,
+                    deviceToken = deviceToken,
+                    deviceName = deviceRegistrationDto.deviceName
+                )
+            )
+        } catch (_: DeviceAlreadyRegisteredException) {
             return ResponseEntity.badRequest().body(
                 HttpErrorDto(
                     errorCode = "Bad Request",
@@ -75,14 +85,6 @@ class NotificationDeviceController(
                 )
             )
         }
-
-        userDeviceRepository.save(
-            UserDeviceEntity(
-                userIdentifier = authentication.name,
-                deviceToken = deviceRegistrationDto.deviceToken,
-                deviceName = deviceRegistrationDto.deviceName
-            )
-        )
 
         return ResponseEntity.noContent().build()
     }

@@ -63,7 +63,8 @@ interface CouchDbClient {
     /**
      * Writes [body] only if the document is still at [expectedRev], or - with `null` - only if it
      * does not exist yet. A concurrent write since [expectedRev] was read makes CouchDB answer
-     * 409, which is thrown as an [ExternalSystemException].
+     * 409, which is thrown as an [ExternalSystemException] with code
+     * [DefaultCouchDbClient.DefaultCouchDbClientErrorCode.CONFLICT].
      */
     @Throws(ExternalSystemException::class)
     fun putDatabaseDocumentAtRevision(

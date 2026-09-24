@@ -2,6 +2,8 @@ package com.aamdigital.aambackendservice.notification.repository
 
 import com.aamdigital.aambackendservice.common.couchdb.core.BACKEND_STATE_DATABASE
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
@@ -71,11 +73,22 @@ class CouchDbUserDeviceRepository(
                 documentId = documentId(deviceToken)
             ).eTag != null
 
+    /**
+     * A device deleted concurrently (by a second tab, say) is gone either way: CouchDB then answers
+     * 404, or 409 for the delete that no longer has a revision to delete.
+     */
     override fun deleteByDeviceToken(deviceToken: String) {
-        couchDbClient.deleteDatabaseDocument(
-            database = BACKEND_STATE_DATABASE,
-            documentId = documentId(deviceToken)
-        )
+        try {
+            couchDbClient.deleteDatabaseDocument(
+                database = BACKEND_STATE_DATABASE,
+                documentId = documentId(deviceToken)
+            )
+        } catch (ex: ExternalSystemException) {
+            when (ex.code) {
+                DefaultCouchDbClientErrorCode.NOT_FOUND, DefaultCouchDbClientErrorCode.CONFLICT -> Unit
+                else -> throw ex
+            }
+        }
     }
 
     /**
@@ -83,12 +96,17 @@ class CouchDbUserDeviceRepository(
      * users like the unique column of the PostgreSQL table did.
      */
     override fun save(userDevice: UserDeviceEntity) {
-        couchDbClient.putDatabaseDocumentAtRevision(
-            database = BACKEND_STATE_DATABASE,
-            documentId = documentId(userDevice.deviceToken),
-            body = userDevice.copy(createdAt = userDevice.createdAt ?: OffsetDateTime.now()),
-            expectedRev = null
-        )
+        try {
+            couchDbClient.putDatabaseDocumentAtRevision(
+                database = BACKEND_STATE_DATABASE,
+                documentId = documentId(userDevice.deviceToken),
+                body = userDevice.copy(createdAt = userDevice.createdAt ?: OffsetDateTime.now()),
+                expectedRev = null
+            )
+        } catch (ex: ExternalSystemException) {
+            if (ex.code == DefaultCouchDbClientErrorCode.CONFLICT) throw DeviceAlreadyRegisteredException(ex)
+            throw ex
+        }
     }
 
     private fun documentId(deviceToken: String) = "$DOCUMENT_PREFIX:$deviceToken"
