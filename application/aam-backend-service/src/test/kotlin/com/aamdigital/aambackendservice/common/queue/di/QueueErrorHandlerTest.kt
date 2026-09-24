@@ -5,6 +5,8 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.reporting.report.sqs.SqsQueryStorage
 import com.aamdigital.aambackendservice.reporting.webhook.core.WebhookCallbackRejectedException
 import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventConsumer
 import org.assertj.core.api.Assertions.assertThat
@@ -79,5 +81,35 @@ class QueueErrorHandlerTest {
         assertThat(errors.first().formattedMessage)
             .contains("Webhook receiver example.org rejected our callback")
             .doesNotContain("HttpClientErrorException")
+    }
+
+    @Test
+    fun `logs an invalid-input failure at INFO so it does not reach Sentry`() {
+        // mirrors a ReportConfig query that SQS rejects with 400: the use case re-wraps the
+        // InvalidArgumentException from SqsQueryStorage, the consumer rejects the message
+        val sqsRejection =
+            InvalidArgumentException(
+                "[SqsQueryStorage] SQS rejected the query for report 'ReportConfig:1' (400 BAD_REQUEST): " +
+                    "near \"FROM\": syntax error",
+                code = SqsQueryStorage.SqsQueryStorageErrorCode.QUERY_FAILED
+            )
+        val useCaseEx =
+            InvalidArgumentException(
+                sqsRejection.localizedMessage,
+                sqsRejection,
+                code = sqsRejection.code
+            )
+        val wrapped =
+            ListenerExecutionFailedException(
+                "Listener failed",
+                AmqpRejectAndDontRequeueException(useCaseEx)
+            )
+
+        handler.handleError(wrapped)
+
+        assertThat(appender.list.filter { it.level == Level.ERROR }).isEmpty()
+        val infos = appender.list.filter { it.level == Level.INFO }
+        assertThat(infos).hasSize(1)
+        assertThat(infos.first().formattedMessage).contains("near \"FROM\": syntax error")
     }
 }
