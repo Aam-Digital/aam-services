@@ -4,6 +4,7 @@ import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.dto.FindResponse
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -21,10 +22,12 @@ import org.springframework.test.web.client.MockRestServiceServer
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
+import org.springframework.util.MultiValueMap
 import org.springframework.web.client.RestClient
 
 class DefaultCouchDbClientTest {
-    private val couchDbClient = spy(DefaultCouchDbClient(mock<RestClient>(), ObjectMapper()))
+    private val objectMapper = ObjectMapper()
+    private val couchDbClient = spy(DefaultCouchDbClient(mock<RestClient>(), objectMapper))
 
     private fun stubFind(vararg pages: FindResponse<Any>) {
         doReturn(pages.first(), *pages.drop(1).toTypedArray())
@@ -107,5 +110,54 @@ class DefaultCouchDbClientTest {
             .isInstanceOf(ExternalSystemException::class.java)
             .extracting { (it as ExternalSystemException).code }
             .isEqualTo(DefaultCouchDbClient.DefaultCouchDbClientErrorCode.CLIENT_ERROR)
+    }
+
+    @Test
+    fun `gets all documents by prefix from all_docs`() {
+        val response =
+            objectMapper.readTree(
+                """{"rows": [{"id": "P:1", "doc": {"name": "one"}}, {"id": "P:2", "doc": {"name": "two"}}]}"""
+            ) as ObjectNode
+        doReturn(response)
+            .`when`(couchDbClient)
+            .getDatabaseDocument(eq("db"), eq("_all_docs"), any(), eq(ObjectNode::class))
+
+        val docs = couchDbClient.getDatabaseDocumentsByPrefix(database = "db", prefix = "P", kClass = Map::class)
+
+        assertThat(docs).containsExactly(mapOf("name" to "one"), mapOf("name" to "two"))
+        verify(couchDbClient).getDatabaseDocument(
+            eq("db"),
+            eq("_all_docs"),
+            argThat<MultiValueMap<String, String>> {
+                getFirst("startkey") == "\"P:\"" && getFirst("endkey") == "\"P:\\ufff0\"" &&
+                    getFirst("include_docs") == "true"
+            },
+            eq(ObjectNode::class)
+        )
+    }
+
+    private fun assertAllDocsResponseRejected(json: String) {
+        doReturn(objectMapper.readTree(json) as ObjectNode)
+            .`when`(couchDbClient)
+            .getDatabaseDocument(eq("db"), eq("_all_docs"), any(), eq(ObjectNode::class))
+
+        assertThatThrownBy {
+            couchDbClient.getDatabaseDocumentsByPrefix(database = "db", prefix = "P", kClass = Map::class)
+        }
+            .isInstanceOf(ExternalSystemException::class.java)
+            .extracting { (it as ExternalSystemException).code }
+            .isEqualTo(DefaultCouchDbClient.DefaultCouchDbClientErrorCode.PARSING_ERROR)
+    }
+
+    @Test
+    fun `rejects an all_docs response without a rows array`() {
+        assertAllDocsResponseRejected("""{"total_rows": 0}""")
+        assertAllDocsResponseRejected("""{"rows": {}}""")
+    }
+
+    @Test
+    fun `rejects an all_docs row without its doc`() {
+        assertAllDocsResponseRejected("""{"rows": [{"id": "P:1", "doc": {"name": "one"}}, {"id": "P:2"}]}""")
+        assertAllDocsResponseRejected("""{"rows": [{"id": "P:1", "doc": null}]}""")
     }
 }

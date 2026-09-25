@@ -7,7 +7,6 @@ import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.rest.ObjectMapperConfiguration
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -27,7 +26,7 @@ import org.mockito.kotlin.whenever
  */
 class CouchDbSyncRepositoryTest {
     private val couchDbClient = mock<CouchDbClient>()
-    private val repository = CouchDbSyncRepository(couchDbClient, ObjectMapper())
+    private val repository = CouchDbSyncRepository(couchDbClient)
 
     private fun stubStoredCursor() =
         whenever(

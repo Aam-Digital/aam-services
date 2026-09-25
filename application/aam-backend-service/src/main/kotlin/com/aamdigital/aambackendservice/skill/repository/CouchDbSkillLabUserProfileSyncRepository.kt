@@ -1,10 +1,8 @@
 package com.aamdigital.aambackendservice.skill.repository
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.fetchAllDocumentsByPrefix
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.skill.repository.CouchDbSkillLabUserProfileRepository.Companion.SKILL_USER_PROFILE_DATABASE
-import com.fasterxml.jackson.databind.ObjectMapper
 import java.util.*
 
 /**
@@ -15,8 +13,7 @@ import java.util.*
  * sync into an empty mirror.
  */
 class CouchDbSkillLabUserProfileSyncRepository(
-    private val couchDbClient: CouchDbClient,
-    private val objectMapper: ObjectMapper
+    private val couchDbClient: CouchDbClient
 ) : SkillLabUserProfileSyncRepository {
     companion object {
         const val DOCUMENT_PREFIX = "SkillLabUserProfileSync"
@@ -36,9 +33,7 @@ class CouchDbSkillLabUserProfileSyncRepository(
         }
 
     override fun findAll(): List<SkillLabUserProfileSyncEntity> =
-        fetchAllDocumentsByPrefix(
-            couchDbClient = couchDbClient,
-            objectMapper = objectMapper,
+        couchDbClient.getDatabaseDocumentsByPrefix(
             database = SKILL_USER_PROFILE_DATABASE,
             prefix = DOCUMENT_PREFIX,
             kClass = SkillLabUserProfileSyncEntity::class

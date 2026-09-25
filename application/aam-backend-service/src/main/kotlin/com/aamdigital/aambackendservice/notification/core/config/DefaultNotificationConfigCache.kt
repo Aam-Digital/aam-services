@@ -4,8 +4,6 @@ import com.aamdigital.aambackendservice.common.condition.DocumentCondition
 import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
-import com.aamdigital.aambackendservice.common.couchdb.core.getQueryParamsAllDocs
-import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbSearchResponse
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -89,18 +87,14 @@ class DefaultNotificationConfigCache(
         }
 
     override fun refreshAll() {
-        val response =
-            couchDbClient.getDatabaseDocument(
-                database = DATABASE,
-                documentId = "_all_docs",
-                queryParams = getQueryParamsAllDocs(DOCUMENT_PREFIX),
-                kClass = CouchDbSearchResponse::class
-            )
-
         val nextCache =
-            response.rows.mapNotNull { row ->
-                parseConfigFromDoc(doc = row.doc)
-            }.associateBy { it.userIdentifier }
+            couchDbClient
+                .getDatabaseDocumentsByPrefix(
+                    database = DATABASE,
+                    prefix = DOCUMENT_PREFIX,
+                    kClass = ObjectNode::class
+                ).mapNotNull { doc -> parseConfigFromDoc(doc = doc) }
+                .associateBy { it.userIdentifier }
 
         synchronized(cacheLock) {
             cache.clear()

@@ -4,7 +4,6 @@ import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.skill.repository.CouchDbSkillLabUserProfileRepository.Companion.SKILL_USER_PROFILE_DATABASE
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -17,8 +16,8 @@ import java.time.OffsetDateTime
 
 class CouchDbSkillLabUserProfileRepositoryTest {
     private val couchDbClient = mock<CouchDbClient>()
-    private val profiles = CouchDbSkillLabUserProfileRepository(couchDbClient, ObjectMapper())
-    private val syncs = CouchDbSkillLabUserProfileSyncRepository(couchDbClient, ObjectMapper())
+    private val profiles = CouchDbSkillLabUserProfileRepository(couchDbClient)
+    private val syncs = CouchDbSkillLabUserProfileSyncRepository(couchDbClient)
 
     private fun profile(importedAt: OffsetDateTime? = null) =
         SkillLabUserProfileEntity(
