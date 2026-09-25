@@ -6,21 +6,22 @@ import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCaseData
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCaseRequest
-import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.AuthenticationSessionEntity
-import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.AuthenticationSessionRepository
+import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSession
+import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.ThirdPartyAuthSessionRepository
 import org.springframework.security.crypto.password.PasswordEncoder
+import java.time.Duration
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.*
 
 class DefaultCreateSessionUseCase(
-    private val authenticationSessionRepository: AuthenticationSessionRepository,
+    private val authenticationSessionStore: AuthenticationSessionStore,
+    private val thirdPartyAuthSessionRepository: ThirdPartyAuthSessionRepository,
     private val passwordEncoder: PasswordEncoder,
     private val authenticationProvider: AuthenticationProvider,
-    private val couchDbClient: CouchDbClient
+    private val couchDbClient: CouchDbClient,
+    private val sessionValidity: Duration
 ) : CreateSessionUseCase() {
-    companion object {
-        private const val SESSION_VALID_IN_MINUTES = 5L
-    }
 
     override fun apply(request: CreateSessionUseCaseRequest): UseCaseOutcome<CreateSessionUseCaseData> {
         val user: UserModel =
@@ -36,7 +37,7 @@ class DefaultCreateSessionUseCase(
 
         val sessionToken = UUID.randomUUID().toString().replace("-", "")
         val sessionId = UUID.randomUUID().toString()
-        val validUntil = OffsetDateTime.now().plusMinutes(SESSION_VALID_IN_MINUTES)
+        val validUntil = OffsetDateTime.now().plus(sessionValidity)
 
         val redirectUrl =
             if (request.redirectUrl.isNullOrBlank()) {
@@ -46,17 +47,26 @@ class DefaultCreateSessionUseCase(
                 request.redirectUrl
             }
 
-        val session =
-            AuthenticationSessionEntity(
-                externalIdentifier = sessionId,
-                sessionToken = passwordEncoder.encode(sessionToken),
-                externalUserId = request.userId,
+        authenticationSessionStore.store(
+            AuthenticationSession(
+                sessionId = sessionId,
                 userId = user.userId,
-                redirectUrl = redirectUrl,
+                externalUserId = request.userId,
+                sessionTokenHash = passwordEncoder.encode(sessionToken),
                 validUntil = validUntil
             )
+        )
 
-        authenticationSessionRepository.save(session)
+        // stored even when there is no redirect url, so that a later redirect lookup can answer
+        // "no redirect for this session" instead of "unknown session"
+        thirdPartyAuthSessionRepository.save(
+            ThirdPartyAuthSession(
+                sessionId = sessionId,
+                userId = user.userId,
+                redirectUrl = redirectUrl,
+                createdAt = Instant.now()
+            )
+        )
 
         return UseCaseOutcome.Success(
             CreateSessionUseCaseData(

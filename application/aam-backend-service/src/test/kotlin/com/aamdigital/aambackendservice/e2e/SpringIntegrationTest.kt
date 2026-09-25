@@ -24,6 +24,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.client.RestTemplate
+import java.util.Base64
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT
@@ -63,6 +64,13 @@ abstract class SpringIntegrationTest {
     var latestResponseHeaders: HttpHeaders? = null
     var latestResponseStatus: HttpStatusCode? = null
     var authToken: String? = null
+
+    /**
+     * The `sub` claim of the token most recently obtained by [fetchToken], i.e. exactly the value
+     * the application sees as `principal.name`. Endpoints that compare a stored `userId` against
+     * the caller (third-party-authentication's redirect lookup) need the test to know it.
+     */
+    var authSubject: String? = null
 
     fun exchange(
         url: String,
@@ -213,5 +221,13 @@ abstract class SpringIntegrationTest {
         realm: String
     ) {
         authToken = authTestingService.fetchToken(client, secret, realm)
+        authSubject = authToken?.let { subjectOf(it) }
+    }
+
+    /** Reads the `sub` claim out of a JWT without verifying it - the test already trusts the issuer. */
+    private fun subjectOf(token: String): String? {
+        val payload = token.split(".").getOrNull(1) ?: return null
+        val decoded = String(Base64.getUrlDecoder().decode(payload))
+        return objectMapper.readValue<ObjectNode>(decoded).get("sub")?.textValue()
     }
 }

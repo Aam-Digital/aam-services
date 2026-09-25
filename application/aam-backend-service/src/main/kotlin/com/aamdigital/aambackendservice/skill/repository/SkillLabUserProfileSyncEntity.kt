@@ -1,22 +1,17 @@
 package com.aamdigital.aambackendservice.skill.repository
 
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.Index
-import jakarta.persistence.Table
+import com.fasterxml.jackson.annotation.JsonFormat
 import java.time.OffsetDateTime
 
 /**
  * Stores the latest successful SkillLabFetchUserProfileUpdateUseCase run date for each project.
  */
-@Entity
-@Table(indexes = [Index(columnList = "projectId", unique = true)])
 data class SkillLabUserProfileSyncEntity(
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
-    var id: Long = 0,
     var projectId: String,
+    /**
+     * The shared ObjectMapper leaves WRITE_DATES_AS_TIMESTAMPS enabled, so without this the
+     * timestamp is stored as a numeric epoch value instead of a readable ISO-8601 string.
+     */
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     var latestSync: OffsetDateTime
 )

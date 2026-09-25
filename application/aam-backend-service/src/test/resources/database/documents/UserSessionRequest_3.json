@@ -1,0 +1,10 @@
+{
+  "userId": "33333333-3333-4333-8333-333333333333",
+  "firstName": "Alan",
+  "lastName": "Turing",
+  "redirectUrl": "",
+  "email": "alan.turing@example.com",
+  "additionalData": {
+    "tola_frontend_url": "https://tola.example.com/dashboard"
+  }
+}

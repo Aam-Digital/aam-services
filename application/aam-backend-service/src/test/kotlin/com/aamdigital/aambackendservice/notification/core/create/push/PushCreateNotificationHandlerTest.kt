@@ -93,7 +93,6 @@ class PushCreateNotificationHandlerTest {
     fun `should send push notification when user has registered devices`() {
         // Given
         val device = UserDeviceEntity(
-            id = 1L,
             deviceName = "My Phone",
             deviceToken = "device-token-abc",
             userIdentifier = "test-user"
@@ -118,8 +117,8 @@ class PushCreateNotificationHandlerTest {
     fun `should include all device tokens when user has multiple registered devices`() {
         // Given
         val devices = listOf(
-            UserDeviceEntity(id = 1L, deviceName = "Phone", deviceToken = "token-1", userIdentifier = "test-user"),
-            UserDeviceEntity(id = 2L, deviceName = "Tablet", deviceToken = "token-2", userIdentifier = "test-user")
+            UserDeviceEntity(deviceName = "Phone", deviceToken = "token-1", userIdentifier = "test-user"),
+            UserDeviceEntity(deviceName = "Tablet", deviceToken = "token-2", userIdentifier = "test-user")
         )
         whenever(userDeviceRepository.findByUserIdentifier(any(), any()))
             .thenReturn(PageImpl(devices))

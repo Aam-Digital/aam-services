@@ -1,30 +1,16 @@
 package com.aamdigital.aambackendservice.notification.repository
 
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import org.hibernate.annotations.CreationTimestamp
-import org.hibernate.annotations.SourceType
+import com.fasterxml.jackson.annotation.JsonFormat
 import java.time.OffsetDateTime
 
-@Entity
 data class UserDeviceEntity(
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
-    val id: Long = 0,
-    @Column
     var deviceName: String?,
-    @Column(
-        unique = true,
-        nullable = false,
-        updatable = false
-    )
     var deviceToken: String,
-    @Column
     var userIdentifier: String,
-    @CreationTimestamp(source = SourceType.DB)
-    @Column
+    /**
+     * The shared ObjectMapper leaves WRITE_DATES_AS_TIMESTAMPS enabled, so without this the
+     * timestamp is stored as a numeric epoch value instead of a readable ISO-8601 string.
+     */
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     var createdAt: OffsetDateTime? = null
 )

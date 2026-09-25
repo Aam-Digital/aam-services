@@ -2,13 +2,13 @@ package com.aamdigital.aambackendservice.notification.controller
 
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
+import com.aamdigital.aambackendservice.notification.repository.DeviceAlreadyRegisteredException
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -26,12 +26,18 @@ data class DeviceRegistrationDto(
 )
 
 /**
+ * Characters that would change the meaning of the CouchDB request path the token is placed in:
+ * a `/` in `UserDevice:<token>` would address an attachment of another user's device document.
+ * Deliberately a denylist - rejecting a real token would silently stop push delivery for that user.
+ */
+private val UNSAFE_DEVICE_TOKEN_CHARACTERS = Regex("""[/?#%\s\p{Cntrl}]""")
+
+/**
  * Controller for registering and unregistering devices of a user for push notifications.
  */
 @RestController
 @RequestMapping("/v1/notification/device")
 @ConditionalOnNotificationApiEnabled
-@Transactional
 class NotificationDeviceController(
     private val userDeviceRepository: UserDeviceRepository
 ) {
@@ -52,7 +58,26 @@ class NotificationDeviceController(
             )
         }
 
-        if (userDeviceRepository.existsByDeviceToken(deviceRegistrationDto.deviceToken)) {
+        val deviceToken = deviceRegistrationDto.deviceToken
+        if (deviceToken.isBlank() || UNSAFE_DEVICE_TOKEN_CHARACTERS.containsMatchIn(deviceToken)) {
+            return ResponseEntity.badRequest().body(
+                HttpErrorDto(
+                    errorCode = "Bad Request",
+                    errorMessage = "The device token is invalid."
+                )
+            )
+        }
+
+        // no check beforehand: the create-only save is the check, and cannot lose a race
+        try {
+            userDeviceRepository.save(
+                UserDeviceEntity(
+                    userIdentifier = authentication.name,
+                    deviceToken = deviceToken,
+                    deviceName = deviceRegistrationDto.deviceName
+                )
+            )
+        } catch (_: DeviceAlreadyRegisteredException) {
             return ResponseEntity.badRequest().body(
                 HttpErrorDto(
                     errorCode = "Bad Request",
@@ -60,14 +85,6 @@ class NotificationDeviceController(
                 )
             )
         }
-
-        userDeviceRepository.save(
-            UserDeviceEntity(
-                userIdentifier = authentication.name,
-                deviceToken = deviceRegistrationDto.deviceToken,
-                deviceName = deviceRegistrationDto.deviceName
-            )
-        )
 
         return ResponseEntity.noContent().build()
     }

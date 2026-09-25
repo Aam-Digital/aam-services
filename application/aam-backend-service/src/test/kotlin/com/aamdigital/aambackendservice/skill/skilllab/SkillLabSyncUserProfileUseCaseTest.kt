@@ -73,7 +73,6 @@ class SkillLabSyncUserProfileUseCaseTest {
         ).save(
             eq(
                 SkillLabUserProfileEntity(
-                    id = 0L,
                     externalIdentifier = "user-profile-1",
                     fullName = "Max Muster",
                     mobileNumber = "",
@@ -108,7 +107,6 @@ class SkillLabSyncUserProfileUseCaseTest {
     fun `should update existing user profile  and return Success`() {
         val existingEntity =
             SkillLabUserProfileEntity(
-                id = 0L,
                 externalIdentifier = "user-profile-1",
                 fullName = "Max Muster",
                 mobileNumber = "+49123456789",
@@ -178,7 +176,6 @@ class SkillLabSyncUserProfileUseCaseTest {
             skillLabUserProfileRepository.save(
                 eq(
                     SkillLabUserProfileEntity(
-                        id = 0L,
                         externalIdentifier = "user-profile-1",
                         fullName = "Max Muster",
                         mobileNumber = "+49123456789",

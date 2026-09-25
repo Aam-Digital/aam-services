@@ -5,14 +5,12 @@ import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCaseData
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCaseRequest
-import com.aamdigital.aambackendservice.thirdpartyauthentication.repository.AuthenticationSessionRepository
 import org.springframework.security.crypto.password.PasswordEncoder
 import java.time.Instant
 import java.time.ZoneOffset
-import kotlin.jvm.optionals.getOrNull
 
 class DefaultVerifySessionUseCase(
-    private val authenticationSessionRepository: AuthenticationSessionRepository,
+    private val authenticationSessionStore: AuthenticationSessionStore,
     private val passwordEncoder: PasswordEncoder
 ) : VerifySessionUseCase() {
     enum class DefaultVerifySessionUseCaseError : AamErrorCode {
@@ -24,13 +22,13 @@ class DefaultVerifySessionUseCase(
 
     override fun apply(request: VerifySessionUseCaseRequest): UseCaseOutcome<VerifySessionUseCaseData> {
         val session =
-            authenticationSessionRepository.findByExternalIdentifier(request.sessionId).getOrNull()
+            authenticationSessionStore.find(request.sessionId)
                 ?: return UseCaseOutcome.Failure(
                     errorCode = DefaultVerifySessionUseCaseError.INVALID_SESSION,
                     errorMessage = "Invalid credentials"
                 )
 
-        if (!passwordEncoder.matches(request.sessionToken, session.sessionToken)) {
+        if (!passwordEncoder.matches(request.sessionToken, session.sessionTokenHash)) {
             return UseCaseOutcome.Failure(
                 errorCode = DefaultVerifySessionUseCaseError.INVALID_SESSION_TOKEN,
                 errorMessage = "Invalid credentials"
@@ -44,16 +42,16 @@ class DefaultVerifySessionUseCase(
             )
         }
 
-        if (Instant.now().atOffset(ZoneOffset.UTC).isAfter(session.validUntil)) {
+        val now = Instant.now().atOffset(ZoneOffset.UTC)
+
+        if (now.isAfter(session.validUntil)) {
             return UseCaseOutcome.Failure(
                 errorCode = DefaultVerifySessionUseCaseError.SESSION_EXPIRED,
                 errorMessage = "Invalid credentials"
             )
         }
 
-        session.usedAt = Instant.now().atOffset(ZoneOffset.UTC)
-
-        authenticationSessionRepository.save(session)
+        authenticationSessionStore.markUsed(session.sessionId, now)
 
         return UseCaseOutcome.Success(
             data =

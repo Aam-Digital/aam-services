@@ -1,0 +1,115 @@
+package com.aamdigital.aambackendservice.common.changes
+
+import com.aamdigital.aambackendservice.common.couchdb.core.BACKEND_STATE_DATABASE
+import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.fetchAllDocumentsByPrefix
+import com.aamdigital.aambackendservice.common.error.AamErrorCode
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.ObjectMapper
+import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
+
+/** A [SyncEntry] document as read back, with the revision the next write has to name. */
+internal data class SyncEntryDocument(
+    val database: String,
+    val latestRef: String,
+    @JsonProperty("_rev") val rev: String
+)
+
+/**
+ * [SyncRepository] backed by one CouchDB document per watched database.
+ *
+ * The documents live in [BACKEND_STATE_DATABASE] rather than in a watched database: writing the
+ * cursor into a database that change detection polls would make every write produce a change,
+ * which would advance the cursor again.
+ *
+ * A missing cursor means "first run", so the poll starts from "now". That answer must only be
+ * given when the cursor document is really absent: [CouchDbClient.getDatabaseDocument] reports any
+ * 4xx as [NotFoundException], and treating a missing database or an auth error as a first run
+ * would move the cursor forward on every poll and silently skip every change in between.
+ *
+ * Change detection is the only writer and polls every few seconds, so each cursor is kept in memory
+ * with the revision of its last write: a poll does not read it again, and a save names that
+ * revision instead of looking it up first. A failed save forgets the cursor, so the next poll reads
+ * it afresh. That is also how a cursor edited by hand in CouchDB is picked up: on the next save
+ * for that database, which fails on the stale revision, or on a restart.
+ */
+class CouchDbSyncRepository(
+    private val couchDbClient: CouchDbClient,
+    private val objectMapper: ObjectMapper
+) : SyncRepository {
+    companion object {
+        const val DOCUMENT_PREFIX = "SyncEntry"
+    }
+
+    enum class CouchDbSyncRepositoryError : AamErrorCode {
+        STATE_DATABASE_MISSING
+    }
+
+    /** The last cursor read or written per database, with the revision that write produced. */
+    private data class KnownEntry(
+        val entry: SyncEntry,
+        val rev: String
+    )
+
+    private val known = ConcurrentHashMap<String, KnownEntry>()
+
+    override fun findByDatabase(database: String): Optional<SyncEntry> {
+        known[database]?.let { return Optional.of(it.entry) }
+
+        val document = readDocument(database) ?: return Optional.empty()
+        val entry = SyncEntry(database = document.database, latestRef = document.latestRef)
+        known[database] = KnownEntry(entry, document.rev)
+        return Optional.of(entry)
+    }
+
+    private fun readDocument(database: String): SyncEntryDocument? =
+        try {
+            couchDbClient.getDatabaseDocument(
+                database = BACKEND_STATE_DATABASE,
+                documentId = documentId(database),
+                kClass = SyncEntryDocument::class
+            )
+        } catch (ex: NotFoundException) {
+            // throws on its own for any 4xx other than 404, e.g. an auth error
+            if (!couchDbClient.databaseExists(BACKEND_STATE_DATABASE)) {
+                throw ExternalSystemException(
+                    message = "Database $BACKEND_STATE_DATABASE does not exist, cannot read the sync cursor",
+                    cause = ex,
+                    code = CouchDbSyncRepositoryError.STATE_DATABASE_MISSING
+                )
+            }
+            null
+        }
+
+    override fun findAll(): List<SyncEntry> =
+        fetchAllDocumentsByPrefix(
+            couchDbClient = couchDbClient,
+            objectMapper = objectMapper,
+            database = BACKEND_STATE_DATABASE,
+            prefix = DOCUMENT_PREFIX,
+            kClass = SyncEntry::class
+        )
+
+    /** Creates the cursor if none was found, and otherwise writes over the revision last seen. */
+    override fun save(syncEntry: SyncEntry): SyncEntry {
+        val result =
+            try {
+                couchDbClient.putDatabaseDocumentAtRevision(
+                    database = BACKEND_STATE_DATABASE,
+                    documentId = documentId(syncEntry.database),
+                    body = syncEntry,
+                    expectedRev = known[syncEntry.database]?.rev
+                )
+            } catch (ex: Exception) {
+                known.remove(syncEntry.database)
+                throw ex
+            }
+        known[syncEntry.database] = KnownEntry(syncEntry, result.rev)
+        return syncEntry
+    }
+
+    private fun documentId(database: String) = "$DOCUMENT_PREFIX:$database"
+}

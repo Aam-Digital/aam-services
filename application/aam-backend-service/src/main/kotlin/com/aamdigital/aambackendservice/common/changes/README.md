@@ -39,7 +39,7 @@ Feature modules receive changes by:
 | `DocumentChangeEvent` | Event payload: database, documentId, current/previous doc |
 | `ChangeEventPublisher` | Interface for publishing events to the exchange |
 | `DefaultChangeEventPublisher` | RabbitMQ implementation of `ChangeEventPublisher` |
-| `SyncRepository` / `SyncEntry` | JPA persistence of last processed `update_seq` per database |
+| `SyncRepository` / `SyncEntry` | last processed `update_seq` per database, stored in `aam-backend-state` |
 | `ChangesQueueConfiguration` | RabbitMQ exchange and publisher bean definitions |
 | `ChangesConfiguration` | Spring DI wiring for change-detection beans; active whenever a consuming feature module (reporting, notification-api) is enabled |
 

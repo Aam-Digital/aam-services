@@ -1,28 +1,25 @@
 package com.aamdigital.aambackendservice.common.changes
 
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import org.springframework.data.repository.CrudRepository
-import org.springframework.stereotype.Repository
-import java.util.*
+import java.util.Optional
 
 /**
- * Store latest sync sequence for each database for change detection
+ * Latest processed CouchDB `_changes` sequence for one database.
+ *
+ * A missing entry is not an error: [CouchDbChangesProcessor] then starts from the database's
+ * current `update_seq`, deliberately skipping the historic backlog.
  */
-@Entity(name = "couchdb_sync_entry")
 data class SyncEntry(
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
-    var id: Long = 0,
-    var database: String,
-    @Column(columnDefinition = "TEXT")
-    var latestRef: String
+    val database: String,
+    val latestRef: String
 )
 
-@Repository
-interface SyncRepository : CrudRepository<SyncEntry, Long> {
+/**
+ * Stores the latest sync sequence per database for change detection.
+ */
+interface SyncRepository {
     fun findByDatabase(database: String): Optional<SyncEntry>
+
+    fun findAll(): List<SyncEntry>
+
+    fun save(syncEntry: SyncEntry): SyncEntry
 }

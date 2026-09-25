@@ -22,7 +22,7 @@ paths:
         204:
           description: Device registration successful
         400:
-          description: Bad request (e.g. the device is already registered, or no subject in the token)
+          description: Bad request (e.g. the device is already registered, the device token contains `/`, `?`, `#`, `%` or whitespace, or no subject in the token)
           content:
             application/json:
               schema:

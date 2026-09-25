@@ -31,6 +31,16 @@ class ChangesConfiguration {
     }
 
     @Bean
+    fun syncRepository(
+        couchDbClient: CouchDbClient,
+        objectMapper: ObjectMapper
+    ): SyncRepository =
+        CouchDbSyncRepository(
+            couchDbClient = couchDbClient,
+            objectMapper = objectMapper
+        )
+
+    @Bean
     fun couchDatabaseChangeDetection(
         couchDbClient: CouchDbClient,
         changeEventPublisher: ChangeEventPublisher,

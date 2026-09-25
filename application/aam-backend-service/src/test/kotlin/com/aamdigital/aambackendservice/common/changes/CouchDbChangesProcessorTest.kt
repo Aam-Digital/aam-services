@@ -58,7 +58,6 @@ class CouchDbChangesProcessorTest {
         )
         whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
             .thenReturn(CouchDbChangesResponse(lastSeq = "seq-1", results = emptyList(), pending = 0))
-        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
 
         service.checkForChanges()
 
@@ -77,7 +76,6 @@ class CouchDbChangesProcessorTest {
         )
         whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
             .thenReturn(CouchDbChangesResponse(lastSeq = "seq-1", results = emptyList(), pending = 0))
-        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
 
         service.checkForChanges()
 
@@ -104,7 +102,6 @@ class CouchDbChangesProcessorTest {
         }
         whenever(couchDbClient.getDatabaseChanges(any(), any()))
             .thenReturn(CouchDbChangesResponse(lastSeq = "seq-1", results = emptyList(), pending = 0))
-        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
 
         service.checkForChanges()
 
@@ -256,17 +253,31 @@ class CouchDbChangesProcessorTest {
     }
 
     @Test
-    fun `should update sync entry with latest seq after processing`() {
+    fun `should not rewrite the sync entry when no changes were processed`() {
         whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
-        val existingSync = SyncEntry(id = 1, database = "app", latestRef = "seq-0")
+        val existingSync = SyncEntry(database = "app", latestRef = "seq-0")
         whenever(syncRepository.findByDatabase("app")).thenReturn(Optional.of(existingSync))
         whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
             .thenReturn(CouchDbChangesResponse(lastSeq = "seq-5", results = emptyList(), pending = 0))
+
+        service.checkForChanges()
+
+        verify(syncRepository, never()).save(any())
+    }
+
+    @Test
+    fun `should store the starting cursor on the first run even without changes`() {
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
+        whenever(syncRepository.findByDatabase("app")).thenReturn(Optional.empty())
+        whenever(couchDbClient.getDatabaseDocument(eq("app"), eq(""), any(), eq(ObjectNode::class)))
+            .thenReturn(objectMapper.createObjectNode().put("update_seq", "seq-now"))
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
+            .thenReturn(CouchDbChangesResponse(lastSeq = "seq-now", results = emptyList(), pending = 0))
         whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
 
         service.checkForChanges()
 
-        verify(syncRepository).save(argThat<SyncEntry> { latestRef == "seq-0" })
+        verify(syncRepository).save(argThat<SyncEntry> { latestRef == "seq-now" })
     }
 
     @Test

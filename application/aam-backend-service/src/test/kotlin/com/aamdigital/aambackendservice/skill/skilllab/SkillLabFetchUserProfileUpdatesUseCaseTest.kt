@@ -237,7 +237,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
     fun `should store latestSyncEntity when SyncEntity exist for this projectId`() {
         val syncEntity =
             SkillLabUserProfileSyncEntity(
-                id = 42L,
                 projectId = "1",
                 latestSync = OffsetDateTime.parse("2024-01-01T00:00:00Z")
             )

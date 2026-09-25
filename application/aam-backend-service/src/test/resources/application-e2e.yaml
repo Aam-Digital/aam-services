@@ -93,6 +93,11 @@ features:
       enabled: true
   skill-api:
     mode: disabled
+  # enables the third-party-authentication controller and use cases so the e2e suite can
+  # exercise the SSO session flow. AuthenticationProvider is mocked in CucumberIntegrationTest,
+  # so no real Keycloak admin client is involved despite `keycloak.server-url` below.
+  third-party-authentication:
+    enabled: true
 
 crypto-configuration:
   secret: super-duper-secret

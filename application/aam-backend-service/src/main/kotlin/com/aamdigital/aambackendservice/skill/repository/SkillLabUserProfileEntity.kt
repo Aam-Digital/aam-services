@@ -1,48 +1,27 @@
 package com.aamdigital.aambackendservice.skill.repository
 
-import jakarta.persistence.Column
-import jakarta.persistence.ElementCollection
-import jakarta.persistence.Entity
-import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import org.hibernate.annotations.CreationTimestamp
-import org.hibernate.annotations.SourceType
-import org.hibernate.annotations.UpdateTimestamp
+import com.fasterxml.jackson.annotation.JsonFormat
 import java.time.OffsetDateTime
 
-@Entity
 data class SkillLabUserProfileEntity(
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
-    val id: Long = 0,
-    @Column(unique = true)
     var externalIdentifier: String,
-    @Column
     var fullName: String?,
-    @Column
     var mobileNumber: String?,
-    @Column
     var email: String?,
-    /**
-     * [JvmSuppressWildcards] is required because Kotlin's `Set` is covariant and would
-     * otherwise compile to `Set<? extends SkillReferenceEntity>`. Hibernate rejects such a
-     * wildcard collection as a raw type and cannot derive the element type from it.
-     */
-    @ElementCollection(fetch = FetchType.EAGER)
-    var skills: Set<@JvmSuppressWildcards SkillReferenceEntity>,
+    var skills: Set<SkillReferenceEntity>,
     /**
      * represents the latest update at skillLab
      */
-    @Column
     var updatedAt: String?,
-    /** latest update within our system */
-    @UpdateTimestamp(source = SourceType.DB)
-    @Column(updatable = true)
+    /**
+     * latest update within our system, set by [SkillLabUserProfileRepository.save]
+     *
+     * The shared ObjectMapper leaves WRITE_DATES_AS_TIMESTAMPS enabled, so without the annotation
+     * the timestamp is stored as a numeric epoch value instead of a readable ISO-8601 string.
+     */
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     var latestSyncAt: OffsetDateTime? = null,
-    /** original date (first latestSyncAt) when added to our system */
-    @CreationTimestamp(source = SourceType.DB)
-    @Column(updatable = true)
+    /** original date (first latestSyncAt) when added to our system, set by [SkillLabUserProfileRepository.save] */
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     var importedAt: OffsetDateTime? = null
 )

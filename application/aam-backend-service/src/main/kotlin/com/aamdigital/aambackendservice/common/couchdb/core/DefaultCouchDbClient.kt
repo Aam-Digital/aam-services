@@ -34,6 +34,7 @@ class DefaultCouchDbClient(
         PARSING_ERROR,
         EMPTY_RESPONSE,
         NOT_FOUND,
+        CONFLICT,
         CLIENT_ERROR,
         OTHER_COUCHDB_ERROR
     }
@@ -41,6 +42,9 @@ class DefaultCouchDbClient(
     companion object {
         private const val CHANGES_URL = "/_changes"
         private const val FIND_URL = "/_find"
+
+        /** Page size for a `_find` that returns all matches, paged through with the bookmark. */
+        internal const val FIND_PAGE_SIZE = 1000
     }
 
     override fun allDatabases(): List<String> {
@@ -124,7 +128,40 @@ class DefaultCouchDbClient(
             objectMapper.convertValue(entry, kClass.java)
         }
 
-        return FindResponse(docs = data)
+        return FindResponse(docs = data, bookmark = response.get("bookmark")?.asText())
+    }
+
+    override fun <T : Any> findDatabaseDocumentsByPrefix(
+        database: String,
+        prefix: String,
+        selector: Map<String, Any>,
+        limit: Int?,
+        kClass: KClass<T>
+    ): List<T> {
+        val body =
+            mapOf(
+                "selector" to mapOf("_id" to mapOf("\$gt" to "$prefix:", "\$lt" to "$prefix:\ufff0")) + selector,
+                "limit" to (limit ?: FIND_PAGE_SIZE)
+            )
+
+        if (limit != null) {
+            return findDatabaseDocuments(database = database, body = body, kClass = kClass).docs
+        }
+
+        val docs = mutableListOf<T>()
+        var bookmark: String? = null
+        do {
+            val page =
+                findDatabaseDocuments(
+                    database = database,
+                    body = if (bookmark == null) body else body + ("bookmark" to bookmark),
+                    kClass = kClass
+                )
+            docs += page.docs
+            bookmark = page.bookmark
+        } while (page.docs.size == FIND_PAGE_SIZE && bookmark != null)
+
+        return docs
     }
 
     override fun headDatabaseDocument(
@@ -140,8 +177,14 @@ class DefaultCouchDbClient(
             .exchange { _, clientResponse ->
                 if (clientResponse.statusCode.is2xxSuccessful) {
                     clientResponse.headers
-                } else if (clientResponse.statusCode.is4xxClientError) {
+                } else if (clientResponse.statusCode.value() == 404) {
                     HttpHeaders()
+                } else if (clientResponse.statusCode.is4xxClientError) {
+                    // an unauthorized or forbidden request must not pass for a missing document
+                    throw ExternalSystemException(
+                        message = "CouchDB HEAD request failed with status ${clientResponse.statusCode.value()}",
+                        code = DefaultCouchDbClientErrorCode.CLIENT_ERROR
+                    )
                 } else {
                     throw ExternalSystemException(
                         message = "Retrieved HTTP 500 from CouchDb, ${clientResponse.bodyTo(String::class.java)}",
@@ -205,6 +248,21 @@ class DefaultCouchDbClient(
             )
 
         val etag = documentHeaders.eTag?.replace("\"", "")
+
+        return putDatabaseDocumentAtRevision(
+            database = database,
+            documentId = documentId,
+            body = body,
+            expectedRev = etag
+        )
+    }
+
+    override fun putDatabaseDocumentAtRevision(
+        database: String,
+        documentId: String,
+        body: Any,
+        expectedRev: String?
+    ): DocSuccess {
         val requestBody = serializeBody(body)
 
         return httpClient
@@ -215,8 +273,8 @@ class DefaultCouchDbClient(
             }.contentType(MediaType.APPLICATION_JSON)
             .body(requestBody)
             .headers {
-                if (etag.isNullOrBlank().not()) {
-                    it.set("If-Match", etag)
+                if (expectedRev.isNullOrBlank().not()) {
+                    it.set("If-Match", expectedRev)
                 }
             }.accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
@@ -331,6 +389,7 @@ class DefaultCouchDbClient(
             val errorCode =
                 when {
                     statusCode.value() == 404 -> DefaultCouchDbClientErrorCode.NOT_FOUND
+                    statusCode.value() == 409 -> DefaultCouchDbClientErrorCode.CONFLICT
                     statusCode.is4xxClientError -> DefaultCouchDbClientErrorCode.CLIENT_ERROR
                     else -> DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR
                 }
