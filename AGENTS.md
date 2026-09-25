@@ -19,9 +19,9 @@ This repository provides the backend API as a modularized Spring Boot applicatio
 ### Architecture & Tech Stack
 
 - **Language**: Kotlin (target JVM 21)
-- **Framework**: Spring Boot with Spring Security, Spring Data JPA
+- **Framework**: Spring Boot with Spring Security
 - **Build Tool**: Gradle with Kotlin DSL
-- **Database**: CouchDB with SQL query capabilities (SQS), PostgreSQL via JPA
+- **Database**: CouchDB with SQL query capabilities (SQS)
 - **Testing**: JUnit 5 with Mockito and AssertJ, Cucumber for BDD
 - **Code Quality**: Detekt for static analysis, JaCoCo for coverage
 - **Architecture**: Clean Architecture with Domain-Driven Design principles
@@ -371,12 +371,8 @@ per `DocumentChangeHandler` - update `poolSize` when adding either.
 - Implement document change listeners for reactive processing
 - Handle document versioning and conflicts appropriately
 - Use SQS for complex SQL queries
-
-### JPA Integration
-
-- Use Spring Data JPA for relational data (PostgreSQL)
-- Implement proper transaction boundaries
-- Use `@Transactional` appropriately
+- Keep the service's own state (cursors, registrations, sessions) in CouchDB as well, e.g. in
+  the `aam-backend-state` database; there is no relational database
 - Follow repository pattern for data access
 
 ---
