@@ -41,8 +41,8 @@ flowchart TD
 ## Caches on the automatic change-detection path
 
 `ReportDocumentChangeHandler` runs for every changed document in the `app` database (up to
-`CHANGES_LIMIT = 100` per poll tick) and, since change handling is synchronous, on the polling
-thread itself - so nothing on that path may do per-change CouchDB I/O.
+`CHANGES_LIMIT = 100` per poll tick) and, since change handling is synchronous, on the reporting
+module's polling thread itself - so nothing on that path may do per-change CouchDB I/O.
 Two caches keep it in memory:
 
 - **`ReportConfigCache`** — `reportId -> affected entity types`, i.e. the result of

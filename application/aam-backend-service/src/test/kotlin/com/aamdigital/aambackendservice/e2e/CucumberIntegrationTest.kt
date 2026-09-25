@@ -77,7 +77,10 @@ class CucumberIntegrationTest(
             .thenReturn(Optional.of(externalUser("unstubbed-external-user")))
 
         logger.info("[CucumberTest] === Scenario starting ===")
-        logger.info("[CucumberTest] SyncEntries before scenario: {}", syncRepository.findAll().map { "${it.database}=${it.latestRef.take(20)}" })
+        logger.info(
+            "[CucumberTest] SyncEntries before scenario: {}",
+            syncRepository.findAll().map { "${it.database}/${it.consumer}=${it.latestRef.take(20)}" }
+        )
     }
 
     @After
@@ -348,7 +351,7 @@ class CucumberIntegrationTest(
         val deadline = System.currentTimeMillis() + maxWaitMs
         var actualCount: Int
 
-        val syncEntries = syncRepository.findAll().map { "${it.database}=${it.latestRef.take(30)}" }
+        val syncEntries = syncRepository.findAll().map { "${it.database}/${it.consumer}=${it.latestRef.take(30)}" }
         System.err.println("[CucumberTest] Waiting for $expectedCount notifications for user $userId (timeout: ${maxWaitMs}ms)")
         System.err.println("[CucumberTest] SyncEntries: $syncEntries")
 
@@ -359,7 +362,7 @@ class CucumberIntegrationTest(
             Thread.sleep(pollIntervalMs)
         } while (true)
 
-        val syncEntriesAfter = syncRepository.findAll().map { "${it.database}=${it.latestRef.take(30)}" }
+        val syncEntriesAfter = syncRepository.findAll().map { "${it.database}/${it.consumer}=${it.latestRef.take(30)}" }
         System.err.println("[CucumberTest] SyncEntries after polling: $syncEntriesAfter")
         System.err.println("[CucumberTest] Final count for user $userId: $actualCount (expected: $expectedCount)")
 

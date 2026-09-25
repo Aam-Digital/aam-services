@@ -13,14 +13,16 @@ import com.aamdigital.aambackendservice.notification.core.config.NotificationCon
  * rules it already has until it is restarted, which is why the shared ERROR-and-continue
  * disposition from [AbstractDocumentChangeHandler] is the right one here.
  *
- * Runs on the change-detection thread. Rule matching is answered from [NotificationConfigCache] in
- * memory; the notifications it produces are recorded by the publisher rather than delivered inline,
- * so a slow mail or push endpoint cannot stall change detection.
+ * Runs on the notification module's own change-detection thread, so nothing here can hold up
+ * reporting. Rule matching is answered from [NotificationConfigCache] in memory; the notifications
+ * it produces are recorded by the publisher rather than delivered inline, so a slow mail or push
+ * endpoint cannot stall change detection. The permission check is the one external call made
+ * inline, and its client is bounded by a timeout for that reason.
  */
 class NotificationDocumentChangeHandler(
     private val notificationConfigCache: NotificationConfigCache,
     private val applyNotificationRulesUseCase: ApplyNotificationRulesUseCase
-) : AbstractDocumentChangeHandler() {
+) : AbstractDocumentChangeHandler(consumerName = "notification") {
     override fun onChange(event: DocumentChangeEvent) {
         if (event.documentId.startsWith("NotificationConfig:")) {
             notificationConfigCache.refreshConfig(
@@ -36,15 +38,15 @@ class NotificationDocumentChangeHandler(
                 // ERROR, not WARN, and deliberately not rethrown.
                 //
                 // Not rethrown because the cursor advances either way, so there is nothing to
-                // redeliver: throwing would only skip the sibling handlers for this document.
-                // Which makes the log line the *only* record that a user's notification was owed
-                // and never produced - and WARN sits below the Sentry minimum event level, so this
-                // used to drop notifications indefinitely against a green dashboard.
+                // redeliver: throwing would only reach the processor's backstop, which logs it
+                // again. That makes the log line the *only* record that a user's notification was
+                // owed and never produced - and WARN sits below the Sentry minimum event level, so
+                // this used to drop notifications indefinitely against a green dashboard.
                 //
                 // Note DomainUseCase.run() turns every exception into a Failure, so this branch
                 // covers transient infrastructure faults (CouchDB, Keycloak) as well as rule
-                // outcomes. Making those actually recoverable needs a per-handler cursor, not a
-                // rethrow here.
+                // outcomes. Making those recoverable means holding this module's cursor with a
+                // bounded number of attempts, not a rethrow here.
                 logger.error(
                     "ApplyNotificationRules failed for documentId={}, so no notification was " +
                         "created for any channel: [{}] {}",

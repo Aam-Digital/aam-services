@@ -351,13 +351,15 @@ picked up by a scheduled job. Pick by what the work needs:
 - **Must not be lost** — write the work to CouchDB first, then let a `@Scheduled` job pick it up
   and own the retry policy (see `NotificationOutboxDrainer`). Derive the document id from whatever
   caused the work so a replay is idempotent rather than a duplicate.
-- **Reacting to data changes** — declare a `DocumentChangeHandler` bean. Handlers run synchronously
-  on the polling thread, so they must answer from memory and hand real work to one of the two
-  mechanisms above. See `common/changes/README.md`.
+- **Reacting to data changes** — declare a `DocumentChangeHandler` bean with a unique, never-renamed
+  `consumerName` (it names the handler's persisted cursor). Each handler is polled on its own thread
+  with its own cursor, and runs synchronously on it, so it must answer from memory, hand real work to
+  one of the two mechanisms above, and put a timeout on any external call it makes inline. See
+  `common/changes/README.md`.
 
 Every `@Scheduled` job wraps its body in `ScheduledJobBackoff` and gets a thread from
-`SchedulingConfiguration`'s pool, which is sized to the number of jobs - update `poolSize` when
-adding one.
+`SchedulingConfiguration`'s pool, which is sized to the number of jobs, counting one change poller
+per `DocumentChangeHandler` - update `poolSize` when adding either.
 
 ---
 

@@ -10,15 +10,12 @@ import kotlin.test.Test
 /**
  * Verifies that change-detection auto-activates whenever at least one consumer feature
  * (reporting or notification) is enabled, and turns off when both are disabled.
- * Also verifies that [CouchDbChangesPollingJob] follows the processor (via @ConditionalOnBean).
+ * Also verifies that [CouchDbChangesPollingJob] follows the processor.
  */
 class ChangesConfigurationConditionalTest {
     private val runner =
         ApplicationContextRunner()
-            .withUserConfiguration(
-                ChangesConfiguration::class.java,
-                CouchDbChangesPollingJob::class.java,
-            )
+            .withUserConfiguration(ChangesConfiguration::class.java)
             .withBean(CouchDbClient::class.java, { mock<CouchDbClient>() })
             .withBean(ObjectMapper::class.java, { ObjectMapper() })
             .withBean(ChangeDetectionProperties::class.java, { ChangeDetectionProperties() })
@@ -69,4 +66,23 @@ class ChangesConfigurationConditionalTest {
             assertThat(context).doesNotHaveBean(CouchDbChangesPollingJob::class.java)
         }
     }
+
+    @Test
+    fun `change-detection polls separately for every module's handler`() {
+        runner
+            .withPropertyValues("features.reporting.enabled=true")
+            .withBean("reportingHandler", DocumentChangeHandler::class.java, { namedHandler("reporting") })
+            .withBean("notificationHandler", DocumentChangeHandler::class.java, { namedHandler("notification") })
+            .run { context ->
+                val job = context.getBean(CouchDbChangesPollingJob::class.java)
+                assertThat(job.pollers.map { it.consumerName }).containsExactlyInAnyOrder("reporting", "notification")
+            }
+    }
+
+    private fun namedHandler(name: String) =
+        object : DocumentChangeHandler {
+            override val consumerName = name
+
+            override fun handle(event: DocumentChangeEvent) = Unit
+        }
 }

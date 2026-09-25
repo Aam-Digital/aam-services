@@ -65,7 +65,7 @@ Everything this service used to keep in PostgreSQL now lives in CouchDB
 
 | what | where it lives now |
 | --- | --- |
-| change-detection cursor | `aam-backend-state`, `SyncEntry:<database>` |
+| change-detection cursors | `aam-backend-state`, `SyncEntry:<database>:<consumer>`, one per module |
 | push device registrations | `aam-backend-state`, `UserDevice:<deviceToken>` |
 | third-party-auth redirect bindings | `aam-backend-state`, `ThirdPartyAuthSession:<sessionId>` |
 | third-party-auth login tickets | nowhere — in memory, they expire within minutes |
@@ -282,9 +282,10 @@ respective [API Module docs](#api-modules).
 Work that must not block its caller is handed to a bounded executor, and work that must not be lost
 is recorded durably first and picked up by a scheduled job.
 
-- **Document changes** are detected by polling CouchDB's `_changes` feed and handed to every enabled
-  module's `DocumentChangeHandler`, synchronously, with the sync cursor advanced per change. Handlers
-  must therefore keep their inline work in memory.
+- **Document changes** are detected by polling CouchDB's `_changes` feed separately for every
+  enabled module's `DocumentChangeHandler`: each has its own cursor and its own polling thread, so a
+  module that is slow or stuck holds back only itself. A handler runs synchronously on that thread
+  with its cursor advanced per change, so it must still keep its inline work in memory.
 - **Report calculations** run on a bounded executor, so a handful of multi-second SQS queries can be
   in flight without overwhelming SQS. The calculation document is written before the executor is
   asked to run it, and `ReportCalculationSweeper` re-triggers anything left `PENDING`.

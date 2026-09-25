@@ -17,7 +17,7 @@ class AbstractDocumentChangeHandlerTest {
 
     private class RecordingHandler(
         private val failure: Exception? = null
-    ) : AbstractDocumentChangeHandler() {
+    ) : AbstractDocumentChangeHandler(consumerName = "test") {
         var received: DocumentChangeEvent? = null
 
         override fun onChange(event: DocumentChangeEvent) {
@@ -26,7 +26,7 @@ class AbstractDocumentChangeHandlerTest {
         }
     }
 
-    private class OverridingHandler : AbstractDocumentChangeHandler() {
+    private class OverridingHandler : AbstractDocumentChangeHandler(consumerName = "test") {
         var handled: Exception? = null
 
         override fun onChange(event: DocumentChangeEvent) = throw IllegalStateException("boom")
@@ -49,7 +49,7 @@ class AbstractDocumentChangeHandlerTest {
     }
 
     @Test
-    fun `should not propagate a failure from onChange so the remaining handlers still run`() {
+    fun `should not propagate a failure from onChange so the feed moves on past the change`() {
         val handler = RecordingHandler(failure = RuntimeException("couchdb unreachable"))
 
         assertThatCode { handler.handle(event) }.doesNotThrowAnyException()

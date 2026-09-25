@@ -9,9 +9,10 @@ import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookSubscri
 /**
  * Recalculates the reports affected by a document change, for the reports a webhook subscribed to.
  *
- * Runs on the change-detection thread for every changed document, so everything it needs is
- * answered from memory: [ReportConfigCache] holds the report definitions and their analysed entity
- * types, and [WebhookSubscriptionCache] holds the subscribed report ids. The only work left inline
+ * Runs on the reporting module's change-detection thread for every changed document, so a slow step
+ * here delays every automatic recalculation. Everything it needs is therefore answered from memory:
+ * [ReportConfigCache] holds the report definitions and their analysed entity types, and
+ * [WebhookSubscriptionCache] holds the subscribed report ids. The only work left inline
  * is recording the trigger with [ReportCalculationDebouncer], which is an in-memory map - the
  * calculation itself is created later by the debounce job and executed on its own bounded executor.
  */
@@ -19,7 +20,7 @@ class ReportDocumentChangeHandler(
     private val reportCalculationDebouncer: ReportCalculationDebouncer,
     private val identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
     private val webhookSubscriptionCache: WebhookSubscriptionCache
-) : AbstractDocumentChangeHandler() {
+) : AbstractDocumentChangeHandler(consumerName = "reporting") {
     override fun onChange(event: DocumentChangeEvent) {
         val affectedReports = identifyAffectedReportsUseCase.analyse(documentChangeEvent = event)
 
