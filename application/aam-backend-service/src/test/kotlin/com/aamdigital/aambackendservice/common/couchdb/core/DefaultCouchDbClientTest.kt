@@ -135,4 +135,29 @@ class DefaultCouchDbClientTest {
             eq(ObjectNode::class)
         )
     }
+
+    private fun assertAllDocsResponseRejected(json: String) {
+        doReturn(objectMapper.readTree(json) as ObjectNode)
+            .`when`(couchDbClient)
+            .getDatabaseDocument(eq("db"), eq("_all_docs"), any(), eq(ObjectNode::class))
+
+        assertThatThrownBy {
+            couchDbClient.getDatabaseDocumentsByPrefix(database = "db", prefix = "P", kClass = Map::class)
+        }
+            .isInstanceOf(ExternalSystemException::class.java)
+            .extracting { (it as ExternalSystemException).code }
+            .isEqualTo(DefaultCouchDbClient.DefaultCouchDbClientErrorCode.PARSING_ERROR)
+    }
+
+    @Test
+    fun `rejects an all_docs response without a rows array`() {
+        assertAllDocsResponseRejected("""{"total_rows": 0}""")
+        assertAllDocsResponseRejected("""{"rows": {}}""")
+    }
+
+    @Test
+    fun `rejects an all_docs row without its doc`() {
+        assertAllDocsResponseRejected("""{"rows": [{"id": "P:1", "doc": {"name": "one"}}, {"id": "P:2"}]}""")
+        assertAllDocsResponseRejected("""{"rows": [{"id": "P:1", "doc": null}]}""")
+    }
 }

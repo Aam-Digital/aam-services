@@ -150,11 +150,24 @@ class DefaultCouchDbClient(
                 kClass = ObjectNode::class
             )
 
-        val rows = response.get("rows") ?: return emptyList()
+        val rows = response.get("rows")
+        if (rows == null || !rows.isArray) {
+            throw ExternalSystemException(
+                message = "Could not parse response.rows to array",
+                code = DefaultCouchDbClientErrorCode.PARSING_ERROR
+            )
+        }
 
-        return rows
-            .mapNotNull { row -> row.get("doc") }
-            .map { doc -> objectMapper.convertValue(doc, kClass.java) }
+        return rows.map { row ->
+            val doc = row.get("doc")
+            if (doc == null || !doc.isObject) {
+                throw ExternalSystemException(
+                    message = "Could not parse response.rows[].doc of row ${row.get("id")} to object",
+                    code = DefaultCouchDbClientErrorCode.PARSING_ERROR
+                )
+            }
+            objectMapper.convertValue(doc, kClass.java)
+        }
     }
 
     override fun <T : Any> findDatabaseDocumentsByPrefix(
