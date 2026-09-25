@@ -60,10 +60,9 @@ What instances _do_ share is the layer underneath and in front of them — the h
 
 ### Backend state lives in CouchDB
 
-This service does not use PostgreSQL. The state it keeps between restarts lives in CouchDB
-(see [#209](https://github.com/Aam-Digital/aam-services/issues/209)):
+The state this service keeps between restarts lives in CouchDB:
 
-| what | where it lives now |
+| what | where it lives |
 | --- | --- |
 | change-detection cursors | `aam-backend-state`, `SyncEntry:<database>:<consumer>`, one per module |
 | push device registrations | `aam-backend-state`, `UserDevice:<deviceToken>` |
@@ -72,30 +71,9 @@ This service does not use PostgreSQL. The state it keeps between restarts lives 
 | SkillLab profile mirror | `skill-user-profile`, `SkillProfile:<externalId>` |
 | SkillLab sync cursor | `skill-user-profile`, `SkillLabUserProfileSync:<projectId>` |
 
-Neither new database is in `database-change-detection.included-databases`.
+Neither database is in `database-change-detection.included-databases`.
 replication-backend does not block these databases, so users whose permission rules grant broad access
 (e.g. `manage all`) can read them, which is accepted.
-
-**Upgrading from 1.22.x or older: run a 1.23.x release first.** Up to 1.22.x this state was kept in
-PostgreSQL. 1.23.x copies it into CouchDB on startup; later releases no longer read PostgreSQL. An
-instance that skips 1.23.x loses its push device registrations without any error: push delivery
-stops until each user re-enables push notifications in their settings. It also loses
-its third-party-auth redirect bindings and the change-detection cursor.
-
-An instance has migrated once `aam-backend-state` holds a `Migration:postgres-to-couchdb:<step>`
-document for each part that applies to it:
-
-| step | applies when |
-| --- | --- |
-| `user-devices` | `features.notification-api.enabled` |
-| `redirect-bindings` | `features.third-party-authentication.enabled` |
-| `sync-cursors` | `features.reporting.enabled` or `features.notification-api.enabled` |
-
-These are the flags as they were set while 1.23.x ran: a module that is switched on for the first
-time after upgrading past 1.23.x starts without the data it had in PostgreSQL.
-
-After that, the PostgreSQL container and its volume can be removed. Leftover `SPRING_DATASOURCE_*`
-and `MIGRATION_*` settings are ignored.
 
 The individual modules like "Reporting" require some setup and environment variables.
 Please refer to the respective READMEs in the "API Modules" list above for instructions about each API Module.
