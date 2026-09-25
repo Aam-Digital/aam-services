@@ -20,9 +20,6 @@ class CouchDbUserDeviceRepository(
 ) : UserDeviceRepository {
     companion object {
         const val DOCUMENT_PREFIX = "UserDevice"
-
-        /** CouchDB's `_find` returns only 25 documents unless a limit is given. */
-        private const val MAX_DEVICES_PER_USER = 1000
     }
 
     override fun findByUserIdentifier(
@@ -30,22 +27,12 @@ class CouchDbUserDeviceRepository(
         pageable: Pageable
     ): Page<UserDeviceEntity> {
         val devices =
-            couchDbClient
-                .findDatabaseDocuments(
-                    database = BACKEND_STATE_DATABASE,
-                    body =
-                        mapOf(
-                            "selector" to
-                                mapOf(
-                                    // the _id range keeps the query on the primary index, so it only scans
-                                    // device documents and not the other backend state in this database
-                                    "_id" to mapOf("\$gt" to "$DOCUMENT_PREFIX:", "\$lt" to "$DOCUMENT_PREFIX:￰"),
-                                    "userIdentifier" to userIdentifier
-                                ),
-                            "limit" to MAX_DEVICES_PER_USER
-                        ),
-                    kClass = UserDeviceEntity::class
-                ).docs
+            couchDbClient.findDatabaseDocumentsByPrefix(
+                database = BACKEND_STATE_DATABASE,
+                prefix = DOCUMENT_PREFIX,
+                selector = mapOf("userIdentifier" to userIdentifier),
+                kClass = UserDeviceEntity::class
+            )
 
         if (pageable.isUnpaged) return PageImpl(devices)
 

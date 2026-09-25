@@ -41,9 +41,13 @@ data class AttachmentMetaData(
     val stub: Boolean
 )
 
-/** Response from CouchDB `_find` (Mango query), containing the matched documents. */
+/**
+ * Response from CouchDB `_find` (Mango query), containing the matched documents and the
+ * [bookmark] to pass for the next page of results.
+ */
 data class FindResponse<T>(
-    val docs: List<T>
+    val docs: List<T>,
+    val bookmark: String? = null
 )
 
 /**

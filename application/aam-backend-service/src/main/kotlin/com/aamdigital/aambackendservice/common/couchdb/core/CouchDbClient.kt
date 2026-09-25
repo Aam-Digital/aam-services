@@ -31,6 +31,21 @@ interface CouchDbClient {
         kClass: KClass<T>
     ): FindResponse<T>
 
+    /**
+     * Runs a `_find` over the documents whose id starts with `<prefix>:`, narrowed by [selector].
+     *
+     * The `_id` range keeps the query on the primary index, so it only scans that prefix's
+     * documents and not everything else in [database]. Without a [limit], all matches are
+     * returned, fetched page by page (CouchDB itself returns only 25 unless a limit is given).
+     */
+    fun <T : Any> findDatabaseDocumentsByPrefix(
+        database: String,
+        prefix: String,
+        selector: Map<String, Any> = emptyMap(),
+        limit: Int? = null,
+        kClass: KClass<T>
+    ): List<T>
+
     fun headDatabaseDocument(
         database: String,
         documentId: String

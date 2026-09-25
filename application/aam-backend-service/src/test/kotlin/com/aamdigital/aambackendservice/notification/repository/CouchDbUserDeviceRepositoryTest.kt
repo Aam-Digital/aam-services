@@ -3,7 +3,6 @@ package com.aamdigital.aambackendservice.notification.repository
 import com.aamdigital.aambackendservice.common.couchdb.core.BACKEND_STATE_DATABASE
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
-import com.aamdigital.aambackendservice.common.couchdb.dto.FindResponse
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
@@ -12,6 +11,7 @@ import org.assertj.core.api.Assertions.assertThatCode
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
@@ -32,13 +32,14 @@ class CouchDbUserDeviceRepositoryTest {
 
     private fun stubFind(vararg devices: UserDeviceEntity) {
         whenever(
-            couchDbClient.findDatabaseDocuments(
+            couchDbClient.findDatabaseDocumentsByPrefix(
                 eq(BACKEND_STATE_DATABASE),
                 any(),
                 any(),
+                anyOrNull(),
                 eq(UserDeviceEntity::class)
             )
-        ).thenReturn(FindResponse(docs = devices.toList()))
+        ).thenReturn(devices.toList())
     }
 
     /** A token registered by another user must not be taken over, as the unique column prevented before. */
@@ -75,17 +76,11 @@ class CouchDbUserDeviceRepositoryTest {
         val result = repository.findByUserIdentifier("user-1", Pageable.unpaged())
 
         assertThat(result.content).containsExactly(phone, tablet)
-        verify(couchDbClient).findDatabaseDocuments(
+        verify(couchDbClient).findDatabaseDocumentsByPrefix(
             eq(BACKEND_STATE_DATABASE),
-            argThat<Map<String, Any>> {
-                this["selector"] ==
-                    mapOf(
-                        "_id" to mapOf("\$gt" to "UserDevice:", "\$lt" to "UserDevice:￰"),
-                        "userIdentifier" to "user-1"
-                    ) &&
-                    this["limit"] != null
-            },
-            any(),
+            eq("UserDevice"),
+            eq(mapOf("userIdentifier" to "user-1")),
+            isNull(),
             eq(UserDeviceEntity::class)
         )
     }

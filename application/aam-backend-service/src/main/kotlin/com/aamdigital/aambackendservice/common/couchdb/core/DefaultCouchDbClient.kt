@@ -42,6 +42,9 @@ class DefaultCouchDbClient(
     companion object {
         private const val CHANGES_URL = "/_changes"
         private const val FIND_URL = "/_find"
+
+        /** Page size for a `_find` that returns all matches, paged through with the bookmark. */
+        internal const val FIND_PAGE_SIZE = 1000
     }
 
     override fun allDatabases(): List<String> {
@@ -125,7 +128,40 @@ class DefaultCouchDbClient(
             objectMapper.convertValue(entry, kClass.java)
         }
 
-        return FindResponse(docs = data)
+        return FindResponse(docs = data, bookmark = response.get("bookmark")?.asText())
+    }
+
+    override fun <T : Any> findDatabaseDocumentsByPrefix(
+        database: String,
+        prefix: String,
+        selector: Map<String, Any>,
+        limit: Int?,
+        kClass: KClass<T>
+    ): List<T> {
+        val body =
+            mapOf(
+                "selector" to mapOf("_id" to mapOf("\$gt" to "$prefix:", "\$lt" to "$prefix:\ufff0")) + selector,
+                "limit" to (limit ?: FIND_PAGE_SIZE)
+            )
+
+        if (limit != null) {
+            return findDatabaseDocuments(database = database, body = body, kClass = kClass).docs
+        }
+
+        val docs = mutableListOf<T>()
+        var bookmark: String? = null
+        do {
+            val page =
+                findDatabaseDocuments(
+                    database = database,
+                    body = if (bookmark == null) body else body + ("bookmark" to bookmark),
+                    kClass = kClass
+                )
+            docs += page.docs
+            bookmark = page.bookmark
+        } while (page.docs.size == FIND_PAGE_SIZE && bookmark != null)
+
+        return docs
     }
 
     override fun headDatabaseDocument(
