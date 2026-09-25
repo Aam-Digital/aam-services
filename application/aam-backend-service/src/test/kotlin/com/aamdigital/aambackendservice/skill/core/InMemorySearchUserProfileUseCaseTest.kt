@@ -12,8 +12,8 @@ import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder
 
 /**
  * Behavioural tests for the profile search: they assert which profiles come back, not how the
- * store was queried. The version they replace asserted on the JPA Example/ExampleMatcher arguments
- * handed to the repository, which pinned the query shape rather than the search.
+ * store was queried. Asserting on the query arguments handed to the repository would pin the
+ * query shape rather than the search.
  */
 class InMemorySearchUserProfileUseCaseTest {
     private lateinit var repository: FakeSkillUserProfileRepository

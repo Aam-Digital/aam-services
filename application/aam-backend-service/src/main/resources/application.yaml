@@ -22,29 +22,6 @@ spring:
           connectiontimeout: 10000
           timeout: 10000
           writetimeout: 10000
-  datasource:
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      data-source-properties:
-        # pgjdbc's socketTimeout is the only JDBC/pool timeout that is not already bounded by a
-        # default: HikariCP supplies connectionTimeout=30s, validationTimeout=5s, maxLifetime=30min
-        # and keepaliveTime=2min, and pgjdbc supplies connectTimeout=10s. Without socketTimeout a
-        # read on a half-open socket blocks until the OS gives up retransmitting (~15 min on Linux),
-        # so the scheduled jobs stall silently instead of failing and being retried by
-        # ScheduledJobBackoff.
-        #
-        # THIS VALUE IS IN SECONDS - unlike every millisecond-based HikariCP setting above it.
-        # 30s leaves a wide margin: everything stored in PostgreSQL here is small CRUD (change
-        # detection sync entries, user devices, skill profiles, auth sessions), while report
-        # calculation runs against CouchDB/SQS. Note pgjdbc *closes* the connection when this
-        # fires, so it must stay well above the slowest legitimate statement, including the
-        # schema update Hibernate runs at startup.
-        # A deployment can still override it with URL parameters on SPRING_DATASOURCE_URL.
-        socketTimeout: 30
-  jpa:
-    generate-ddl: true
-    hibernate:
-      ddl-auto: update
   threads:
     virtual:
       enabled: true
@@ -71,14 +48,6 @@ management:
   tracing:
     sampling:
       probability: 1
-
-# One-shot copy of the data that used to live in PostgreSQL into CouchDB, run on startup.
-# Enabled by default so an upgrade is safe without being configured. Each step records its
-# completion in CouchDB and is not run again, so it can stay on - the release that removes the
-# JDBC driver removes this too. See PostgresToCouchDbMigration.
-migration:
-  postgres-to-couchdb:
-    enabled: true
 
 features:
   reporting:
@@ -159,10 +128,6 @@ spring:
           auth: false
           starttls:
             enable: false
-  datasource:
-    url: jdbc:postgresql://localhost:5402/aam-backend-service
-    username: admin
-    password: docker
 
 server:
   servlet:

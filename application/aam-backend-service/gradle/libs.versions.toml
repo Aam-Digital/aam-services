@@ -27,7 +27,6 @@ jacoco = "0.8.15"
 # whole line and matching the server version is not possible.
 keycloakAdminClient = "26.0.12"
 firebaseAdmin = "9.10.0"
-postgresql = "42.7.13"
 
 # --- test ---
 cucumber = "7.34.8"
@@ -47,7 +46,6 @@ mime4jCore = "0.8.14"
 [libraries]
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloakAdminClient" }
 firebase-admin = { module = "com.google.firebase:firebase-admin", version.ref = "firebaseAdmin" }
-postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 
 cucumber-java = { module = "io.cucumber:cucumber-java", version.ref = "cucumber" }
 cucumber-junit = { module = "io.cucumber:cucumber-junit", version.ref = "cucumber" }
@@ -70,10 +68,9 @@ jacoco-core = { module = "org.jacoco:org.jacoco.core", version.ref = "jacoco" }
 ktlint-cli = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
 
 [plugins]
-# All four Kotlin plugins share one version by construction — they must never diverge.
+# All three Kotlin plugins share one version by construction — they must never diverge.
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
-kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "springDependencyManagement" }
