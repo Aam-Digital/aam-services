@@ -1,8 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.storage
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.getQueryParamsAllDocs
-import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbRow
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.FileStorage
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
@@ -11,18 +9,10 @@ import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
-import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.HttpClientErrorException
 import java.io.InputStream
 import java.io.InterruptedIOException
-
-data class FetchReportCalculationsResponse(
-    @JsonProperty("total_rows")
-    val totalRows: Int,
-    val offset: Int,
-    val rows: List<CouchDbRow<ReportCalculationEntity>>
-)
 
 class DefaultReportCalculationStorage(
     private val couchDbClient: CouchDbClient,
@@ -65,22 +55,24 @@ class DefaultReportCalculationStorage(
     }
 
     override fun fetchReportCalculations(report: DomainReference): List<ReportCalculation> =
-        fetchAllReportCalculations().filter { calculation -> calculation.report.id == report.id }
+        findReportCalculations(selector = mapOf("report.id" to report.id))
 
-    override fun fetchAllReportCalculations(): List<ReportCalculation> {
+    override fun fetchAllReportCalculations(): List<ReportCalculation> = findReportCalculations()
+
+    private fun findReportCalculations(selector: Map<String, Any> = emptyMap()): List<ReportCalculation> {
         val calculations =
             try {
-                couchDbClient.getDatabaseDocument(
+                couchDbClient.findDatabaseDocumentsByPrefix(
                     database = REPORT_CALCULATION_DATABASE,
-                    documentId = "_all_docs",
-                    getQueryParamsAllDocs("ReportCalculation"),
-                    FetchReportCalculationsResponse::class
+                    prefix = "ReportCalculation",
+                    selector = selector,
+                    kClass = ReportCalculationEntity::class
                 )
             } catch (ex: Exception) {
                 throw handleException(ex)
             }
 
-        return calculations.rows.map { entity -> fromEntity(entity.doc) }
+        return calculations.map { fromEntity(it) }
     }
 
     @Throws(

@@ -3,12 +3,7 @@ package com.aamdigital.aambackendservice.notification.core.outbox
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
-import com.aamdigital.aambackendservice.common.couchdb.core.getQueryParamsAllDocs
-import com.aamdigital.aambackendservice.common.error.AamErrorCode
-import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
 
 /**
@@ -23,13 +18,8 @@ import org.slf4j.LoggerFactory
  */
 class NotificationOutboxRepository(
     private val couchDbClient: CouchDbClient,
-    private val couchDbInitializer: CouchDbInitializer,
-    private val objectMapper: ObjectMapper
+    private val couchDbInitializer: CouchDbInitializer
 ) {
-    enum class NotificationOutboxRepositoryErrorCode : AamErrorCode {
-        INVALID_RESPONSE
-    }
-
     companion object {
         const val OUTBOX_DATABASE = "notification-outbox"
     }
@@ -87,31 +77,15 @@ class NotificationOutboxRepository(
      * Returns an empty list when the database does not exist: nothing has ever been owed, or the
      * database was dropped out from under us, and in both cases there is no pending work.
      */
-    fun fetchPending(): List<NotificationOutboxEntry> {
-        val objectNode =
-            try {
-                couchDbClient.getDatabaseDocument(
-                    database = OUTBOX_DATABASE,
-                    documentId = "_all_docs",
-                    queryParams = getQueryParamsAllDocs(NotificationOutboxEntry.ID_PREFIX),
-                    kClass = ObjectNode::class
-                )
-            } catch (ex: NotFoundException) {
-                logger.debug("No {} database yet, nothing is pending delivery", OUTBOX_DATABASE, ex)
-                return emptyList()
-            }
-
-        val data = objectMapper.convertValue(objectNode, Map::class.java)
-        return (data["rows"] as Iterable<*>)
-            .map { entry ->
-                if (entry is LinkedHashMap<*, *>) {
-                    objectMapper.convertValue(entry["doc"], NotificationOutboxEntry::class.java)
-                } else {
-                    throw InternalServerException(
-                        message = "Invalid response",
-                        code = NotificationOutboxRepositoryErrorCode.INVALID_RESPONSE
-                    )
-                }
-            }
-    }
+    fun fetchPending(): List<NotificationOutboxEntry> =
+        try {
+            couchDbClient.getDatabaseDocumentsByPrefix(
+                database = OUTBOX_DATABASE,
+                prefix = NotificationOutboxEntry.ID_PREFIX,
+                kClass = NotificationOutboxEntry::class
+            )
+        } catch (ex: NotFoundException) {
+            logger.debug("No {} database yet, nothing is pending delivery", OUTBOX_DATABASE, ex)
+            emptyList()
+        }
 }

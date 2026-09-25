@@ -2,11 +2,7 @@ package com.aamdigital.aambackendservice.notification.core.config
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
-import com.aamdigital.aambackendservice.common.couchdb.core.getQueryParamsAllDocs
 import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
-import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbChange
-import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbRow
-import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbSearchResponse
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -72,27 +68,12 @@ class DefaultNotificationConfigCacheTest {
                 ).deepCopy<ObjectNode>()
 
         whenever(
-            couchDbClient.getDatabaseDocument(
+            couchDbClient.getDatabaseDocumentsByPrefix(
                 database = eq("app"),
-                documentId = eq("_all_docs"),
-                queryParams = eq(getQueryParamsAllDocs("NotificationConfig")),
-                kClass = eq(CouchDbSearchResponse::class)
+                prefix = eq("NotificationConfig"),
+                kClass = eq(ObjectNode::class)
             )
-        ).thenReturn(
-            CouchDbSearchResponse(
-                totalRows = 1,
-                offset = 0,
-                rows =
-                    listOf(
-                        CouchDbRow(
-                            id = "NotificationConfig:user-1",
-                            key = "NotificationConfig:user-1",
-                            value = CouchDbChange(rev = "1-abc"),
-                            doc = configDoc
-                        )
-                    )
-            )
-        )
+        ).thenReturn(listOf(configDoc))
 
         // when
         cache.refreshAll()
@@ -249,11 +230,10 @@ class DefaultNotificationConfigCacheTest {
 
         var attempts = 0
         whenever(
-            couchDbClient.getDatabaseDocument(
+            couchDbClient.getDatabaseDocumentsByPrefix(
                 database = eq("app"),
-                documentId = eq("_all_docs"),
-                queryParams = eq(getQueryParamsAllDocs("NotificationConfig")),
-                kClass = eq(CouchDbSearchResponse::class)
+                prefix = eq("NotificationConfig"),
+                kClass = eq(ObjectNode::class)
             )
         ).thenAnswer {
             attempts += 1
@@ -261,11 +241,7 @@ class DefaultNotificationConfigCacheTest {
                 throw RuntimeException("temporary startup issue")
             }
 
-            CouchDbSearchResponse(
-                totalRows = 0,
-                offset = 0,
-                rows = emptyList()
-            )
+            emptyList<ObjectNode>()
         }
 
         // when
@@ -294,11 +270,10 @@ class DefaultNotificationConfigCacheTest {
 
         var attempts = 0
         whenever(
-            couchDbClient.getDatabaseDocument(
+            couchDbClient.getDatabaseDocumentsByPrefix(
                 database = eq("app"),
-                documentId = eq("_all_docs"),
-                queryParams = eq(getQueryParamsAllDocs("NotificationConfig")),
-                kClass = eq(CouchDbSearchResponse::class)
+                prefix = eq("NotificationConfig"),
+                kClass = eq(ObjectNode::class)
             )
         ).thenAnswer {
             attempts += 1

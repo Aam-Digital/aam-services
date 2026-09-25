@@ -32,14 +32,7 @@ class ChangesConfiguration {
     }
 
     @Bean
-    fun syncRepository(
-        couchDbClient: CouchDbClient,
-        objectMapper: ObjectMapper
-    ): SyncRepository =
-        CouchDbSyncRepository(
-            couchDbClient = couchDbClient,
-            objectMapper = objectMapper
-        )
+    fun syncRepository(couchDbClient: CouchDbClient): SyncRepository = CouchDbSyncRepository(couchDbClient)
 
     /**
      * @param documentChangeHandlers every enabled module's handler. An [ObjectProvider] rather than

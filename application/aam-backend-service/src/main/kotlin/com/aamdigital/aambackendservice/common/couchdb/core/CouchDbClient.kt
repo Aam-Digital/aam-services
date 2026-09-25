@@ -32,6 +32,18 @@ interface CouchDbClient {
     ): FindResponse<T>
 
     /**
+     * Fetches every document in [database] whose id starts with `<prefix>:`.
+     *
+     * The document-id prefix is what stands in for a table here, so a collection scan is a prefix
+     * scan over `_all_docs`.
+     */
+    fun <T : Any> getDatabaseDocumentsByPrefix(
+        database: String,
+        prefix: String,
+        kClass: KClass<T>
+    ): List<T>
+
+    /**
      * Runs a `_find` over the documents whose id starts with `<prefix>:`, narrowed by [selector].
      *
      * The `_id` range keeps the query on the primary index, so it only scans that prefix's

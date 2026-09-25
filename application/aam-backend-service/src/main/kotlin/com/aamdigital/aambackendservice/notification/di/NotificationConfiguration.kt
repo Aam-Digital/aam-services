@@ -128,13 +128,11 @@ class NotificationConfiguration {
     @Bean
     fun notificationOutboxRepository(
         couchDbClient: CouchDbClient,
-        couchDbInitializer: CouchDbInitializer,
-        objectMapper: ObjectMapper
+        couchDbInitializer: CouchDbInitializer
     ): NotificationOutboxRepository =
         NotificationOutboxRepository(
             couchDbClient = couchDbClient,
-            couchDbInitializer = couchDbInitializer,
-            objectMapper = objectMapper
+            couchDbInitializer = couchDbInitializer
         )
 
     @Bean

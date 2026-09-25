@@ -1,8 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.report.storage
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.getQueryParamsAllDocs
-import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbSearchResponse
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.InternalServerException
@@ -38,22 +36,15 @@ class DefaultReportStorage(
     }
 
     override fun fetchAllReports(mode: String): List<Report> {
-        // todo: paginate requests
-        val response =
-            couchDbClient.getDatabaseDocument(
+        val sqlReports =
+            couchDbClient.findDatabaseDocumentsByPrefix(
                 database = REPORT_DATABASE,
-                documentId = "_all_docs",
-                getQueryParamsAllDocs("ReportConfig"),
-                CouchDbSearchResponse::class
+                prefix = "ReportConfig",
+                selector = mapOf("mode" to "sql"),
+                kClass = ObjectNode::class
             )
 
-        if (response.rows.isEmpty()) {
-            return emptyList()
-        }
-
-        return response.rows
-            .filter { isSqlReport(it.doc) }
-            .map { columnRenameMigration.migrate(normalizeRawDocToReport(it.doc)) }
+        return sqlReports.map { columnRenameMigration.migrate(normalizeRawDocToReport(it)) }
     }
 
     @Throws(

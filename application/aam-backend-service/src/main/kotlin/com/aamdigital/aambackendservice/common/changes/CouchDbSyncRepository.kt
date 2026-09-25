@@ -2,12 +2,10 @@ package com.aamdigital.aambackendservice.common.changes
 
 import com.aamdigital.aambackendservice.common.couchdb.core.BACKEND_STATE_DATABASE
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.fetchAllDocumentsByPrefix
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.ObjectMapper
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 
@@ -37,8 +35,7 @@ internal data class SyncEntryDocument(
  * for that database, which fails on the stale revision, or on a restart.
  */
 class CouchDbSyncRepository(
-    private val couchDbClient: CouchDbClient,
-    private val objectMapper: ObjectMapper
+    private val couchDbClient: CouchDbClient
 ) : SyncRepository {
     companion object {
         const val DOCUMENT_PREFIX = "SyncEntry"
@@ -85,9 +82,7 @@ class CouchDbSyncRepository(
         }
 
     override fun findAll(): List<SyncEntry> =
-        fetchAllDocumentsByPrefix(
-            couchDbClient = couchDbClient,
-            objectMapper = objectMapper,
+        couchDbClient.getDatabaseDocumentsByPrefix(
             database = BACKEND_STATE_DATABASE,
             prefix = DOCUMENT_PREFIX,
             kClass = SyncEntry::class
