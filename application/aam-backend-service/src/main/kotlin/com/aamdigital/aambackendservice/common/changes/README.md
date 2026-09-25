@@ -58,14 +58,6 @@ An exception escaping a handler is logged at ERROR and the handler's cursor adva
 change, so one document a module cannot handle does not stall that module's feed. The change is
 therefore not redelivered, and a handler is responsible for its own recovery.
 
-## Upgrading from the shared cursor
-
-Before every handler had its own cursor, all of them shared `SyncEntry:<database>`.
-`SharedSyncEntryMigration` runs before the first poll: it copies that position to every registered
-handler that has no cursor yet and then deletes it, so a module enabled later starts from "now"
-instead of inheriting an old position. It is transitional and goes together with the PostgreSQL
-migration.
-
 ## Key Classes
 
 | Class | Purpose |
@@ -76,7 +68,6 @@ migration.
 | `DocumentChangeEvent` | Event payload: database, documentId, current/previous doc |
 | `DocumentChangeHandler` | Interface a feature module implements to react to changes; `consumerName` names its cursor |
 | `SyncRepository` / `SyncEntry` | last processed `update_seq` per database and handler, stored in `aam-backend-state` |
-| `SharedSyncEntryMigration` | Transitional: splits the cursor all handlers used to share into one per handler |
 | `ChangesConfiguration` | Spring DI wiring for change-detection beans; active whenever a consuming feature module (reporting, notification-api) is enabled |
 
 ## Configuration

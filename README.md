@@ -50,20 +50,19 @@ For instructions to enable the backend in an overall system: [ndb-setup README](
 
 ## Deployment topology
 
-In production each Aam Digital instance runs its **own data stack**: its own CouchDB and PostgreSQL
+In production each Aam Digital instance runs its **own data stack**: its own CouchDB
 container alongside this service, as defined in
 [ndb-setup's docker-compose.yml](https://github.com/Aam-Digital/ndb-setup/blob/master/docker-compose.yml).
-None of those are shared between instances.
+None of it is shared between instances.
 
 What instances _do_ share is the layer underneath and in front of them — the host they run on, the
 `external_web` Docker network (declared `external: true`, created outside the instance stack).
 
-### PostgreSQL is being retired
+### Backend state lives in CouchDB
 
-Everything this service used to keep in PostgreSQL now lives in CouchDB
-(see [#209](https://github.com/Aam-Digital/aam-services/issues/209)):
+The state this service keeps between restarts lives in CouchDB:
 
-| what | where it lives now |
+| what | where it lives |
 | --- | --- |
 | change-detection cursors | `aam-backend-state`, `SyncEntry:<database>:<consumer>`, one per module |
 | push device registrations | `aam-backend-state`, `UserDevice:<deviceToken>` |
@@ -72,19 +71,9 @@ Everything this service used to keep in PostgreSQL now lives in CouchDB
 | SkillLab profile mirror | `skill-user-profile`, `SkillProfile:<externalId>` |
 | SkillLab sync cursor | `skill-user-profile`, `SkillLabUserProfileSync:<projectId>` |
 
-Neither new database is in `database-change-detection.included-databases`.
+Neither database is in `database-change-detection.included-databases`.
 replication-backend does not block these databases, so users whose permission rules grant broad access
 (e.g. `manage all`) can read them, which is accepted.
-
-**PostgreSQL is still required for one more release.** On startup, before it serves requests or
-polls for changes, this service copies the state that cannot be reconstructed — push device tokens,
-redirect bindings and the change-detection cursors — out of PostgreSQL and into CouchDB. Each part
-runs until it has completed once, which is recorded as a `Migration:<step>` document in
-`aam-backend-state`, and it never reads PostgreSQL again after that. A row that cannot be copied is
-logged and dropped. Only a part in which every row failed is retried on the next start. A part is
-only run while its module is enabled, and no failure in it can stop startup. Only once every
-instance has run it can the PostgreSQL container and its volume be removed, in the release that
-drops the JDBC driver. Set `migration.postgres-to-couchdb.enabled: false` to skip it.
 
 The individual modules like "Reporting" require some setup and environment variables.
 Please refer to the respective READMEs in the "API Modules" list above for instructions about each API Module.
@@ -124,7 +113,7 @@ All commands should be run from `application/aam-backend-service/`.
 The test suite includes:
 
 - **Unit tests** (JUnit 5 + Mockito) for individual use cases and services
-- **E2E / integration tests** (Cucumber BDD) that spin up real Docker containers via Testcontainers (Keycloak, CouchDB, PostgreSQL, Carbone, SQS) and test full API flows. Cucumber feature files are located in `src/test/resources/cucumber/features/`.
+- **E2E / integration tests** (Cucumber BDD) that spin up real Docker containers via Testcontainers (Keycloak, CouchDB, Carbone, SQS) and test full API flows. Cucumber feature files are located in `src/test/resources/cucumber/features/`.
 
 Both run together with `./gradlew test`.
 

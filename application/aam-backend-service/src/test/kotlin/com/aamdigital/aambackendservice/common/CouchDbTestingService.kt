@@ -24,8 +24,7 @@ class CouchDbTestingService(
          * processed changes, which in the e2e profile it checks for every second. Deleting the
          * database between scenarios would sooner or later drop a write,
          * and a failed poll parks change detection on [ScheduledJobBackoff] for at least five
-         * seconds - long enough to time out the scenarios that wait for notifications. The cursor
-         * was never reset between scenarios while it lived in PostgreSQL either.
+         * seconds - long enough to time out the scenarios that wait for notifications.
          *
          * Per-scenario state inside it is cleared explicitly instead, see [deleteDocumentsByPrefix].
          */

@@ -50,18 +50,6 @@ class ChangesConfiguration {
             changeDetectionProperties
         )
 
-    @Bean
-    fun sharedSyncEntryMigration(
-        syncRepository: SyncRepository,
-        documentChangeHandlers: ObjectProvider<DocumentChangeHandler>,
-        changeDetectionProperties: ChangeDetectionProperties
-    ): SharedSyncEntryMigration =
-        SharedSyncEntryMigration(
-            syncRepository = syncRepository,
-            databases = changeDetectionProperties.includedDatabases,
-            consumerNames = documentChangeHandlers.orderedStream().map { it.consumerName }.toList()
-        )
-
     /**
      * @param documentChangeHandlers every enabled module's handler. An [ObjectProvider] rather than
      *     a `List` so that a gate above which no module happens to contribute a handler yields an
@@ -71,13 +59,11 @@ class ChangesConfiguration {
     fun couchDbChangesPollingJob(
         changesProcessor: CouchDbChangesProcessor,
         documentChangeHandlers: ObjectProvider<DocumentChangeHandler>,
-        sharedSyncEntryMigration: SharedSyncEntryMigration,
         @Value("\${database-change-detection.fixed-delay:8000}") fixedDelayMillis: Long
     ): CouchDbChangesPollingJob =
         CouchDbChangesPollingJob(
             changesProcessor = changesProcessor,
             documentChangeHandlers = documentChangeHandlers.orderedStream().toList(),
-            sharedSyncEntryMigration = sharedSyncEntryMigration,
             fixedDelay = Duration.ofMillis(fixedDelayMillis)
         )
 }

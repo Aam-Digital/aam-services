@@ -9,8 +9,7 @@ import com.aamdigital.aambackendservice.common.error.NotFoundException
  *
  * Keyed by sessionId rather than by user because the redirect lookup has to tell "this session
  * belongs to someone else" apart from "no such session", which a per-user document could not.
- * Document count grows with the number of SSO logins, exactly as the PostgreSQL table it replaces
- * did - neither is pruned today.
+ * Document count grows with the number of SSO logins; nothing prunes them today.
  */
 class CouchDbThirdPartyAuthSessionRepository(
     private val couchDbClient: CouchDbClient
@@ -31,9 +30,8 @@ class CouchDbThirdPartyAuthSessionRepository(
         }
 
     /**
-     * Create-only, which saves looking up a revision first: every session id is a fresh UUID, and
-     * the migration checks for an existing session before it saves. Saving a session id that
-     * already exists fails with a 409 conflict.
+     * Create-only, which saves looking up a revision first: every session id is a fresh UUID.
+     * Saving a session id that already exists fails with a 409 conflict.
      */
     override fun save(session: ThirdPartyAuthSession) {
         couchDbClient.putDatabaseDocumentAtRevision(

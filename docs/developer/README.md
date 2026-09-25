@@ -19,7 +19,8 @@ For some features, we also use third party solutions that are maintained from th
 - *couchdb*: Seamless multi-master syncing database with an intuitive HTTP/JSON API, designed for
   reliability [GitHub](https://github.com/apache/couchdb)
 - *postgresql*: PostgreSQL is an advanced object-relational database management
-  system [GitHub](https://github.com/postgres/postgres)
+  system [GitHub](https://github.com/postgres/postgres). Used only as Keycloak's database;
+  `aam-backend-service` keeps its own state in CouchDB.
 - *keycloak*: Open Source Identity and Access Management For Modern Applications and
   Services [GitHub](https://github.com/keycloak/keycloak). This stack uses aam-digital's own
   `ghcr.io/aam-digital/keycloak-aam` build (private; bundles the provider plugins from Step 2.1
@@ -258,8 +259,8 @@ have to create yourself:
 
 ### Step 3: Set Up CouchDB (todo: improve this by automatic script)
 
-The `app`, `app-attachments`, `report-calculation` and `notification-webhook` databases are
-created automatically by `aam-backend-service` the first time it starts successfully — you do
+The `app`, `app-attachments`, `aam-backend-state`, `report-calculation` and `notification-webhook`
+databases are created automatically by `aam-backend-service` the first time it starts successfully — you do
 not create them by hand. If CouchDB is still empty here, `aam-backend-service` did not come up;
 check `docker compose logs aam-backend-service` before continuing.
 
@@ -439,15 +440,14 @@ curl https://aam.localhost/hello
 
 # the backend created its databases
 curl -s -u admin:docker https://aam.localhost/db/couchdb/_all_dbs
-# -> ["_users","app","app-attachments","notification-webhook","report-calculation"]
+# -> ["_users","aam-backend-state","app","app-attachments","notification-webhook","report-calculation"]
 ```
 
 Then open [https://aam.localhost/](https://aam.localhost/) and log in with the user you created
 in Step 2.4. You should reach the app's dashboard, not the demo setup wizard.
 
 If `aam-backend-service` keeps exiting, its log names the reason on the last few lines —
-missing datasource credentials and unbound configuration properties both show up there as
-startup failures.
+unbound configuration properties, for example, show up there as startup failures.
 
 -----
 

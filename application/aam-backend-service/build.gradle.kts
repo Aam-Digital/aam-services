@@ -4,7 +4,6 @@ plugins {
     jacoco
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
-    alias(libs.plugins.kotlin.jpa)
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.kotlin.kapt)
@@ -37,13 +36,14 @@ repositories {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
     implementation("org.apache.commons:commons-lang3")
+    // only for the Page/Pageable paging types; no Spring Data repositories are used
+    implementation("org.springframework.data:spring-data-commons")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
     implementation("io.micrometer:micrometer-tracing-bridge-otel")
@@ -59,8 +59,6 @@ dependencies {
     implementation("com.github.ben-manes.caffeine:caffeine")
 
     implementation(libs.firebase.admin)
-
-    runtimeOnly(libs.postgresql)
 
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 
