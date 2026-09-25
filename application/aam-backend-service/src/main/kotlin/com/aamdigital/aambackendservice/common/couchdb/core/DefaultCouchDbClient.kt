@@ -177,8 +177,14 @@ class DefaultCouchDbClient(
             .exchange { _, clientResponse ->
                 if (clientResponse.statusCode.is2xxSuccessful) {
                     clientResponse.headers
-                } else if (clientResponse.statusCode.is4xxClientError) {
+                } else if (clientResponse.statusCode.value() == 404) {
                     HttpHeaders()
+                } else if (clientResponse.statusCode.is4xxClientError) {
+                    // an unauthorized or forbidden request must not pass for a missing document
+                    throw ExternalSystemException(
+                        message = "CouchDB HEAD request failed with status ${clientResponse.statusCode.value()}",
+                        code = DefaultCouchDbClientErrorCode.CLIENT_ERROR
+                    )
                 } else {
                     throw ExternalSystemException(
                         message = "Retrieved HTTP 500 from CouchDb, ${clientResponse.bodyTo(String::class.java)}",
