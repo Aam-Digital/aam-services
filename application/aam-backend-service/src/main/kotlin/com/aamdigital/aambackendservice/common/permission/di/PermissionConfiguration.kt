@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestClient
 
 /**
@@ -14,12 +15,17 @@ import org.springframework.web.client.RestClient
  * [basePath] defaults to empty; set it to a non-blank URL to enable
  * permission-aware notification filtering. Set it to an empty string
  * (or remove the env var) to explicitly disable permission checks (allow-all).
+ *
+ * [responseTimeoutInSeconds] bounds both connecting and waiting for the response. The check runs
+ * on the notification module's change-detection thread, so without a bound an unresponsive
+ * replication-backend would stop notification processing until the connection is dropped.
  */
 @ConfigurationProperties("aam-replication-backend-client-configuration")
 class ReplicationBackendClientConfiguration(
     val basePath: String = "",
     val basicAuthUsername: String = "",
     val basicAuthPassword: String = "",
+    val responseTimeoutInSeconds: Int = 10
 )
 
 /**
@@ -55,6 +61,12 @@ class PermissionConfiguration {
 
         val restClient = RestClient.builder()
             .baseUrl(configuration.basePath)
+            .requestFactory(
+                SimpleClientHttpRequestFactory().apply {
+                    setReadTimeout(configuration.responseTimeoutInSeconds * 1000)
+                    setConnectTimeout(configuration.responseTimeoutInSeconds * 1000)
+                }
+            )
             .defaultHeaders { headers ->
                 headers.setBasicAuth(
                     configuration.basicAuthUsername,

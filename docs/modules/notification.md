@@ -205,7 +205,11 @@ This is the expected default for systems without access control (no `Config:Perm
 To explicitly disable permission filtering set `AAMREPLICATIONBACKENDCLIENTCONFIGURATION_BASEPATH=` (empty value).
 
 When the replication-backend is configured but temporarily unavailable, notifications are **not** sent
-(fail-closed) to avoid leaking data to unauthorized users.
+(fail-closed) to avoid leaking data to unauthorized users. Each such failure is logged at ERROR.
+
+A permission check that gets no answer is abandoned after
+`AAMREPLICATIONBACKENDCLIENTCONFIGURATION_RESPONSETIMEOUTINSECONDS` (default `10`) and treated as
+unavailable, so an unresponsive replication-backend delays notifications instead of stopping them.
 
 ### Firebase Configuration (for Push Notifications)
 
