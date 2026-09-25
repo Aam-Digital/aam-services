@@ -9,7 +9,6 @@ import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesReques
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.core.UserProfileUpdatePublisher
 import com.aamdigital.aambackendservice.skill.core.event.UserProfileUpdateEvent
-import com.aamdigital.aambackendservice.skill.di.UserProfileUpdateEventQueueConfiguration
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncEntity
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
 import org.springframework.data.domain.Pageable
@@ -60,7 +59,6 @@ class SkillLabFetchUserProfileUpdatesUseCase(
         results.forEach {
             try {
                 userProfileUpdatePublisher.publish(
-                    UserProfileUpdateEventQueueConfiguration.USER_PROFILE_UPDATE_QUEUE,
                     UserProfileUpdateEvent(
                         projectId = request.projectId,
                         userProfileId = it.id

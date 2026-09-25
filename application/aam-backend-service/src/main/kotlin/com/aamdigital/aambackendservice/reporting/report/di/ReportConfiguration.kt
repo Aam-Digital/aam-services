@@ -2,8 +2,11 @@ package com.aamdigital.aambackendservice.reporting.report.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
+import com.aamdigital.aambackendservice.reporting.report.core.DefaultReportConfigCache
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
+import com.aamdigital.aambackendservice.reporting.report.core.ReportConfigCache
+import com.aamdigital.aambackendservice.reporting.report.core.ReportDocumentChangeHandler
 import com.aamdigital.aambackendservice.reporting.report.core.ReportQueryAnalyser
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.report.core.SimpleReportQueryAnalyser
@@ -11,6 +14,8 @@ import com.aamdigital.aambackendservice.reporting.report.sqs.SqsQueryStorage
 import com.aamdigital.aambackendservice.reporting.report.sqs.SqsSchemaService
 import com.aamdigital.aambackendservice.reporting.report.storage.DefaultReportStorage
 import com.aamdigital.aambackendservice.reporting.report.usecase.DefaultIdentifyAffectedReportsUseCase
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationDebouncer
+import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookSubscriptionCache
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
@@ -34,10 +39,30 @@ class ReportConfiguration {
     fun defaultSimpleReportSchemaGenerator(): ReportQueryAnalyser = SimpleReportQueryAnalyser()
 
     @Bean
-    fun defaultIdentifyAffectedReportsUseCase(
+    fun reportConfigCache(
         reportStorage: ReportStorage,
         schemaGenerator: ReportQueryAnalyser
-    ): IdentifyAffectedReportsUseCase = DefaultIdentifyAffectedReportsUseCase(reportStorage, schemaGenerator)
+    ): ReportConfigCache =
+        DefaultReportConfigCache(
+            reportStorage = reportStorage,
+            reportQueryAnalyser = schemaGenerator
+        )
+
+    @Bean
+    fun defaultIdentifyAffectedReportsUseCase(reportConfigCache: ReportConfigCache): IdentifyAffectedReportsUseCase =
+        DefaultIdentifyAffectedReportsUseCase(reportConfigCache)
+
+    @Bean("report-document-change-handler")
+    fun reportDocumentChangeHandler(
+        reportCalculationDebouncer: ReportCalculationDebouncer,
+        identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
+        webhookSubscriptionCache: WebhookSubscriptionCache
+    ): ReportDocumentChangeHandler =
+        ReportDocumentChangeHandler(
+            reportCalculationDebouncer = reportCalculationDebouncer,
+            identifyAffectedReportsUseCase = identifyAffectedReportsUseCase,
+            webhookSubscriptionCache = webhookSubscriptionCache
+        )
 
     @Bean
     fun sqsSchemaService(couchDbClient: CouchDbClient): SqsSchemaService = SqsSchemaService(couchDbClient)

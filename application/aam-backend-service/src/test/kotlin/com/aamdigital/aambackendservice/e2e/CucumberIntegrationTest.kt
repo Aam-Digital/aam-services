@@ -8,8 +8,7 @@ import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.container.TestContainers
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.email.UserEmailProvider
-import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
-import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationTrigger
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.AuthenticationProvider
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.UserModel
@@ -39,7 +38,7 @@ import java.util.Optional
 
 @CucumberContextConfiguration
 class CucumberIntegrationTest(
-    val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher,
+    val reportCalculationTrigger: ReportCalculationTrigger,
     val syncRepository: SyncRepository,
     val notificationConfigCache: NotificationConfigCache
 ) : SpringIntegrationTest() {
@@ -51,8 +50,8 @@ class CucumberIntegrationTest(
     @MockBean
     lateinit var userEmailProvider: UserEmailProvider
 
-    // mocked so the guardrail can verify the webhook is triggered without needing a real HTTP receiver;
-    // the mock still sits downstream of both the report.calculation.completed and notification.webhook queues
+    // mocked so the guardrail can verify the webhook is triggered without needing a real HTTP
+    // receiver; the mock still sits downstream of the calculation and of the delivery executor
     @MockBean
     lateinit var triggerWebhookUseCase: TriggerWebhookUseCase
 
@@ -78,7 +77,10 @@ class CucumberIntegrationTest(
             .thenReturn(Optional.of(externalUser("unstubbed-external-user")))
 
         logger.info("[CucumberTest] === Scenario starting ===")
-        logger.info("[CucumberTest] SyncEntries before scenario: {}", syncRepository.findAll().map { "${it.database}=${it.latestRef.take(20)}" })
+        logger.info(
+            "[CucumberTest] SyncEntries before scenario: {}",
+            syncRepository.findAll().map { "${it.database}/${it.consumer}=${it.latestRef.take(20)}" }
+        )
     }
 
     @After
@@ -171,13 +173,8 @@ class CucumberIntegrationTest(
         reportCalculationId: String,
         tenant: String
     ) {
-        reportCalculationEventPublisher.publish(
-            "report.calculation",
-            ReportCalculationEvent(
-//                tenant = tenant, // to prepare multi tenant
-                reportCalculationId = reportCalculationId
-            )
-        )
+        // tenant is not used yet, it is here to prepare multi tenant support
+        reportCalculationTrigger.trigger(reportCalculationId)
     }
 
     @When("the client calls GET {word} with id from latest response")
@@ -354,7 +351,7 @@ class CucumberIntegrationTest(
         val deadline = System.currentTimeMillis() + maxWaitMs
         var actualCount: Int
 
-        val syncEntries = syncRepository.findAll().map { "${it.database}=${it.latestRef.take(30)}" }
+        val syncEntries = syncRepository.findAll().map { "${it.database}/${it.consumer}=${it.latestRef.take(30)}" }
         System.err.println("[CucumberTest] Waiting for $expectedCount notifications for user $userId (timeout: ${maxWaitMs}ms)")
         System.err.println("[CucumberTest] SyncEntries: $syncEntries")
 
@@ -365,7 +362,7 @@ class CucumberIntegrationTest(
             Thread.sleep(pollIntervalMs)
         } while (true)
 
-        val syncEntriesAfter = syncRepository.findAll().map { "${it.database}=${it.latestRef.take(30)}" }
+        val syncEntriesAfter = syncRepository.findAll().map { "${it.database}/${it.consumer}=${it.latestRef.take(30)}" }
         System.err.println("[CucumberTest] SyncEntries after polling: $syncEntriesAfter")
         System.err.println("[CucumberTest] Final count for user $userId: $actualCount (expected: $expectedCount)")
 

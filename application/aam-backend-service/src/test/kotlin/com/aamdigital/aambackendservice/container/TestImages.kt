@@ -11,9 +11,6 @@ package com.aamdigital.aambackendservice.container
  * tells Renovate which image the following version string belongs to.
  */
 object TestImages {
-    // renovate: datasource=docker depName=rabbitmq
-    const val RABBITMQ = "4.3-management-alpine"
-
     // renovate: datasource=docker depName=couchdb
     const val COUCHDB = "3.5.2"
 

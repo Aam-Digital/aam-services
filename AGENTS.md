@@ -22,7 +22,6 @@ This repository provides the backend API as a modularized Spring Boot applicatio
 - **Framework**: Spring Boot with Spring Security, Spring Data JPA
 - **Build Tool**: Gradle with Kotlin DSL
 - **Database**: CouchDB with SQL query capabilities (SQS), PostgreSQL via JPA
-- **Message Queue**: RabbitMQ (AMQP)
 - **Testing**: JUnit 5 with Mockito and AssertJ, Cucumber for BDD
 - **Code Quality**: Detekt for static analysis, JaCoCo for coverage
 - **Architecture**: Clean Architecture with Domain-Driven Design principles
@@ -341,24 +340,26 @@ data class ModuleConfiguration(
 
 ---
 
-## Message Queue Integration
+## Asynchronous Processing
 
-### RabbitMQ Patterns
+There is no message broker. Work is either handed to a bounded executor or recorded durably and
+picked up by a scheduled job. Pick by what the work needs:
 
-- Use `@RabbitListener` for consuming messages
-- Implement dead letter queues for error handling
-- Use appropriate exchange types (direct, topic, fanout)
-- Handle message acknowledgments properly
+- **Must not block the caller, may be lost** — a bounded `ThreadPoolTaskExecutor` bean, with the
+  backlog bounded on purpose so a saturated executor rejects instead of growing without limit
+  (see the webhook delivery executor in `ReportingNotificationConfiguration`).
+- **Must not be lost** — write the work to CouchDB first, then let a `@Scheduled` job pick it up
+  and own the retry policy (see `NotificationOutboxDrainer`). Derive the document id from whatever
+  caused the work so a replay is idempotent rather than a duplicate.
+- **Reacting to data changes** — declare a `DocumentChangeHandler` bean with a unique, never-renamed
+  `consumerName` (it names the handler's persisted cursor). Each handler is polled on its own thread
+  with its own cursor, and runs synchronously on it, so it must answer from memory, hand real work to
+  one of the two mechanisms above, and put a timeout on any external call it makes inline. See
+  `common/changes/README.md`.
 
-```kotlin
-@RabbitListener(queues = ["queue.name"])
-fun handleMessage(
-    @Payload message: MessageDto,
-    @Header headers: Map<String, Any>
-) {
-    // Process message
-}
-```
+Every `@Scheduled` job wraps its body in `ScheduledJobBackoff` and gets a thread from
+`SchedulingConfiguration`'s pool, which is sized to the number of jobs, counting one change poller
+per `DocumentChangeHandler` - update `poolSize` when adding either.
 
 ---
 

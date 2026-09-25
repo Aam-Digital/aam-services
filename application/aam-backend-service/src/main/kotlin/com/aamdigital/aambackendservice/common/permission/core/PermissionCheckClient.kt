@@ -73,7 +73,9 @@ class PermissionCheckClient(
                     entry.key to (permissionValue ?: false)
                 }
         } catch (exception: Exception) {
-            logger.warn("Permission check request failed; denying notifications by default", exception)
+            // ERROR, not WARN: denying means the notifications for this change are dropped, and WARN
+            // sits below the Sentry minimum event level, so this would otherwise go unnoticed
+            logger.error("Permission check request failed; denying notifications by default", exception)
             emptyMap()
         }
     }

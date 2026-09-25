@@ -214,8 +214,10 @@ class PostgresToCouchDbMigration(
     }
 
     /**
-     * A cursor already in CouchDB is left alone: it can only have been written by change detection
-     * on an earlier start of this release, and is newer than the one in PostgreSQL.
+     * Copies each cursor to the one all change consumers shared before each had its own, which
+     * [com.aamdigital.aambackendservice.common.changes.SharedSyncEntryMigration] then splits up on
+     * the first poll. A shared cursor already in CouchDB is left alone: it can only have been
+     * written by change detection on an earlier start, and is newer than the one in PostgreSQL.
      */
     private fun migrateSyncCursors(
         source: LegacyPostgresSource,
@@ -226,7 +228,7 @@ class PostgresToCouchDbMigration(
         return copyRows(
             rows = source.readSyncEntries(),
             describe = { "the change-detection cursor of database ${it.database}" },
-            present = { repository.findByDatabase(it.database).isPresent },
+            present = { repository.findByDatabase(it.database, consumer = null).isPresent },
             copy = { entry -> repository.save(SyncEntry(database = entry.database, latestRef = entry.latestRef)) }
         )
     }

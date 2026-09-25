@@ -62,16 +62,24 @@ class PostgresToCouchDbMigrationTest {
         }
     }
 
+    /** Holds the shared cursors, one per database, which is all the migration reads and writes. */
     private class FakeSyncRepository : SyncRepository {
         val byDatabase = mutableMapOf<String, SyncEntry>()
 
-        override fun findByDatabase(database: String) = Optional.ofNullable(byDatabase[database])
+        override fun findByDatabase(
+            database: String,
+            consumer: String?
+        ) = Optional.ofNullable(byDatabase[database]).filter { it.consumer == consumer }
 
         override fun findAll() = byDatabase.values.toList()
 
         override fun save(syncEntry: SyncEntry): SyncEntry {
             byDatabase[syncEntry.database] = syncEntry
             return syncEntry
+        }
+
+        override fun delete(syncEntry: SyncEntry) {
+            byDatabase.remove(syncEntry.database)
         }
     }
 

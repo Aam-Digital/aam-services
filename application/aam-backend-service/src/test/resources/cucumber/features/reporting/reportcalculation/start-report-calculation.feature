@@ -24,7 +24,15 @@ Feature: the report calculation endpoint persist to database
         When the client calls GET /v1/reporting/report-calculation/ with id from latest response
         Then the client receives an json object
         Then the client receives status code of 200
-        Then the client receives value PENDING|RUNNING for property status
+        # FINISHED_ERROR is accepted because the calculation now starts on an in-process executor
+        # the moment the document is stored, rather than after a broker round trip. This report has
+        # no Config:CONFIG_ENTITY, so it fails within milliseconds and can reach a terminal state
+        # before this request arrives. The scenario is about POST returning a usable calculation id;
+        # that the calculation ends FINISHED_ERROR without Config:CONFIG_ENTITY is asserted
+        # deterministically by the next scenario, which waits before checking.
+        # FINISHED_SUCCESS is deliberately not accepted: it is unreachable here, so this still fails
+        # if the calculation somehow succeeds.
+        Then the client receives value PENDING|RUNNING|FINISHED_ERROR for property status
 
     Scenario: Pending ReportCalculation is processed within 10 seconds and returns error without Config:CONFIG_ENTITY
         Given document ReportConfig_1 is stored in database app

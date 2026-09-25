@@ -6,7 +6,6 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.Network
-import org.testcontainers.containers.RabbitMQContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
@@ -70,16 +69,6 @@ object TestContainers {
             .withRealmImportFile("/dummy-realm-realm.json")
             .withAdminUsername("admin")
             .withAdminPassword("docker")
-
-    @Container
-    @ServiceConnection
-    @JvmStatic
-    val CONTAINER_RABBIT_MQ: RabbitMQContainer =
-        RabbitMQContainer(
-            DockerImageName
-                .parse("rabbitmq")
-                .withTag(TestImages.RABBITMQ)
-        )
 
     @Container
     @JvmStatic

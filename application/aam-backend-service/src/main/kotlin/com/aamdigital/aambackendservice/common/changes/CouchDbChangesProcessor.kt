@@ -11,15 +11,20 @@ import org.slf4j.LoggerFactory
 
 /**
  * Polls CouchDB `_changes` feeds for the databases allowlisted in
- * [ChangeDetectionProperties.includedDatabases], enriches each change with
- * the current and previous document revision, and publishes a [DocumentChangeEvent]
- * to the RabbitMQ fanout exchange.
+ * [ChangeDetectionProperties.includedDatabases] on behalf of one [DocumentChangeHandler], enriches
+ * each change with the current and previous document revision, and hands it to that handler.
  *
- * Triggered periodically by [CouchDbChangesPollingJob].
+ * Triggered periodically by [CouchDbChangesPollingJob], separately for every handler: each handler
+ * has its own cursor ([SyncEntry.consumer]), so it moves through the feed at its own pace and a
+ * handler that is slow or stuck holds back only itself.
+ *
+ * The handler is called synchronously and its cursor is saved after each change rather than once
+ * per batch, so a crash re-processes at most the one change that was in flight instead of the whole
+ * batch. Change handling is expected to be idempotent - notification ids, for instance, are derived
+ * from the change that caused them so a replay does not create a second in-app notification.
  */
 class CouchDbChangesProcessor(
     private val couchDbClient: CouchDbClient,
-    private val documentChangeEventPublisher: ChangeEventPublisher,
     private val syncRepository: SyncRepository,
     private val objectMapper: ObjectMapper,
     private val changeDetectionProperties: ChangeDetectionProperties,
@@ -34,13 +39,13 @@ class CouchDbChangesProcessor(
         COULD_NOT_FETCH_LATEST_REF
     }
 
-    fun checkForChanges() {
+    fun checkForChanges(handler: DocumentChangeHandler) {
         couchDbClient
             .allDatabases()
             .filter { !it.startsWith("_") }
             .filter { it in changeDetectionProperties.includedDatabases }
             .forEach { database ->
-                fetchChangesForDatabase(database)
+                fetchChangesForDatabase(database, handler)
             }
     }
 
@@ -61,13 +66,20 @@ class CouchDbChangesProcessor(
             )
         }
 
-    private fun fetchChangesForDatabase(database: String) {
-        val storedEntry = syncRepository.findByDatabase(database).orElse(null)
+    private fun fetchChangesForDatabase(
+        database: String,
+        handler: DocumentChangeHandler
+    ) {
+        val storedEntry = syncRepository.findByDatabase(database, handler.consumerName).orElse(null)
         val syncEntry =
             storedEntry
                 // On first run we intentionally skip historic changes and start from "now"
                 // to avoid replaying the full backlog into downstream consumers.
-                ?: SyncEntry(database = database, latestRef = getLatestRef(database))
+                ?: SyncEntry(
+                    database = database,
+                    latestRef = getLatestRef(database),
+                    consumer = handler.consumerName
+                )
 
         val queryParams = getEmptyQueryParams()
 
@@ -84,7 +96,7 @@ class CouchDbChangesProcessor(
                 queryParams = queryParams
             )
 
-        var latestSeq = syncEntry.latestRef
+        var cursor = syncEntry
 
         changes.results.forEach { couchDbChangeResult ->
             val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
@@ -98,18 +110,49 @@ class CouchDbChangesProcessor(
                     currentDoc = couchDbChangeResult.doc,
                 )
 
-                documentChangeEventPublisher.publish(
-                    ChangesQueueConfiguration.DOCUMENT_CHANGES_EXCHANGE, changeEvent
-                )
+                handleChange(changeEvent, handler)
             }
 
-            latestSeq = couchDbChangeResult.seq
+            // Saved per change, not per batch: a failure part way through then re-processes only
+            // this one change instead of everything already handled in this batch.
+            cursor = cursor.copy(latestRef = couchDbChangeResult.seq)
+            syncRepository.save(cursor)
         }
 
         // Every save is a new CouchDB revision, and this runs every few seconds: an idle poll must
-        // not write. A first run is still saved, so the "start from now" cursor sticks.
-        if (storedEntry == null || latestSeq != storedEntry.latestRef) {
-            syncRepository.save(syncEntry.copy(latestRef = latestSeq))
+        // not write. A cursor created just now still has to be persisted, though: otherwise every
+        // tick would re-anchor a fresh database to "now" and silently skip whatever changed between
+        // two ticks.
+        if (storedEntry == null && changes.results.isEmpty()) {
+            syncRepository.save(syncEntry)
+        }
+    }
+
+    /**
+     * Gives the change to the handler.
+     *
+     * The shared disposition - log and carry on, so one document a module fails on does not stall
+     * that module's feed - belongs to [AbstractDocumentChangeHandler] and is applied before an
+     * exception ever gets here. This catch is only a backstop, for a handler that implements
+     * [DocumentChangeHandler] directly or overrides its error handling with something that throws
+     * in turn; either way its cursor must still advance past the change.
+     */
+    private fun handleChange(
+        changeEvent: DocumentChangeEvent,
+        handler: DocumentChangeHandler
+    ) {
+        try {
+            handler.handle(changeEvent)
+        } catch (ex: Exception) {
+            logger.error(
+                "Change handler {} failed for db={}, documentId={}, rev={}: {}",
+                handler.consumerName,
+                changeEvent.database,
+                changeEvent.documentId,
+                changeEvent.rev,
+                ex.message,
+                ex
+            )
         }
     }
 

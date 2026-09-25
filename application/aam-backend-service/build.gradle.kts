@@ -38,7 +38,6 @@ repositories {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-amqp")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
@@ -81,7 +80,6 @@ dependencies {
     testImplementation(libs.okhttp.mockwebserver)
 
     testImplementation(libs.testcontainers.junit.jupiter)
-    testImplementation(libs.testcontainers.rabbitmq)
     testImplementation(libs.testcontainers.keycloak)
 
     // Validates e2e request/response interactions against the OpenAPI specs in

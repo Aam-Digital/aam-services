@@ -2,20 +2,19 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.usecase
 
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
-import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationEvent
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationResult
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
-import com.aamdigital.aambackendservice.reporting.reportcalculation.queue.RabbitMqReportCalculationEventPublisher
+import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationTrigger
 import org.slf4j.LoggerFactory
 import java.util.*
 
 // todo: migrate to DomainUseCase
 class DefaultCreateReportCalculationUseCase(
     private val reportCalculationStorage: ReportCalculationStorage,
-    private val reportCalculationEventPublisher: RabbitMqReportCalculationEventPublisher
+    private val reportCalculationTrigger: ReportCalculationTrigger
 ) : CreateReportCalculationUseCase {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -54,12 +53,9 @@ class DefaultCreateReportCalculationUseCase(
     }
 
     private fun handleResponse(reportCalculation: ReportCalculation): CreateReportCalculationResult {
-        reportCalculationEventPublisher.publish(
-            "report.calculation",
-            ReportCalculationEvent(
-                reportCalculationId = reportCalculation.id
-            )
-        )
+        // the calculation document is stored before this call, so it is the record that the
+        // calculation is owed - a trigger lost here is recovered by ReportCalculationSweeper
+        reportCalculationTrigger.trigger(reportCalculation.id)
         return CreateReportCalculationResult.Success(
             DomainReference(id = reportCalculation.id)
         )
