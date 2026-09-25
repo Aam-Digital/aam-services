@@ -63,24 +63,12 @@ class SkillConfigurationSkillLab {
         DatabaseRequest(CouchDbSkillLabUserProfileRepository.SKILL_USER_PROFILE_DATABASE)
 
     @Bean
-    fun skillLabUserProfileRepository(
-        couchDbClient: CouchDbClient,
-        objectMapper: ObjectMapper
-    ): SkillLabUserProfileRepository =
-        CouchDbSkillLabUserProfileRepository(
-            couchDbClient = couchDbClient,
-            objectMapper = objectMapper
-        )
+    fun skillLabUserProfileRepository(couchDbClient: CouchDbClient): SkillLabUserProfileRepository =
+        CouchDbSkillLabUserProfileRepository(couchDbClient)
 
     @Bean
-    fun skillLabUserProfileSyncRepository(
-        couchDbClient: CouchDbClient,
-        objectMapper: ObjectMapper
-    ): SkillLabUserProfileSyncRepository =
-        CouchDbSkillLabUserProfileSyncRepository(
-            couchDbClient = couchDbClient,
-            objectMapper = objectMapper
-        )
+    fun skillLabUserProfileSyncRepository(couchDbClient: CouchDbClient): SkillLabUserProfileSyncRepository =
+        CouchDbSkillLabUserProfileSyncRepository(couchDbClient)
 
     @Bean
     fun skillLabFetchUserProfileUpdatedUseCase(

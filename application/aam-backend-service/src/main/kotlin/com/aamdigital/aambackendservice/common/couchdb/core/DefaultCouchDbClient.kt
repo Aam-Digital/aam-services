@@ -42,6 +42,7 @@ class DefaultCouchDbClient(
     companion object {
         private const val CHANGES_URL = "/_changes"
         private const val FIND_URL = "/_find"
+        private const val ALL_DOCS_URL = "_all_docs"
 
         /** Page size for a `_find` that returns all matches, paged through with the bookmark. */
         internal const val FIND_PAGE_SIZE = 1000
@@ -129,6 +130,31 @@ class DefaultCouchDbClient(
         }
 
         return FindResponse(docs = data, bookmark = response.get("bookmark")?.asText())
+    }
+
+    override fun <T : Any> getDatabaseDocumentsByPrefix(
+        database: String,
+        prefix: String,
+        kClass: KClass<T>
+    ): List<T> {
+        val queryParams = getEmptyQueryParams()
+        queryParams.add("include_docs", "true")
+        queryParams.add("startkey", "\"$prefix:\"")
+        queryParams.add("endkey", "\"$prefix:\\ufff0\"")
+
+        val response =
+            getDatabaseDocument(
+                database = database,
+                documentId = ALL_DOCS_URL,
+                queryParams = queryParams,
+                kClass = ObjectNode::class
+            )
+
+        val rows = response.get("rows") ?: return emptyList()
+
+        return rows
+            .mapNotNull { row -> row.get("doc") }
+            .map { doc -> objectMapper.convertValue(doc, kClass.java) }
     }
 
     override fun <T : Any> findDatabaseDocumentsByPrefix(

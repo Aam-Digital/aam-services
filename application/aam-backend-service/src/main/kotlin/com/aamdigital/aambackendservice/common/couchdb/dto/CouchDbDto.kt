@@ -8,22 +8,6 @@ data class CouchDbChange(
     val rev: String
 )
 
-/** A row in a CouchDB `_all_docs` response, containing the document and metadata. */
-data class CouchDbRow<T>(
-    val id: String,
-    val key: String,
-    val value: CouchDbChange,
-    val doc: T
-)
-
-/** Paginated response from a CouchDB `_all_docs` view query. */
-data class CouchDbSearchResponse(
-    @JsonProperty("total_rows")
-    val totalRows: Int,
-    val offset: Int,
-    val rows: List<CouchDbRow<ObjectNode>>
-)
-
 /** CouchDB success response for write operations (PUT, DELETE). */
 data class DocSuccess(
     val ok: Boolean,

@@ -65,10 +65,7 @@ class ReportingNotificationConfiguration {
     ): WebhookStorage = DefaultWebhookStorage(webhookRepository, cryptoService)
 
     @Bean
-    fun webhookRepository(
-        couchDbClient: CouchDbClient,
-        objectMapper: ObjectMapper
-    ): WebhookRepository = WebhookRepository(couchDbClient, objectMapper)
+    fun webhookRepository(couchDbClient: CouchDbClient): WebhookRepository = WebhookRepository(couchDbClient)
 
     @Bean
     fun notificationService(
