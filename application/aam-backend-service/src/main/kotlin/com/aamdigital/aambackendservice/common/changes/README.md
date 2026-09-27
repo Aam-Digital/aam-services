@@ -51,8 +51,8 @@ handler's cursor is advanced once it has handled the change. A slow handler dela
 module — but it does delay it, so a handler must not do slow or unbounded work inline: no per-change
 database scan, and any external call bounded by a timeout. Answer from memory (see
 `ReportConfigCache`, `WebhookSubscriptionCache`, `NotificationConfigCache`) and hand real work to a
-bounded executor or record it durably for a scheduled job to pick up (see `NotificationOutboxDrainer`
-and the report calculation executor).
+bounded executor or record it durably in an outbox for a scheduled job to pick up (see
+`common/outbox/README.md` and the report calculation executor).
 
 An exception escaping a handler is logged at ERROR and the handler's cursor advances past the
 change, so one document a module cannot handle does not stall that module's feed. The change is

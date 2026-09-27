@@ -21,8 +21,9 @@ import org.slf4j.LoggerFactory
  * Handlers run **synchronously on their own polling thread**, one change at a time, and their
  * cursor is advanced once the change has been handled. A slow handler therefore delays only its own
  * module, but it does delay it: slow or unbounded work must not run inline. Hand it to a bounded
- * executor, or record it durably and let a scheduled job pick it up (see `NotificationOutboxDrainer`
- * and the report calculation executor), and give any external call inline a timeout.
+ * executor (see the report calculation executor), or record it durably in an
+ * [com.aamdigital.aambackendservice.common.outbox.Outbox] for a scheduled job to deliver, and give
+ * any external call inline a timeout.
  *
  * @param consumerName see [DocumentChangeHandler.consumerName] - persisted, so never rename it
  */

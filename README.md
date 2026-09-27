@@ -291,4 +291,5 @@ is recorded durably first and picked up by a scheduled job.
   asked to run it, and `ReportCalculationSweeper` re-triggers anything left `PENDING`.
 - **Webhook callbacks** are delivered on their own bounded executor, fire-and-forget.
 - **Notifications** are written to the `notification-outbox` CouchDB database and delivered by
-  `NotificationOutboxDrainJob`, which owns the retry and backoff policy.
+  `NotificationOutboxDrainJob`, through the generic `OutboxDrainer` that owns the retry and backoff
+  policy (see `common/outbox/README.md`).

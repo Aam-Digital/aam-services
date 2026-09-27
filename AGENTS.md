@@ -348,9 +348,10 @@ picked up by a scheduled job. Pick by what the work needs:
 - **Must not block the caller, may be lost** — a bounded `ThreadPoolTaskExecutor` bean, with the
   backlog bounded on purpose so a saturated executor rejects instead of growing without limit
   (see the webhook delivery executor in `ReportingNotificationConfiguration`).
-- **Must not be lost** — write the work to CouchDB first, then let a `@Scheduled` job pick it up
-  and own the retry policy (see `NotificationOutboxDrainer`). Derive the document id from whatever
-  caused the work so a replay is idempotent rather than a duplicate.
+- **Must not be lost** — `enqueue` it in an `Outbox` and implement only an `OutboxHandler` that
+  delivers one payload; the generic `OutboxDrainer`, triggered by a `@Scheduled` job, owns the retry
+  policy (see `common/outbox/README.md`). Derive the key from whatever caused the work so a replay
+  is idempotent rather than a duplicate.
 - **Reacting to data changes** — declare a `DocumentChangeHandler` bean with a unique, never-renamed
   `consumerName` (it names the handler's persisted cursor). Each handler is polled on its own thread
   with its own cursor, and runs synchronously on it, so it must answer from memory, hand real work to

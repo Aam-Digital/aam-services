@@ -6,10 +6,14 @@ import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
+import com.aamdigital.aambackendservice.common.outbox.Outbox
+import com.aamdigital.aambackendservice.common.outbox.OutboxDrainer
+import com.aamdigital.aambackendservice.common.outbox.OutboxRetryPolicy
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationEmailEnabled
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationFirebaseMode
+import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.config.DefaultNotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
@@ -20,8 +24,7 @@ import com.aamdigital.aambackendservice.notification.core.create.email.EmailCrea
 import com.aamdigital.aambackendservice.notification.core.create.email.KeycloakUserEmailProvider
 import com.aamdigital.aambackendservice.notification.core.create.email.UserEmailProvider
 import com.aamdigital.aambackendservice.notification.core.create.push.PushCreateNotificationHandler
-import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxDrainer
-import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxRepository
+import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxHandler
 import com.aamdigital.aambackendservice.notification.core.outbox.OutboxUserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
@@ -44,6 +47,10 @@ import java.time.Duration
 @Configuration
 @ConditionalOnNotificationApiEnabled
 class NotificationConfiguration {
+    companion object {
+        const val NOTIFICATION_OUTBOX_DATABASE = "notification-outbox"
+    }
+
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @Bean
@@ -122,43 +129,53 @@ class NotificationConfiguration {
         )
 
     @Bean("notification-outbox-database-request")
-    fun notificationOutboxDatabaseRequest(): DatabaseRequest =
-        DatabaseRequest(NotificationOutboxRepository.OUTBOX_DATABASE)
+    fun notificationOutboxDatabaseRequest(): DatabaseRequest = DatabaseRequest(NOTIFICATION_OUTBOX_DATABASE)
 
     @Bean
-    fun notificationOutboxRepository(
+    fun notificationOutbox(
         couchDbClient: CouchDbClient,
-        couchDbInitializer: CouchDbInitializer
-    ): NotificationOutboxRepository =
-        NotificationOutboxRepository(
+        couchDbInitializer: CouchDbInitializer,
+        objectMapper: ObjectMapper
+    ): Outbox<CreateUserNotificationEvent> =
+        Outbox(
+            database = NOTIFICATION_OUTBOX_DATABASE,
+            payloadType = CreateUserNotificationEvent::class,
             couchDbClient = couchDbClient,
-            couchDbInitializer = couchDbInitializer
+            couchDbInitializer = couchDbInitializer,
+            objectMapper = objectMapper
         )
 
     @Bean
+    fun notificationOutboxHandler(createNotificationUseCase: CreateNotificationUseCase): NotificationOutboxHandler =
+        NotificationOutboxHandler(createNotificationUseCase = createNotificationUseCase)
+
+    @Bean
     fun outboxUserNotificationPublisher(
-        notificationOutboxRepository: NotificationOutboxRepository,
-        createNotificationUseCase: CreateNotificationUseCase
+        notificationOutbox: Outbox<CreateUserNotificationEvent>,
+        notificationOutboxHandler: NotificationOutboxHandler
     ): UserNotificationPublisher =
         OutboxUserNotificationPublisher(
-            notificationOutboxRepository = notificationOutboxRepository,
-            createNotificationUseCase = createNotificationUseCase
+            notificationOutbox = notificationOutbox,
+            notificationOutboxHandler = notificationOutboxHandler
         )
 
     @Bean
     fun notificationOutboxDrainer(
-        notificationOutboxRepository: NotificationOutboxRepository,
-        createNotificationUseCase: CreateNotificationUseCase,
+        notificationOutbox: Outbox<CreateUserNotificationEvent>,
+        notificationOutboxHandler: NotificationOutboxHandler,
         @Value("\${notification.outbox.max-attempts:3}") maxAttempts: Int,
         @Value("\${notification.outbox.retry-initial-interval-seconds:10}") retryInitialIntervalSeconds: Long,
         @Value("\${notification.outbox.retry-max-interval-seconds:60}") retryMaxIntervalSeconds: Long
-    ): NotificationOutboxDrainer =
-        NotificationOutboxDrainer(
-            notificationOutboxRepository = notificationOutboxRepository,
-            createNotificationUseCase = createNotificationUseCase,
-            maxAttempts = maxAttempts,
-            initialRetryInterval = Duration.ofSeconds(retryInitialIntervalSeconds),
-            maxRetryInterval = Duration.ofSeconds(retryMaxIntervalSeconds)
+    ): OutboxDrainer<CreateUserNotificationEvent> =
+        OutboxDrainer(
+            outbox = notificationOutbox,
+            handler = notificationOutboxHandler,
+            retryPolicy =
+                OutboxRetryPolicy(
+                    maxAttempts = maxAttempts,
+                    initialInterval = Duration.ofSeconds(retryInitialIntervalSeconds),
+                    maxInterval = Duration.ofSeconds(retryMaxIntervalSeconds)
+                )
         )
 
     @Bean
