@@ -30,6 +30,7 @@ import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificatio
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.core.trigger.DefaultApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.core.trigger.NotificationDocumentChangeHandler
+import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.repository.CouchDbUserDeviceRepository
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -96,25 +97,22 @@ class NotificationConfiguration {
         userNotificationPublisher: UserNotificationPublisher,
         permissionCheckClient: PermissionCheckClient,
         applicationConfig: ApplicationConfig,
-        @Value("\${features.notification-api.email.enabled:false}") emailEnabled: Boolean,
-        @Value("\${keycloak.server-url:}") keycloakServerUrl: String,
-        @Value("\${features.notification-api.mode:}") notificationMode: String
+        createNotificationHandlers: List<CreateNotificationHandler>
     ): ApplyNotificationRulesUseCase {
-        // Only emit EMAIL events when an EmailCreateNotificationHandler can exist. That handler requires both
-        // the email feature flag and a configured Keycloak (used to resolve recipient addresses) — the same
-        // gates applied to the handler bean below. Emitting EMAIL events without a handler turns them into
-        // outbox entries that can never be delivered and are retried on every restart.
-        val emailHandlerAvailable = emailEnabled && keycloakServerUrl.isNotBlank()
-        // Same reasoning for PUSH: PushCreateNotificationHandler only exists in firebase mode
-        // (see @ConditionalOnNotificationFirebaseMode on the bean below).
-        val pushHandlerAvailable = notificationMode == "firebase"
+        // Only emit a channel that a registered handler can deliver: an event without a handler turns
+        // into an outbox entry that can never be delivered and is retried on every restart. Asking the
+        // handlers keeps this in step with their bean conditions (email feature flag plus Keycloak,
+        // firebase mode for push) instead of repeating those conditions here.
+        fun handlerExistsFor(channel: NotificationChannelType) =
+            createNotificationHandlers.any { handler -> handler.canHandle(channel) }
+
         return DefaultApplyNotificationRulesUseCase(
             notificationConfigCache = notificationConfigCache,
             userNotificationPublisher = userNotificationPublisher,
             permissionCheckClient = permissionCheckClient,
             applicationConfig = applicationConfig,
-            emailEnabled = emailHandlerAvailable,
-            pushEnabled = pushHandlerAvailable
+            emailEnabled = handlerExistsFor(NotificationChannelType.EMAIL),
+            pushEnabled = handlerExistsFor(NotificationChannelType.PUSH)
         )
     }
 
