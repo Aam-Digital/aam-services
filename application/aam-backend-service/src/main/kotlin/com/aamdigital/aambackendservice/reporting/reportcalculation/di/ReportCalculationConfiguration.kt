@@ -4,6 +4,7 @@ import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.common.domain.FileStorage
 import com.aamdigital.aambackendservice.common.execution.BoundedTaskRunner
+import com.aamdigital.aambackendservice.common.execution.InlineRetry
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
@@ -74,12 +75,15 @@ class ReportCalculationConfiguration {
         completionRetryInitialIntervalMillis: Long
     ): ReportCalculationProcessor =
         ReportCalculationProcessor(
-            observationRegistry,
-            reportCalculationUseCase,
-            objectMapper,
-            reportCalculationChangeUseCase,
-            completionRetryAttempts,
-            Duration.ofMillis(completionRetryInitialIntervalMillis)
+            observationRegistry = observationRegistry,
+            reportCalculationUseCase = reportCalculationUseCase,
+            objectMapper = objectMapper,
+            reportCalculationChangeUseCase = reportCalculationChangeUseCase,
+            completionRetry =
+                InlineRetry(
+                    attempts = completionRetryAttempts,
+                    initialInterval = Duration.ofMillis(completionRetryInitialIntervalMillis)
+                )
         )
 
     @Bean
@@ -101,6 +105,7 @@ class ReportCalculationConfiguration {
             reportCalculationStorage = reportCalculationStorage,
             reportCalculationTrigger = reportCalculationTrigger
         )
+
     @Bean("report-calculation-database-request")
     fun reportCalculationDatabaseRequest(): DatabaseRequest = DatabaseRequest("report-calculation")
 

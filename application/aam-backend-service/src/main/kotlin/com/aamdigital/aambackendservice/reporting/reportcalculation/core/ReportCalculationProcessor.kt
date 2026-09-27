@@ -2,13 +2,13 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.common.execution.InlineRetry
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.observation.Observation
 import io.micrometer.observation.ObservationRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.core.NestedExceptionUtils
-import java.time.Duration
 
 /**
  * Executes one stored report calculation and, when it produced a new result, notifies the webhooks
@@ -24,23 +24,18 @@ import java.time.Duration
  * Sentry alerts. That is why every exception is caught here rather than left to the task runner,
  * which would log it at ERROR.
  *
- * The webhook notification sits in its own try/catch with a bounded retry, because the calculation
- * is complete and persisted by then - failing to notify must not re-run it or re-status it. Three
- * attempts and then give up is the same disposition as before, when the failure was retried by the
- * listener retry policy and then dead-lettered to a queue nothing has ever drained.
+ * The webhook notification gets its own bounded [InlineRetry], because the calculation is complete
+ * and persisted by then - failing to notify must not re-run it or re-status it. Three attempts and
+ * then give up is the same disposition as before, when the failure was retried by the listener
+ * retry policy and then dead-lettered to a queue nothing has ever drained.
  */
 class ReportCalculationProcessor(
     val observationRegistry: ObservationRegistry,
     val reportCalculationUseCase: DefaultReportCalculationUseCase,
     val objectMapper: ObjectMapper,
     val reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
-    private val completionRetryAttempts: Int,
-    private val completionRetryInitialInterval: Duration
+    private val completionRetry: InlineRetry
 ) {
-    companion object {
-        private const val COMPLETION_RETRY_MULTIPLIER = 2L
-    }
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     fun process(reportCalculationId: String) {
@@ -113,58 +108,11 @@ class ReportCalculationProcessor(
             Observation.createNotStarted("report-calculation-completed-use-case", observationRegistry)
         observation.lowCardinalityKeyValue("reportCalculationId", reportCalculationId)
         observation.observe {
-            handleCompletionWithRetry(reportCalculationId)
-        }
-    }
-
-    private fun handleCompletionWithRetry(reportCalculationId: String) {
-        var interval = completionRetryInitialInterval
-
-        for (attempt in 1..completionRetryAttempts) {
-            try {
+            completionRetry.run(
+                "notifying webhook subscribers of completed report calculation $reportCalculationId"
+            ) {
                 reportCalculationChangeUseCase.handle(reportCalculationId)
-                return
-            } catch (ex: Exception) {
-                if (attempt >= completionRetryAttempts) {
-                    // ERROR so this is reported once to Sentry, grouped by its real cause
-                    val rootCause = NestedExceptionUtils.getMostSpecificCause(ex)
-                    logger.error(
-                        "Giving up notifying webhook subscribers of completed report calculation {} " +
-                            "after {} attempts: {}",
-                        reportCalculationId,
-                        completionRetryAttempts,
-                        rootCause.message,
-                        rootCause
-                    )
-                    return
-                }
-
-                logger.warn(
-                    "Could not notify webhook subscribers of completed report calculation {} " +
-                        "(attempt {} of {}), retrying in {}ms: {}",
-                    reportCalculationId,
-                    attempt,
-                    completionRetryAttempts,
-                    interval.toMillis(),
-                    ex.localizedMessage
-                )
-
-                sleepBeforeRetry(interval)
-                interval = interval.multipliedBy(COMPLETION_RETRY_MULTIPLIER)
             }
-        }
-    }
-
-    private fun sleepBeforeRetry(interval: Duration) {
-        if (interval.isZero || interval.isNegative) {
-            return
-        }
-
-        try {
-            Thread.sleep(interval.toMillis())
-        } catch (ex: InterruptedException) {
-            Thread.currentThread().interrupt()
-            logger.debug("interrupted while waiting to retry completion notification", ex)
         }
     }
 }

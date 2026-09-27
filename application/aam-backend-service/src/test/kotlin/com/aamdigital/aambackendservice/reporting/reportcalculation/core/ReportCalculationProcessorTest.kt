@@ -7,6 +7,7 @@ import ch.qos.logback.core.read.ListAppender
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.common.execution.InlineRetry
 import com.aamdigital.aambackendservice.reporting.report.sqs.SqsQueryStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
@@ -49,8 +50,7 @@ class ReportCalculationProcessorTest {
         reportCalculationUseCase = reportCalculationUseCase,
         objectMapper = jacksonObjectMapper(),
         reportCalculationChangeUseCase = reportCalculationChangeUseCase,
-        completionRetryAttempts = attempts,
-        completionRetryInitialInterval = interval
+        completionRetry = InlineRetry(attempts = attempts, initialInterval = interval)
     )
 
     private fun succeeds(reportCalculationId: String) {
