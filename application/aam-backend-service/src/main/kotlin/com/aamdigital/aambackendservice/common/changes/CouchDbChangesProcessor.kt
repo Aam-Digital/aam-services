@@ -96,8 +96,6 @@ class CouchDbChangesProcessor(
                 queryParams = queryParams
             )
 
-        var cursor = syncEntry
-
         changes.results.forEach { couchDbChangeResult ->
             val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
 
@@ -115,8 +113,7 @@ class CouchDbChangesProcessor(
 
             // Saved per change, not per batch: a failure part way through then re-processes only
             // this one change instead of everything already handled in this batch.
-            cursor = cursor.copy(latestRef = couchDbChangeResult.seq)
-            syncRepository.save(cursor)
+            syncRepository.save(syncEntry.copy(latestRef = couchDbChangeResult.seq))
         }
 
         // Every save is a new CouchDB revision, and this runs every few seconds: an idle poll must
@@ -129,18 +126,23 @@ class CouchDbChangesProcessor(
     }
 
     /**
-     * Gives the change to the handler.
-     *
-     * The shared disposition - log and carry on, so one document a module fails on does not stall
-     * that module's feed - belongs to [AbstractDocumentChangeHandler] and is applied before an
-     * exception ever gets here. This catch is only a backstop, for a handler that implements
-     * [DocumentChangeHandler] directly or overrides its error handling with something that throws
-     * in turn; either way its cursor must still advance past the change.
+     * Gives the change to the handler, and is the one place that decides what a failure means for
+     * every handler: log it at ERROR and carry on, so one document a module fails on does not stall
+     * that module's feed. The cursor then advances past the change like after any other.
      */
     private fun handleChange(
         changeEvent: DocumentChangeEvent,
         handler: DocumentChangeHandler
     ) {
+        logger.trace(
+            "handing change to {}: db={}, documentId={}, rev={}, deleted={}",
+            handler.consumerName,
+            changeEvent.database,
+            changeEvent.documentId,
+            changeEvent.rev,
+            changeEvent.deleted
+        )
+
         try {
             handler.handle(changeEvent)
         } catch (ex: Exception) {
