@@ -26,7 +26,14 @@ enum class SkillLabFetchUserProfileUpdatesErrorCode : AamErrorCode {
  *
  * A profile that fails to sync is logged and skipped, never retried, and the sync cursor advances
  * regardless. Failing the whole fetch instead would hold the cursor back and turn one bad profile
- * into a stalled project-wide sync. Recovery is the next scheduled SkillLab re-sync.
+ * into a stalled project-wide sync.
+ *
+ * Known gap: the scheduled sync does **not** recover such a profile. It only fetches profiles
+ * changed since the cursor, so a skipped profile is synced again only once it changes in SkillLab
+ * again, or when an admin triggers a `FULL` sync (or a `DELTA` sync with an earlier `updatedFrom`)
+ * through `POST /v1/skill/sync/{projectId}`. Also, a sync that reaches [MAX_RESULTS_LIMIT] stops
+ * fetching, but the cursor still advances past the profiles it did not fetch. See
+ * `docs/modules/skill.md`.
  */
 class SkillLabFetchUserProfileUpdatesUseCase(
     private val skillLabClient: SkillLabClient,
