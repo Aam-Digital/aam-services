@@ -24,7 +24,7 @@ import org.springframework.http.HttpHeaders
  * The drainer can only deliver what it can read back, so a notification must survive being stored
  * in the outbox with the mapper the application uses.
  */
-class NotificationOutboxStorageTest {
+class NotificationOutboxSerializationTest {
     private val couchDbClient = mock<CouchDbClient>()
     private val objectMapper = ObjectMapperConfiguration().objectMapper()
 
