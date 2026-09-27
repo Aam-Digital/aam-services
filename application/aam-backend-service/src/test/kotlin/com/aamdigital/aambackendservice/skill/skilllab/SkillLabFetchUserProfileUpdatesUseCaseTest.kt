@@ -19,12 +19,14 @@ import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.domain.Pageable
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -264,5 +266,24 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         ).save(
             any()
         )
+    }
+
+    @Test
+    fun `should store the time the sync started, so profiles changed during the fetch are fetched again`() {
+        // given
+        var fetchedAt: Instant? = null
+        whenever(skillLabClient.fetchUserProfiles(any(), anyOrNull())).thenAnswer {
+            Thread.sleep(5)
+            fetchedAt = Instant.now()
+            listOf(DomainReference("user-profile-1"))
+        }
+
+        // when
+        service.run(FetchUserProfileUpdatesRequest(projectId = "1"))
+
+        // then
+        val captor = argumentCaptor<SkillLabUserProfileSyncEntity>()
+        verify(skillLabUserProfileSyncRepository).save(captor.capture())
+        assertThat(captor.firstValue.latestSync.toInstant()).isBefore(fetchedAt)
     }
 }

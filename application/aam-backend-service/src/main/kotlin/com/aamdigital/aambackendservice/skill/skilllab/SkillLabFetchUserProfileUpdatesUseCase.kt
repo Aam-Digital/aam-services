@@ -39,6 +39,9 @@ class SkillLabFetchUserProfileUpdatesUseCase(
     }
 
     override fun apply(request: FetchUserProfileUpdatesRequest): UseCaseOutcome<FetchUserProfileUpdatesData> {
+        // taken before fetching, so a profile that changes while this sync runs is fetched again by
+        // the next one instead of falling between the two
+        val syncStartedAt = Instant.now().atOffset(ZoneOffset.UTC)
         val results = mutableListOf<DomainReference>()
         var currentSync = skillLabUserProfileSyncRepository.findByProjectId(request.projectId).getOrNull()
         var page = 1
@@ -63,12 +66,12 @@ class SkillLabFetchUserProfileUpdatesUseCase(
         results.forEach { userProfile -> syncUserProfile(request.projectId, userProfile) }
 
         if (currentSync != null) {
-            currentSync.latestSync = Instant.now().atOffset(ZoneOffset.UTC)
+            currentSync.latestSync = syncStartedAt
         } else {
             currentSync =
                 SkillLabUserProfileSyncEntity(
                     projectId = request.projectId,
-                    latestSync = Instant.now().atOffset(ZoneOffset.UTC)
+                    latestSync = syncStartedAt
                 )
         }
 
