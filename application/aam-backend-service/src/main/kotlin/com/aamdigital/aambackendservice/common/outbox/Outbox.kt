@@ -115,12 +115,10 @@ class Outbox<P : Any>(
     }
 
     /** Entries with fewer than [maxAttempts] attempts: due or backing off, but not parked. */
-    fun fetchRetryable(maxAttempts: Int): List<OutboxEntry<P>> =
-        find(mapOf("attempts" to mapOf("\$lt" to maxAttempts)))
+    fun fetchRetryable(maxAttempts: Int): List<OutboxEntry<P>> = find(mapOf("attempts" to mapOf("\$lt" to maxAttempts)))
 
     /** Entries that have used up [maxAttempts] and are parked. */
-    fun fetchParked(maxAttempts: Int): List<OutboxEntry<P>> =
-        find(mapOf("attempts" to mapOf("\$gte" to maxAttempts)))
+    fun fetchParked(maxAttempts: Int): List<OutboxEntry<P>> = find(mapOf("attempts" to mapOf("\$gte" to maxAttempts)))
 
     /**
      * Returns an empty list when the database does not exist: nothing has ever been owed, or the

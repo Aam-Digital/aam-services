@@ -143,8 +143,7 @@ class DefaultCouchDbClientTest {
 
         assertThatThrownBy {
             couchDbClient.getDatabaseDocumentsByPrefix(database = "db", prefix = "P", kClass = Map::class)
-        }
-            .isInstanceOf(ExternalSystemException::class.java)
+        }.isInstanceOf(ExternalSystemException::class.java)
             .extracting { (it as ExternalSystemException).code }
             .isEqualTo(DefaultCouchDbClient.DefaultCouchDbClientErrorCode.PARSING_ERROR)
     }
