@@ -3,11 +3,11 @@ package com.aamdigital.aambackendservice.common.outbox
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
-import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.fasterxml.jackson.databind.JavaType
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
+import org.springframework.web.client.HttpClientErrorException
 import java.time.Clock
 import kotlin.reflect.KClass
 
@@ -19,8 +19,9 @@ import kotlin.reflect.KClass
  * and the drainer owns delivery and retries from there. See `README.md` in this package for how to
  * add an outbox.
  *
- * Entries are deleted once delivered, so in steady state the database is empty and listing it is
- * cheap. That is why [fetchAll] reads the whole key range rather than needing a Mango index.
+ * Entries are deleted once delivered, so the database is usually empty. Parked entries stay until
+ * they are delivered, though, and pile up for as long as their cause does (wrong SMTP credentials,
+ * say), so the frequent drain reads only [fetchRetryable] entries and never the parked ones.
  *
  * @param database name of the dedicated CouchDB database, also used to name this outbox in logs
  * @param payloadType what [OutboxEntry.payload] is read back as
@@ -113,21 +114,28 @@ class Outbox<P : Any>(
         couchDbClient.deleteDatabaseDocument(database = database, documentId = entryId)
     }
 
+    /** Entries with fewer than [maxAttempts] attempts: due or backing off, but not parked. */
+    fun fetchRetryable(maxAttempts: Int): List<OutboxEntry<P>> =
+        find(mapOf("attempts" to mapOf("\$lt" to maxAttempts)))
+
+    /** Entries that have used up [maxAttempts] and are parked. */
+    fun fetchParked(maxAttempts: Int): List<OutboxEntry<P>> =
+        find(mapOf("attempts" to mapOf("\$gte" to maxAttempts)))
+
     /**
-     * All entries currently in the outbox, whether due, backing off or parked.
-     *
      * Returns an empty list when the database does not exist: nothing has ever been owed, or the
      * database was dropped out from under us, and in both cases there is no pending work.
      */
-    fun fetchAll(): List<OutboxEntry<P>> =
+    private fun find(selector: Map<String, Any>): List<OutboxEntry<P>> =
         try {
             couchDbClient
-                .getDatabaseDocumentsByPrefix(
+                .findDatabaseDocumentsByPrefix(
                     database = database,
                     prefix = OutboxEntry.ID_PREFIX,
+                    selector = selector,
                     kClass = JsonNode::class
                 ).map { document -> objectMapper.convertValue<OutboxEntry<P>>(document, entryType) }
-        } catch (ex: NotFoundException) {
+        } catch (ex: HttpClientErrorException.NotFound) {
             logger.debug("No {} database yet, nothing is waiting", database, ex)
             emptyList()
         }

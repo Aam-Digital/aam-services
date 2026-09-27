@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.common.outbox
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
@@ -77,7 +78,7 @@ class OutboxDrainerTest {
     fun `should delete the entry once it has been delivered`() {
         // Given a handler need not be idempotent, so a delivered entry must not be seen again
         val outboxEntry = entry()
-        whenever(outbox.fetchAll()).thenReturn(listOf(outboxEntry))
+        whenever(outbox.fetchRetryable(maxAttempts)).thenReturn(listOf(outboxEntry))
         whenever(handler.deliver(any())).thenReturn(OutboxDeliveryResult.Delivered)
 
         // When
@@ -91,7 +92,8 @@ class OutboxDrainerTest {
     @Test
     fun `should not attempt an entry whose next attempt is still in the future`() {
         // Given
-        whenever(outbox.fetchAll()).thenReturn(listOf(entry(attempts = 1, nextAttemptAt = now.plusSeconds(10))))
+        whenever(outbox.fetchRetryable(maxAttempts))
+            .thenReturn(listOf(entry(attempts = 1, nextAttemptAt = now.plusSeconds(10))))
 
         // When
         drainer().drain()
@@ -103,7 +105,7 @@ class OutboxDrainerTest {
     @Test
     fun `should back off with a growing interval after a transient failure`() {
         // Given
-        whenever(outbox.fetchAll()).thenReturn(listOf(entry(attempts = 1)))
+        whenever(outbox.fetchRetryable(maxAttempts)).thenReturn(listOf(entry(attempts = 1)))
         whenever(handler.deliver(any())).thenReturn(OutboxDeliveryResult.RetryLater("SMTP connection failed"))
 
         // When
@@ -120,7 +122,7 @@ class OutboxDrainerTest {
     @Test
     fun `should park the entry immediately when the handler rejects it`() {
         // Given a rejection can never succeed, so it must not consume the retry budget
-        whenever(outbox.fetchAll()).thenReturn(listOf(entry()))
+        whenever(outbox.fetchRetryable(maxAttempts)).thenReturn(listOf(entry()))
         whenever(handler.deliver(any()))
             .thenReturn(OutboxDeliveryResult.Rejected("No Handler for this NotificationChannelType"))
 
@@ -137,7 +139,7 @@ class OutboxDrainerTest {
     @Test
     fun `should park the entry when the handler throws`() {
         // Given
-        whenever(outbox.fetchAll()).thenReturn(listOf(entry()))
+        whenever(outbox.fetchRetryable(maxAttempts)).thenReturn(listOf(entry()))
         whenever(handler.deliver(any())).thenThrow(IllegalStateException("boom"))
 
         // When
@@ -153,7 +155,7 @@ class OutboxDrainerTest {
     fun `should park a delivered entry it could not delete rather than deliver it again next tick`() {
         // Given
         val outboxEntry = entry()
-        whenever(outbox.fetchAll()).thenReturn(listOf(outboxEntry))
+        whenever(outbox.fetchRetryable(maxAttempts)).thenReturn(listOf(outboxEntry))
         whenever(handler.deliver(any())).thenReturn(OutboxDeliveryResult.Delivered)
         doThrow(IllegalStateException("couchdb unreachable")).whenever(outbox).delete(any())
 
@@ -167,7 +169,7 @@ class OutboxDrainerTest {
     @Test
     fun `should park the entry once the transient retries are exhausted`() {
         // Given
-        whenever(outbox.fetchAll()).thenReturn(listOf(entry(attempts = maxAttempts - 1)))
+        whenever(outbox.fetchRetryable(maxAttempts)).thenReturn(listOf(entry(attempts = maxAttempts - 1)))
         whenever(handler.deliver(any())).thenReturn(OutboxDeliveryResult.RetryLater("SMTP connection failed"))
 
         // When
@@ -181,7 +183,7 @@ class OutboxDrainerTest {
     fun `should retry parked entries once per process so a restart recovers them`() {
         // Given this is the documented recovery path: fix the cause, restart the service, and held
         // entries are retried once - without turning into a hot retry loop.
-        whenever(outbox.fetchAll()).thenReturn(listOf(entry(attempts = maxAttempts)))
+        whenever(outbox.fetchParked(maxAttempts)).thenReturn(listOf(entry(attempts = maxAttempts)))
         val drainer = drainer()
 
         // When
@@ -189,18 +191,48 @@ class OutboxDrainerTest {
         drainer.drain()
 
         // Then
+        verify(outbox, times(1)).fetchParked(maxAttempts)
         val captor = argumentCaptor<OutboxEntry<TestPayload>>()
         verify(outbox, times(1)).store(captor.capture())
         assertThat(captor.firstValue.attempts).isEqualTo(0)
         assertThat(captor.firstValue.nextAttemptAt).isEqualTo(now)
-        // the un-parked entry is only attempted on a later tick, once it has been re-read
-        verify(handler, never()).deliver(any())
+    }
+
+    @Test
+    fun `should still un-park after a restart when the parked entries could not be read at first`() {
+        // Given CouchDB is unreachable on the first tick after the restart
+        whenever(outbox.fetchParked(maxAttempts))
+            .thenThrow(IllegalStateException("couchdb unreachable"))
+            .thenReturn(listOf(entry(attempts = maxAttempts)))
+        val drainer = drainer()
+
+        // When the first tick fails (the job's backoff handles it) and a later one succeeds
+        assertThatThrownBy { drainer.drain() }.hasMessage("couchdb unreachable")
+        drainer.drain()
+
+        // Then
+        assertThat(storedEntry().attempts).isEqualTo(0)
+    }
+
+    @Test
+    fun `should never read parked entries on a regular tick`() {
+        // Given parked entries pile up while their cause lasts, and the drain runs every few seconds
+        val drainer = drainer()
+
+        // When
+        drainer.drain()
+        drainer.drain()
+        drainer.drain()
+
+        // Then
+        verify(outbox, times(1)).fetchParked(maxAttempts)
+        verify(outbox, times(3)).fetchRetryable(maxAttempts)
     }
 
     @Test
     fun `should do nothing when the outbox is empty`() {
         // Given
-        whenever(outbox.fetchAll()).thenReturn(emptyList())
+        whenever(outbox.fetchRetryable(maxAttempts)).thenReturn(emptyList())
 
         // When
         drainer().drain()

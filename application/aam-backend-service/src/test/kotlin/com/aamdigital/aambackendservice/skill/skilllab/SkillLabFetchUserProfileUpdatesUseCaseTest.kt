@@ -19,12 +19,14 @@ import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.domain.Pageable
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -109,41 +111,16 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
 
-        verify(
-            syncUserProfileUseCase,
-            times(1)
-        ).run(
-            eq(
-                SyncUserProfileRequest(
-                    userProfile = DomainReference("user-profile-1"),
-                    project = DomainReference("1")
+        listOf("user-profile-1", "user-profile-2", "user-profile-3").forEach { userProfileId ->
+            verify(syncUserProfileUseCase, times(1)).run(
+                eq(
+                    SyncUserProfileRequest(
+                        userProfile = DomainReference(userProfileId),
+                        project = DomainReference("1")
+                    )
                 )
             )
-        )
-
-        verify(
-            syncUserProfileUseCase,
-            times(1)
-        ).run(
-            eq(
-                SyncUserProfileRequest(
-                    userProfile = DomainReference("user-profile-2"),
-                    project = DomainReference("1")
-                )
-            )
-        )
-
-        verify(
-            syncUserProfileUseCase,
-            times(1)
-        ).run(
-            eq(
-                SyncUserProfileRequest(
-                    userProfile = DomainReference("user-profile-3"),
-                    project = DomainReference("1")
-                )
-            )
-        )
+        }
     }
 
     @Test
@@ -183,9 +160,8 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
     }
 
     @Test
-    fun `should keep syncing the remaining profiles and succeed when one profile fails to sync`() {
-        // given one unsyncable profile must not abort the fetch, or it would hold back the sync
-        // cursor for the whole project
+    fun `should sync the remaining UserProfiles and advance the cursor when one fails to sync`() {
+        // given one profile that cannot be synced must not stall the project-wide sync
         whenever(
             skillLabClient.fetchUserProfiles(
                 any(),
@@ -216,7 +192,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
         verify(syncUserProfileUseCase, times(2)).run(any())
-        verify(skillLabUserProfileSyncRepository).save(any())
+        verify(skillLabUserProfileSyncRepository, times(1)).save(any())
     }
 
     @Test
@@ -290,5 +266,24 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         ).save(
             any()
         )
+    }
+
+    @Test
+    fun `should store the time the sync started, so profiles changed during the fetch are fetched again`() {
+        // given
+        var fetchedAt: Instant? = null
+        whenever(skillLabClient.fetchUserProfiles(any(), anyOrNull())).thenAnswer {
+            Thread.sleep(5)
+            fetchedAt = Instant.now()
+            listOf(DomainReference("user-profile-1"))
+        }
+
+        // when
+        service.run(FetchUserProfileUpdatesRequest(projectId = "1"))
+
+        // then
+        val captor = argumentCaptor<SkillLabUserProfileSyncEntity>()
+        verify(skillLabUserProfileSyncRepository).save(captor.capture())
+        assertThat(captor.firstValue.latestSync.toInstant()).isBefore(fetchedAt)
     }
 }

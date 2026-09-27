@@ -21,7 +21,12 @@ enum class SkillLabFetchUserProfileUpdatesErrorCode : AamErrorCode {
 }
 
 /**
- * Fetch latest changes for this SkillLab tenant and sync each changed UserProfile
+ * Fetches the user profiles that changed in this SkillLab tenant since the last sync, and syncs each
+ * one with [SyncUserProfileUseCase].
+ *
+ * A profile that fails to sync is logged and skipped, never retried, and the sync cursor advances
+ * regardless. Failing the whole fetch instead would hold the cursor back and turn one bad profile
+ * into a stalled project-wide sync. Recovery is the next scheduled SkillLab re-sync.
  */
 class SkillLabFetchUserProfileUpdatesUseCase(
     private val skillLabClient: SkillLabClient,
@@ -34,6 +39,9 @@ class SkillLabFetchUserProfileUpdatesUseCase(
     }
 
     override fun apply(request: FetchUserProfileUpdatesRequest): UseCaseOutcome<FetchUserProfileUpdatesData> {
+        // taken before fetching, so a profile that changes while this sync runs is fetched again by
+        // the next one instead of falling between the two
+        val syncStartedAt = Instant.now().atOffset(ZoneOffset.UTC)
         val results = mutableListOf<DomainReference>()
         var currentSync = skillLabUserProfileSyncRepository.findByProjectId(request.projectId).getOrNull()
         var page = 1
@@ -58,12 +66,12 @@ class SkillLabFetchUserProfileUpdatesUseCase(
         results.forEach { userProfile -> syncUserProfile(request.projectId, userProfile) }
 
         if (currentSync != null) {
-            currentSync.latestSync = Instant.now().atOffset(ZoneOffset.UTC)
+            currentSync.latestSync = syncStartedAt
         } else {
             currentSync =
                 SkillLabUserProfileSyncEntity(
                     projectId = request.projectId,
-                    latestSync = Instant.now().atOffset(ZoneOffset.UTC)
+                    latestSync = syncStartedAt
                 )
         }
 
@@ -80,12 +88,6 @@ class SkillLabFetchUserProfileUpdatesUseCase(
         )
     }
 
-    /**
-     * A failed sync is logged and skipped, never retried: failing the fetch instead would hold the
-     * sync cursor back, turning one bad profile into a stalled project-wide sync. Since the cursor
-     * advances past it, the profile is only synced again once it changes in SkillLab, or by a
-     * `FULL` sync through the skill admin API.
-     */
     private fun syncUserProfile(
         projectId: String,
         userProfile: DomainReference
