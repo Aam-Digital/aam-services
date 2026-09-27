@@ -68,7 +68,6 @@ class ReportCalculationConfiguration {
     fun reportCalculationProcessor(
         observationRegistry: ObservationRegistry,
         reportCalculationUseCase: DefaultReportCalculationUseCase,
-        objectMapper: ObjectMapper,
         reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
         @Value("\${report-calculation-completion.retry-attempts:3}") completionRetryAttempts: Int,
         @Value("\${report-calculation-completion.retry-initial-interval-millis:1000}")
@@ -77,7 +76,6 @@ class ReportCalculationConfiguration {
         ReportCalculationProcessor(
             observationRegistry = observationRegistry,
             reportCalculationUseCase = reportCalculationUseCase,
-            objectMapper = objectMapper,
             reportCalculationChangeUseCase = reportCalculationChangeUseCase,
             completionRetry =
                 InlineRetry(

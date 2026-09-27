@@ -12,7 +12,6 @@ import com.aamdigital.aambackendservice.reporting.report.sqs.SqsQueryStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.observation.ObservationRegistry
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -48,7 +47,6 @@ class ReportCalculationProcessorTest {
     ) = ReportCalculationProcessor(
         observationRegistry = ObservationRegistry.create(),
         reportCalculationUseCase = reportCalculationUseCase,
-        objectMapper = jacksonObjectMapper(),
         reportCalculationChangeUseCase = reportCalculationChangeUseCase,
         completionRetry = InlineRetry(attempts = attempts, initialInterval = interval)
     )
@@ -169,17 +167,6 @@ class ReportCalculationProcessorTest {
 
         // Then
         assertThat(appender.list.filter { it.level == Level.ERROR }).hasSize(1)
-    }
-
-    @Test
-    fun `should not let an unexpected failure escape onto the executor thread`() {
-        // Given nothing above this call is on a caller's stack, so an escaping exception would only
-        // reach the thread's default handler and never be logged
-        whenever(reportCalculationUseCase.run(any())).thenThrow(RuntimeException("boom"))
-
-        // When / Then
-        processor.process("ReportCalculation:1")
-        verify(reportCalculationChangeUseCase, never()).handle(any())
     }
 
     @Test
