@@ -50,10 +50,10 @@ class ReportingNotificationConfiguration {
      * drain, matching the best-effort flush `ReportCalculationDebouncer` does for its pending
      * triggers.
      */
-    @Bean("webhook-notification-executor")
-    fun webhookNotificationExecutor(): Executor =
+    @Bean("webhook-delivery-executor")
+    fun webhookDeliveryExecutor(): Executor =
         BoundedTaskRunner.threadPool(
-            name = "webhook-notification",
+            name = "webhook-delivery",
             concurrency = WEBHOOK_DELIVERY_CONCURRENCY,
             backlog = WEBHOOK_DELIVERY_BACKLOG,
             shutdownTimeout = WEBHOOK_DELIVERY_SHUTDOWN_TIMEOUT
@@ -116,11 +116,11 @@ class ReportingNotificationConfiguration {
     fun notificationService(
         webhookStorage: WebhookStorage,
         triggerWebhookUseCase: TriggerWebhookUseCase,
-        @Qualifier("webhook-notification-executor") webhookNotificationExecutor: Executor
+        @Qualifier("webhook-delivery-executor") webhookDeliveryExecutor: Executor
     ): NotificationService =
         NotificationService(
             webhookStorage = webhookStorage,
             triggerWebhookUseCase = triggerWebhookUseCase,
-            webhookDeliveryRunner = BoundedTaskRunner("webhook-delivery", webhookNotificationExecutor)
+            webhookDeliveryRunner = BoundedTaskRunner("webhook-delivery", webhookDeliveryExecutor)
         )
 }
