@@ -14,15 +14,15 @@ import java.time.Duration
  * Executes one stored report calculation and, when it produced a new result, notifies the webhooks
  * subscribed to that report.
  *
- * Called on the report calculation executor (see [ExecutorReportCalculationTrigger]), so it must
- * never let an exception escape: there is no caller to handle it, and the executor's thread would
- * only hand it to the default handler. A failed calculation is already recorded on the calculation
- * document as `FINISHED_ERROR`, which is what the API serves.
+ * Called off the caller's thread (see [ExecutorReportCalculationTrigger]). A failed calculation is
+ * already recorded on the calculation document as `FINISHED_ERROR`, which is what the API serves,
+ * so this only has to log it.
  *
  * A calculation that failed on invalid input (an [InvalidArgumentException] anywhere in the cause
  * chain, e.g. a ReportConfig whose query SQS rejects) is logged at INFO rather than ERROR: it is a
  * configuration problem of the individual instance, not a backend defect, so it must not raise
- * Sentry alerts.
+ * Sentry alerts. That is why every exception is caught here rather than left to the task runner,
+ * which would log it at ERROR.
  *
  * The webhook notification sits in its own try/catch with a bounded retry, because the calculation
  * is complete and persisted by then - failing to notify must not re-run it or re-status it. Three

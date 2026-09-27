@@ -345,9 +345,10 @@ data class ModuleConfiguration(
 There is no message broker. Work is either handed to a bounded executor or recorded durably and
 picked up by a scheduled job. Pick by what the work needs:
 
-- **Must not block the caller, may be lost** — a bounded `ThreadPoolTaskExecutor` bean, with the
-  backlog bounded on purpose so a saturated executor rejects instead of growing without limit
-  (see the webhook delivery executor in `ReportingNotificationConfiguration`).
+- **Must not block the caller, may be lost** — a `BoundedTaskRunner` over a
+  `BoundedTaskRunner.threadPool(...)` bean: bounded concurrency and backlog, so a saturated executor
+  rejects instead of growing without limit; the runner reports the rejection, logs failures and
+  tracks what is in flight (see `ReportingNotificationConfiguration`).
 - **Must not be lost** — `enqueue` it in an `Outbox` and implement only an `OutboxHandler` that
   delivers one payload; the generic `OutboxDrainer`, triggered by a `@Scheduled` job, owns the retry
   policy (see `common/outbox/README.md`). Derive the key from whatever caused the work so a replay

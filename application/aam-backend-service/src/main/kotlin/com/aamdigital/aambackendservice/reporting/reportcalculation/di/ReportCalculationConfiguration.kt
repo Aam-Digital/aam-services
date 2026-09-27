@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.di
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.common.domain.FileStorage
+import com.aamdigital.aambackendservice.common.execution.BoundedTaskRunner
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
@@ -29,7 +30,6 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import java.time.Duration
 import java.util.concurrent.Executor
 
@@ -39,33 +39,29 @@ class ReportCalculationConfiguration {
     companion object {
         /**
          * A calculation holds an SQS query open for seconds to minutes and SQS is effectively
-         * single-threaded, so only a few may run at once. These bounds reproduce the concurrency
-         * cap the `report.calculation` queue's consumers used to provide.
+         * single-threaded, so only a few may run at once. The `report.calculation` queue's
+         * consumers scaled between 2 and 5 under load; this runs 2 at a time.
          */
-        private const val CALCULATION_EXECUTOR_CORE_POOL_SIZE = 2
-        private const val CALCULATION_EXECUTOR_MAX_POOL_SIZE = 5
-        private const val CALCULATION_EXECUTOR_QUEUE_CAPACITY = 500
-        private const val CALCULATION_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 60
+        private const val CALCULATION_CONCURRENCY = 2
+        private const val CALCULATION_BACKLOG = 500
+        private val CALCULATION_SHUTDOWN_TIMEOUT: Duration = Duration.ofSeconds(60)
     }
 
     /**
      * Runs report calculations off the thread that requested them.
      *
-     * On shutdown, queued and in-flight calculations get
-     * [CALCULATION_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS] to finish; anything still queued stays
-     * `PENDING` and is picked up by [ReportCalculationSweeper] after the restart.
+     * On shutdown, queued and in-flight calculations get [CALCULATION_SHUTDOWN_TIMEOUT] to finish;
+     * anything still queued stays `PENDING` and is picked up by [ReportCalculationSweeper] after the
+     * restart.
      */
     @Bean("report-calculation-executor")
     fun reportCalculationExecutor(): Executor =
-        ThreadPoolTaskExecutor().apply {
-            corePoolSize = CALCULATION_EXECUTOR_CORE_POOL_SIZE
-            maxPoolSize = CALCULATION_EXECUTOR_MAX_POOL_SIZE
-            setQueueCapacity(CALCULATION_EXECUTOR_QUEUE_CAPACITY)
-            setThreadNamePrefix("report-calculation-")
-            setWaitForTasksToCompleteOnShutdown(true)
-            setAwaitTerminationSeconds(CALCULATION_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS)
-            initialize()
-        }
+        BoundedTaskRunner.threadPool(
+            name = "report-calculation",
+            concurrency = CALCULATION_CONCURRENCY,
+            backlog = CALCULATION_BACKLOG,
+            shutdownTimeout = CALCULATION_SHUTDOWN_TIMEOUT
+        )
 
     @Bean
     fun reportCalculationProcessor(
@@ -92,7 +88,7 @@ class ReportCalculationConfiguration {
         reportCalculationProcessor: ReportCalculationProcessor
     ): ReportCalculationTrigger =
         ExecutorReportCalculationTrigger(
-            reportCalculationExecutor = reportCalculationExecutor,
+            reportCalculationRunner = BoundedTaskRunner("report-calculation", reportCalculationExecutor),
             reportCalculationProcessor = reportCalculationProcessor
         )
 

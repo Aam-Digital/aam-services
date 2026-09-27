@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.webhook.core
 
 import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.execution.BoundedTaskRunner
 import com.aamdigital.aambackendservice.reporting.webhook.Webhook
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthentication
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthenticationType
@@ -32,6 +33,9 @@ class NotificationServiceTest {
     /** Runs submitted work inline, so the test can assert without waiting on a pool. */
     private val directExecutor = Executor { it.run() }
 
+    private fun service(executor: Executor) =
+        NotificationService(webhookStorage, triggerWebhookUseCase, BoundedTaskRunner("webhook-delivery", executor))
+
     private fun webhook(
         id: String,
         subscriptions: List<String>
@@ -58,7 +62,7 @@ class NotificationServiceTest {
                     webhook("Webhook:other", listOf("ReportConfig:2"))
                 )
             )
-        val service = NotificationService(webhookStorage, triggerWebhookUseCase, directExecutor)
+        val service = service(directExecutor)
 
         // When
         service.sendNotifications(DomainReference("ReportConfig:1"), DomainReference("ReportCalculation:1"))
@@ -77,7 +81,7 @@ class NotificationServiceTest {
         // calculation that produced the result, nor the request that registered the subscription.
         whenever(triggerWebhookUseCase.trigger(any()))
             .thenThrow(RuntimeException("subscriber unreachable"))
-        val service = NotificationService(webhookStorage, triggerWebhookUseCase, directExecutor)
+        val service = service(directExecutor)
 
         // When / Then
         service.triggerWebhook(
@@ -92,7 +96,7 @@ class NotificationServiceTest {
         // Given the backlog is bounded on purpose, so a saturated executor drops the callback
         // rather than blocking the caller.
         val rejectingExecutor = Executor { throw RejectedExecutionException("saturated") }
-        val service = NotificationService(webhookStorage, triggerWebhookUseCase, rejectingExecutor)
+        val service = service(rejectingExecutor)
 
         // When
         service.triggerWebhook(

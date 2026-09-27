@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.reporting.webhook.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.crypto.core.CryptoService
+import com.aamdigital.aambackendservice.common.execution.BoundedTaskRunner
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
@@ -21,7 +22,6 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import org.springframework.web.client.RestClient
 import java.time.Duration
 import java.util.concurrent.Executor
@@ -35,33 +35,29 @@ class ReportingNotificationConfiguration {
          * result: low volume, but each call is external and has no client timeout yet, so the pool
          * stays small and the backlog is bounded rather than unbounded like the queue it replaces.
          *
-         * Two core threads is a modest widening of the single `notification.webhook` consumer
-         * (`prefetch: 1`) this replaces; the pool grows to four only once the backlog fills.
+         * Two at a time is a modest widening of the single `notification.webhook` consumer
+         * (`prefetch: 1`) this replaces.
          */
-        private const val WEBHOOK_EXECUTOR_CORE_POOL_SIZE = 2
-        private const val WEBHOOK_EXECUTOR_MAX_POOL_SIZE = 4
-        private const val WEBHOOK_EXECUTOR_QUEUE_CAPACITY = 500
-        private const val WEBHOOK_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 30
+        private const val WEBHOOK_DELIVERY_CONCURRENCY = 2
+        private const val WEBHOOK_DELIVERY_BACKLOG = 500
+        private val WEBHOOK_DELIVERY_SHUTDOWN_TIMEOUT: Duration = Duration.ofSeconds(30)
     }
 
     /**
      * Delivers webhook callbacks off the caller's thread.
      *
-     * On shutdown, in-flight and queued callbacks are given
-     * [WEBHOOK_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS] to drain, matching the best-effort flush
-     * `ReportCalculationDebouncer` does for its pending triggers.
+     * On shutdown, in-flight and queued callbacks are given [WEBHOOK_DELIVERY_SHUTDOWN_TIMEOUT] to
+     * drain, matching the best-effort flush `ReportCalculationDebouncer` does for its pending
+     * triggers.
      */
     @Bean("webhook-notification-executor")
     fun webhookNotificationExecutor(): Executor =
-        ThreadPoolTaskExecutor().apply {
-            corePoolSize = WEBHOOK_EXECUTOR_CORE_POOL_SIZE
-            maxPoolSize = WEBHOOK_EXECUTOR_MAX_POOL_SIZE
-            setQueueCapacity(WEBHOOK_EXECUTOR_QUEUE_CAPACITY)
-            setThreadNamePrefix("webhook-notification-")
-            setWaitForTasksToCompleteOnShutdown(true)
-            setAwaitTerminationSeconds(WEBHOOK_EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS)
-            initialize()
-        }
+        BoundedTaskRunner.threadPool(
+            name = "webhook-notification",
+            concurrency = WEBHOOK_DELIVERY_CONCURRENCY,
+            backlog = WEBHOOK_DELIVERY_BACKLOG,
+            shutdownTimeout = WEBHOOK_DELIVERY_SHUTDOWN_TIMEOUT
+        )
 
     @Bean
     fun defaultAddWebhookSubscription(
@@ -121,5 +117,10 @@ class ReportingNotificationConfiguration {
         webhookStorage: WebhookStorage,
         triggerWebhookUseCase: TriggerWebhookUseCase,
         @Qualifier("webhook-notification-executor") webhookNotificationExecutor: Executor
-    ): NotificationService = NotificationService(webhookStorage, triggerWebhookUseCase, webhookNotificationExecutor)
+    ): NotificationService =
+        NotificationService(
+            webhookStorage = webhookStorage,
+            triggerWebhookUseCase = triggerWebhookUseCase,
+            webhookDeliveryRunner = BoundedTaskRunner("webhook-delivery", webhookNotificationExecutor)
+        )
 }

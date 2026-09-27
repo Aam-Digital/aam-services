@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
+import com.aamdigital.aambackendservice.common.execution.BoundedTaskRunner
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -18,14 +19,16 @@ class ExecutorReportCalculationTriggerTest {
     @Mock
     lateinit var reportCalculationProcessor: ReportCalculationProcessor
 
+    private fun triggerOn(executor: Executor) =
+        ExecutorReportCalculationTrigger(
+            reportCalculationRunner = BoundedTaskRunner("report-calculation", executor),
+            reportCalculationProcessor = reportCalculationProcessor
+        )
+
     @Test
     fun `should run the calculation on the executor`() {
         // Given
-        val trigger =
-            ExecutorReportCalculationTrigger(
-                reportCalculationExecutor = Executor { it.run() },
-                reportCalculationProcessor = reportCalculationProcessor
-            )
+        val trigger = triggerOn(Executor { it.run() })
 
         // When
         trigger.trigger("ReportCalculation:1")
@@ -38,11 +41,7 @@ class ExecutorReportCalculationTriggerTest {
     fun `should report a queued calculation as in flight and forget it once finished`() {
         // Given the sweeper tells a stuck calculation from a queued one by asking this
         val submitted = mutableListOf<Runnable>()
-        val trigger =
-            ExecutorReportCalculationTrigger(
-                reportCalculationExecutor = Executor { submitted.add(it) },
-                reportCalculationProcessor = reportCalculationProcessor
-            )
+        val trigger = triggerOn(Executor { submitted.add(it) })
 
         // When
         trigger.trigger("ReportCalculation:1")
@@ -61,11 +60,7 @@ class ExecutorReportCalculationTriggerTest {
     fun `should forget an in-flight calculation even when processing throws`() {
         // Given
         whenever(reportCalculationProcessor.process(any())).thenThrow(RuntimeException("boom"))
-        val trigger =
-            ExecutorReportCalculationTrigger(
-                reportCalculationExecutor = Executor { it.run() },
-                reportCalculationProcessor = reportCalculationProcessor
-            )
+        val trigger = triggerOn(Executor { it.run() })
 
         // When / Then: the sweeper would otherwise never reconsider it
         runCatching { trigger.trigger("ReportCalculation:1") }
@@ -75,11 +70,7 @@ class ExecutorReportCalculationTriggerTest {
     @Test
     fun `should not report a rejected calculation as in flight`() {
         // Given a rejected calculation stays PENDING and must be visible to the sweeper
-        val trigger =
-            ExecutorReportCalculationTrigger(
-                reportCalculationExecutor = Executor { throw RejectedExecutionException("saturated") },
-                reportCalculationProcessor = reportCalculationProcessor
-            )
+        val trigger = triggerOn(Executor { throw RejectedExecutionException("saturated") })
 
         // When
         trigger.trigger("ReportCalculation:1")
@@ -92,11 +83,7 @@ class ExecutorReportCalculationTriggerTest {
     fun `should not propagate a rejected submission so the calculation stays pending`() {
         // Given the backlog is bounded on purpose; a rejected calculation is left PENDING for
         // ReportCalculationSweeper to pick up rather than failing the caller
-        val trigger =
-            ExecutorReportCalculationTrigger(
-                reportCalculationExecutor = Executor { throw RejectedExecutionException("saturated") },
-                reportCalculationProcessor = reportCalculationProcessor
-            )
+        val trigger = triggerOn(Executor { throw RejectedExecutionException("saturated") })
 
         // When
         trigger.trigger("ReportCalculation:1")
