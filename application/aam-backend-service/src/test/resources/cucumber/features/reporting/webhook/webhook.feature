@@ -6,10 +6,10 @@ Feature: Webhook registration and subscription management
 
     # Guardrail (regression test for the silent webhook outage): a report calculation that finishes
     # successfully must deliver to its subscribed webhooks. This deliberately spans the full chain
-    # (calculation finished -> report.calculation.completed event -> notification -> notification.webhook
+    # (calculation triggered -> ReportCalculationProcessor -> completion handling -> NotificationService
     # -> webhook trigger). Because the e2e change-detection allowlist only polls `app`, a completed
     # calculation in the `report-calculation` database is NOT observed via the CouchDB changes feed here:
-    # this scenario therefore only passes when completion is announced by an explicit RabbitMQ event.
+    # this scenario therefore only passes when the processor announces completion itself.
     Scenario: A successfully finished report calculation triggers its subscribed webhook
         Given document ReportConfig_1 is stored in database app
         Given document Config_CONFIG_ENTITY is stored in database app

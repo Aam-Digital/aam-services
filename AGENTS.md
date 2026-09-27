@@ -95,7 +95,7 @@ module/
 ├── controller/       # REST endpoints
 ├── di/               # Configuration of dependency injection
 ├── storage/          # Repositories and data access
-├── queue/            # Message queue wiring with listeners and publishers
+├── job/              # @Scheduled jobs (thin: ScheduledJobBackoff around one call)
 ├── usecase/          # Domain logic and use cases
 └── README.md         # Module-specific developer documentation
 ```
@@ -360,7 +360,7 @@ picked up by a scheduled job. Pick by what the work needs:
 
 Every `@Scheduled` job wraps its body in `ScheduledJobBackoff` and gets a thread from
 `SchedulingConfiguration`'s pool, which is sized to the number of jobs, counting one change poller
-per `DocumentChangeHandler` - update `poolSize` when adding either.
+per `DocumentChangeHandler` - update its `SCHEDULED_TASKS` and job list when adding either.
 
 ---
 

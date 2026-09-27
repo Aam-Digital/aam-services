@@ -39,9 +39,10 @@ In the module's `@Configuration`, declare:
 2. the module's `OutboxHandler`;
 3. an `OutboxDrainer` bean combining both with an `OutboxRetryPolicy`.
 
-Then add a `@Scheduled` job that calls `drain()` inside `ScheduledJobBackoff`, and raise
-`SchedulingConfiguration`'s `poolSize` by one. The notification module is the reference: see
-`NotificationConfiguration`, `NotificationOutboxHandler` and `NotificationOutboxDrainJob`.
+Then add a `@Scheduled` job that calls `drain()` inside `ScheduledJobBackoff`, and add it to
+`SchedulingConfiguration`'s job list and `SCHEDULED_TASKS`. The notification module is the
+reference: see `NotificationConfiguration`, `NotificationOutboxHandler` and
+`NotificationOutboxDrainJob`.
 
 Keep the database out of `database-change-detection.included-databases` (it is an allowlist, so
 this is the default): every drain writes to it.

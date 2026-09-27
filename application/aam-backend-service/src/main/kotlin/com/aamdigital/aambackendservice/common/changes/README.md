@@ -41,8 +41,8 @@ finds no cursor and starts again from "now", skipping whatever changed in betwee
 what a newly enabled module does on its first poll.
 
 Add the module's feature flag to `ChangesConfiguration.AnyChangeConsumerEnabled` as well, so change
-detection itself turns on with it, and raise `SchedulingConfiguration`'s `poolSize` by one for the
-new polling task.
+detection itself turns on with it, and count the new polling task in `SchedulingConfiguration`'s
+`SCHEDULED_TASKS`.
 
 ## What a handler may do
 

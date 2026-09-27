@@ -7,7 +7,7 @@ import java.time.Duration
 /**
  * Caches only "which reports is any webhook subscribed to", for automatic change detection.
  *
- * [com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer] needs
+ * [com.aamdigital.aambackendservice.reporting.report.core.ReportDocumentChangeHandler] needs
  * this answer for every single document change, and reading it through
  * [WebhookStorage.fetchAllWebhooks] costs a CouchDB `_all_docs` request plus one AES decrypt per
  * webhook every time. This cache reads [WebhookEntity] documents directly instead, so it never

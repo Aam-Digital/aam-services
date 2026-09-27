@@ -103,7 +103,7 @@ class NotificationConfiguration {
         // Only emit EMAIL events when an EmailCreateNotificationHandler can exist. That handler requires both
         // the email feature flag and a configured Keycloak (used to resolve recipient addresses) — the same
         // gates applied to the handler bean below. Emitting EMAIL events without a handler turns them into
-        // poison messages that loop through the DLQ on every restart.
+        // outbox entries that can never be delivered and are retried on every restart.
         val emailHandlerAvailable = emailEnabled && keycloakServerUrl.isNotBlank()
         // Same reasoning for PUSH: PushCreateNotificationHandler only exists in firebase mode
         // (see @ConditionalOnNotificationFirebaseMode on the bean below).
