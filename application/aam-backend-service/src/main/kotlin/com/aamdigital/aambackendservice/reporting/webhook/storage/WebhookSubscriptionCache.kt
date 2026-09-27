@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.webhook.storage
 
+import com.aamdigital.aambackendservice.common.cache.LazySnapshot
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration
@@ -32,50 +33,28 @@ import java.time.Duration
  */
 class WebhookSubscriptionCache(
     private val webhookRepository: WebhookRepository,
-    private val ttl: Duration,
-    private val clock: Clock = Clock.systemUTC()
+    ttl: Duration,
+    clock: Clock = Clock.systemUTC()
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val cacheLock = Any()
 
-    private var subscribedReportIds: Set<String>? = null
-    private var loadedAtMillis: Long = 0
+    private val snapshot = LazySnapshot(ttl, clock) { loadSubscribedReportIds() }
 
     /**
      * Ids of all reports that at least one webhook is subscribed to.
      *
-     * Reloads from CouchDB when the cache is empty or older than [ttl], propagating the same
-     * failures [WebhookRepository.fetchAllWebhooks] does. The reload runs inside the lock: the only
-     * caller is the single-threaded reporting change-detection path, so there is no concurrency to
-     * trade away and two callers can never issue the same reload twice.
+     * Reloads from CouchDB when nothing is cached or the copy is older than the ttl, propagating
+     * the same failures [WebhookRepository.fetchAllWebhooks] does.
      */
-    fun subscribedReportIds(): Set<String> =
-        synchronized(cacheLock) {
-            val now = clock.millis()
-            val cached = subscribedReportIds
-
-            if (cached != null && now - loadedAtMillis < ttl.toMillis()) {
-                return cached
-            }
-
-            val reloaded =
-                webhookRepository
-                    .fetchAllWebhooks()
-                    .flatMap { entity -> entity.reportSubscriptions }
-                    .toSet()
-
-            subscribedReportIds = reloaded
-            loadedAtMillis = now
-
-            logger.trace("Loaded {} subscribed report ids into memory cache", reloaded.size)
-
-            reloaded
-        }
+    fun subscribedReportIds(): Set<String> = snapshot.get()
 
     /** Drops the cached snapshot so the next read goes to CouchDB. */
-    fun invalidate() {
-        synchronized(cacheLock) {
-            subscribedReportIds = null
-        }
-    }
+    fun invalidate() = snapshot.invalidate()
+
+    private fun loadSubscribedReportIds(): Set<String> =
+        webhookRepository
+            .fetchAllWebhooks()
+            .flatMap { entity -> entity.reportSubscriptions }
+            .toSet()
+            .also { loaded -> logger.trace("Loaded {} subscribed report ids into memory cache", loaded.size) }
 }

@@ -79,7 +79,6 @@ class DefaultNotificationConfigCacheTest {
         ).thenReturn(listOf(configDoc))
 
         // when
-        cache.refreshAll()
         val entries = cache.findAll()
 
         // then
@@ -94,7 +93,7 @@ class DefaultNotificationConfigCacheTest {
     @Test
     fun `should refresh one notification config in cache`() {
         // given the cache has already been loaded, with no configs yet
-        cache.refreshAll()
+        cache.findAll()
         whenever(
             couchDbClient.getDatabaseDocument(
                 database = eq("app"),
@@ -138,7 +137,7 @@ class DefaultNotificationConfigCacheTest {
     @Test
     fun `should remove notification config from cache when deleted`() {
         // given the cache has already been loaded, with no configs yet
-        cache.refreshAll()
+        cache.findAll()
         whenever(
             couchDbClient.getDatabaseDocument(
                 database = eq("tenant-db"),
@@ -176,7 +175,7 @@ class DefaultNotificationConfigCacheTest {
     @Test
     fun `should remove notification config when refresh fetch returns not found`() {
         // given the cache has already been loaded, with no configs yet
-        cache.refreshAll()
+        cache.findAll()
         whenever(
             couchDbClient.getDatabaseDocument(
                 database = eq("tenant-db"),
