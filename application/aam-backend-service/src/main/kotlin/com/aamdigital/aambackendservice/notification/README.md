@@ -7,9 +7,9 @@ _for details about setup & usage of this module [see README in docs folder](../.
 1. _Frontend_ (managed by the user through the UI) manages a custom `NotificationConfig:*` document in CouchDB for each user.
 2. _Frontend_ makes requests to `NotificationDeviceController` to register individual devices for Push Notifications, which are stored in the `NotificationDeviceRepository`.
     - The frontend also directly registers the device with Firebase Cloud Messaging (FCM)
-3. **DOCUMENT_CHANGES_NOTIFICATION_QUEUE** (shared across modules) provides an event whenever documents in the CouchDB change and `NotificationDocumentChangeConsumer` triggers:
+3. Change detection ([`common/changes`](../common/changes/README.md)) hands every document change in CouchDB to `NotificationDocumentChangeHandler`:
     1. `NotificationConfigCache` keeps notification trigger rules in memory.
-       (Cache is loaded from CouchDB on startup and refreshed whenever a `NotificationConfig:*` document changes)
+       (Cache is loaded from CouchDB on first use and refreshed whenever a `NotificationConfig:*` document changes)
     2. `ApplyNotificationRulesUseCase` checks if a notification rule is triggered.
 4. `ApplyNotificationRulesUseCase` runs on consumed `DocumentChangeEvent` and checks if any notification rule is triggered. In that case, it hands a `CreateUserNotificationEvent` per channel to the `UserNotificationPublisher`.
 5. `OutboxUserNotificationPublisher` writes the in-app notification immediately (it is a single idempotent CouchDB document, and it is what the user reads) and puts push and email — external calls with second-scale timeouts — into the `notification-outbox` database, a generic [`Outbox`](../common/outbox/README.md).

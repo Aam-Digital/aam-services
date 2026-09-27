@@ -5,31 +5,26 @@ import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.error.NotFoundException
-import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
 import java.nio.charset.StandardCharsets
 import java.util.UUID
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * CouchDB-backed in-memory implementation of [NotificationConfigCache].
  *
- * It preloads all `NotificationConfig:*` documents on startup and updates one entry
- * whenever a matching document change event is consumed.
+ * All `NotificationConfig:*` documents are loaded on first use, and one entry is updated whenever
+ * a matching document change is handled. Loading lazily rather than warming up at startup means
+ * the first change is never matched against a cache that has not finished loading - which used to
+ * drop that change's notifications silently - and a failed load throws, so it is logged as a failed
+ * change instead of looking like "no rule matched".
  */
 class DefaultNotificationConfigCache(
     private val couchDbClient: CouchDbClient,
     private val objectMapper: ObjectMapper,
-    private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine(),
-    private val scheduleRetry: (Long, () -> Unit) -> Unit = { delayMs, task ->
-        CompletableFuture.delayedExecutor(delayMs, TimeUnit.MILLISECONDS).execute(task)
-    }
+    private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
 ) : NotificationConfigCache {
     companion object {
         private const val DATABASE = "app"
@@ -39,69 +34,39 @@ class DefaultNotificationConfigCache(
     private val logger = LoggerFactory.getLogger(javaClass)
     private val cache = ConcurrentHashMap<String, NotificationConfigCacheEntry>()
     private val cacheLock = Any()
-    private val initStarted = AtomicBoolean(false)
-
-    @PostConstruct
-    fun init() {
-        if (!initStarted.compareAndSet(false, true)) {
-            return
-        }
-
-        scheduleInitAttempt(attempt = 1, delayMs = 0)
-    }
-
-    private fun scheduleInitAttempt(attempt: Int, delayMs: Long) {
-        scheduleRetry(delayMs) {
-            try {
-                refreshAll()
-                logger.debug("Notification config cache warmup completed")
-            } catch (ex: Exception) {
-                val retryDelayMs = ScheduledJobBackoff.calculateBackoffMs(attempt)
-
-                if (retryDelayMs >= ScheduledJobBackoff.MAX_BACKOFF_MS) {
-                    logger.error(
-                        "[NotificationConfigCache] Init failed (attempt {}). " +
-                            "Max backoff reached, retrying in {} ms: {}",
-                        attempt,
-                        retryDelayMs,
-                        ex.message
-                    )
-                } else {
-                    logger.warn(
-                        "[NotificationConfigCache] Init failed (attempt {}). Retrying in {} ms: {}",
-                        attempt,
-                        retryDelayMs,
-                        ex.message
-                    )
-                }
-                logger.debug("[NotificationConfigCache] Debug information", ex)
-
-                scheduleInitAttempt(attempt = attempt + 1, delayMs = retryDelayMs)
-            }
-        }
-    }
+    private var loaded = false
 
     override fun findAll(): List<NotificationConfigCacheEntry> =
         synchronized(cacheLock) {
+            if (!loaded) {
+                refreshAll()
+            }
+
             cache.values.toList()
         }
 
+    /**
+     * Reloads from CouchDB. The fetch happens while holding [cacheLock] by design: the only reader
+     * is the single-threaded notification change-detection path, and the lock rules out two
+     * concurrent loads.
+     */
     override fun refreshAll() {
-        val nextCache =
-            couchDbClient
-                .getDatabaseDocumentsByPrefix(
-                    database = DATABASE,
-                    prefix = DOCUMENT_PREFIX,
-                    kClass = ObjectNode::class
-                ).mapNotNull { doc -> parseConfigFromDoc(doc = doc) }
-                .associateBy { it.userIdentifier }
-
         synchronized(cacheLock) {
+            val nextCache =
+                couchDbClient
+                    .getDatabaseDocumentsByPrefix(
+                        database = DATABASE,
+                        prefix = DOCUMENT_PREFIX,
+                        kClass = ObjectNode::class
+                    ).mapNotNull { doc -> parseConfigFromDoc(doc = doc) }
+                    .associateBy { it.userIdentifier }
+
             cache.clear()
             cache.putAll(nextCache)
-        }
+            loaded = true
 
-        logger.debug("Loaded {} notification configs into memory cache", cache.size)
+            logger.debug("Loaded {} notification configs into memory cache", cache.size)
+        }
     }
 
     override fun refreshConfig(
@@ -163,7 +128,7 @@ class DefaultNotificationConfigCache(
             val dto = objectMapper.convertValue(doc, NotificationConfigDto::class.java)
             toCacheEntry(dto)
         } catch (ex: Exception) {
-            logger.warn("Skipping invalid NotificationConfig document in cache warmup", ex)
+            logger.warn("Skipping invalid NotificationConfig document while loading the cache", ex)
             null
         }
 
