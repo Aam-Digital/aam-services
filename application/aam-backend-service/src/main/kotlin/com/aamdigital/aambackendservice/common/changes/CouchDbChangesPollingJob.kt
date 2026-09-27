@@ -68,9 +68,5 @@ class ChangeConsumerPoller(
     private val logger = LoggerFactory.getLogger(javaClass)
     internal val backoff = ScheduledJobBackoff(logger, "CouchDbChangesPollingJob:$consumerName")
 
-    fun run() {
-        if (backoff.shouldSkip()) return
-
-        backoff.execute(poll)
-    }
+    fun run() = backoff.run(poll)
 }

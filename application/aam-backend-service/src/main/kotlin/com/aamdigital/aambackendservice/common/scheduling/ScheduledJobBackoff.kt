@@ -5,10 +5,9 @@ import org.slf4j.Logger
 /**
  * Encapsulates exponential backoff state for scheduled jobs.
  *
- * The job's scheduled method keeps firing at its normal interval.
- * Call [shouldSkip] at the start; if it returns `true`, return early.
- * Wrap the actual work in [execute] which handles success reset and
- * failure backoff automatically.
+ * The job's scheduled method keeps firing at its normal interval and passes its work to [run],
+ * which skips it while backing off, and otherwise runs it and resets the backoff on success or
+ * extends it on failure.
  */
 class ScheduledJobBackoff(
     private val logger: Logger,
@@ -28,10 +27,9 @@ class ScheduledJobBackoff(
     private var errorCounter: Int = 0
     private var nextRetryAtMs: Long = 0
 
-    fun shouldSkip(): Boolean =
-        nextRetryAtMs > 0 && clock() < nextRetryAtMs
+    fun run(action: () -> Unit) {
+        if (nextRetryAtMs > 0 && clock() < nextRetryAtMs) return
 
-    fun execute(action: () -> Unit) {
         try {
             action()
             errorCounter = 0

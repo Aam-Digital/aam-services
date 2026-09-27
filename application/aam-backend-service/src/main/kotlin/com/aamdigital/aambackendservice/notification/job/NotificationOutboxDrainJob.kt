@@ -25,9 +25,7 @@ class NotificationOutboxDrainJob(
 
     @Scheduled(fixedDelayString = "\${notification.outbox.fixed-delay:2000}")
     fun drainNotificationOutbox() {
-        if (backoff.shouldSkip()) return
-
-        backoff.execute {
+        backoff.run {
             notificationOutboxDrainer.drain()
         }
     }
