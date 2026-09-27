@@ -30,7 +30,7 @@ class NotificationDocumentChangeHandler(
     override val consumerName = "notification"
 
     override fun handle(event: DocumentChangeEvent) {
-        if (event.documentId.startsWith("NotificationConfig:")) {
+        if (event.entityType == "NotificationConfig") {
             notificationConfigCache.refreshConfig(
                 database = event.database,
                 notificationConfigId = event.documentId,
