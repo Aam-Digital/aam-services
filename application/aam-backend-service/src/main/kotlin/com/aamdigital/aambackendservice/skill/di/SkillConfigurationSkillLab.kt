@@ -8,7 +8,6 @@ import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCas
 import com.aamdigital.aambackendservice.skill.core.InMemorySearchUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.core.SearchUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.core.SyncUserProfileUseCase
-import com.aamdigital.aambackendservice.skill.core.UserProfileUpdatePublisher
 import com.aamdigital.aambackendservice.skill.repository.CouchDbSkillLabUserProfileRepository
 import com.aamdigital.aambackendservice.skill.repository.CouchDbSkillLabUserProfileSyncRepository
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository
@@ -74,12 +73,12 @@ class SkillConfigurationSkillLab {
     fun skillLabFetchUserProfileUpdatedUseCase(
         skillLabClient: SkillLabClient,
         skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository,
-        userProfileUpdatePublisher: UserProfileUpdatePublisher
+        syncUserProfileUseCase: SyncUserProfileUseCase
     ): FetchUserProfileUpdatesUseCase =
         SkillLabFetchUserProfileUpdatesUseCase(
             skillLabClient = skillLabClient,
             skillLabUserProfileSyncRepository = skillLabUserProfileSyncRepository,
-            userProfileUpdatePublisher = userProfileUpdatePublisher
+            syncUserProfileUseCase = syncUserProfileUseCase
         )
 
     @Bean
