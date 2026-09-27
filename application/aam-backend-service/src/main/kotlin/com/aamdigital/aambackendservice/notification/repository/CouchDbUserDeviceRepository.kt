@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.notification.repository
 import com.aamdigital.aambackendservice.common.couchdb.core.BACKEND_STATE_DATABASE
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
+import com.aamdigital.aambackendservice.common.couchdb.core.documentExists
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import org.springframework.data.domain.Page
@@ -54,11 +55,7 @@ class CouchDbUserDeviceRepository(
         }
 
     override fun existsByDeviceToken(deviceToken: String): Boolean =
-        couchDbClient
-            .headDatabaseDocument(
-                database = BACKEND_STATE_DATABASE,
-                documentId = documentId(deviceToken)
-            ).eTag != null
+        couchDbClient.documentExists(database = BACKEND_STATE_DATABASE, documentId = documentId(deviceToken))
 
     /**
      * A device deleted concurrently (by a second tab, say) is gone either way: CouchDB then answers

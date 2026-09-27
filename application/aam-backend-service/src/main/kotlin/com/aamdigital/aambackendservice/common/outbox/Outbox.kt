@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.common.outbox
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
+import com.aamdigital.aambackendservice.common.couchdb.core.documentExists
 import com.fasterxml.jackson.databind.JavaType
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -59,8 +60,7 @@ class Outbox<P : Any>(
         couchDbInitializer.createDatabase(DatabaseRequest(database))
 
         val id = OutboxEntry.idFor(key)
-        val existing = couchDbClient.headDatabaseDocument(database = database, documentId = id)
-        if (!existing.eTag.isNullOrBlank()) {
+        if (couchDbClient.documentExists(database = database, documentId = id)) {
             logger.debug("{} entry {} is already waiting, not re-enqueueing", database, id)
             return false
         }

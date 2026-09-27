@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.skill.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
+import com.aamdigital.aambackendservice.common.rest.requestFactoryWithTimeout
 import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
 import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
@@ -20,8 +21,8 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpHeaders
-import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestClient
+import java.time.Duration
 
 @Configuration
 @ConditionalOnSkillApiEnabled
@@ -38,10 +39,7 @@ class SkillConfigurationSkillLab {
         }
 
         clientBuilder.requestFactory(
-            SimpleClientHttpRequestFactory().apply {
-                setReadTimeout(configuration.responseTimeoutInSeconds * 1000)
-                setConnectTimeout(configuration.responseTimeoutInSeconds * 1000)
-            }
+            requestFactoryWithTimeout(Duration.ofSeconds(configuration.responseTimeoutInSeconds.toLong()))
         )
 
         return clientBuilder.build()

@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.notification.core.create.app
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
+import com.aamdigital.aambackendservice.common.couchdb.core.documentExists
 import com.aamdigital.aambackendservice.common.domain.UpdateMetadata
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
@@ -48,7 +49,7 @@ class AppCreateNotificationHandler(
         // notification can be offered more than once (a replayed change, a retried delivery).
         // Writing it again would overwrite the user's existing notification with a fresh timestamp,
         // so an already-delivered notification is left exactly as it is.
-        if (!couchDbClient.headDatabaseDocument(userNotificationDb, documentId).eTag.isNullOrBlank()) {
+        if (couchDbClient.documentExists(userNotificationDb, documentId)) {
             return CreateNotificationData(
                 success = true,
                 messageCreated = false,
