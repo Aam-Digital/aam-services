@@ -30,9 +30,6 @@ interface ReportConfigCache {
      */
     fun findReportsForEntityType(entityType: String): List<DomainReference>
 
-    /** Reloads and replaces the whole cache. */
-    fun refreshAll()
-
     /**
      * Marks the cache stale without doing any I/O, so the next read reloads. Never throws, so it
      * is safe to call from inside change-event handling.

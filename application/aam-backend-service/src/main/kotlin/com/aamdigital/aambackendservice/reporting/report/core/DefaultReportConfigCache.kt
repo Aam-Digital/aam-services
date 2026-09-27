@@ -25,7 +25,7 @@ class DefaultReportConfigCache(
     override fun findReportsForEntityType(entityType: String): List<DomainReference> =
         synchronized(cacheLock) {
             if (!loaded) {
-                refreshAll()
+                load()
             }
 
             entries
@@ -34,25 +34,23 @@ class DefaultReportConfigCache(
         }
 
     /**
-     * Reloads from CouchDB. The fetch happens while holding [cacheLock] by design: the only reader
-     * is the single-threaded reporting change-detection path, so there is no concurrency to trade
+     * Reloads from CouchDB. Only called while holding [cacheLock], by design: the only reader is
+     * the single-threaded reporting change-detection path, so there is no concurrency to trade
      * away, and the lock rules out two concurrent `_all_docs` requests for the same reload.
      */
-    override fun refreshAll() {
-        synchronized(cacheLock) {
-            entries =
-                reportStorage
-                    .fetchAllReports("sql")
-                    .map { report ->
-                        ReportConfigCacheEntry(
-                            reportId = report.id,
-                            affectedEntityTypes = reportQueryAnalyser.getAffectedEntities(report).toSet()
-                        )
-                    }
-            loaded = true
+    private fun load() {
+        entries =
+            reportStorage
+                .fetchAllReports("sql")
+                .map { report ->
+                    ReportConfigCacheEntry(
+                        reportId = report.id,
+                        affectedEntityTypes = reportQueryAnalyser.getAffectedEntities(report).toSet()
+                    )
+                }
+        loaded = true
 
-            logger.debug("Loaded {} report definitions into memory cache", entries.size)
-        }
+        logger.debug("Loaded {} report definitions into memory cache", entries.size)
     }
 
     override fun markDirty() {
