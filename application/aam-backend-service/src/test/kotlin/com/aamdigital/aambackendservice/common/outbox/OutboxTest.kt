@@ -2,14 +2,13 @@ package com.aamdigital.aambackendservice.common.outbox
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
-import com.aamdigital.aambackendservice.common.error.AamErrorCode
-import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.rest.ObjectMapperConfiguration
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
@@ -17,6 +16,8 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
+import org.springframework.web.client.HttpClientErrorException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -29,8 +30,6 @@ class OutboxTest {
         val priority: Priority,
         val due: Instant
     )
-
-    private enum class TestErrorCode : AamErrorCode { NOT_FOUND }
 
     private val database = "test-outbox"
     private val now: Instant = Instant.parse("2026-01-01T00:00:00Z")
@@ -99,11 +98,18 @@ class OutboxTest {
         outbox.enqueue("key-1", payload)
         val document =
             objectMapper.valueToTree<ObjectNode>(storedBody()).put("_rev", "1-abc")
-        whenever(couchDbClient.getDatabaseDocumentsByPrefix(eq(database), eq("OutboxEntry"), eq(JsonNode::class)))
-            .thenReturn(listOf(document))
+        whenever(
+            couchDbClient.findDatabaseDocumentsByPrefix(
+                eq(database),
+                eq("OutboxEntry"),
+                eq(mapOf("attempts" to mapOf("\$lt" to 3))),
+                anyOrNull(),
+                eq(JsonNode::class)
+            )
+        ).thenReturn(listOf(document))
 
         // When
-        val entries = outbox.fetchAll()
+        val entries = outbox.fetchRetryable(maxAttempts = 3)
 
         // Then
         assertThat(entries).hasSize(1)
@@ -112,14 +118,34 @@ class OutboxTest {
     }
 
     @Test
-    fun `should find nothing waiting when the database does not exist yet`() {
+    fun `should only ask CouchDB for parked entries when fetching parked ones`() {
         // Given
-        whenever(couchDbClient.getDatabaseDocumentsByPrefix(eq(database), eq("OutboxEntry"), eq(JsonNode::class)))
-            // NotFoundException is checked, which Mockito's thenThrow rejects for this method
-            .thenAnswer { throw NotFoundException(code = TestErrorCode.NOT_FOUND) }
+        whenever(couchDbClient.findDatabaseDocumentsByPrefix(any(), any(), any(), anyOrNull(), eq(JsonNode::class)))
+            .thenReturn(emptyList())
+
+        // When
+        outbox.fetchParked(maxAttempts = 3)
 
         // Then
-        assertThat(outbox.fetchAll()).isEmpty()
+        verify(couchDbClient).findDatabaseDocumentsByPrefix(
+            eq(database),
+            eq("OutboxEntry"),
+            eq(mapOf("attempts" to mapOf("\$gte" to 3))),
+            anyOrNull(),
+            eq(JsonNode::class)
+        )
+    }
+
+    @Test
+    fun `should find nothing waiting when the database does not exist yet`() {
+        // Given
+        whenever(couchDbClient.findDatabaseDocumentsByPrefix(any(), any(), any(), anyOrNull(), eq(JsonNode::class)))
+            .thenThrow(
+                HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", HttpHeaders(), ByteArray(0), null)
+            )
+
+        // Then
+        assertThat(outbox.fetchRetryable(maxAttempts = 3)).isEmpty()
     }
 
     @Test

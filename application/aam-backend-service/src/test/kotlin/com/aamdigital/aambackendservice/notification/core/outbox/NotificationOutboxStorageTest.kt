@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
@@ -60,11 +61,11 @@ class NotificationOutboxStorageTest {
         val body = argumentCaptor<Any>()
         verify(couchDbClient).putDatabaseDocument(eq("notification-outbox"), any(), body.capture())
         val document = objectMapper.valueToTree<ObjectNode>(body.firstValue).put("_rev", "1-abc")
-        whenever(couchDbClient.getDatabaseDocumentsByPrefix(any(), any(), eq(JsonNode::class)))
+        whenever(couchDbClient.findDatabaseDocumentsByPrefix(any(), any(), any(), anyOrNull(), eq(JsonNode::class)))
             .thenReturn(listOf(document))
 
         // When
-        val entries = outbox.fetchAll()
+        val entries = outbox.fetchRetryable(maxAttempts = 3)
 
         // Then
         assertThat(entries.single().payload).isEqualTo(event)

@@ -33,16 +33,12 @@ class OutboxDrainer<P : Any>(
 
     /** Delivers every entry whose next attempt is due. */
     fun drain() {
-        val pending = outbox.fetchAll()
-        if (pending.isEmpty()) {
-            return
-        }
-
-        resetParkedEntries(pending)
+        resetParkedEntries()
 
         val now = clock.instant()
-        pending
-            .filter { entry -> entry.attempts < maxAttempts && !entry.nextAttemptAt.isAfter(now) }
+        outbox
+            .fetchRetryable(maxAttempts)
+            .filter { entry -> !entry.nextAttemptAt.isAfter(now) }
             .forEach { entry -> deliver(entry) }
     }
 
@@ -50,14 +46,16 @@ class OutboxDrainer<P : Any>(
      * Un-parks entries that had run out of attempts, once per process.
      *
      * Doing it once per process rather than once per tick is what stops a permanently failing entry
-     * from becoming a hot retry loop.
+     * from becoming a hot retry loop. It only counts as done once the parked entries could be read,
+     * so a CouchDB outage at startup does not skip it.
      */
-    private fun resetParkedEntries(pending: List<OutboxEntry<P>>) {
-        if (!parkedEntriesReset.compareAndSet(false, true)) {
+    private fun resetParkedEntries() {
+        if (parkedEntriesReset.get()) {
             return
         }
 
-        val parked = pending.filter { entry -> entry.attempts >= maxAttempts }
+        val parked = outbox.fetchParked(maxAttempts)
+        parkedEntriesReset.set(true)
         if (parked.isEmpty()) {
             return
         }
