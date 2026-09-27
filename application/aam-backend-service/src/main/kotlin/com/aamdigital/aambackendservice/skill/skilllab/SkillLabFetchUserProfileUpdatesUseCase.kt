@@ -7,8 +7,8 @@ import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesData
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
-import com.aamdigital.aambackendservice.skill.core.UserProfileUpdatePublisher
-import com.aamdigital.aambackendservice.skill.core.event.UserProfileUpdateEvent
+import com.aamdigital.aambackendservice.skill.core.SyncUserProfileRequest
+import com.aamdigital.aambackendservice.skill.core.SyncUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncEntity
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
 import org.springframework.data.domain.Pageable
@@ -17,17 +17,21 @@ import java.time.ZoneOffset
 import kotlin.jvm.optionals.getOrNull
 
 enum class SkillLabFetchUserProfileUpdatesErrorCode : AamErrorCode {
-    EXTERNAL_SYSTEM_ERROR,
-    EVENT_PUBLISH_ERROR
+    EXTERNAL_SYSTEM_ERROR
 }
 
 /**
- * Fetch latest changes for this SkillLab tenant and create SyncUserProfileEvents for each changed UserProfile
+ * Fetches the user profiles that changed in this SkillLab tenant since the last sync, and syncs each
+ * one with [SyncUserProfileUseCase].
+ *
+ * A profile that fails to sync is logged and skipped, never retried, and the sync cursor advances
+ * regardless. Failing the whole fetch instead would hold the cursor back and turn one bad profile
+ * into a stalled project-wide sync. Recovery is the next scheduled SkillLab re-sync.
  */
 class SkillLabFetchUserProfileUpdatesUseCase(
     private val skillLabClient: SkillLabClient,
     private val skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository,
-    private val userProfileUpdatePublisher: UserProfileUpdatePublisher
+    private val syncUserProfileUseCase: SyncUserProfileUseCase
 ) : FetchUserProfileUpdatesUseCase() {
     companion object {
         private const val PAGE_SIZE = 50
@@ -56,22 +60,7 @@ class SkillLabFetchUserProfileUpdatesUseCase(
             results.addAll(batch)
         } while (batch.size >= PAGE_SIZE && results.size < MAX_RESULTS_LIMIT)
 
-        results.forEach {
-            try {
-                userProfileUpdatePublisher.publish(
-                    UserProfileUpdateEvent(
-                        projectId = request.projectId,
-                        userProfileId = it.id
-                    )
-                )
-            } catch (ex: Exception) {
-                return UseCaseOutcome.Failure(
-                    errorCode = SkillLabFetchUserProfileUpdatesErrorCode.EVENT_PUBLISH_ERROR,
-                    errorMessage = ex.localizedMessage,
-                    cause = ex
-                )
-            }
-        }
+        results.forEach { userProfile -> syncUserProfile(request.projectId, userProfile) }
 
         if (currentSync != null) {
             currentSync.latestSync = Instant.now().atOffset(ZoneOffset.UTC)
@@ -94,6 +83,27 @@ class SkillLabFetchUserProfileUpdatesUseCase(
                         }
                 )
         )
+    }
+
+    private fun syncUserProfile(
+        projectId: String,
+        userProfile: DomainReference
+    ) {
+        val outcome =
+            syncUserProfileUseCase.run(
+                SyncUserProfileRequest(userProfile = userProfile, project = DomainReference(projectId))
+            )
+
+        if (outcome is UseCaseOutcome.Failure) {
+            logger.warn(
+                "[{}] could not sync user profile {} of project {}: {}",
+                outcome.errorCode,
+                userProfile.id,
+                projectId,
+                outcome.errorMessage,
+                outcome.cause
+            )
+        }
     }
 
     private fun fetchNextBatch(
