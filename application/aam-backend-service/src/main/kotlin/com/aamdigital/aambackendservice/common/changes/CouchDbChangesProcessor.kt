@@ -147,12 +147,11 @@ class CouchDbChangesProcessor(
             handler.handle(changeEvent)
         } catch (ex: Exception) {
             logger.error(
-                "Change handler {} failed for db={}, documentId={}, rev={}: {}",
+                "Change handler {} failed for db={}, documentId={}, rev={}",
                 handler.consumerName,
                 changeEvent.database,
                 changeEvent.documentId,
                 changeEvent.rev,
-                ex.message,
                 ex
             )
         }

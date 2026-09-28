@@ -44,22 +44,21 @@ class InlineRetry(
                     // ERROR so this is reported once to Sentry, grouped by its real cause
                     val rootCause = NestedExceptionUtils.getMostSpecificCause(ex)
                     logger.error(
-                        "Giving up {} after {} attempts: {}",
+                        "Giving up {} after {} attempts",
                         description,
                         attempts,
-                        rootCause.message,
                         rootCause
                     )
                     return false
                 }
 
                 logger.warn(
-                    "Failed {} (attempt {} of {}), retrying in {}ms: {}",
+                    "Failed {} (attempt {} of {}), retrying in {}ms",
                     description,
                     attempt,
                     attempts,
                     interval.toMillis(),
-                    ex.localizedMessage
+                    ex
                 )
 
                 sleep(interval)

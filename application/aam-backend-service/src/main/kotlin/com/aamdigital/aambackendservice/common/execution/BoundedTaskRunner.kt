@@ -89,7 +89,7 @@ class BoundedTaskRunner(
             task()
         } catch (ex: Exception) {
             val rootCause = NestedExceptionUtils.getMostSpecificCause(ex)
-            logger.error("{} failed for {}: {}", name, key, rootCause.message, rootCause)
+            logger.error("{} failed for {}", name, key, rootCause)
         } finally {
             inFlightKeys.remove(key)
         }

@@ -70,7 +70,7 @@ class OutboxDrainer<P : Any>(
             try {
                 outbox.store(entry.copy(attempts = 0, nextAttemptAt = clock.instant()))
             } catch (ex: Exception) {
-                logger.warn("Could not un-park {} entry {}: {}", outbox.database, entry.id, ex.message, ex)
+                logger.warn("Could not un-park {} entry {}", outbox.database, entry.id, ex)
             }
         }
     }
@@ -160,10 +160,9 @@ class OutboxDrainer<P : Any>(
         } catch (ex: Exception) {
             // The entry keeps its previous state, so it is retried on a later tick rather than lost.
             logger.warn(
-                "Could not record delivery attempt for {} entry {}: {}",
+                "Could not record delivery attempt for {} entry {}",
                 outbox.database,
                 entry.id,
-                ex.message,
                 ex
             )
         }
