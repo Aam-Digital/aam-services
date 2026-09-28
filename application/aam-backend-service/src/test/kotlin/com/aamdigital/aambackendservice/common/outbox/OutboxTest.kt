@@ -19,6 +19,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -44,6 +45,13 @@ class OutboxTest {
         Outbox(
             database = database,
             payloadType = TestPayload::class,
+            handler = handler,
+            retryPolicy =
+                OutboxRetryPolicy(
+                    maxAttempts = 3,
+                    initialInterval = Duration.ofSeconds(10),
+                    maxInterval = Duration.ofSeconds(60)
+                ),
             couchDbClient = couchDbClient,
             couchDbInitializer = couchDbInitializer,
             objectMapper = objectMapper,
@@ -109,7 +117,7 @@ class OutboxTest {
         ).thenReturn(listOf(document))
 
         // When
-        val entries = outbox.fetchRetryable(maxAttempts = 3)
+        val entries = outbox.fetchRetryable()
 
         // Then
         assertThat(entries).hasSize(1)
@@ -124,7 +132,7 @@ class OutboxTest {
             .thenReturn(emptyList())
 
         // When
-        outbox.fetchParked(maxAttempts = 3)
+        outbox.fetchParked()
 
         // Then
         verify(couchDbClient).findDatabaseDocumentsByPrefix(
@@ -145,7 +153,7 @@ class OutboxTest {
             )
 
         // Then
-        assertThat(outbox.fetchRetryable(maxAttempts = 3)).isEmpty()
+        assertThat(outbox.fetchRetryable()).isEmpty()
     }
 
     @Test
@@ -154,7 +162,7 @@ class OutboxTest {
         whenever(handler.deliver(payload)).thenReturn(OutboxDeliveryResult.Delivered)
 
         // When
-        outbox.deliverNowOrEnqueue("key-1", payload, handler)
+        outbox.deliverNowOrEnqueue("key-1", payload)
 
         // Then
         verify(couchDbClient, never()).putDatabaseDocument(any(), any(), any())
@@ -167,7 +175,7 @@ class OutboxTest {
         whenever(handler.deliver(payload)).thenReturn(OutboxDeliveryResult.Rejected("couchdb unreachable"))
 
         // When
-        outbox.deliverNowOrEnqueue("key-1", payload, handler)
+        outbox.deliverNowOrEnqueue("key-1", payload)
 
         // Then the entry starts with the full retry budget
         assertThat((storedBody() as OutboxEntry<*>).attempts).isEqualTo(0)
@@ -180,7 +188,7 @@ class OutboxTest {
         whenever(handler.deliver(payload)).thenThrow(RuntimeException("boom"))
 
         // When
-        outbox.deliverNowOrEnqueue("key-1", payload, handler)
+        outbox.deliverNowOrEnqueue("key-1", payload)
 
         // Then
         storedBody()

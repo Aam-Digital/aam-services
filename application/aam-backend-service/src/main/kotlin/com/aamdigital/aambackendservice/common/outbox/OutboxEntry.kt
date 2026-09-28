@@ -5,7 +5,7 @@ import java.time.Instant
 
 /**
  * One unit of work in an [Outbox]: the [payload] a module wants delivered, plus the retry state
- * [OutboxDrainer] keeps for it.
+ * [Outbox] keeps for it.
  *
  * The retry fields sit next to the payload, not inside it, so an operator can see why something is
  * held (`attempts`, `lastError`) the same way for every outbox.

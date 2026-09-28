@@ -3,7 +3,7 @@ package com.aamdigital.aambackendservice.common.outbox
 import java.time.Duration
 
 /**
- * How often and how far apart [OutboxDrainer] retries a transient failure before parking the entry.
+ * How often and how far apart [Outbox] retries a transient failure before parking the entry.
  *
  * The delay doubles with every attempt, starting at [initialInterval] and capped at [maxInterval].
  */

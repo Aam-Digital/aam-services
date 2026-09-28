@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.notification.core.outbox
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.outbox.Outbox
+import com.aamdigital.aambackendservice.common.outbox.OutboxRetryPolicy
 import com.aamdigital.aambackendservice.common.rest.ObjectMapperConfiguration
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.domain.EntityNotificationContext
@@ -20,6 +21,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpHeaders
+import java.time.Duration
 
 /**
  * The drainer can only deliver what it can read back, so a notification must survive being stored
@@ -33,6 +35,13 @@ class NotificationOutboxSerializationTest {
         Outbox(
             database = "notification-outbox",
             payloadType = CreateUserNotificationEvent::class,
+            handler = mock(),
+            retryPolicy =
+                OutboxRetryPolicy(
+                    maxAttempts = 3,
+                    initialInterval = Duration.ofSeconds(10),
+                    maxInterval = Duration.ofSeconds(60)
+                ),
             couchDbClient = couchDbClient,
             couchDbInitializer = mock(),
             objectMapper = objectMapper
@@ -65,7 +74,7 @@ class NotificationOutboxSerializationTest {
             .thenReturn(listOf(document))
 
         // When
-        val entries = outbox.fetchRetryable(maxAttempts = 3)
+        val entries = outbox.fetchRetryable()
 
         // Then
         assertThat(entries.single().payload).isEqualTo(event)

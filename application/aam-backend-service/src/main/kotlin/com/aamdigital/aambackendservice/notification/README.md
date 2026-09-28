@@ -23,7 +23,7 @@ Notification ids are derived from the document change that caused them
 document is left alone if it already exists, and re-enqueueing an outbox entry is a no-op. That is
 what makes it safe for the change cursor to be replayed.
 
-The generic `OutboxDrainer` owns the retry policy; `NotificationOutboxHandler` only decides which
+The generic `Outbox` owns the retry policy; `NotificationOutboxHandler` only decides which
 failures are worth retrying. A transient failure (see `TransientNotificationException`) grows
 `nextAttemptAt` exponentially; once `attempts` reaches the maximum the entry is *parked* — it stops
 being retried but keeps its `lastError` and stays queryable. Parked entries are un-parked once per

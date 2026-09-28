@@ -1,7 +1,6 @@
 package com.aamdigital.aambackendservice.notification.core.outbox
 
 import com.aamdigital.aambackendservice.common.outbox.Outbox
-import com.aamdigital.aambackendservice.common.outbox.OutboxHandler
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 
@@ -16,15 +15,14 @@ import com.aamdigital.aambackendservice.notification.domain.NotificationChannelT
  * off the caller's thread.
  */
 class OutboxUserNotificationPublisher(
-    private val notificationOutbox: Outbox<CreateUserNotificationEvent>,
-    private val notificationOutboxHandler: OutboxHandler<CreateUserNotificationEvent>
+    private val notificationOutbox: Outbox<CreateUserNotificationEvent>
 ) : UserNotificationPublisher {
     override fun publish(event: CreateUserNotificationEvent) {
         // the notification id is derived from the document change, so a replayed change re-derives this key
         val key = "${event.details.id}:${event.notificationChannelType}"
 
         if (event.notificationChannelType == NotificationChannelType.APP) {
-            notificationOutbox.deliverNowOrEnqueue(key, event, notificationOutboxHandler)
+            notificationOutbox.deliverNowOrEnqueue(key, event)
         } else {
             notificationOutbox.enqueue(key, event)
         }

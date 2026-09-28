@@ -1,7 +1,6 @@
 package com.aamdigital.aambackendservice.notification.core.outbox
 
 import com.aamdigital.aambackendservice.common.outbox.Outbox
-import com.aamdigital.aambackendservice.common.outbox.OutboxHandler
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
@@ -15,8 +14,7 @@ import org.mockito.kotlin.verify
 
 class OutboxUserNotificationPublisherTest {
     private val notificationOutbox = mock<Outbox<CreateUserNotificationEvent>>()
-    private val notificationOutboxHandler = mock<OutboxHandler<CreateUserNotificationEvent>>()
-    private val publisher = OutboxUserNotificationPublisher(notificationOutbox, notificationOutboxHandler)
+    private val publisher = OutboxUserNotificationPublisher(notificationOutbox)
 
     private val details =
         NotificationDetails(
@@ -42,8 +40,7 @@ class OutboxUserNotificationPublisherTest {
         publisher.publish(event)
 
         // Then
-        verify(notificationOutbox)
-            .deliverNowOrEnqueue(eq("${details.id}:APP"), eq(event), eq(notificationOutboxHandler))
+        verify(notificationOutbox).deliverNowOrEnqueue(eq("${details.id}:APP"), eq(event))
         verify(notificationOutbox, never()).enqueue(any(), any())
     }
 
@@ -57,7 +54,7 @@ class OutboxUserNotificationPublisherTest {
 
         // Then the key is derived from the notification, so a replayed change is not sent twice
         verify(notificationOutbox).enqueue(eq("${details.id}:PUSH"), eq(event))
-        verify(notificationOutbox, never()).deliverNowOrEnqueue(any(), any(), any())
+        verify(notificationOutbox, never()).deliverNowOrEnqueue(any(), any())
     }
 
     @Test

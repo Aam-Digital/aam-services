@@ -8,9 +8,9 @@ retry policy, so the module that owes the work only writes its business logic.
 ```text
 module code ──enqueue(key, payload)──▶ Outbox  (CouchDB database, one OutboxEntry per key)
                                           │
-                                          │  polled by the module's @Scheduled job
+                                          │  drain(), from the module's @Scheduled job
                                           ▼
-                                    OutboxDrainer ──deliver(payload)──▶ module's OutboxHandler
+                                       Outbox ──deliver(payload)──▶ module's OutboxHandler
                                           │
              Delivered: delete entry ◀────┼────▶ RetryLater: back off, then park after maxAttempts
                                           └────▶ Rejected:   park right away
@@ -22,9 +22,12 @@ module code ──enqueue(key, payload)──▶ Outbox  (CouchDB database, one 
   `deliverNowOrEnqueue` tries the handler inline first and only falls back to the outbox on failure.
 - `OutboxHandler<P>` is the module's part: deliver one payload and say whether a failure is worth
   retrying (`RetryLater`) or not (`Rejected`).
-- `OutboxDrainer<P>` applies the `OutboxRetryPolicy`: exponential backoff, then *parking* the entry
+- `drain()` applies the `OutboxRetryPolicy`: exponential backoff, then *parking* the entry
   (kept with its `lastError`, no longer retried). Parked entries are retried once after every
   restart, so the recovery path is always "fix the cause, restart the service".
+
+Storage and delivery are one class on purpose: neither half is useful alone, and it keeps a
+module's wiring to one bean plus its handler.
 
 A successful delivery deletes the entry, so a handler that is not idempotent (sending an email) is
 not called twice for it - unless that delete fails, in which case the entry is parked and delivered
@@ -34,10 +37,9 @@ again after the next restart.
 
 In the module's `@Configuration`, declare:
 
-1. an `Outbox` bean with its own database name and the payload class, plus a `DatabaseRequest` for
-   that database (it is also created on demand);
-2. the module's `OutboxHandler`;
-3. an `OutboxDrainer` bean combining both with an `OutboxRetryPolicy`.
+1. the module's `OutboxHandler`;
+2. an `Outbox` bean with its own database name, the payload class, that handler and an
+   `OutboxRetryPolicy`, plus a `DatabaseRequest` for the database (it is also created on demand).
 
 Then add a `@Scheduled` job that calls `drain()` inside `ScheduledJobBackoff`, and add it to
 `SchedulingConfiguration`'s job list and `SCHEDULED_TASKS`. The notification module is the

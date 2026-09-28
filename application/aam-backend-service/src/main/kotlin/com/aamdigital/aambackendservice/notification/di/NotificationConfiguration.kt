@@ -7,7 +7,6 @@ import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.common.outbox.Outbox
-import com.aamdigital.aambackendservice.common.outbox.OutboxDrainer
 import com.aamdigital.aambackendservice.common.outbox.OutboxRetryPolicy
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
@@ -133,11 +132,22 @@ class NotificationConfiguration {
     fun notificationOutbox(
         couchDbClient: CouchDbClient,
         couchDbInitializer: CouchDbInitializer,
-        objectMapper: ObjectMapper
+        objectMapper: ObjectMapper,
+        notificationOutboxHandler: NotificationOutboxHandler,
+        @Value("\${notification.outbox.max-attempts:3}") maxAttempts: Int,
+        @Value("\${notification.outbox.retry-initial-interval-seconds:10}") retryInitialIntervalSeconds: Long,
+        @Value("\${notification.outbox.retry-max-interval-seconds:60}") retryMaxIntervalSeconds: Long
     ): Outbox<CreateUserNotificationEvent> =
         Outbox(
             database = NOTIFICATION_OUTBOX_DATABASE,
             payloadType = CreateUserNotificationEvent::class,
+            handler = notificationOutboxHandler,
+            retryPolicy =
+                OutboxRetryPolicy(
+                    maxAttempts = maxAttempts,
+                    initialInterval = Duration.ofSeconds(retryInitialIntervalSeconds),
+                    maxInterval = Duration.ofSeconds(retryMaxIntervalSeconds)
+                ),
             couchDbClient = couchDbClient,
             couchDbInitializer = couchDbInitializer,
             objectMapper = objectMapper
@@ -149,32 +159,8 @@ class NotificationConfiguration {
 
     @Bean
     fun outboxUserNotificationPublisher(
-        notificationOutbox: Outbox<CreateUserNotificationEvent>,
-        notificationOutboxHandler: NotificationOutboxHandler
-    ): UserNotificationPublisher =
-        OutboxUserNotificationPublisher(
-            notificationOutbox = notificationOutbox,
-            notificationOutboxHandler = notificationOutboxHandler
-        )
-
-    @Bean
-    fun notificationOutboxDrainer(
-        notificationOutbox: Outbox<CreateUserNotificationEvent>,
-        notificationOutboxHandler: NotificationOutboxHandler,
-        @Value("\${notification.outbox.max-attempts:3}") maxAttempts: Int,
-        @Value("\${notification.outbox.retry-initial-interval-seconds:10}") retryInitialIntervalSeconds: Long,
-        @Value("\${notification.outbox.retry-max-interval-seconds:60}") retryMaxIntervalSeconds: Long
-    ): OutboxDrainer<CreateUserNotificationEvent> =
-        OutboxDrainer(
-            outbox = notificationOutbox,
-            handler = notificationOutboxHandler,
-            retryPolicy =
-                OutboxRetryPolicy(
-                    maxAttempts = maxAttempts,
-                    initialInterval = Duration.ofSeconds(retryInitialIntervalSeconds),
-                    maxInterval = Duration.ofSeconds(retryMaxIntervalSeconds)
-                )
-        )
+        notificationOutbox: Outbox<CreateUserNotificationEvent>
+    ): UserNotificationPublisher = OutboxUserNotificationPublisher(notificationOutbox = notificationOutbox)
 
     @Bean
     fun defaultCreateNotificationUseCase(
