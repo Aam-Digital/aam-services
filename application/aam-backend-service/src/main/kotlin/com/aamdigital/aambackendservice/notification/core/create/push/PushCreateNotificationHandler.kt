@@ -75,6 +75,20 @@ class PushCreateNotificationHandler(
 
         val response = firebaseMessaging.sendEachForMulticast(message)
 
+        if (response.failureCount > 0) {
+            // no device tokens in the log; error codes like UNREGISTERED point to outdated device registrations
+            val errorCodes =
+                response.responses
+                    .filterNot { it.isSuccessful }
+                    .map { it.exception?.messagingErrorCode }
+            logger.warn(
+                "Push notification could not be delivered to {} of {} devices: {}",
+                response.failureCount,
+                userDevices.size,
+                errorCodes
+            )
+        }
+
         val ids = response.responses.map { it.messageId }.toList()
 
         logger.trace("push notification sent {}", ids.toString())
