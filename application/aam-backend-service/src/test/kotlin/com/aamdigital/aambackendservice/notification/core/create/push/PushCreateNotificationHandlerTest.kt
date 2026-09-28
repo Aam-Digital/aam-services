@@ -134,4 +134,28 @@ class PushCreateNotificationHandlerTest {
         assertThat(result.messageCreated).isTrue()
         verify(firebaseMessaging).sendEachForMulticast(any())
     }
+
+    @Test
+    fun `should still report the notification as sent when Firebase could not deliver it to a device`() {
+        // Given
+        val device =
+            UserDeviceEntity(
+                deviceName = "Old Browser",
+                deviceToken = "outdated-token",
+                userIdentifier = "test-user"
+            )
+        whenever(userDeviceRepository.findByUserIdentifier(any(), any()))
+            .thenReturn(PageImpl(listOf(device)))
+        whenever(sendResponse.isSuccessful).thenReturn(false)
+        whenever(batchResponse.failureCount).thenReturn(1)
+        whenever(batchResponse.responses).thenReturn(listOf(sendResponse))
+        whenever(firebaseMessaging.sendEachForMulticast(any())).thenReturn(batchResponse)
+
+        // When
+        val result = handler.createMessage(notificationEvent)
+
+        // Then
+        assertThat(result.success).isTrue()
+        assertThat(result.messageCreated).isTrue()
+    }
 }
