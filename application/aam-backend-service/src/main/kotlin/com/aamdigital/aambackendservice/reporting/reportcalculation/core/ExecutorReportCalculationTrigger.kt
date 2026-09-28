@@ -10,8 +10,7 @@ import org.slf4j.LoggerFactory
  * effectively single-threaded, so only a few may run at once.
  *
  * A rejected submission leaves the calculation `PENDING`, which [ReportCalculationSweeper] picks up
- * later - the same net effect as a message waiting in a queue, just recorded in the calculation
- * document instead of in a broker.
+ * later, so the calculation document is the record that the work is still owed.
  */
 class ExecutorReportCalculationTrigger(
     private val reportCalculationRunner: BoundedTaskRunner,

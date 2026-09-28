@@ -22,9 +22,8 @@ import org.slf4j.LoggerFactory
  * Sentry alerts.
  *
  * The webhook notification gets its own bounded [InlineRetry], because the calculation is complete
- * and persisted by then - failing to notify must not re-run it or re-status it. Three attempts and
- * then give up is the same disposition as before, when the failure was retried by the listener
- * retry policy and then dead-lettered to a queue nothing has ever drained.
+ * and persisted by then - failing to notify must not re-run it or re-status it. It is tried three
+ * times and then given up on.
  */
 class ReportCalculationProcessor(
     private val observationRegistry: ObservationRegistry,

@@ -16,7 +16,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
  * [com.aamdigital.aambackendservice.common.changes.CouchDbChangesPollingJob] and stall change detection.
  *
  * Defining this bean makes it the [TaskScheduler] used for `@Scheduled` (the auto-configuration
- * backs off on the existing bean), giving the jobs their own pool so they no longer block each
+ * backs off on the existing bean), giving the jobs their own pool so they do not block each
  * other. A task stuck on a slow dependency holds its thread, and must not leave another task waiting
  * for one, so the pool has a thread for every scheduled task with all feature modules enabled:
  *

@@ -15,9 +15,8 @@ import org.slf4j.LoggerFactory
  * ERROR.
  *
  * Delivery stays fire-and-forget and is *not* retried: a failed callback is logged and dropped.
- * That is what the `notification.webhook` queue did too - its consumer rejected every failure onto
- * a dead letter queue that nothing drains. Adding retry needs the ordering question answered first
- * ("do not send an old event after a newer calculation already delivered") and is out of scope.
+ * Adding retry needs the ordering question answered first ("do not send an old event after a newer
+ * calculation already delivered") and is out of scope.
  */
 class NotificationService(
     private val webhookStorage: WebhookStorage,
@@ -79,8 +78,8 @@ class NotificationService(
 
         if (!accepted) {
             // The backlog is bounded on purpose: rejecting keeps the calculation thread moving,
-            // which is the whole reason this hop exists. Dropping is the same outcome the
-            // write-only dead letter queue had, so log at ERROR to reach Sentry.
+            // which is the whole reason this hop exists. The callback is dropped, so log at
+            // ERROR to reach Sentry.
             logger.error(
                 "Dropped webhook callback for webhook {} (report {}, calculation {}): " +
                     "the webhook delivery executor is saturated or shutting down",

@@ -13,8 +13,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - [OutboxDeliveryResult.RetryLater] increments [OutboxEntry.attempts] and pushes
  *   [OutboxEntry.nextAttemptAt] out as [OutboxRetryPolicy.delayAfter] says;
  * - once [OutboxRetryPolicy.maxAttempts] is reached the entry is *parked*: it keeps its `lastError`
- *   and stops being retried, like a dead letter queue, except the entry stays queryable
- *   (`GET <database>/_all_docs?include_docs=true`) instead of sitting inside a broker;
+ *   and stops being retried, while staying queryable
+ *   (`GET <database>/_all_docs?include_docs=true`);
  * - [OutboxDeliveryResult.Rejected], or an exception from the handler, parks the entry immediately;
  * - [resetParkedEntries] runs once per process and un-parks everything, which makes the operator's
  *   recovery path: fix the cause, restart the service, and held entries are retried.
@@ -130,7 +130,7 @@ class OutboxDrainer<P : Any>(
 
     /**
      * Stops retrying the entry but keeps it, so the failure is visible and a restart can pick it up
-     * again. This is the dead letter queue, expressed as a document.
+     * again.
      */
     private fun park(
         entry: OutboxEntry<P>,
