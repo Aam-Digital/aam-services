@@ -54,8 +54,10 @@ Two caches keep it in memory:
   reads `WebhookEntity` documents directly, so it never decrypts a webhook secret. Webhooks live
   in the `notification-webhook` database, which is deliberately *not* polled for changes, so this
   cache is invalidated by `DefaultWebhookStorage` (the only writer of that database) and,
-  additionally, expires after `reporting.webhook-subscription-cache.ttl-millis` (default 1000) to
-  bound staleness from writes this process cannot see.
+  additionally, expires after `reporting.webhook-subscription-cache.ttl-millis` (default one hour)
+  to bound staleness from writes this process cannot see. Write-invalidation is the mechanism that
+  actually keeps this current; the TTL is only a backstop for a writer outside this process, so it
+  is deliberately long rather than tuned for freshness.
 
   It is intentionally not used by `GET /v1/reporting/webhook` or by `NotificationService`, which
   must always see the current webhook list.

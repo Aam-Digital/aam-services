@@ -102,7 +102,7 @@ class ReportingNotificationConfiguration {
     @Bean
     fun webhookSubscriptionCache(
         webhookRepository: WebhookRepository,
-        @Value("\${reporting.webhook-subscription-cache.ttl-millis:1000}") ttlMillis: Long
+        @Value("\${reporting.webhook-subscription-cache.ttl-millis:3600000}") ttlMillis: Long
     ): WebhookSubscriptionCache =
         WebhookSubscriptionCache(
             webhookRepository = webhookRepository,
