@@ -28,7 +28,7 @@ import java.util.concurrent.Executor
 
 @Configuration
 @ConditionalOnReportingEnabled
-class ReportingNotificationConfiguration {
+class WebhookConfiguration {
     companion object {
         /**
          * Webhook delivery is one outbound HTTP call per subscribed report per new calculation
@@ -93,7 +93,7 @@ class ReportingNotificationConfiguration {
     }
 
     @Bean
-    fun defaultNotificationStorage(
+    fun defaultWebhookStorage(
         webhookRepository: WebhookRepository,
         cryptoService: CryptoService,
         webhookSubscriptionCache: WebhookSubscriptionCache
