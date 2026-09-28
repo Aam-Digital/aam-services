@@ -187,7 +187,7 @@ class WebhookController(
 
     @PostMapping("/{webhookId}/subscribe/report/{reportId}")
     @RequiresReportingWriteAccess
-    fun registerReportNotification(
+    fun registerReportSubscription(
         @PathVariable webhookId: String,
         @PathVariable reportId: String
     ): ResponseEntity<*> {
@@ -201,7 +201,7 @@ class WebhookController(
 
     @DeleteMapping("/{webhookId}/subscribe/report/{reportId}")
     @RequiresReportingWriteAccess
-    fun unregisterReportNotification(
+    fun unregisterReportSubscription(
         @PathVariable webhookId: String,
         @PathVariable reportId: String
     ): ResponseEntity<*> {
