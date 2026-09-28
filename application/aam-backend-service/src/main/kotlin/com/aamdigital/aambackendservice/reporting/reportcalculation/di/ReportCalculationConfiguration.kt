@@ -23,7 +23,7 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.Defa
 import com.aamdigital.aambackendservice.reporting.transformation.DataTransformation
 import com.aamdigital.aambackendservice.reporting.transformation.SqlFromDateTransformation
 import com.aamdigital.aambackendservice.reporting.transformation.SqlToDateTransformation
-import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationService
+import com.aamdigital.aambackendservice.reporting.webhook.core.WebhookTriggerService
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.observation.ObservationRegistry
@@ -119,9 +119,9 @@ class ReportCalculationConfiguration {
     @Bean
     fun defaultReportCalculationChangeUseCase(
         reportCalculationStorage: ReportCalculationStorage,
-        notificationService: NotificationService
+        webhookTriggerService: WebhookTriggerService
     ): ReportCalculationChangeUseCase =
-        DefaultReportCalculationChangeUseCase(reportCalculationStorage, notificationService)
+        DefaultReportCalculationChangeUseCase(reportCalculationStorage, webhookTriggerService)
 
     @Bean
     fun defaultCreateReportCalculationUseCase(

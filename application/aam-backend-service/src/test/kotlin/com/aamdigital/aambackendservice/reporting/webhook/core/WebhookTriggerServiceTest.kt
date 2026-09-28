@@ -23,7 +23,7 @@ import java.util.concurrent.Executor
 import java.util.concurrent.RejectedExecutionException
 
 @ExtendWith(MockitoExtension::class)
-class NotificationServiceTest {
+class WebhookTriggerServiceTest {
     @Mock
     lateinit var webhookStorage: WebhookStorage
 
@@ -34,7 +34,7 @@ class NotificationServiceTest {
     private val directExecutor = Executor { it.run() }
 
     private fun service(executor: Executor) =
-        NotificationService(webhookStorage, triggerWebhookUseCase, BoundedTaskRunner("webhook-delivery", executor))
+        WebhookTriggerService(webhookStorage, triggerWebhookUseCase, BoundedTaskRunner("webhook-delivery", executor))
 
     private fun webhook(
         id: String,
@@ -65,7 +65,7 @@ class NotificationServiceTest {
         val service = service(directExecutor)
 
         // When
-        service.sendNotifications(DomainReference("ReportConfig:1"), DomainReference("ReportCalculation:1"))
+        service.triggerWebhooks(DomainReference("ReportConfig:1"), DomainReference("ReportCalculation:1"))
 
         // Then
         val captor = argumentCaptor<WebhookEvent>()

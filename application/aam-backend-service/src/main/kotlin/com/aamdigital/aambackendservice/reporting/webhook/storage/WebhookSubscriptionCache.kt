@@ -29,7 +29,7 @@ import java.time.Duration
  * A [ttl] of zero disables caching and reloads on every read.
  *
  * This cache is intentionally *not* consulted by `GET /v1/reporting/webhook` or by
- * `NotificationService`: those must never serve a stale webhook list.
+ * `WebhookTriggerService`: those must never serve a stale webhook list.
  */
 class WebhookSubscriptionCache(
     private val webhookRepository: WebhookRepository,

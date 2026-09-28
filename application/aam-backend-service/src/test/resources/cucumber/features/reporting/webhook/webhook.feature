@@ -6,7 +6,7 @@ Feature: Webhook registration and subscription management
 
     # Guardrail (regression test for the silent webhook outage): a report calculation that finishes
     # successfully must deliver to its subscribed webhooks. This deliberately spans the full chain
-    # (calculation triggered -> ReportCalculationProcessor -> completion handling -> NotificationService
+    # (calculation triggered -> ReportCalculationProcessor -> completion handling -> WebhookTriggerService
     # -> webhook trigger). Because the e2e change-detection allowlist only polls `app`, a completed
     # calculation in the `report-calculation` database is NOT observed via the CouchDB changes feed here:
     # this scenario therefore only passes when the processor announces completion itself.
