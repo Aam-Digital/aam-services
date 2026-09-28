@@ -67,6 +67,8 @@ If the `aam-backend` Keycloak Client does not exist in your realm yet, create it
    - check only "Service Accounts roles" for Authentication flow
 - After creating the client, open its details and go to the "Service accounts roles" tab
    - Add "realm-admin" role to the client, to allow the backend to create users in Keycloak
+     (this includes the `manage-clients`, `view-users` and `manage-realm` roles the backend needs to set up
+     the `third_party_authentication` client scope, see below)
 - Add "roles" as a "Client Scope" for the client, so that the roles are included in the JWT token.
 
 ### Keycloak configuration
@@ -81,10 +83,29 @@ This is different from the Client shared with the external system!
 
 #### Set up Keycloak Client for external system
 1. Create a Keycloak Client in the realm to be used by the external system to authenticate itself against our API.
+   - enable "Client authentication" and check only "Service accounts roles" for Authentication flow
    - _if there already is a client for API integration with the "reporting" module, this can also be reused_
-2. Create the Keycloak User Role "third-party-authentication-provider"
-3. Add this role as a "Service Account Role" for the client.
-4. Add "roles" as a "Client Scope" for the client, so that the roles are included in the JWT token. Make sure this is set to "Default" (not "Optional"). 
+2. In the "Client scopes" tab of the client, add the client scope `third_party_authentication`
+   with Assigned type **Default** (not "Optional"), so that it is included in the client's access tokens.
+   - The backend creates this client scope on startup (see below).
+     If it is missing, create it manually under "Client scopes" (protocol OpenID Connect, "Include in token scope" on).
+
+`POST /v1/third-party-authentication/session` rejects tokens without the `third_party_authentication` scope
+with `403`.
+
+#### Keycloak client scope setup and migration from the realm role
+On every startup, the backend makes sure the `third_party_authentication` client scope exists in the realm.
+
+Previously, access was granted through the realm role `third-party-authentication-provider`,
+which also showed up in the role lists for normal users. If that role still exists, the backend migrates it on startup:
+1. every client whose service account has the role gets the `third_party_authentication` client scope
+   as "Default" client scope
+2. then the realm role is deleted
+
+If one of these steps fails (e.g. missing permissions of the `aam-backend` client), the backend logs a warning,
+keeps the role, and retries on the next startup.
+Note that backend versions from before this change rely on the role and stop accepting the external system
+once the role is deleted.
 
 #### Create an Authentication Flow
 1. Go to the `Authentication` settings in your Realm and copy the default `browser` flow and name it `browser-sso`.
