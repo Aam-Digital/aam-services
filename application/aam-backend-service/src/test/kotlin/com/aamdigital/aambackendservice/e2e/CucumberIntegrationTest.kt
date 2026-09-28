@@ -105,6 +105,16 @@ class CucumberIntegrationTest(
         fetchToken(client, secret, realm)
     }
 
+    @Given("signed in as user {} with password {} through client {} in realm {}")
+    fun `sign in as app user in realm`(
+        username: String,
+        password: String,
+        client: String,
+        realm: String
+    ) {
+        fetchUserToken(client, username, password, realm)
+    }
+
     @Given("all default databases are created")
     fun `create default databases`() {
         couchDbTestingService.initDefaultDatabases()

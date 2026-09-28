@@ -6,6 +6,8 @@ import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.export.controller.TemplateExportControllerResponse
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
+import com.aamdigital.aambackendservice.reporting.RequiresReportingReadAccess
+import com.aamdigital.aambackendservice.reporting.RequiresReportingWriteAccess
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
@@ -37,6 +39,7 @@ import java.util.*
 @RestController
 @RequestMapping("/v1/reporting/report-calculation")
 @ConditionalOnReportingEnabled
+@RequiresReportingReadAccess
 @Validated
 class ReportCalculationController(
     private val reportStorage: ReportStorage,
@@ -48,6 +51,7 @@ class ReportCalculationController(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @PostMapping("/report/{reportId}")
+    @RequiresReportingWriteAccess
     fun startCalculation(
         @PathVariable reportId: String,
         @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") from: Date?,

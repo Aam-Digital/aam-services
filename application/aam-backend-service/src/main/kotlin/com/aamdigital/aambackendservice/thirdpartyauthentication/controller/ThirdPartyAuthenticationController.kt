@@ -3,11 +3,13 @@ package com.aamdigital.aambackendservice.thirdpartyauthentication.controller
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.security.AamAuthorities
 import com.aamdigital.aambackendservice.thirdpartyauthentication.ConditionalOnThirdPartyAuthenticationEnabled
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCaseRequest
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCaseRequest
+import com.aamdigital.aambackendservice.thirdpartyauthentication.ThirdPartyAuthenticationScopes
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCaseRequest
 import jakarta.validation.constraints.Email
@@ -62,7 +64,9 @@ class ThirdPartyAuthenticationController(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @PostMapping("/session")
-    @PreAuthorize("hasAuthority('ROLE_third-party-authentication-provider')")
+    @PreAuthorize(
+        "hasAuthority('${AamAuthorities.SCOPE_PREFIX}${ThirdPartyAuthenticationScopes.SESSION_PROVIDER}')"
+    )
     fun startSession(
         @RequestBody userSessionRequest: UserSessionRequest
     ): ResponseEntity<Any> {
