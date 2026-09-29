@@ -80,6 +80,10 @@ interface CouchDbClient {
      * immediately before the write, so this does *not* protect a read-modify-write: a change made
      * since the caller read the document is silently overwritten. Use
      * [putDatabaseDocumentAtRevision] for that.
+     *
+     * A write into a database that does not exist is thrown as an [ExternalSystemException] with
+     * code [DefaultCouchDbClient.DefaultCouchDbClientErrorCode.DATABASE_NOT_FOUND]; wrap the write in
+     * [creatingDatabaseIfMissing] where the database is to be created then.
      */
     fun putDatabaseDocument(
         database: String,
@@ -91,7 +95,8 @@ interface CouchDbClient {
      * Writes [body] only if the document is still at [expectedRev], or - with `null` - only if it
      * does not exist yet. A concurrent write since [expectedRev] was read makes CouchDB answer
      * 409, which is thrown as an [ExternalSystemException] with code
-     * [DefaultCouchDbClient.DefaultCouchDbClientErrorCode.CONFLICT].
+     * [DefaultCouchDbClient.DefaultCouchDbClientErrorCode.CONFLICT]. A missing database is thrown as
+     * for [putDatabaseDocument].
      */
     @Throws(ExternalSystemException::class)
     fun putDatabaseDocumentAtRevision(
