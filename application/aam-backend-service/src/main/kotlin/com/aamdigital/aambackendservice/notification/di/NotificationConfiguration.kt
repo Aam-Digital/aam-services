@@ -1,7 +1,6 @@
 package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
@@ -131,7 +130,6 @@ class NotificationConfiguration {
     @Bean
     fun notificationOutbox(
         couchDbClient: CouchDbClient,
-        couchDbInitializer: CouchDbInitializer,
         objectMapper: ObjectMapper,
         notificationOutboxHandler: NotificationOutboxHandler,
         @Value("\${notification.outbox.max-attempts:3}") maxAttempts: Int,
@@ -149,7 +147,6 @@ class NotificationConfiguration {
                     maxInterval = Duration.ofSeconds(retryMaxIntervalSeconds)
                 ),
             couchDbClient = couchDbClient,
-            couchDbInitializer = couchDbInitializer,
             objectMapper = objectMapper
         )
 

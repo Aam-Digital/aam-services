@@ -1,7 +1,9 @@
 package com.aamdigital.aambackendservice.common.outbox
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
+import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
+import com.aamdigital.aambackendservice.common.couchdb.dto.DocSuccess
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.rest.ObjectMapperConfiguration
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -13,7 +15,9 @@ import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -37,7 +41,6 @@ class OutboxTest {
     private val payload = TestPayload(value = "payload-1", priority = Priority.HIGH, due = now)
 
     private val couchDbClient = mock<CouchDbClient>()
-    private val couchDbInitializer = mock<CouchDbInitializer>()
     private val handler = mock<OutboxHandler<TestPayload>>()
     private val objectMapper = ObjectMapperConfiguration().objectMapper()
 
@@ -53,7 +56,6 @@ class OutboxTest {
                     maxInterval = Duration.ofSeconds(60)
                 ),
             couchDbClient = couchDbClient,
-            couchDbInitializer = couchDbInitializer,
             objectMapper = objectMapper,
             clock = Clock.fixed(now, ZoneOffset.UTC)
         )
@@ -84,6 +86,37 @@ class OutboxTest {
             .isEqualTo(
                 OutboxEntry(id = "OutboxEntry:key-1", payload = payload, nextAttemptAt = now, createdAt = now)
             )
+    }
+
+    @Test
+    fun `should store a new entry without checking for the database first`() {
+        // Given
+        stubExisting(eTag = null)
+
+        // When
+        outbox.enqueue("key-1", payload)
+
+        // Then
+        verify(couchDbClient).headDatabaseDocument(database, "OutboxEntry:key-1")
+        verify(couchDbClient).putDatabaseDocument(eq(database), eq("OutboxEntry:key-1"), any())
+        verifyNoMoreInteractions(couchDbClient)
+    }
+
+    @Test
+    fun `should create the database when the first entry finds it missing`() {
+        // Given it was dropped since startup
+        stubExisting(eTag = null)
+        whenever(couchDbClient.putDatabaseDocument(eq(database), eq("OutboxEntry:key-1"), any()))
+            .thenAnswer { throw ExternalSystemException(code = DefaultCouchDbClientErrorCode.DATABASE_NOT_FOUND) }
+            .thenReturn(DocSuccess(ok = true, id = "OutboxEntry:key-1", rev = "1-a"))
+
+        // When
+        val stored = outbox.enqueue("key-1", payload)
+
+        // Then
+        assertThat(stored).isTrue()
+        verify(couchDbClient).createDatabase(database)
+        verify(couchDbClient, times(2)).putDatabaseDocument(eq(database), eq("OutboxEntry:key-1"), any())
     }
 
     @Test
