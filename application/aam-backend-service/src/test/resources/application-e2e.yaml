@@ -91,7 +91,7 @@ features:
     mode: disabled
   # enables the third-party-authentication controller and use cases so the e2e suite can
   # exercise the SSO session flow. AuthenticationProvider is mocked in CucumberIntegrationTest,
-  # so no real Keycloak admin client is involved despite `keycloak.server-url` below.
+  # so the Keycloak admin client (see `keycloak` below) never creates users.
   third-party-authentication:
     enabled: true
 
@@ -101,6 +101,8 @@ crypto-configuration:
 database-change-detection:
   fixed-delay: 1000
 
+# the Keycloak admin client ensures the API client scopes on startup;
+# server-url is overridden with the Keycloak test container (see TestContainers)
 keycloak:
   realm: dummy-realm
   client-id: aam-backend

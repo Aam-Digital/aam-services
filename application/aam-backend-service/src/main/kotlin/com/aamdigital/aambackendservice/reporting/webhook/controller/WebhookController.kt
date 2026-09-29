@@ -4,6 +4,8 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
+import com.aamdigital.aambackendservice.reporting.RequiresReportingReadAccess
+import com.aamdigital.aambackendservice.reporting.RequiresReportingWriteAccess
 import com.aamdigital.aambackendservice.reporting.webhook.Webhook
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthenticationType
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookTarget
@@ -58,6 +60,7 @@ data class CreateWebhookRequestDto(
 @RestController
 @RequestMapping("/v1/reporting/webhook")
 @ConditionalOnReportingEnabled
+@RequiresReportingReadAccess
 @Validated
 class WebhookController(
     private val webhookStorage: WebhookStorage,
@@ -140,6 +143,7 @@ class WebhookController(
     }
 
     @PostMapping
+    @RequiresReportingWriteAccess
     fun storeWebhook(
         @RequestBody request: CreateWebhookRequestDto,
         principal: Principal
@@ -182,6 +186,7 @@ class WebhookController(
     }
 
     @PostMapping("/{webhookId}/subscribe/report/{reportId}")
+    @RequiresReportingWriteAccess
     fun registerReportNotification(
         @PathVariable webhookId: String,
         @PathVariable reportId: String
@@ -195,6 +200,7 @@ class WebhookController(
     }
 
     @DeleteMapping("/{webhookId}/subscribe/report/{reportId}")
+    @RequiresReportingWriteAccess
     fun unregisterReportNotification(
         @PathVariable webhookId: String,
         @PathVariable reportId: String

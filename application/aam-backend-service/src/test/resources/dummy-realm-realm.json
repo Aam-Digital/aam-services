@@ -515,6 +515,51 @@
       ],
       "notBefore": 0,
       "groups": []
+    },
+    {
+      "username": "service-account-aam-backend",
+      "enabled": true,
+      "serviceAccountClientId": "aam-backend",
+      "realmRoles": [
+        "default-roles-dummy-realm"
+      ],
+      "clientRoles": {
+        "realm-management": [
+          "manage-clients",
+          "view-users",
+          "manage-realm"
+        ]
+      }
+    },
+    {
+      "username": "service-account-no-scope-client",
+      "enabled": true,
+      "serviceAccountClientId": "no-scope-client",
+      "realmRoles": [
+        "default-roles-dummy-realm",
+        "user_app",
+        "admin_app"
+      ]
+    },
+    {
+      "username": "app-user",
+      "enabled": true,
+      "email": "app-user@example.com",
+      "emailVerified": true,
+      "firstName": "App",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "app-user-password",
+          "temporary": false
+        }
+      ],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-dummy-realm",
+        "user_app"
+      ]
     }
   ],
   "scopeMappings": [
@@ -847,6 +892,67 @@
         "reporting_read",
         "reporting_write"
       ]
+    },
+    {
+      "clientId": "aam-backend",
+      "name": "",
+      "description": "The backend's own client for the Keycloak Admin API (keycloak.client-id)",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "1234",
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "roles"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "no-scope-client",
+      "name": "",
+      "description": "API client without any Aam Digital API client scope",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "no-scope-secret",
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "roles"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "app",
+      "name": "",
+      "description": "Frontend client, used by users of the Aam Digital app",
+      "enabled": true,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "email"
+      ],
+      "optionalClientScopes": []
     },
     {
       "id": "200aaec6-03bc-4af2-ab2d-c8536812049c",

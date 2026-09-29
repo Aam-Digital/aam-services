@@ -1,6 +1,13 @@
 # Reporting Module (implementation)
 _for details about setup & usage of this module [see README in docs folder](../../../../../../../../../docs/modules/reporting.md)_
 
+## Access Control
+Controllers are annotated with `@RequiresReportingReadAccess` (class level) and `@RequiresReportingWriteAccess`
+(POST / DELETE endpoints), see `ReportingAccess.kt`. These require the `reporting_read` / `reporting_write` client scope,
+or a token issued to the frontend client (`FRONTEND_CLIENT` authority), because the app itself runs report calculations
+for its users. The scopes are registered as `ClientScopeRequest`s in `ReportingClientScopeConfiguration`,
+so they are created in Keycloak on startup.
+
 ## Use Case / Flow
 This backend module uses CouchDB [Structured Query Service (SQS)](https://neighbourhood.ie/products-and-services/structured-query-server)
 to execute SQL queries on the Aam Digital system's database.
