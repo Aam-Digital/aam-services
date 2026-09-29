@@ -135,7 +135,7 @@ jobs:
         run: |
           # conventional_commits_next_version (>= 7.1) fails if no commit in the range touches
           # MODULE_PATH, so keep the current version (= no release) in that case.
-          if [ -z "$(git rev-list --first-parent --max-count=1 "$FROM_COMMIT_HASH"..HEAD -- "$MODULE_PATH")" ]; then
+          if [ -z "$(git rev-list --first-parent --max-count=1 "$FROM_COMMIT_HASH"..HEAD -- ":(top)$MODULE_PATH")" ]; then
             NEXT_VERSION=$CURRENT_VERSION
           else
             NEXT_VERSION=v$(conventional_commits_next_version \
