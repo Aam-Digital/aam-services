@@ -50,6 +50,13 @@ class ReportCalculationController(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    companion object {
+        // The still JSON-escaped value of a "message" field: escaped quotes such as the ones in
+        // near \"FROM\" are part of it. No closing quote is required, because the stored SQS
+        // response is cut off after a maximum length.
+        private val SQS_ERROR_MESSAGE = Regex(""""message"\s*:\s*"((?:[^"\\]|\\.)*)""")
+    }
+
     @PostMapping("/report/{reportId}")
     @RequiresReportingWriteAccess
     fun startCalculation(
@@ -332,15 +339,30 @@ class ReportCalculationController(
         return result
     }
 
-    private fun toErrorDetails(it: String?): String {
-        // e.g. "400 Bad Request: \"{\"statusCode\":400,\"error\":\"Bad Request\",\"message\":\"no such column: i.xxx\"}\""
-        // should be returned as "no such column: i.xxx"
-
-        if (it.isNullOrBlank()) {
+    /**
+     * Returns SQS's explanation of a query it rejected, i.e. the `message` field of the SQS response
+     * stored in [errorDetails], e.g. `near "FROM": syntax error` from
+     * `[SqsQueryStorage] SQS rejected the query for report 'ReportConfig:1' (400 BAD_REQUEST):
+     * {"statusCode":400,"error":"Bad Request","message":"near \"FROM\": syntax error"}`
+     * or from the format stored by earlier versions,
+     * `400 Bad Request: "{"statusCode":400,"error":"Bad Request","message":"near \"FROM\": syntax error"}"`.
+     *
+     * A value without an SQS response, which is what any other failure stores, gets "Unknown error",
+     * because its message is internal and not meant for API clients.
+     */
+    private fun toErrorDetails(errorDetails: String?): String {
+        val message =
+            errorDetails
+                ?.let { SQS_ERROR_MESSAGE.find(it) }
+                ?.groupValues
+                ?.get(1)
+        if (message.isNullOrBlank()) {
             return "Unknown error"
         }
 
-        return Regex("""message":"(.*?)"""").find(it)?.groupValues?.getOrNull(1) ?: "Unknown error"
+        // a response cut off inside an escape sequence cannot be unescaped and is returned as it is
+        return runCatching { objectMapper.readValue("\"$message\"", String::class.java) }
+            .getOrDefault(message)
     }
 
     private fun toReportCalculationData(it: ReportCalculation): ReportCalculationData? {
