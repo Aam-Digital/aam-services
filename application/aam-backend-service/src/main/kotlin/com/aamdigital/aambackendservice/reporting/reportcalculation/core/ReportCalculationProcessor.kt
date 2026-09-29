@@ -19,7 +19,9 @@ import org.slf4j.LoggerFactory
  * A calculation that failed on invalid input (an [InvalidArgumentException] anywhere in the cause
  * chain, e.g. a ReportConfig whose query SQS rejects) is logged at INFO rather than ERROR: it is a
  * configuration problem of the individual instance, not a backend defect, so it must not raise
- * Sentry alerts.
+ * Sentry alerts. Neither log line quotes the failure message, only the attached exception carries
+ * it: an INFO line still becomes a breadcrumb on later Sentry events, and the message of an invalid
+ * query is SQS's explanation, which can quote the tenant's query.
  *
  * The webhook notification gets its own bounded [InlineRetry], because the calculation is complete
  * and persisted by then - failing to notify must not re-run it or re-status it. It is tried three
@@ -59,18 +61,16 @@ class ReportCalculationProcessor(
 
         if (invalidInput) {
             logger.info(
-                "Report calculation {} rejected invalid input: [{}] {}",
+                "Report calculation {} rejected invalid input: [{}]",
                 reportCalculationId,
                 failure.errorCode,
-                failure.errorMessage,
                 failure.cause
             )
         } else {
             logger.error(
-                "Report calculation {} failed: [{}] {}",
+                "Report calculation {} failed: [{}]",
                 reportCalculationId,
                 failure.errorCode,
-                failure.errorMessage,
                 failure.cause
             )
         }
