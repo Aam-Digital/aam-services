@@ -17,6 +17,10 @@ open class DatabaseRequest(
  *
  * No databases are deleted by disabling features.
  *
+ * It only runs at startup. A database that comes into being with its first document, or that may
+ * be dropped while the service runs, is created by the write that finds it missing instead: see
+ * [creatingDatabaseIfMissing].
+ *
  * This class is extending the InitializingBean and overrides the afterPropertiesSet() function
  * to run the init on startup.
  *
@@ -47,7 +51,7 @@ class CouchDbInitializer(
         }
     }
 
-    fun createDatabase(databaseRequest: DatabaseRequest) {
+    private fun createDatabase(databaseRequest: DatabaseRequest) {
         val dbExists =
             try {
                 couchDbClient.databaseExists(databaseRequest.name)
