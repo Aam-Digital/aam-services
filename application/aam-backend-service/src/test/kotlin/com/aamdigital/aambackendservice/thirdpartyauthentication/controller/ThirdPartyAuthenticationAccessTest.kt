@@ -58,8 +58,18 @@ class ThirdPartyAuthenticationAccessTest {
     }
 
     @Test
-    @WithMockUser(authorities = ["ROLE_third-party-authentication-provider", "SCOPE_reporting_write"])
-    fun `should deny starting a session with only the legacy realm role`() {
+    @WithMockUser(authorities = ["ROLE_third-party-authentication-provider"])
+    fun `should still allow starting a session with the legacy realm role`() {
+        // When
+        val response = startSession()
+
+        // Then
+        assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+    }
+
+    @Test
+    @WithMockUser(authorities = ["ROLE_user_app", "SCOPE_reporting_write"])
+    fun `should deny starting a session without the scope or the legacy realm role`() {
         // When / Then
         assertThatThrownBy { startSession() }.isInstanceOf(AccessDeniedException::class.java)
     }

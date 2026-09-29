@@ -124,6 +124,8 @@ components:
         OAuth2 Client Credentials Flow of the external system's Keycloak client.
         The client needs the third_party_authentication client scope assigned as "Default" client scope,
         so that it is included in its access tokens.
+        Deprecated: until the backend has migrated it to this scope, the realm role
+        third-party-authentication-provider is accepted as well.
       flows:
         clientCredentials:
           tokenUrl: https://keycloak.aam-digital.net/realms/your-realm/protocol/openid-connect/token

@@ -14,6 +14,8 @@ The module here
 (`SCOPE_third_party_authentication` authority, see `ThirdPartyAuthenticationScopes`).
 The module registers a `ClientScopeRequest` (common `keycloak` package), so the scope is created on startup,
 and API clients with the former realm role `third-party-authentication-provider` are migrated to the scope.
+Until that migration has deleted the role, the role is still accepted as well (deprecated, to be removed with the
+next major version).
 
 
 ## Development Setup

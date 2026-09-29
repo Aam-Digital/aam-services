@@ -91,7 +91,8 @@ This is different from the Client shared with the external system!
      If it is missing, create it manually under "Client scopes" (protocol OpenID Connect, "Include in token scope" on).
 
 `POST /v1/third-party-authentication/session` rejects tokens without the `third_party_authentication` scope
-with `403`.
+with `403`. (For the transition, tokens with the deprecated realm role `third-party-authentication-provider`
+are accepted as well, see below.)
 
 #### Keycloak client scope setup and migration from the realm role
 On every startup, the backend makes sure the `third_party_authentication` client scope exists in the realm.
@@ -104,14 +105,17 @@ which also showed up in the role lists for normal users. If that role still exis
 
 If one of these steps fails (e.g. missing permissions of the `aam-backend` client), the backend logs a warning,
 keeps the role, and retries on the next startup.
-The role alone does not grant access anymore, so the external system is denied (`403`) until the migration succeeded
-or the `third_party_authentication` scope was assigned to its client manually.
 The role is also kept (and nothing is migrated) if an existing `third_party_authentication` client scope has
 "Include in token scope" disabled.
+As long as the role exists, the backend still accepts it instead of the client scope, so the external system
+keeps working until the migration succeeds.
+This fallback is deprecated and will be removed with the next major version:
+from then on, only the `third_party_authentication` client scope grants access.
 
-> **Upgrade prerequisite:** before upgrading an existing instance, make sure the `aam-backend` service account has
-> the `realm-management` roles `manage-clients`, `view-users` and `manage-realm` (all included in `realm-admin`)
-> and that the `KEYCLOAK_*` variables are set, so that the migration can run on the first startup.
+> **Before upgrading to the next major version**, make sure the migration has run
+> (the realm role `third-party-authentication-provider` no longer exists).
+> For that, the `aam-backend` service account needs the `realm-management` roles `manage-clients`, `view-users` and
+> `manage-realm` (all included in `realm-admin`), and the `KEYCLOAK_*` variables have to be set.
 
 Note that backend versions from before this change rely on the role and stop accepting the external system
 once the role is deleted.
