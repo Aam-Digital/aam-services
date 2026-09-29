@@ -121,29 +121,29 @@ jobs:
         run: |
           CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'keycloak-third-party-authentication/v*')
           CURRENT_VERSION=$(echo $CURRENT_TAG | cut -d'/' -f2)
-          echo "CURRENT_TAG=$CURRENT_TAG" >> $GITHUB_ENV
-          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          echo "CURRENT_TAG=$CURRENT_TAG" >> "$GITHUB_ENV"
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> "$GITHUB_ENV"
 
       - name: Set from commit hash
         run: |
-          FROM_COMMIT_HASH=$(git rev-list -n 1 ${{ env.CURRENT_TAG }})
-          echo "FROM_COMMIT_HASH=$FROM_COMMIT_HASH" >> $GITHUB_ENV
+          FROM_COMMIT_HASH=$(git rev-list -n 1 "$CURRENT_TAG")
+          echo "FROM_COMMIT_HASH=$FROM_COMMIT_HASH" >> "$GITHUB_ENV"
 
       - name: Calculate next version
         run: |
           NEXT_VERSION=v$(conventional_commits_next_version \
             --calculation-mode "Batch" \
-            --from-version ${{ env.CURRENT_VERSION }} \
+            --from-version "$CURRENT_VERSION" \
             --monorepo application/keycloak-third-party-authentication \
-            ${{ env.FROM_COMMIT_HASH }})
-          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
-          echo $NEXT_VERSION
+            "$FROM_COMMIT_HASH")
+          echo "NEXT_VERSION=$NEXT_VERSION" >> "$GITHUB_ENV"
+          echo "$NEXT_VERSION"
 
       - name: Create Release
         if: env.CURRENT_VERSION != env.NEXT_VERSION
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          TAG_NAME=keycloak-third-party-authentication/${{ env.NEXT_VERSION }}
-          gh release create "$TAG_NAME" --target "${{ github.sha }}" --generate-notes
+          TAG_NAME=keycloak-third-party-authentication/$NEXT_VERSION
+          gh release create "$TAG_NAME" --target "$GITHUB_SHA" --generate-notes
           gh release upload "$TAG_NAME" keycloak-third-party-authentication.jar

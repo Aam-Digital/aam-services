@@ -270,36 +270,36 @@ jobs:
           CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'aam-backend-service/[0-9]*' --match 'aam-backend-service/v*')
           CURRENT_VERSION=${CURRENT_TAG#aam-backend-service/}
           CURRENT_VERSION=${CURRENT_VERSION#v}
-          echo "CURRENT_TAG=$CURRENT_TAG" >> $GITHUB_ENV
-          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          echo "CURRENT_TAG=$CURRENT_TAG" >> "$GITHUB_ENV"
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> "$GITHUB_ENV"
 
       - name: Set from commit hash
         run: |
-          FROM_COMMIT_HASH=$(git rev-list -n 1 ${{ env.CURRENT_TAG }})
-          echo "FROM_COMMIT_HASH=$FROM_COMMIT_HASH" >> $GITHUB_ENV
+          FROM_COMMIT_HASH=$(git rev-list -n 1 "$CURRENT_TAG")
+          echo "FROM_COMMIT_HASH=$FROM_COMMIT_HASH" >> "$GITHUB_ENV"
 
       - name: Calculate next version
         run: |
           NEXT_VERSION=$(conventional_commits_next_version \
             --calculation-mode "Batch" \
-            --from-version ${{ env.CURRENT_VERSION }} \
+            --from-version "$CURRENT_VERSION" \
             --monorepo application/aam-backend-service \
-            ${{ env.FROM_COMMIT_HASH }})
-          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
+            "$FROM_COMMIT_HASH")
+          echo "NEXT_VERSION=$NEXT_VERSION" >> "$GITHUB_ENV"
 
       - name: Create Release
         if: env.CURRENT_VERSION != env.NEXT_VERSION
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          TAG_NAME=aam-backend-service/${{ env.NEXT_VERSION }}
+          TAG_NAME=aam-backend-service/$NEXT_VERSION
           gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             /repos/Aam-Digital/aam-services/releases \
             -f "tag_name=$TAG_NAME" \
-            -f "target_commitish=${{ github.sha }}" \
+            -f "target_commitish=$GITHUB_SHA" \
             -f "name=$TAG_NAME" \
             -F "draft=false" \
             -F "prerelease=false" \
