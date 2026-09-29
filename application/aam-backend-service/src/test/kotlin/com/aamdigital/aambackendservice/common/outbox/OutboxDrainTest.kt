@@ -1,5 +1,10 @@
 package com.aamdigital.aambackendservice.common.outbox
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.classic.spi.ThrowableProxy
+import ch.qos.logback.core.read.ListAppender
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
@@ -20,6 +25,7 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -169,6 +175,34 @@ class OutboxDrainTest {
         assertThat(stored.attempts).isEqualTo(maxAttempts)
         assertThat(stored.lastError).contains("No Handler")
         verify(couchDbClient, never()).deleteDatabaseDocument(any(), any())
+    }
+
+    @Test
+    fun `should log a rejected entry it parks with the cause the handler reported`() {
+        // Given a handler reports a failure through its result instead of logging it, so this line
+        // is the only record of the cause
+        stubEmpty()
+        val outboxEntry = entry()
+        stubFound(retryableSelector, listOf(outboxEntry))
+        val cause = IllegalStateException("push service unreachable")
+        whenever(handler.deliver(any()))
+            .thenReturn(OutboxDeliveryResult.Rejected("push service unreachable", cause))
+        val logger = LoggerFactory.getLogger(Outbox::class.java) as Logger
+        val logAppender = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(logAppender)
+
+        // When
+        try {
+            outbox().drain()
+        } finally {
+            logger.detachAppender(logAppender)
+        }
+
+        // Then
+        val errors = logAppender.list.filter { it.level == Level.ERROR }
+        assertThat(errors).hasSize(1)
+        assertThat(errors[0].formattedMessage).contains(outboxEntry.id, "push service unreachable")
+        assertThat((errors[0].throwableProxy as ThrowableProxy).throwable).isSameAs(cause)
     }
 
     @Test
