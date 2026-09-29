@@ -12,9 +12,10 @@ import org.slf4j.LoggerFactory
  * Executes one stored report calculation and, when it produced a new result, notifies the webhooks
  * subscribed to that report.
  *
- * Called off the caller's thread (see [ExecutorReportCalculationTrigger]). A failed calculation is
- * already recorded on the calculation document as `FINISHED_ERROR`, which is what the API serves,
- * so this only has to log it.
+ * Called off the caller's thread (see [ExecutorReportCalculationTrigger]). This logs every failed
+ * calculation. A failure while the queries run or the result is stored is also recorded on the
+ * calculation document as `FINISHED_ERROR`, which is what the API serves; one that happens before
+ * the calculation and its ReportConfig are loaded leaves the calculation's status as it was.
  *
  * A calculation that failed on invalid input (an [InvalidArgumentException] anywhere in the cause
  * chain, e.g. a ReportConfig whose query SQS rejects) is logged at INFO rather than ERROR: it is a

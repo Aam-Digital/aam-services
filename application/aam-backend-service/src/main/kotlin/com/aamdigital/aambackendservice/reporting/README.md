@@ -45,6 +45,34 @@ flowchart TD
     TriggerWebhook(TriggerWebhookUseCase - call the webhook)
 ```
 
+## Failed calculations
+`ReportCalculationProcessor` logs every failed calculation. Only a failure after the calculation
+and its ReportConfig are loaded, i.e. while the queries run and the result is stored, is also
+recorded on the calculation: `DefaultReportCalculationUseCase` stores it as `FINISHED_ERROR` with the
+exception message as `errorDetails`. If the calculation or its ReportConfig cannot be loaded, the
+calculation keeps its status (e.g. `PENDING`).
+
+Whether the failure alerts depends on whether the input is at fault:
+
+- A failure with an `InvalidArgumentException` anywhere in its cause chain is invalid input and is
+  logged at INFO only: it is the report author's or the instance's to fix, so it must not raise a
+  Sentry alert. The main case is a query SQS rejects: SQS answers an invalid query with 400, and
+  `SqsQueryStorage` throws an `InvalidArgumentException` (`QUERY_FAILED`) whose message ends with
+  the SQS response body. That message is stored as `errorDetails`, from which
+  `ReportCalculationController` returns SQS's explanation to the report editor. `DefaultReportStorage`
+  also throws one for a ReportConfig that is not an SQL report (`INVALID_REPORT_CONFIG`) or that
+  cannot be mapped to its entity (`PARSING_ERROR`), which fails while loading and so is not recorded
+  on the calculation.
+- Any other failure, including any other SQS error status (e.g. wrong credentials or a missing
+  design document), is logged at ERROR and so reaches Sentry. If it is recorded as
+  `FINISHED_ERROR`, the API returns "Unknown error" as its `errorDetails`.
+
+An SQS response body can quote the tenant's query, so it stays out of anything sent to Sentry:
+the processor's log lines name only the calculation and the error code (the attached exception
+carries the message into the console log), because INFO lines still become breadcrumbs on later
+Sentry events; and for any status other than 400, `SqsQueryStorage` leaves the body out of the
+exception and logs it at DEBUG instead.
+
 ## Caches on the automatic change-detection path
 
 `ReportDocumentChangeHandler` runs for every changed document in the `app` database (up to

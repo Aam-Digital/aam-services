@@ -97,6 +97,24 @@ This behaviour can be tuned via environment variables / application properties (
 Manually triggered calculations (`POST /v1/reporting/report-calculation/report/<report-id>`)
 are not debounced and always run immediately.
 
+### Failed report calculations
+
+A report calculation that fails while its queries run ends with status `FINISHED_ERROR`.
+If the report's query is invalid, its `errorDetails` contain the query service's explanation
+(e.g. `near "FROM": syntax error`), so that the author of the report can fix it.
+For any other failure, its `errorDetails` are "Unknown error".
+If the report calculation or its ReportConfig cannot be loaded (e.g. because the ReportConfig
+cannot be parsed or is not an SQL report), the calculation keeps its status (e.g. `PENDING`).
+
+A failure caused by invalid input, e.g. an invalid query or a ReportConfig that is not an SQL report,
+is logged at INFO only.
+Any other failure is logged at ERROR.
+
+To see the query service's (SQS) response to any other failed query in the backend log, set the log level of
+`com.aamdigital.aambackendservice.reporting.report.sqs` to DEBUG
+(e.g. environment variable `LOGGING_LEVEL_COM_AAMDIGITAL_AAMBACKENDSERVICE_REPORTING_REPORT_SQS=DEBUG`).
+Note that the response can quote the report's query.
+
 -----
 
 ## Setup of the Feature Module
