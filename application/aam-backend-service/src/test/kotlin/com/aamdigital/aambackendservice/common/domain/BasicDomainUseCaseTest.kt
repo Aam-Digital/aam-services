@@ -10,20 +10,22 @@ enum class TestErrorCode : AamErrorCode {
 }
 
 class BasicDomainUseCaseTest {
-    class BasicTestUseCase : DomainUseCase<UseCaseRequest, UseCaseData>() {
-        override fun apply(request: UseCaseRequest): UseCaseOutcome<UseCaseData> =
-            throw InternalServerException(
+    class BasicTestUseCase(
+        private val exception: Exception =
+            InternalServerException(
                 message = "error",
                 code = TestErrorCode.TEST_EXCEPTION
             )
+    ) : DomainUseCase<UseCaseRequest, UseCaseData>() {
+        override fun apply(request: UseCaseRequest): UseCaseOutcome<UseCaseData> = throw exception
     }
 
-    private val useCase = BasicTestUseCase()
+    private val request: UseCaseRequest = object : UseCaseRequest {}
 
     @Test
     fun `should catch exception in UseCaseOutcome when call apply()`() {
         // Given
-        val request: UseCaseRequest = object : UseCaseRequest {}
+        val useCase = BasicTestUseCase()
 
         // When
         val response = useCase.run(request)
@@ -32,5 +34,22 @@ class BasicDomainUseCaseTest {
         assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
         assertThat((response as UseCaseOutcome.Failure).errorCode)
             .isEqualTo(TestErrorCode.TEST_EXCEPTION)
+    }
+
+    @Test
+    fun `should return a Failure for an exception without a message instead of throwing`() {
+        // Given - what Kotlin's !! throws
+        val exception = NullPointerException()
+        val useCase = BasicTestUseCase(exception)
+
+        // When
+        val response = useCase.run(request)
+
+        // Then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        val failure = response as UseCaseOutcome.Failure
+        assertThat(failure.errorCode).isEqualTo(DomainUseCase.DomainError.UNHANDLED_EXCEPTION_IN_USE_CASE)
+        assertThat(failure.errorMessage).isEqualTo("java.lang.NullPointerException")
+        assertThat(failure.cause).isSameAs(exception)
     }
 }

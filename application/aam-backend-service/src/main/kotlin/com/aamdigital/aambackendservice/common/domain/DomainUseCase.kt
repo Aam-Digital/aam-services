@@ -67,7 +67,8 @@ abstract class DomainUseCase<R : UseCaseRequest, D : UseCaseData> {
         logger.warn("[{}] {}", errorCode, it.localizedMessage, it)
 
         return UseCaseOutcome.Failure(
-            errorMessage = it.localizedMessage,
+            // an exception can come without a message, e.g. the NullPointerException of Kotlin's !!
+            errorMessage = it.localizedMessage ?: it.javaClass.name,
             errorCode = errorCode,
             cause = it
         )
