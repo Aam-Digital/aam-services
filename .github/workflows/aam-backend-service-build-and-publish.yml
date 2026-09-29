@@ -279,12 +279,20 @@ jobs:
           echo "FROM_COMMIT_HASH=$FROM_COMMIT_HASH" >> "$GITHUB_ENV"
 
       - name: Calculate next version
+        env:
+          MODULE_PATH: application/aam-backend-service
         run: |
-          NEXT_VERSION=$(conventional_commits_next_version \
-            --calculation-mode "Batch" \
-            --from-version "$CURRENT_VERSION" \
-            --monorepo application/aam-backend-service \
-            "$FROM_COMMIT_HASH")
+          # conventional_commits_next_version (>= 7.1) fails if no commit in the range touches
+          # MODULE_PATH, so keep the current version (= no release) in that case.
+          if [ -z "$(git rev-list --first-parent --max-count=1 "$FROM_COMMIT_HASH"..HEAD -- ":(top)$MODULE_PATH")" ]; then
+            NEXT_VERSION=$CURRENT_VERSION
+          else
+            NEXT_VERSION=$(conventional_commits_next_version \
+              --calculation-mode "Batch" \
+              --from-version "$CURRENT_VERSION" \
+              --monorepo "$MODULE_PATH" \
+              "$FROM_COMMIT_HASH")
+          fi
           echo "NEXT_VERSION=$NEXT_VERSION" >> "$GITHUB_ENV"
 
       - name: Create Release
