@@ -9,6 +9,8 @@ Feature: the reporting endpoints require the reporting client scopes
 
     Scenario: API client with the reporting client scopes can list reports
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
+        Then the access token contains client scope reporting_read
+        Then the access token contains client scope reporting_write
         When the client calls GET /v1/reporting/report
         Then the client receives status code of 200
 

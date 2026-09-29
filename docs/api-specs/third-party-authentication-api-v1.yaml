@@ -43,7 +43,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         403:
-          description: The access token lacks the third_party_authentication client scope
+          description: The access token has neither the third_party_authentication client scope nor the (deprecated) third-party-authentication-provider realm role
           content:
             application/json:
               schema:

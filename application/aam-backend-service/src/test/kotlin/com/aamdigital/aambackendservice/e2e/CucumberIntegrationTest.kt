@@ -300,6 +300,28 @@ class CucumberIntegrationTest(
         }
     }
 
+    @Then("the access token contains client scope {word}")
+    fun `the access token contains client scope`(scope: String) {
+        val scopes =
+            authTokenClaims()
+                ?.get("scope")
+                ?.textValue()
+                .orEmpty()
+                .split(" ")
+        Assert.assertTrue("Client scope $scope not in token scopes $scopes", scopes.contains(scope))
+    }
+
+    @Then("the access token does not contain realm role {word}")
+    fun `the access token does not contain realm role`(role: String) {
+        val roles =
+            authTokenClaims()
+                ?.get("realm_access")
+                ?.get("roles")
+                ?.map { it.textValue() }
+                .orEmpty()
+        Assert.assertFalse("Realm role $role still in token roles $roles", roles.contains(role))
+    }
+
     @Then("the client receives array with {int} elements")
     @Throws(Throwable::class)
     fun `the client receives array with n elements`(numberOfElements: Int) {
