@@ -39,7 +39,8 @@ In the module's `@Configuration`, declare:
 
 1. the module's `OutboxHandler`;
 2. an `Outbox` bean with its own database name, the payload class, that handler and an
-   `OutboxRetryPolicy`, plus a `DatabaseRequest` for the database (it is also created on demand).
+   `OutboxRetryPolicy`, plus a `DatabaseRequest` so the database is created at startup. If it is
+   dropped later, the next `enqueue` recreates it; `drain()` reads a missing database as empty.
 
 Then add a `@Scheduled` job that calls `drain()` inside `ScheduledJobBackoff`, and add it to
 `SchedulingConfiguration`'s job list and `SCHEDULED_TASKS`. The notification module is the
