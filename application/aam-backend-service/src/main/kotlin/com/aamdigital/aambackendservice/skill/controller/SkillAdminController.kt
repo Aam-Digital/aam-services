@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.skill.controller
 
+import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
 import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
@@ -79,12 +80,24 @@ class SkillAdminController(
         }
 
         try {
-            skillLabFetchUserProfileUpdatesUseCase.run(
-                request =
-                    FetchUserProfileUpdatesRequest(
-                        projectId = projectId
-                    )
-            )
+            val outcome =
+                skillLabFetchUserProfileUpdatesUseCase.run(
+                    request =
+                        FetchUserProfileUpdatesRequest(
+                            projectId = projectId
+                        )
+                )
+
+            // answered with 204 all the same, so this line is the only trace of a failed sync
+            if (outcome is UseCaseOutcome.Failure) {
+                logger.warn(
+                    "Manually triggered sync of SkillLab project {} failed: [{}] {}",
+                    projectId,
+                    outcome.errorCode,
+                    outcome.errorMessage,
+                    outcome.cause
+                )
+            }
         } catch (ex: Exception) {
             logger.error(
                 "[${this.javaClass.name}] An error occurred: {}",

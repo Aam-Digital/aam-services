@@ -130,6 +130,16 @@ class TemplateExportController(
             ).byteInputStream()
     )
 
+    /**
+     * Called first in every Failure branch, before the error code is cast to the use case's own
+     * error type: a Failure built from an unexpected exception carries DomainUseCase's generic code
+     * instead, the cast then throws, and the cause would never reach the log.
+     */
+    private fun logFailure(
+        action: String,
+        result: Failure<*>
+    ) = logger.warn("Could not {}: [{}] {}", action, result.errorCode, result.errorMessage, result.cause)
+
     @PostMapping("/template")
     fun postTemplate(
         @RequestPart("template") file: MultipartFile
@@ -160,6 +170,8 @@ class TemplateExportController(
             }
 
             is Failure -> {
+                logFailure("create a template", result)
+
                 val responseEntity =
                     when (result.errorCode as CreateTemplateError) {
                         else ->
@@ -206,6 +218,8 @@ class TemplateExportController(
             }
 
             is Failure -> {
+                logFailure("fetch template $templateId", result)
+
                 val errorBody = getErrorBody(result)
                 val headers = HttpHeaders()
                 headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -261,6 +275,8 @@ class TemplateExportController(
             }
 
             is Failure -> {
+                logFailure("render template $templateId", result)
+
                 val errorBody = getErrorBody(result)
                 val headers = HttpHeaders()
                 headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -349,6 +365,8 @@ class TemplateExportController(
             }
 
             is Failure -> {
+                logFailure("render a batch of template $templateId", result)
+
                 val errorBody = getErrorBody(result)
                 val headers = HttpHeaders()
                 headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
