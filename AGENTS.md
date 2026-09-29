@@ -469,6 +469,10 @@ e2e gates rely on it.
 - Externalize configuration via environment variables
 - Provide sensible defaults for development
 - Document required environment variables
+- A setting with the same value on every deployment gets its default in `application.yaml`, not only in
+  `templates/aam-backend-service/application.template.env`. Deployments copy the template once, when the backend
+  is enabled, so a key added to it later never reaches existing instances. The template only lists
+  instance-specific values, secrets and feature toggles.
 
 ---
 
