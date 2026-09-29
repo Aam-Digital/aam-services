@@ -105,6 +105,16 @@ class CucumberIntegrationTest(
         fetchToken(client, secret, realm)
     }
 
+    @Given("signed in as user {} with password {} through client {} in realm {}")
+    fun `sign in as app user in realm`(
+        username: String,
+        password: String,
+        client: String,
+        realm: String
+    ) {
+        fetchUserToken(client, username, password, realm)
+    }
+
     @Given("all default databases are created")
     fun `create default databases`() {
         couchDbTestingService.initDefaultDatabases()
@@ -288,6 +298,28 @@ class CucumberIntegrationTest(
         } else {
             Assert.assertEquals(value, actualValue)
         }
+    }
+
+    @Then("the access token contains client scope {word}")
+    fun `the access token contains client scope`(scope: String) {
+        val scopes =
+            authTokenClaims()
+                ?.get("scope")
+                ?.textValue()
+                .orEmpty()
+                .split(" ")
+        Assert.assertTrue("Client scope $scope not in token scopes $scopes", scopes.contains(scope))
+    }
+
+    @Then("the access token does not contain realm role {word}")
+    fun `the access token does not contain realm role`(role: String) {
+        val roles =
+            authTokenClaims()
+                ?.get("realm_access")
+                ?.get("roles")
+                ?.map { it.textValue() }
+                .orEmpty()
+        Assert.assertFalse("Realm role $role still in token roles $roles", roles.contains(role))
     }
 
     @Then("the client receives array with {int} elements")

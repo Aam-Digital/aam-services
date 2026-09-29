@@ -9,6 +9,14 @@ The module here
 2. issues a special token to allow login without entering normal credentials manually in our Keycloak and
 3. when Keycloak receives the token validates it (and then blocks it against repeated use)
 
+## Access Control
+`POST /session` requires the `third_party_authentication` client scope in the access token
+(`SCOPE_third_party_authentication` authority, see `ThirdPartyAuthenticationScopes`).
+The module registers a `ClientScopeRequest` (common `keycloak` package), so the scope is created on startup,
+and API clients with the former realm role `third-party-authentication-provider` are migrated to the scope.
+Until that migration has deleted the role, the role is still accepted as well (deprecated, to be removed with the
+next major version).
+
 
 ## Development Setup
 Use the developer setup [docs/developer](../../../../../../../../../docs/developer/README.md) to run required DB and Keycloak instances.

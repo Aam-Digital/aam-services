@@ -17,6 +17,17 @@ Reports and their results are available for external services through the given 
 endpoints ([see OpenAPI specs](../api-specs/reporting-api-v1.yaml)). Endpoints require a valid JWT access token, which
 can be fetched via OAuth2 client credential flow.
 
+The access token must contain the client scope required by the endpoint:
+
+| Client scope      | Grants access to                                                                  |
+|-------------------|-----------------------------------------------------------------------------------|
+| `reporting_read`  | all `GET` endpoints (reports, report calculations and their data, webhooks)       |
+| `reporting_write` | all `POST` / `DELETE` endpoints (trigger report calculations, configure webhooks) |
+
+Requests with a token that lacks the scope are rejected with `403` (`"errorCode": "insufficient_scope"`).
+Users of the Aam Digital app itself (tokens issued to the frontend Keycloak client, see below) are authorized
+without these scopes.
+
 1. Get valid access token using your client secret:
 
 ```bash
@@ -24,11 +35,12 @@ curl -X "POST" "https://keycloak.aam-digital.net/realms/<your_realm>/protocol/op
      -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
      --data-urlencode "client_id=<your_client_id>" \
      --data-urlencode "client_secret=<your_client_secret>" \
-     --data-urlencode "grant_type=client_credentials" \
-     --data-urlencode "scopes=reporting_read reporting_write"
+     --data-urlencode "grant_type=client_credentials"
 ```
 
-Check API docs for the required "scopes".
+The client scopes assigned to your client as "Default" scopes are included automatically.
+(Scopes assigned as "Optional" are only included if requested explicitly, e.g. with
+`--data-urlencode "scope=reporting_read reporting_write"`.)
 This returns a JWT access token required to provided as Bearer Token for any request to the API endpoints. Sample token:
 
 ```json
@@ -133,7 +145,9 @@ You should also account for that possibility.
    to [create new client grant in Keycloak](https://www.keycloak.org/docs/latest/server_admin/#_oidc_clients))
     1. check "Client authentication" toggle
     2. for "Authentication flow" only "Service accounts roles" needs to be checked
-    3. in the Client section, edit the newly created client and add the reporting_read and reporting_write scopes in the "Client scopes" tab (these should be created by the default realm, otherwise manually create these two in the "Client scopes" section)
+    3. in the Client section, edit the newly created client and add the `reporting_read` and `reporting_write` client scopes
+       in the "Client scopes" tab with Assigned type **Default**
+       (the backend creates these client scopes on startup, see [Keycloak client scopes](#keycloak-client-scopes) below)
     4. from the "Credentials" tab of the client you can now copy the secret:
        ![Keycloak Client Setup](../assets/keycloak-client-setup.png)
 2. For integration with TolaData:
@@ -142,3 +156,32 @@ You should also account for that possibility.
     - also
       see [Support Guide: Integration with TolaData](https://chatwoot.help/hc/aam-digital/articles/1726341005-integration-with-tola_data)
       for details of the required URLs
+
+### Keycloak client scopes
+
+The reporting endpoints check the `reporting_read` and `reporting_write` client scopes of the access token
+(see [API access to reports](#api-access-to-reports)).
+If the backend has admin access to Keycloak (`KEYCLOAK_*` environment variables, see
+[third-party-authentication setup](third-party-authentication.md#setup)), it runs these steps on every startup:
+
+- create the `reporting_read` and `reporting_write` client scopes in the realm, if they don't exist yet
+  (with "Include in token scope" enabled; they are not assigned to any client automatically)
+- for API clients (clients with service accounts) that have one of these scopes only as "Optional" client scope,
+  change it to a "Default" client scope, so that existing integrations that don't request the scopes keep working
+
+For this, the service account of the backend's own Keycloak client (`KEYCLOAK_CLIENTID`, usually `aam-backend`) needs
+the `realm-management` roles `manage-clients` and `view-users`.
+If Keycloak admin access is not configured or permissions are missing, the backend logs a warning and starts anyway;
+then create and assign the client scopes manually in the Keycloak admin console.
+
+> **Upgrade prerequisite:** before upgrading an existing instance to the version that enforces these scopes,
+> give the `aam-backend` service account the `manage-clients` role (or `realm-admin`) and make sure the
+> `KEYCLOAK_*` variables are set.
+> Otherwise, API clients that have the reporting scopes only as "Optional" and do not request them explicitly
+> are denied access (`403`) until the permission is added and the backend is restarted,
+> or until the scopes are assigned to them as "Default" manually.
+
+Tokens issued to the frontend client (the `azp` claim) are authorized without the reporting scopes,
+because the app runs report calculations for its users.
+The frontend client is `app` by default and can be changed with the environment variable
+`AAMSECURITY_FRONTENDCLIENTID`.

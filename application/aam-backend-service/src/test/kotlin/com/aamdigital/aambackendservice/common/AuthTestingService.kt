@@ -12,19 +12,55 @@ import org.springframework.web.client.RestTemplate
 class AuthTestingService(
     private val restTemplate: RestTemplate
 ) {
+    /**
+     * Token of an API client (client credentials flow).
+     * No scope is requested, so the token carries exactly the client's Default client scopes.
+     */
     fun fetchToken(
         client: String,
         secret: String,
         realm: String
+    ): String? =
+        requestToken(
+            realm = realm,
+            parameters =
+                mapOf(
+                    "client_id" to client,
+                    "client_secret" to secret,
+                    "grant_type" to "client_credentials"
+                )
+        )
+
+    /**
+     * Token of a user logging in through a public client (resource owner password flow),
+     * like a user of the frontend app.
+     */
+    fun fetchUserToken(
+        client: String,
+        username: String,
+        password: String,
+        realm: String
+    ): String? =
+        requestToken(
+            realm = realm,
+            parameters =
+                mapOf(
+                    "client_id" to client,
+                    "username" to username,
+                    "password" to password,
+                    "grant_type" to "password"
+                )
+        )
+
+    private fun requestToken(
+        realm: String,
+        parameters: Map<String, String>
     ): String? {
         val headers = HttpHeaders()
         headers.contentType = MediaType.APPLICATION_FORM_URLENCODED
 
         val body: MultiValueMap<String, String> = LinkedMultiValueMap()
-        body.add("client_id", client)
-        body.add("client_secret", secret)
-        body.add("grant_type", "client_credentials")
-        body.add("scope", "reporting_read reporting_write")
+        parameters.forEach { (name, value) -> body.add(name, value) }
 
         val requestEntity = HttpEntity(body, headers)
 

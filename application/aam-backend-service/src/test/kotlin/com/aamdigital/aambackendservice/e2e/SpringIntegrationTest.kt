@@ -224,10 +224,25 @@ abstract class SpringIntegrationTest {
         authSubject = authToken?.let { subjectOf(it) }
     }
 
+    fun fetchUserToken(
+        client: String,
+        username: String,
+        password: String,
+        realm: String
+    ) {
+        authToken = authTestingService.fetchUserToken(client, username, password, realm)
+        authSubject = authToken?.let { subjectOf(it) }
+    }
+
     /** Reads the `sub` claim out of a JWT without verifying it - the test already trusts the issuer. */
-    private fun subjectOf(token: String): String? {
+    private fun subjectOf(token: String): String? = claimsOf(token)?.get("sub")?.textValue()
+
+    /** The claims of the token most recently obtained, e.g. to check its `scope` claim. */
+    fun authTokenClaims(): ObjectNode? = authToken?.let { claimsOf(it) }
+
+    private fun claimsOf(token: String): ObjectNode? {
         val payload = token.split(".").getOrNull(1) ?: return null
         val decoded = String(Base64.getUrlDecoder().decode(payload))
-        return objectMapper.readValue<ObjectNode>(decoded).get("sub")?.textValue()
+        return objectMapper.readValue<ObjectNode>(decoded)
     }
 }
