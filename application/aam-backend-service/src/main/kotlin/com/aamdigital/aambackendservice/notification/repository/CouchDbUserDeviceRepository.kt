@@ -60,7 +60,8 @@ class CouchDbUserDeviceRepository(
     /**
      * A device deleted concurrently (by a second tab, say) is gone either way: CouchDB then answers
      * 404, or 409 for the delete whose revision was deleted first. A 409 can also mean the token was
-     * registered again in between, so it only counts as deleted once the document is really gone.
+     * registered again in between, so it only counts as deleted once the document is really gone. A
+     * device in a database that does not exist is gone as well.
      */
     override fun deleteByDeviceToken(deviceToken: String) {
         try {
@@ -70,7 +71,7 @@ class CouchDbUserDeviceRepository(
             )
         } catch (ex: ExternalSystemException) {
             when (ex.code) {
-                DefaultCouchDbClientErrorCode.NOT_FOUND -> Unit
+                DefaultCouchDbClientErrorCode.NOT_FOUND, DefaultCouchDbClientErrorCode.DATABASE_NOT_FOUND -> Unit
                 DefaultCouchDbClientErrorCode.CONFLICT -> if (existsByDeviceToken(deviceToken)) throw ex
                 else -> throw ex
             }
