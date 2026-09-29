@@ -137,7 +137,15 @@ The `DomainUseCase` base class handles error wrapping:
 
 - Override `apply(request)` to implement business logic
 - Return `UseCaseOutcome.Success(data)` or `UseCaseOutcome.Failure(errorCode, errorMessage)`
-- Uncaught exceptions are automatically wrapped as `Failure`
+- Uncaught exceptions are automatically wrapped as `Failure`, with the exception as its `cause`
+- The caller of `run(request)` logs the `Failure`, not the use case, which logs an exception only
+  at DEBUG. Log every `Failure` you get back at the level the context calls for (ERROR reaches
+  Sentry, WARN stays in the logs, INFO suits expected outcomes such as invalid input), with
+  placeholders for the error code and message and the `cause` as the last argument, or hand it on
+  to something that logs it. A `Failure` the caller drops leaves no trace.
+- The production template (`templates/aam-backend-service/application.template.env`) logs this
+  service at WARN, so INFO and below never reach production logs: use WARN or above for any
+  `Failure` that must be visible there.
 
 ---
 
@@ -214,7 +222,7 @@ fun `should return success when valid request is provided`() {
     val request = CreateExampleRequest("valid-data")
 
     // When
-    val result = useCase.execute(request)
+    val result = useCase.run(request)
 
     // Then
     assertThat(result).isInstanceOf(Success::class.java)
@@ -287,15 +295,26 @@ sealed interface UseCaseOutcome<D : UseCaseData> {
 class ExampleController(
     private val useCase: ExampleUseCase
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     @PostMapping
     fun createExample(
         @Valid @RequestBody request: CreateExampleRequestDto
     ): ResponseEntity<*> {
-        return when (val result = useCase.execute(request.toDomain())) {
+        return when (val result = useCase.run(request.toDomain())) {
             is Success -> ResponseEntity.ok(result.data.toDto())
-            is Failure -> ResponseEntity.badRequest().body(
-                HttpErrorDto(result.errorCode, result.errorMessage)
-            )
+            is Failure -> {
+                // the use case does not log a Failure, so this line is its only record
+                logger.warn(
+                    "Could not create example: [{}] {}",
+                    result.errorCode,
+                    result.errorMessage,
+                    result.cause
+                )
+                ResponseEntity.badRequest().body(
+                    HttpErrorDto(result.errorCode.toString(), result.errorMessage)
+                )
+            }
         }
     }
 }
