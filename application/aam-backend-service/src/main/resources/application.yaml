@@ -127,6 +127,11 @@ logging:
 application:
   base-url: "" # default for backwards compatibility - this should be set in env however!
 
+aam-security:
+  # Keycloak client of the Aam Digital frontend. Tokens issued to it (azp claim) may use the reporting API
+  # without API client scopes, because the app runs report calculations for its users.
+  frontend-client-id: app
+
 sentry:
   # Version of the running build, baked into the image from the APPLICATION_VERSION build arg
   # (see Dockerfile), so error events are tagged with a release. This has to stay in the
