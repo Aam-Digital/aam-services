@@ -19,6 +19,7 @@ import org.mockito.kotlin.verify
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.test.web.client.MockRestServiceServer
+import org.springframework.test.web.client.ResponseCreator
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
@@ -86,16 +87,25 @@ class DefaultCouchDbClientTest {
         )
     }
 
-    private fun headClientRespondingWith(status: HttpStatus): DefaultCouchDbClient {
+    /** A client whose requests are answered by [server], in the order they are expected there. */
+    private fun clientAnswering(server: MockRestServiceServer.() -> Unit): DefaultCouchDbClient {
         val builder = RestClient.builder()
-        MockRestServiceServer
-            .bindTo(builder)
-            .build()
-            .expect(requestTo("/db/doc"))
-            .andExpect(method(HttpMethod.HEAD))
-            .andRespond(withStatus(status))
-        return DefaultCouchDbClient(builder.build(), ObjectMapper())
+        MockRestServiceServer.bindTo(builder).build().server()
+        return DefaultCouchDbClient(builder.build(), objectMapper)
     }
+
+    private fun MockRestServiceServer.answer(
+        httpMethod: HttpMethod,
+        response: ResponseCreator,
+        path: String = "/db/doc"
+    ) {
+        expect(requestTo(path))
+            .andExpect(method(httpMethod))
+            .andRespond(response)
+    }
+
+    private fun headClientRespondingWith(status: HttpStatus): DefaultCouchDbClient =
+        clientAnswering { answer(HttpMethod.HEAD, withStatus(status)) }
 
     @Test
     fun `answers a HEAD for a missing document with empty headers`() {
