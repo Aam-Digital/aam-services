@@ -30,9 +30,9 @@ import org.mockito.kotlin.timeout
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
-import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.core.io.ClassPathResource
 import org.springframework.http.HttpMethod
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import java.io.File
 import java.util.Optional
 
@@ -44,21 +44,21 @@ class CucumberIntegrationTest(
 ) : SpringIntegrationTest() {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    @MockBean
+    @MockitoBean
     lateinit var mailSenderService: MailSenderService
 
-    @MockBean
+    @MockitoBean
     lateinit var userEmailProvider: UserEmailProvider
 
     // mocked so the guardrail can verify the webhook is triggered without needing a real HTTP
     // receiver; the mock still sits downstream of the calculation and of the delivery executor
-    @MockBean
+    @MockitoBean
     lateinit var triggerWebhookUseCase: TriggerWebhookUseCase
 
     // mocked so the SSO scenarios never need a reachable Keycloak admin client: the provider is the
     // only part of third-party-authentication that talks to Keycloak, everything downstream of it
     // (session storage, redirect binding, HTTP contract) stays real.
-    @MockBean
+    @MockitoBean
     lateinit var authenticationProvider: AuthenticationProvider
 
     private var storedId: String? = null
