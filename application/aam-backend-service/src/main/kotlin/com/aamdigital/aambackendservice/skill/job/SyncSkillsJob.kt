@@ -37,7 +37,7 @@ class SyncSkillsJob(
             )
 
             if (outcome is UseCaseOutcome.Failure) {
-                throw RuntimeException(outcome.errorMessage, outcome.cause)
+                throw RuntimeException("[${outcome.errorCode}] ${outcome.errorMessage}", outcome.cause)
             }
         }
     }
