@@ -31,11 +31,13 @@ class KeycloakClientScopeConfiguration {
 
             val keycloak = keycloakProvider.ifAvailable
             val keycloakConfig = keycloakConfigProvider.ifAvailable
-            if (keycloak == null || keycloakConfig == null) {
+            // an empty KEYCLOAK_SERVERURL (as in the env template) still creates the Keycloak bean
+            if (keycloak == null || keycloakConfig == null || keycloakConfig.serverUrl.isBlank()) {
                 logger.warn(
-                    "Keycloak admin access is not configured (keycloak.server-url unset), " +
-                        "so the client scopes {} cannot be checked. Make sure they exist in the realm " +
-                        "and are assigned as Default scopes to the API clients that need them.",
+                    "Keycloak admin access is not configured (keycloak.server-url unset or empty), " +
+                        "so the client scopes {} cannot be checked or migrated. Make sure they exist in the realm " +
+                        "and are assigned as Default scopes to the API clients that need them, " +
+                        "otherwise those API clients are denied access.",
                     requests.map { it.name }
                 )
                 return@ApplicationRunner

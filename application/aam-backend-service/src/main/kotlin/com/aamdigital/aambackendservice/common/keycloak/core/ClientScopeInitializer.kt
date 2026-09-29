@@ -88,22 +88,66 @@ class ClientScopeInitializer(
             return
         }
 
-        administration
-            .findServiceAccountClients()
-            .filter { administration.serviceAccountHasRealmRole(it, roleName) }
-            .forEach { client ->
-                if (scope.name !in client.defaultClientScopes) {
-                    administration.assignDefaultClientScope(client, scope)
-                    logger.info(
-                        "Assigned Keycloak client scope '{}' as Default to client '{}', replacing realm role '{}'.",
-                        scope.name,
-                        client.clientId,
-                        roleName
-                    )
-                }
-            }
+        if (!scope.includedInTokenScope) {
+            logger.warn(
+                "Keeping realm role '{}' and not migrating it, because client scope '{}' is not included in tokens.",
+                roleName,
+                scope.name
+            )
+            return
+        }
+
+        val failedClients =
+            administration
+                .findServiceAccountClients()
+                .filterNot { client -> migrateClient(client, roleName, scope) }
+        if (failedClients.isNotEmpty()) {
+            logger.warn(
+                "Keeping realm role '{}', because client scope '{}' could not be assigned to all its clients " +
+                    "(failed: {}). The migration is retried on the next startup.",
+                roleName,
+                scope.name,
+                failedClients.map { it.clientId }
+            )
+            return
+        }
 
         administration.deleteRealmRole(roleName)
         logger.info("Deleted realm role '{}', which is replaced by client scope '{}'.", roleName, scope.name)
+    }
+
+    /**
+     * Assign the scope to the client if its service account holds the realm role.
+     * Failures are handled per client, so that one broken client does not stop the migration of the others.
+     *
+     * @return false if the client could not be checked or migrated
+     */
+    private fun migrateClient(
+        client: KeycloakServiceAccountClient,
+        roleName: String,
+        scope: KeycloakClientScope
+    ): Boolean =
+        try {
+            val needsScope = scope.name !in client.defaultClientScopes
+            if (needsScope && administration.serviceAccountHasRealmRole(client, roleName)) {
+                administration.assignDefaultClientScope(client, scope)
+                logger.info(
+                    "Assigned Keycloak client scope '{}' as Default to client '{}', replacing realm role '{}'.",
+                    scope.name,
+                    client.clientId,
+                    roleName
+                )
+            }
+            true
+        } catch (ex: ForbiddenAccessException) {
+            logger.warn(MIGRATE_CLIENT_FAILED, client.clientId, scope.name, ex.message)
+            false
+        } catch (ex: Exception) {
+            logger.warn(MIGRATE_CLIENT_FAILED, client.clientId, scope.name, ex.message, ex)
+            false
+        }
+
+    private companion object {
+        const val MIGRATE_CLIENT_FAILED = "Could not migrate client '{}' to client scope '{}': {}"
     }
 }

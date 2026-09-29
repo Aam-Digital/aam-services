@@ -174,6 +174,13 @@ the `realm-management` roles `manage-clients` and `view-users`.
 If Keycloak admin access is not configured or permissions are missing, the backend logs a warning and starts anyway;
 then create and assign the client scopes manually in the Keycloak admin console.
 
+> **Upgrade prerequisite:** before upgrading an existing instance to the version that enforces these scopes,
+> give the `aam-backend` service account the `manage-clients` role (or `realm-admin`) and make sure the
+> `KEYCLOAK_*` variables are set.
+> Otherwise, API clients that have the reporting scopes only as "Optional" and do not request them explicitly
+> are denied access (`403`) until the permission is added and the backend is restarted,
+> or until the scopes are assigned to them as "Default" manually.
+
 Tokens issued to the frontend client (the `azp` claim) are authorized without the reporting scopes,
 because the app runs report calculations for its users.
 The frontend client is `app` by default and can be changed with the environment variable

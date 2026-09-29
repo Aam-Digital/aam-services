@@ -187,6 +187,39 @@ class ClientScopeInitializerTest {
     }
 
     @Test
+    fun `should still migrate the other clients if one client fails`() {
+        // Given
+        administration.realmRoles += "legacy-role"
+        addClient("failing-client", realmRoles = setOf("legacy-role"))
+        addClient("legacy-client", realmRoles = setOf("legacy-role"))
+        administration.failingClientId = "failing-client"
+
+        // When
+        initialize(ClientScopeRequest(name = "new_scope", description = "new", replacesRealmRole = "legacy-role"))
+
+        // Then
+        assertThat(administration.client("legacy-client").defaultClientScopes).containsExactly("new_scope")
+        assertThat(administration.client("failing-client").defaultClientScopes).isEmpty()
+        assertThat(administration.realmRoles).contains("legacy-role")
+    }
+
+    @Test
+    fun `should keep the replaced realm role if the client scope is not included in tokens`() {
+        // Given
+        administration.clientScopes +=
+            KeycloakClientScope(id = "id-new_scope", name = "new_scope", includedInTokenScope = false)
+        administration.realmRoles += "legacy-role"
+        addClient("legacy-client", realmRoles = setOf("legacy-role"))
+
+        // When
+        initialize(ClientScopeRequest(name = "new_scope", description = "new", replacesRealmRole = "legacy-role"))
+
+        // Then
+        assertThat(administration.realmRoles).contains("legacy-role")
+        assertThat(administration.client("legacy-client").defaultClientScopes).isEmpty()
+    }
+
+    @Test
     fun `should continue with the next client scope if one fails`() {
         // Given
         addClientScope("reporting_read")

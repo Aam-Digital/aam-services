@@ -5,7 +5,9 @@ import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.ForbiddenAccessException
 import jakarta.ws.rs.ForbiddenException
 import org.keycloak.admin.client.Keycloak
+import org.keycloak.admin.client.resource.ClientResource
 import org.keycloak.representations.idm.ClientScopeRepresentation
+import org.slf4j.LoggerFactory
 
 enum class KeycloakClientScopeAdministrationError : AamErrorCode {
     MISSING_KEYCLOAK_PERMISSION,
@@ -30,6 +32,8 @@ class KeycloakClientScopeAdministration(
         private const val HTTP_CONFLICT = 409
         private const val HTTP_FORBIDDEN = 403
     }
+
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     private val realmResource get() = keycloak.realm(realm)
 
@@ -104,9 +108,29 @@ class KeycloakClientScopeAdministration(
             clientResource.addDefaultClientScope(scope.id)
         } catch (ex: Exception) {
             if (isOptional) {
-                clientResource.addOptionalClientScope(scope.id)
+                restoreOptionalClientScope(clientResource, client, scope, ex)
             }
             throw ex
+        }
+    }
+
+    private fun restoreOptionalClientScope(
+        clientResource: ClientResource,
+        client: KeycloakServiceAccountClient,
+        scope: KeycloakClientScope,
+        cause: Exception
+    ) {
+        try {
+            clientResource.addOptionalClientScope(scope.id)
+        } catch (ex: Exception) {
+            cause.addSuppressed(ex)
+            // the client has neither the Default nor the Optional assignment now, and no later startup restores it
+            logger.error(
+                "Keycloak client '{}' lost client scope '{}'. Assign it as Default client scope in the Keycloak " +
+                    "admin console, otherwise the client is denied access.",
+                client.clientId,
+                scope.name
+            )
         }
     }
 
@@ -146,7 +170,8 @@ class KeycloakClientScopeAdministration(
                 message =
                     "Keycloak denied to $action in realm '$realm'. " +
                         "Assign the realm-management roles 'manage-clients', 'view-users' and 'manage-realm' " +
-                        "to the service account of Keycloak client '$backendClientId'.",
+                        "to the service account of Keycloak client '$backendClientId'. Until then, client scopes " +
+                        "are neither created nor migrated, and API clients relying on them are denied access.",
                 cause = ex,
                 code = KeycloakClientScopeAdministrationError.MISSING_KEYCLOAK_PERMISSION
             )

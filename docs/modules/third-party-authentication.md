@@ -104,6 +104,15 @@ which also showed up in the role lists for normal users. If that role still exis
 
 If one of these steps fails (e.g. missing permissions of the `aam-backend` client), the backend logs a warning,
 keeps the role, and retries on the next startup.
+The role alone does not grant access anymore, so the external system is denied (`403`) until the migration succeeded
+or the `third_party_authentication` scope was assigned to its client manually.
+The role is also kept (and nothing is migrated) if an existing `third_party_authentication` client scope has
+"Include in token scope" disabled.
+
+> **Upgrade prerequisite:** before upgrading an existing instance, make sure the `aam-backend` service account has
+> the `realm-management` roles `manage-clients`, `view-users` and `manage-realm` (all included in `realm-admin`)
+> and that the `KEYCLOAK_*` variables are set, so that the migration can run on the first startup.
+
 Note that backend versions from before this change rely on the role and stop accepting the external system
 once the role is deleted.
 

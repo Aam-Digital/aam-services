@@ -133,6 +133,10 @@ sentry:
   # always-active part of the config: the "local-development" document below is skipped in
   # production, where no Spring profile is active.
   release: ${APPLICATION_VERSION:}
+  # Denials of method security (@PreAuthorize) are answered with 403 by AamAccessDeniedHandler.
+  # They are expected client errors (e.g. an API client without the required client scope), not bugs.
+  ignored-exceptions-for-type:
+    - org.springframework.security.authorization.AuthorizationDeniedException
 
 ---
 # <second part of the config, just active with profile "local-development">
