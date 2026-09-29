@@ -138,6 +138,19 @@ ktlint {
     version.set(libs.versions.ktlint.get())
 }
 
+// Spring dependency management applies the Boot BOM, and with it kotlin-bom at our Kotlin
+// version, to every configuration. That lifts ktlint's embedded Kotlin compiler to our
+// compiler version, which ktlint cannot run on ("Extensions storage is not registered").
+// Keep the ktlint configurations on the Kotlin versions ktlint itself asks for.
+configurations.matching { it.name.startsWith("ktlint") }.configureEach {
+    resolutionStrategy.eachDependency {
+        val requestedVersion = requested.version
+        if (requested.group == "org.jetbrains.kotlin" && !requestedVersion.isNullOrEmpty()) {
+            useVersion(requestedVersion)
+        }
+    }
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
     systemProperty("cucumber.junit-platform.naming-strategy", "long")
