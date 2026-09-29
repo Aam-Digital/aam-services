@@ -123,7 +123,7 @@ All commands should be run from `application/aam-backend-service/`.
 
 The test suite includes:
 
-- **Unit tests** (JUnit 5 + Mockito) for individual use cases and services
+- **Unit tests** (JUnit Jupiter + Mockito) for individual use cases and services
 - **E2E / integration tests** (Cucumber BDD) that spin up real Docker containers via Testcontainers (Keycloak, CouchDB, PostgreSQL, Carbone, SQS) and test full API flows. Cucumber feature files are located in `src/test/resources/cucumber/features/`.
 
 Both run together with `./gradlew test`.

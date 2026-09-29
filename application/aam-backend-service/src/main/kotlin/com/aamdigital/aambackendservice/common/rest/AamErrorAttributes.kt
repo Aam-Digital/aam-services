@@ -8,7 +8,7 @@ import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.error.UnauthorizedAccessException
 import org.springframework.boot.web.error.ErrorAttributeOptions
-import org.springframework.boot.web.servlet.error.DefaultErrorAttributes
+import org.springframework.boot.webmvc.error.DefaultErrorAttributes
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.validation.FieldError
@@ -21,7 +21,7 @@ class AamErrorAttributes : DefaultErrorAttributes() {
     override fun getErrorAttributes(
         request: WebRequest,
         options: ErrorAttributeOptions
-    ): MutableMap<String, Any> {
+    ): MutableMap<String, Any?> {
         val errorAttributes = super.getErrorAttributes(request, options)
 
         when (val error = getError(request)) {
