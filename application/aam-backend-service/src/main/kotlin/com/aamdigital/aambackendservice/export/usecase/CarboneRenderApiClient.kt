@@ -137,9 +137,9 @@ internal class CarboneRenderApiClient(
                     val forwardHeaders = HttpHeaders()
                     forwardHeaders.contentType = responseHeaders.contentType
 
-                    if (!responseHeaders[HttpHeaders.CONTENT_DISPOSITION].isNullOrEmpty()) {
-                        forwardHeaders[HttpHeaders.CONTENT_DISPOSITION] =
-                            responseHeaders[HttpHeaders.CONTENT_DISPOSITION]
+                    val contentDisposition = responseHeaders[HttpHeaders.CONTENT_DISPOSITION]
+                    if (!contentDisposition.isNullOrEmpty()) {
+                        forwardHeaders.put(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                     }
 
                     val buffer =

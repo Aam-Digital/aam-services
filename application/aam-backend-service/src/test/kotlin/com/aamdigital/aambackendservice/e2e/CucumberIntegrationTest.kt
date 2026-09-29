@@ -420,7 +420,8 @@ class CucumberIntegrationTest(
 
     /**
      * Binds the SSO session to the account the test itself is signed in as, so that the
-     * redirect endpoint - which compares the stored userId against `principal.name` - accepts it.
+     * redirect endpoint - which compares the stored userId against the caller's `sub` claim -
+     * accepts it.
      */
     @Given("the external user account already exists")
     fun `the external user account already exists`() {

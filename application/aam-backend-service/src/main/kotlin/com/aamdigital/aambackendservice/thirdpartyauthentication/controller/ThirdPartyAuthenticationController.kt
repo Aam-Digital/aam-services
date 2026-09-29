@@ -4,6 +4,7 @@ import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.security.AamAuthorities
+import com.aamdigital.aambackendservice.common.security.tokenSubject
 import com.aamdigital.aambackendservice.thirdpartyauthentication.ConditionalOnThirdPartyAuthenticationEnabled
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCaseRequest
@@ -169,7 +170,7 @@ class ThirdPartyAuthenticationController(
             sessionRedirectUseCase.run(
                 SessionRedirectUseCaseRequest(
                     sessionId = sessionId,
-                    userId = principal.name
+                    userId = checkNotNull(principal.tokenSubject) { "No subject found in the token." }
                 )
             )
 

@@ -13,14 +13,19 @@ import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUs
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
+import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import java.security.Principal
 
 class ThirdPartyAuthenticationControllerTest {
@@ -129,5 +134,24 @@ class ThirdPartyAuthenticationControllerTest {
         assertThat(warning.formattedMessage)
             .contains(SESSION_ID, "UNHANDLED_EXCEPTION_IN_USE_CASE", "session store unreachable")
         assertThat((warning.throwableProxy as ThrowableProxy).throwable).isSameAs(cause)
+    }
+
+    @Test
+    fun `should not look up a session redirect for a token without subject`() {
+        // Given
+        val authentication =
+            JwtAuthenticationToken(
+                Jwt
+                    .withTokenValue("token")
+                    .header("alg", "none")
+                    .claim("username", "user-1")
+                    .build()
+            )
+
+        // When / Then
+        assertThatThrownBy { controller.getSessionRedirect(sessionId = SESSION_ID, principal = authentication) }
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessage("No subject found in the token.")
+        verify(sessionRedirectUseCase, never()).run(any())
     }
 }

@@ -67,8 +67,9 @@ abstract class SpringIntegrationTest {
 
     /**
      * The `sub` claim of the token most recently obtained by [fetchToken], i.e. exactly the value
-     * the application sees as `principal.name`. Endpoints that compare a stored `userId` against
-     * the caller (third-party-authentication's redirect lookup) need the test to know it.
+     * the application identifies the caller by (`tokenSubject`). Endpoints that compare a stored
+     * `userId` against the caller (third-party-authentication's redirect lookup) need the test to
+     * know it.
      */
     var authSubject: String? = null
 
@@ -208,7 +209,7 @@ abstract class SpringIntegrationTest {
             objectMapper.readValue<ObjectNode>(it)
         }
 
-    fun parseHeader(name: String): List<String> = latestResponseHeaders?.getOrElse(name) { emptyList() } ?: emptyList()
+    fun parseHeader(name: String): List<String> = latestResponseHeaders?.getOrEmpty(name) ?: emptyList()
 
     fun parseBodyToArrayNode(): ArrayNode? =
         latestResponseBody?.let {
