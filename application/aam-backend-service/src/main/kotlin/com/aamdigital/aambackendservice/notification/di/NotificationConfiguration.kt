@@ -188,14 +188,8 @@ class NotificationConfiguration {
         )
 
     @Bean("app-create-notification-handler")
-    fun appCreateNotificationHandler(
-        couchDbClient: CouchDbClient,
-        couchDbInitializer: CouchDbInitializer
-    ): CreateNotificationHandler =
-        AppCreateNotificationHandler(
-            couchDbClient = couchDbClient,
-            couchDbInitializer = couchDbInitializer
-        )
+    fun appCreateNotificationHandler(couchDbClient: CouchDbClient): CreateNotificationHandler =
+        AppCreateNotificationHandler(couchDbClient = couchDbClient)
 
     // Gated on the `keycloak.server-url` property (the same condition that gates the Keycloak bean in
     // KeycloakAdminConfiguration) rather than @ConditionalOnBean(Keycloak): the latter is order-sensitive
