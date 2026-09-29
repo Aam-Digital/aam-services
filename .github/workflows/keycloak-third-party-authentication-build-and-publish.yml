@@ -133,9 +133,9 @@ jobs:
         run: |
           NEXT_VERSION=v$(conventional_commits_next_version \
             --calculation-mode "Batch" \
-            --from-commit-hash ${{ env.FROM_COMMIT_HASH }} \
             --from-version ${{ env.CURRENT_VERSION }} \
-            --monorepo application/keycloak-third-party-authentication)
+            --monorepo application/keycloak-third-party-authentication \
+            ${{ env.FROM_COMMIT_HASH }})
           echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
           echo $NEXT_VERSION
 
