@@ -498,6 +498,12 @@ class DefaultCouchDbClient(
             }.body("")
             .accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
+                // CouchDB answers 412 when the database exists already, which is all the caller
+                // asked for: two writes that find the same database missing both create it
+                if (clientResponse.statusCode.value() == 412) {
+                    return@exchange
+                }
+
                 if (!clientResponse.statusCode.is2xxSuccessful) {
                     val responseBody = clientResponse.bodyTo(String::class.java)
                     logger.error(

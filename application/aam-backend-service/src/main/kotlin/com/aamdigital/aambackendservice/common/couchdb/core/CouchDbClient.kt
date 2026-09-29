@@ -113,6 +113,7 @@ interface CouchDbClient {
         kClass: KClass<T>
     ): Optional<T>
 
+    /** Creates the database [databaseName]; one that exists already counts as created. */
     fun createDatabase(databaseName: String)
 
     fun databaseExists(name: String): Boolean

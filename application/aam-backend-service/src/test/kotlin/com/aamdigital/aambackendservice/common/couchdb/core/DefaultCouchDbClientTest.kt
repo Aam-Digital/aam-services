@@ -7,6 +7,7 @@ import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Test
@@ -35,6 +36,9 @@ class DefaultCouchDbClientTest {
         /** CouchDB's answer to a request for a document in a database that does not exist. */
         private const val MISSING_DATABASE_BODY = """{"error":"not_found","reason":"Database does not exist."}"""
         private const val DELETED_DOCUMENT_BODY = """{"error":"not_found","reason":"deleted"}"""
+        private const val DATABASE_EXISTS_BODY =
+            """{"error":"file_exists","reason":"The database could not be created, the file already exists."}"""
+        private const val UNAUTHORIZED_BODY = """{"error":"unauthorized","reason":"You are not a server admin."}"""
     }
 
     private val objectMapper = ObjectMapper()
@@ -207,6 +211,36 @@ class DefaultCouchDbClientTest {
 
         // Then
         assertThat(thrown).isInstanceOf(HttpClientErrorException.NotFound::class.java)
+    }
+
+    @Test
+    fun `treats creating a database that already exists as done`() {
+        // Given two writes that find the same database missing both create it, and one of them loses
+        val client =
+            clientAnswering {
+                answer(HttpMethod.PUT, couchDbError(HttpStatus.PRECONDITION_FAILED, DATABASE_EXISTS_BODY), path = "/db")
+            }
+
+        // When / Then
+        assertThatCode { client.createDatabase("db") }.doesNotThrowAnyException()
+    }
+
+    @Test
+    fun `still fails creating a database CouchDB refuses`() {
+        // Given
+        val client =
+            clientAnswering {
+                answer(HttpMethod.PUT, couchDbError(HttpStatus.UNAUTHORIZED, UNAUTHORIZED_BODY), path = "/db")
+            }
+
+        // When
+        val thrown = catchThrowable { client.createDatabase("db") }
+
+        // Then
+        assertThat(thrown)
+            .isInstanceOf(ExternalSystemException::class.java)
+            .extracting { (it as ExternalSystemException).code }
+            .isEqualTo(DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR)
     }
 
     @Test
