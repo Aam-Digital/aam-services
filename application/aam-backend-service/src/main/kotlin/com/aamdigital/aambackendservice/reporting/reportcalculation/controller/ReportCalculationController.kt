@@ -332,15 +332,31 @@ class ReportCalculationController(
         return result
     }
 
-    private fun toErrorDetails(it: String?): String {
-        // e.g. "400 Bad Request: \"{\"statusCode\":400,\"error\":\"Bad Request\",\"message\":\"no such column: i.xxx\"}\""
-        // should be returned as "no such column: i.xxx"
-
-        if (it.isNullOrBlank()) {
+    /**
+     * Extract the SQS explanation from a stored failure message, which ends with the SQS response
+     * body, e.g. `... (400 BAD_REQUEST): {"statusCode":400,"message":"no such column: \"x\""}`.
+     *
+     * The message is a JSON string value, so quotes inside it arrive escaped. Matching up to the
+     * first quote would cut the text off at the first escaped one and drop the part that explains
+     * the problem, so the value is read to its closing quote and then unescaped.
+     */
+    private fun toErrorDetails(storedMessage: String?): String {
+        if (storedMessage.isNullOrBlank()) {
             return "Unknown error"
         }
 
-        return Regex("""message":"(.*?)"""").find(it)?.groupValues?.getOrNull(1) ?: "Unknown error"
+        val escapedMessage =
+            SQS_MESSAGE_REGEX.find(storedMessage)?.groupValues?.getOrNull(1)
+                ?: return "Unknown error"
+
+        return runCatching {
+            objectMapper.readValue("\"" + escapedMessage + "\"", String::class.java)
+        }.getOrDefault(escapedMessage)
+    }
+
+    companion object {
+        /** `"message": "<value>"`, where the value runs to its first unescaped quote. */
+        private val SQS_MESSAGE_REGEX = Regex("""\"message\"\s*:\s*\"((?:\\.|[^\"\\])*)\"""")
     }
 
     private fun toReportCalculationData(it: ReportCalculation): ReportCalculationData? {

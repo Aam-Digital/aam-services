@@ -19,8 +19,10 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -206,5 +208,79 @@ class ReportCalculationControllerTest {
             closed = true
             delegate.close()
         }
+    }
+
+    private fun failedCalculation(errorDetails: String): ReportCalculation =
+        ReportCalculation(
+            id = CALCULATION_ID,
+            report = DomainReference(id = "ReportConfig:1"),
+            status = ReportCalculationStatus.FINISHED_ERROR
+        ).setErrorDetails(errorDetails)
+
+    @Test
+    fun `keeps an SQS explanation that contains escaped quotes intact`() {
+        // Given - SQS names the offending identifier in quotes, which arrive escaped in the body
+        val stored =
+            """[SqsQueryStorage] SQS rejected the query for report 'ReportConfig:1' (400 BAD_REQUEST): """ +
+                """{"statusCode":400,"error":"Bad Request",""" +
+                """"message":"no such column: \"M\" - should this be a string literal in single-quotes?"}"""
+        whenever(reportCalculationStorage.fetchReportCalculation(DomainReference(id = CALCULATION_ID)))
+            .thenReturn(failedCalculation(stored))
+
+        // When
+        val result =
+            mockMvc.perform(
+                get("/v1/reporting/report-calculation/$CALCULATION_ID")
+                    .accept(MediaType.APPLICATION_JSON)
+            )
+
+        // Then - the whole sentence reaches the report editor, not just the text before the quote
+        result
+            .andExpect(status().isOk)
+            .andExpect(
+                jsonPath("$.errorDetails")
+                    .value("""no such column: "M" - should this be a string literal in single-quotes?""")
+            )
+    }
+
+    @Test
+    fun `returns an SQS explanation without quotes unchanged`() {
+        // Given
+        val stored =
+            """[SqsQueryStorage] SQS rejected the query for report 'ReportConfig:1' (400 BAD_REQUEST): """ +
+                """{"statusCode":400,"error":"Bad Request","message":"no such table: Childrn"}"""
+        whenever(reportCalculationStorage.fetchReportCalculation(DomainReference(id = CALCULATION_ID)))
+            .thenReturn(failedCalculation(stored))
+
+        // When
+        val result =
+            mockMvc.perform(
+                get("/v1/reporting/report-calculation/$CALCULATION_ID")
+                    .accept(MediaType.APPLICATION_JSON)
+            )
+
+        // Then
+        result
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.errorDetails").value("no such table: Childrn"))
+    }
+
+    @Test
+    fun `falls back to Unknown error when the stored message carries no SQS body`() {
+        // Given
+        whenever(reportCalculationStorage.fetchReportCalculation(DomainReference(id = CALCULATION_ID)))
+            .thenReturn(failedCalculation("connection reset"))
+
+        // When
+        val result =
+            mockMvc.perform(
+                get("/v1/reporting/report-calculation/$CALCULATION_ID")
+                    .accept(MediaType.APPLICATION_JSON)
+            )
+
+        // Then
+        result
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.errorDetails").value("Unknown error"))
     }
 }
