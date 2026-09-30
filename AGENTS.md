@@ -18,7 +18,7 @@ This repository provides the backend API as a modularized Spring Boot applicatio
 
 ### Architecture & Tech Stack
 
-- **Language**: Kotlin (target JVM 21)
+- **Language**: Kotlin (target JVM 25)
 - **Framework**: Spring Boot with Spring Security, Spring Data JPA
 - **Build Tool**: Gradle with Kotlin DSL
 - **Database**: CouchDB with SQL query capabilities (SQS), PostgreSQL via JPA
@@ -524,7 +524,7 @@ For local development setup (databases, queues, Keycloak), see `docs/developer/R
 
 ### Running the E2E (Cucumber) Tests
 
-Prerequisites: JDK 21 and a running Docker daemon (Testcontainers starts/stops the containers itself).
+Prerequisites: JDK 25 and a running Docker daemon (Testcontainers starts/stops the containers itself).
 
 Run only the e2e tests (skips unit tests):
 

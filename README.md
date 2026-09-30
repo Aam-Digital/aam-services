@@ -130,7 +130,7 @@ Both run together with `./gradlew test`.
 
 ### Running the e2e tests
 
-**Prerequisites:** JDK 21 and a **running Docker daemon** — Testcontainers starts
+**Prerequisites:** JDK 25 and a **running Docker daemon** — Testcontainers starts
 and tears down all the containers itself, so no other local setup (no
 docker-compose, no manual Keycloak) is needed.
 
@@ -193,7 +193,7 @@ spec (and `docs/modules/<module>.md`) in the same change.
 
 ## Running the Application Locally
 
-**Prerequisites:** JDK 21 and a running local dev stack (databases, message queues, Keycloak).
+**Prerequisites:** JDK 25 and a running local dev stack (databases, message queues, Keycloak).
 See [docs/developer/README.md](docs/developer/README.md) for full environment setup instructions.
 
 ```shell
