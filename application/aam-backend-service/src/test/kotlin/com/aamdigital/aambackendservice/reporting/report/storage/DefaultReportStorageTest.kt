@@ -355,4 +355,90 @@ class DefaultReportStorageTest {
             storage.fetchReport(DomainReference("ReportConfig:export"))
         }
     }
+
+    @Test
+    fun `should throw InvalidArgumentException for a report whose mode is not text`() {
+        // given
+        stubFetchDoc("""{"_id": "ReportConfig:odd", "_rev": "1-abc", "title": "Odd", "mode": 1}""")
+
+        // when/then
+        assertThrows<InvalidArgumentException> {
+            storage.fetchReport(DomainReference("ReportConfig:odd"))
+        }
+    }
+
+    // --- Documents written by hand, with other JSON types where text is expected ---
+
+    @Test
+    fun `should migrate a legacy doc whose fields are not all text`() {
+        // given
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:odd",
+              "_rev": "1-abc",
+              "title": 42,
+              "mode": "sql",
+              "version": 2,
+              "neededArgs": ["from", 7, null],
+              "aggregationDefinition": "SELECT * FROM foo WHERE d > ? AND x = ? AND y = ?"
+            }
+            """.trimIndent()
+        )
+        stubWriteBack()
+
+        // when
+        val report = storage.fetchReport(DomainReference("ReportConfig:odd"))
+
+        // then
+        val bodyCaptor = argumentCaptor<Any>()
+        verify(couchDbClient).putDatabaseDocument(
+            database = eq("app"),
+            documentId = eq("ReportConfig:odd"),
+            body = bodyCaptor.capture()
+        )
+        assertThat(report.toString()).isEqualTo(
+            """Report(id=ReportConfig:odd, title=, items=[ReportQuery(sql=SELECT * FROM foo WHERE d > ${'$'}startDate AND x = ${'$'}null AND y = ${'$'}null)], transformations={startDate=[SQL_FROM_DATE]})"""
+        )
+        assertThat(bodyCaptor.firstValue.toString()).isEqualTo(
+            """{_id=ReportConfig:odd, title=, mode=sql, transformations={startDate=[SQL_FROM_DATE]}, reportDefinition=[{query=SELECT * FROM foo WHERE d > ${'$'}startDate AND x = ${'$'}null AND y = ${'$'}null}], legacyOriginal={aggregationDefinition=SELECT * FROM foo WHERE d > ? AND x = ? AND y = ?, neededArgs=[from, null, null], version=2}}"""
+        )
+    }
+
+    @Test
+    fun `should rename columns in text queries only and keep other query values as they are`() {
+        // given
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:odd",
+              "_rev": "1-abc",
+              "title": "Odd",
+              "mode": "sql",
+              "reportDefinition": [
+                { "query": "SELECT created_at FROM Child" },
+                { "groupTitle": "Group", "items": [{ "query": 7 }, { "query": "SELECT updated_by FROM School" }] }
+              ]
+            }
+            """.trimIndent()
+        )
+        stubWriteBack()
+
+        // when
+        val report = storage.fetchReport(DomainReference("ReportConfig:odd"))
+
+        // then
+        val bodyCaptor = argumentCaptor<Any>()
+        verify(couchDbClient).putDatabaseDocument(
+            database = eq("app"),
+            documentId = eq("ReportConfig:odd"),
+            body = bodyCaptor.capture()
+        )
+        assertThat(report.toString()).isEqualTo(
+            "Report(id=ReportConfig:odd, title=Odd, items=[ReportQuery(sql=SELECT _created_at FROM Child), ReportGroup(title=Group, items=[ReportQuery(sql=7), ReportQuery(sql=SELECT _updated_by FROM School)])], transformations={})"
+        )
+        assertThat(bodyCaptor.firstValue.toString()).isEqualTo(
+            """{"_id":"ReportConfig:odd","_rev":"1-abc","title":"Odd","mode":"sql","reportDefinition":[{"query":"SELECT _created_at FROM Child"},{"groupTitle":"Group","items":[{"query":7},{"query":"SELECT _updated_by FROM School"}]}]}"""
+        )
+    }
 }
