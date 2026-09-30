@@ -150,11 +150,7 @@ internal class CarboneRenderApiClient(
                         )
 
                     RenderResult(file = buffer, headers = forwardHeaders)
-                } ?: throw ExternalSystemException(
-                cause = null,
-                message = "Could not fetch render response from template engine.",
-                code = fetchRenderResultFailedCode,
-            )
+                }
         } catch (ex: Exception) {
             throw when (ex) {
                 is ResourceAccessException ->

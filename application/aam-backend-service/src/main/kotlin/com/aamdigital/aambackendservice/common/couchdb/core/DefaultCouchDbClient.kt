@@ -241,10 +241,7 @@ class DefaultCouchDbClient(
                         code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
                     )
                 }
-            } ?: throw ExternalSystemException(
-            message = "Received null response when retrieving headers for document $documentId in database $database",
-            code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
-        )
+            }
 
     /**
      *  Fetch a document from the couchdb and return a parsed instance of given kClass.
@@ -284,7 +281,7 @@ class DefaultCouchDbClient(
                     )
                 }
                 handleResponse(clientResponse, kClass)
-            }!!
+            }
 
     override fun putDatabaseDocument(
         database: String,
@@ -329,7 +326,7 @@ class DefaultCouchDbClient(
             }.accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
                 handleResponse(clientResponse, DocSuccess::class)
-            }!!
+            }
     }
 
     override fun deleteDatabaseDocument(
@@ -355,7 +352,7 @@ class DefaultCouchDbClient(
                 }
             }.exchange { _, clientResponse ->
                 handleResponse(clientResponse, DocSuccess::class)
-            }!!
+            }
     }
 
     override fun <T : Any> getPreviousDocumentRevision(
@@ -539,7 +536,7 @@ class DefaultCouchDbClient(
                         code = DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR
                     )
                 }
-            }!!
+            }
     }
 
     private fun serializeBody(body: Any): ByteArray {
