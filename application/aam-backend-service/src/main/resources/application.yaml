@@ -148,6 +148,10 @@ spring:
   config:
     activate:
       on-profile: local-development
+  web:
+    error:
+      include-message: always
+      include-binding-errors: always
   security:
     oauth2:
       resourceserver:
@@ -176,9 +180,6 @@ spring:
 server:
   servlet:
     context-path: /
-  error:
-    include-message: always
-    include-binding-errors: always
   port: 9000
 
 logging:
@@ -253,6 +254,8 @@ application:
   base-url: https://aam.localhost
 
 #management:
-#  otlp:
+#  opentelemetry:
 #    tracing:
-#      endpoint: http://localhost:4318/v1/traces
+#      export:
+#        otlp:
+#          endpoint: http://localhost:4318/v1/traces
