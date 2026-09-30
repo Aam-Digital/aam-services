@@ -5,9 +5,11 @@ import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbChangeResult
 import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbChangesResponse
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
+import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -411,5 +413,58 @@ class CouchDbChangesProcessorTest {
 
         verify(couchDbClient, times(1)).allDatabases()
         verify(couchDbClient, times(2)).getDatabaseChanges(eq("app"), any())
+    }
+
+    @Test
+    fun `should skip a change whose revision is not text and still advance past it`() {
+        // Given
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
+        whenever(syncRepository.findByDatabase("app", "test")).thenReturn(Optional.of(cursor("seq-0")))
+        val numericRevision =
+            CouchDbChangeResult(
+                id = "X:1",
+                changes = emptyList(),
+                seq = "seq-1",
+                doc = objectMapper.createObjectNode().put("_id", "X:1").put("_rev", 1)
+            )
+        val nullRevision =
+            CouchDbChangeResult(
+                id = "X:2",
+                changes = emptyList(),
+                seq = "seq-2",
+                doc = objectMapper.createObjectNode().put("_id", "X:2").putNull("_rev")
+            )
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
+            .thenReturn(
+                CouchDbChangesResponse(
+                    lastSeq = "seq-3",
+                    results = listOf(numericRevision, nullRevision, change("X:3", "seq-3")),
+                    pending = 0
+                )
+            )
+        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
+
+        // When
+        service.checkForChanges(handler)
+
+        // Then
+        assertThat(handler.received.map { it.documentId }).containsExactly("X:3")
+        verify(syncRepository).save(eq(cursor("seq-3")))
+    }
+
+    @Test
+    fun `should not start a consumer from an update sequence that is not text`() {
+        // Given
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
+        whenever(syncRepository.findByDatabase("app", "test")).thenReturn(Optional.empty())
+        whenever(couchDbClient.getDatabaseDocument(eq("app"), eq(""), any(), eq(ObjectNode::class)))
+            .thenReturn(objectMapper.createObjectNode().put("update_seq", 42))
+
+        // When
+        val thrown = catchThrowable { service.checkForChanges(handler) }
+
+        // Then
+        assertThat(thrown).isInstanceOf(InvalidArgumentException::class.java)
+        verify(syncRepository, never()).save(any())
     }
 }

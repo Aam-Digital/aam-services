@@ -111,6 +111,48 @@ class DocumentConditionEngineTest {
     }
 
     @Test
+    fun `should read condition values of every JSON type as text`() {
+        // Given conditions as users write them into their notification rules
+        val conditionTree =
+            objectMapper.readTree(
+                """
+                {
+                  "nothing": null,
+                  "count": 5,
+                  "ratio": 1.50,
+                  "active": true,
+                  "tags": ["x", "y"],
+                  "empty": {},
+                  "status": {"${'$'}eq": null, "${'$'}nq": "closed"},
+                  "age": {"${'$'}gt": 2.0, "${'$'}lte": 18},
+                  "labels": {"${'$'}elemMatch": ["x", null]},
+                  "owner": {"${'$'}eq": {"id": "User:1"}},
+                  "name": "Ada"
+                }
+                """.trimIndent()
+            )
+
+        // When
+        val groups = service.parseConditionGroups(conditionTree)
+
+        // Then
+        assertThat(groups.single().map { "${it.field} ${it.operator} ${it.value}" }).containsExactly(
+            """nothing ${'$'}eq null""",
+            """count ${'$'}eq 5""",
+            """ratio ${'$'}eq 1.5""",
+            """active ${'$'}eq true""",
+            """tags ${'$'}eq """,
+            """status ${'$'}eq null""",
+            """status ${'$'}nq closed""",
+            """age ${'$'}gt 2.0""",
+            """age ${'$'}lte 18""",
+            """labels ${'$'}elemMatch ["x",null]""",
+            """owner ${'$'}eq {"id":"User:1"}""",
+            """name ${'$'}eq Ada"""
+        )
+    }
+
+    @Test
     fun `should match list values for eq only with single element lists`() {
         val singleElementListDocument = mapOf<String, Any>("tags" to listOf("X"))
         val multiElementListDocument = mapOf<String, Any>("tags" to listOf("X", "Y"))

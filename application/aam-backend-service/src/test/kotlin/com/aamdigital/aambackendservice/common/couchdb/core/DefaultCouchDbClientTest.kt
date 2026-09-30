@@ -214,6 +214,53 @@ class DefaultCouchDbClientTest {
     }
 
     @Test
+    fun `passes on a find bookmark of another JSON type as text`() {
+        // Given
+        val client =
+            clientAnswering {
+                listOf("""{"docs":[],"bookmark":null}""", """{"docs":[],"bookmark":5}""", """{"docs":[]}""").forEach {
+                    answer(
+                        HttpMethod.POST,
+                        withStatus(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body(it),
+                        path = "/db/_find"
+                    )
+                }
+            }
+
+        // When
+        val bookmarks = List(3) { client.findDatabaseDocuments("db", body = emptyMap(), kClass = Any::class).bookmark }
+
+        // Then
+        assertThat(bookmarks).containsExactly("null", "5", null)
+    }
+
+    @Test
+    fun `fails on revision infos that are not text when looking for the previous revision`() {
+        // Given
+        val client =
+            clientAnswering {
+                answer(
+                    HttpMethod.GET,
+                    withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(
+                            """{"_id":"doc","_rev":"2-b","_revs_info":[{"rev":2,"status":"available"},{"rev":"1-a"}]}"""
+                        ),
+                    path = "/db/doc?revs_info=true"
+                )
+            }
+
+        // When
+        val thrown =
+            catchThrowable {
+                client.getPreviousDocumentRevision("db", "doc", rev = "2-b", kClass = Map::class)
+            }
+
+        // Then
+        assertThat(thrown).isInstanceOf(NullPointerException::class.java)
+    }
+
+    @Test
     fun `treats creating a database that already exists as done`() {
         // Given two writes that find the same database missing both create it, and one of them loses
         val client =
