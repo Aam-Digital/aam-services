@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.notification.core.outbox
 
+import com.aamdigital.aambackendservice.common.domain.DomainUseCase
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.outbox.OutboxDeliveryResult
@@ -77,5 +78,26 @@ class NotificationOutboxHandlerTest {
         assertThat(result).isInstanceOf(OutboxDeliveryResult.Rejected::class.java)
         assertThat((result as OutboxDeliveryResult.Rejected).reason)
             .isEqualTo("[INVALID_NOTIFICATION_CHANNEL_TYPE] No Handler for this NotificationChannelType")
+    }
+
+    @Test
+    fun `should hand the failure's cause to the outbox, which logs it`() {
+        // Given
+        val cause = IllegalStateException("push service unreachable")
+        whenever(createNotificationUseCase.run(any()))
+            .thenReturn(
+                UseCaseOutcome.Failure(
+                    errorCode = DomainUseCase.DomainError.UNHANDLED_EXCEPTION_IN_USE_CASE,
+                    errorMessage = "push service unreachable",
+                    cause = cause
+                )
+            )
+
+        // When
+        val result = handler.deliver(event)
+
+        // Then
+        assertThat(result).isInstanceOf(OutboxDeliveryResult.Rejected::class.java)
+        assertThat((result as OutboxDeliveryResult.Rejected).cause).isSameAs(cause)
     }
 }

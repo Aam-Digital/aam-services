@@ -1,5 +1,10 @@
 package com.aamdigital.aambackendservice.common.outbox
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.classic.spi.ThrowableProxy
+import ch.qos.logback.core.read.ListAppender
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
 import com.aamdigital.aambackendservice.common.couchdb.dto.DocSuccess
@@ -19,6 +24,7 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -212,6 +218,32 @@ class OutboxTest {
 
         // Then the entry starts with the full retry budget
         assertThat((storedBody() as OutboxEntry<*>).attempts).isEqualTo(0)
+    }
+
+    @Test
+    fun `should log what it could not deliver right away with the cause the handler reported`() {
+        // Given a handler reports a failure through its result instead of logging it, so this line
+        // is the only record of the cause
+        stubExisting(eTag = null)
+        val cause = IllegalStateException("push service unreachable")
+        whenever(handler.deliver(payload))
+            .thenReturn(OutboxDeliveryResult.Rejected("push service unreachable", cause))
+        val logger = LoggerFactory.getLogger(Outbox::class.java) as Logger
+        val logAppender = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(logAppender)
+
+        // When
+        try {
+            outbox.deliverNowOrEnqueue("key-1", payload)
+        } finally {
+            logger.detachAppender(logAppender)
+        }
+
+        // Then
+        val warnings = logAppender.list.filter { it.level == Level.WARN }
+        assertThat(warnings).hasSize(1)
+        assertThat(warnings[0].formattedMessage).contains("key-1", "push service unreachable")
+        assertThat((warnings[0].throwableProxy as ThrowableProxy).throwable).isSameAs(cause)
     }
 
     @Test
