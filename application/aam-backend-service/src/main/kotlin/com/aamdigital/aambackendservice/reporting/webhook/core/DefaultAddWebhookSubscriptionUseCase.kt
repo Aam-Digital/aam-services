@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
 class DefaultAddWebhookSubscriptionUseCase(
     private val webhookStorage: WebhookStorage,
     private val reportCalculationStorage: ReportCalculationStorage,
-    private val notificationService: NotificationService,
+    private val webhookTriggerService: WebhookTriggerService,
     private val createReportCalculationUseCase: CreateReportCalculationUseCase
 ) : AddWebhookSubscriptionUseCase {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -48,7 +48,7 @@ class DefaultAddWebhookSubscriptionUseCase(
                 )
             )
         } else {
-            notificationService.triggerWebhook(
+            webhookTriggerService.triggerWebhook(
                 report = report,
                 webhook = webhook,
                 reportCalculation =

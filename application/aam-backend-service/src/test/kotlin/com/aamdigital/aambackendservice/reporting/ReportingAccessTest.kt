@@ -114,8 +114,8 @@ class ReportingAccessTest {
         listOf(
             { reportCalculationController.startCalculation(reportId = "ReportConfig:1", from = null, to = null) },
             { webhookController.storeWebhook(request = webhookRequest, principal = principal) },
-            { webhookController.registerReportNotification(webhookId = "Webhook:1", reportId = "ReportConfig:1") },
-            { webhookController.unregisterReportNotification(webhookId = "Webhook:1", reportId = "ReportConfig:1") }
+            { webhookController.registerReportSubscription(webhookId = "Webhook:1", reportId = "ReportConfig:1") },
+            { webhookController.unregisterReportSubscription(webhookId = "Webhook:1", reportId = "ReportConfig:1") }
         )
 
     private fun assertAllowed(endpoints: List<() -> ResponseEntity<*>>) =

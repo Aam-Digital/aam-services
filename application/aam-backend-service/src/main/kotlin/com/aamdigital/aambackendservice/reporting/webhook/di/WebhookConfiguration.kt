@@ -10,9 +10,9 @@ import com.aamdigital.aambackendservice.reporting.webhook.core.AddWebhookSubscri
 import com.aamdigital.aambackendservice.reporting.webhook.core.DefaultAddWebhookSubscriptionUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.core.DefaultTriggerWebhookUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.core.DefaultUriParser
-import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationService
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.core.UriParser
+import com.aamdigital.aambackendservice.reporting.webhook.core.WebhookTriggerService
 import com.aamdigital.aambackendservice.reporting.webhook.storage.DefaultWebhookStorage
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookRepository
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
@@ -28,7 +28,7 @@ import java.util.concurrent.Executor
 
 @Configuration
 @ConditionalOnReportingEnabled
-class ReportingNotificationConfiguration {
+class WebhookConfiguration {
     companion object {
         /**
          * Webhook delivery is one outbound HTTP call per subscribed report per new calculation
@@ -63,13 +63,13 @@ class ReportingNotificationConfiguration {
     fun defaultAddWebhookSubscription(
         webhookStorage: WebhookStorage,
         reportCalculationStorage: ReportCalculationStorage,
-        notificationService: NotificationService,
+        webhookTriggerService: WebhookTriggerService,
         createReportCalculationUseCase: CreateReportCalculationUseCase
     ): AddWebhookSubscriptionUseCase =
         DefaultAddWebhookSubscriptionUseCase(
             webhookStorage = webhookStorage,
             reportCalculationStorage = reportCalculationStorage,
-            notificationService = notificationService,
+            webhookTriggerService = webhookTriggerService,
             createReportCalculationUseCase = createReportCalculationUseCase
         )
 
@@ -93,7 +93,7 @@ class ReportingNotificationConfiguration {
     }
 
     @Bean
-    fun defaultNotificationStorage(
+    fun defaultWebhookStorage(
         webhookRepository: WebhookRepository,
         cryptoService: CryptoService,
         webhookSubscriptionCache: WebhookSubscriptionCache
@@ -113,12 +113,12 @@ class ReportingNotificationConfiguration {
     fun webhookRepository(couchDbClient: CouchDbClient): WebhookRepository = WebhookRepository(couchDbClient)
 
     @Bean
-    fun notificationService(
+    fun webhookTriggerService(
         webhookStorage: WebhookStorage,
         triggerWebhookUseCase: TriggerWebhookUseCase,
         @Qualifier("webhook-delivery-executor") webhookDeliveryExecutor: Executor
-    ): NotificationService =
-        NotificationService(
+    ): WebhookTriggerService =
+        WebhookTriggerService(
             webhookStorage = webhookStorage,
             triggerWebhookUseCase = triggerWebhookUseCase,
             webhookDeliveryRunner = BoundedTaskRunner("webhook-delivery", webhookDeliveryExecutor)

@@ -39,8 +39,8 @@ flowchart TD
     style Calculation fill:#00C853
 
     CalculationProcessor -- if FINISHED_SUCCESS --> CalculationChange
-    CalculationChange[ReportCalculationChangeUseCase] -- if result changed --> WebhookNotification
-    WebhookNotification["NotificationService"] -.-> E_Webhook
+    CalculationChange[ReportCalculationChangeUseCase] -- if result changed --> WebhookTrigger
+    WebhookTrigger["WebhookTriggerService"] -.-> E_Webhook
     E_Webhook[/webhook delivery executor/] -.-> TriggerWebhook
     TriggerWebhook(TriggerWebhookUseCase - call the webhook)
 ```
@@ -66,5 +66,5 @@ Two caches keep it in memory:
   actually keeps this current; the TTL is only a backstop for a writer outside this process, so it
   is deliberately long rather than tuned for freshness.
 
-  It is intentionally not used by `GET /v1/reporting/webhook` or by `NotificationService`, which
+  It is intentionally not used by `GET /v1/reporting/webhook` or by `WebhookTriggerService`, which
   must always see the current webhook list.

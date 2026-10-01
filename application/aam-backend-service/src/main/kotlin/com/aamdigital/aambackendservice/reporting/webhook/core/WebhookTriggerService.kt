@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory
  * Adding retry needs the ordering question answered first ("do not send an old event after a newer
  * calculation already delivered") and is out of scope.
  */
-class NotificationService(
+class WebhookTriggerService(
     private val webhookStorage: WebhookStorage,
     private val triggerWebhookUseCase: TriggerWebhookUseCase,
     private val webhookDeliveryRunner: BoundedTaskRunner
@@ -38,11 +38,11 @@ class NotificationService(
         return affectedWebhooks
     }
 
-    fun sendNotifications(
+    fun triggerWebhooks(
         report: DomainReference,
         reportCalculation: DomainReference
     ) {
-        logger.debug("[NotificationService]: Trigger all affected webhooks for ${report.id}")
+        logger.debug("[WebhookTriggerService]: Trigger all affected webhooks for ${report.id}")
         val affectedWebhooks = getAffectedWebhooks(report)
 
         affectedWebhooks.forEach { webhook ->
@@ -59,7 +59,7 @@ class NotificationService(
         reportCalculation: DomainReference,
         webhook: DomainReference
     ) {
-        logger.debug("[NotificationService]: Trigger NotificationEvent for ${webhook.id} and ${report.id}")
+        logger.debug("[WebhookTriggerService]: Trigger WebhookEvent for ${webhook.id} and ${report.id}")
 
         val webhookEvent =
             WebhookEvent(
