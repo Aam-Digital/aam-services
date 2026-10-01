@@ -54,13 +54,18 @@ class DefaultReportCalculationStorage(
         }
     }
 
-    override fun fetchReportCalculations(report: DomainReference): List<ReportCalculation> {
+    override fun fetchReportCalculations(report: DomainReference): List<ReportCalculation> =
+        findReportCalculations(selector = mapOf("report.id" to report.id))
+
+    override fun fetchAllReportCalculations(): List<ReportCalculation> = findReportCalculations()
+
+    private fun findReportCalculations(selector: Map<String, Any> = emptyMap()): List<ReportCalculation> {
         val calculations =
             try {
                 couchDbClient.findDatabaseDocumentsByPrefix(
                     database = REPORT_CALCULATION_DATABASE,
                     prefix = "ReportCalculation",
-                    selector = mapOf("report.id" to report.id),
+                    selector = selector,
                     kClass = ReportCalculationEntity::class
                 )
             } catch (ex: Exception) {

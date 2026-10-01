@@ -12,6 +12,7 @@ import com.aamdigital.aambackendservice.skill.domain.SkillUsage
 import com.aamdigital.aambackendservice.skill.domain.UserProfile
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileRepository
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -44,6 +45,8 @@ class SkillController(
     companion object {
         private const val MAX_PAGE_SIZE = 100
     }
+
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     @GetMapping("/user-profile")
     @PreAuthorize("hasAnyAuthority('ROLE_skill_reader')")
@@ -80,6 +83,14 @@ class SkillController(
 
         return when (result) {
             is UseCaseOutcome.Failure<*> -> {
+                // the search parameters are personal data, so they stay out of the log
+                logger.warn(
+                    "Could not search user profiles: [{}] {}",
+                    result.errorCode,
+                    result.errorMessage,
+                    result.cause
+                )
+
                 when (result.errorCode) {
                     else ->
                         ResponseEntity.badRequest().body(

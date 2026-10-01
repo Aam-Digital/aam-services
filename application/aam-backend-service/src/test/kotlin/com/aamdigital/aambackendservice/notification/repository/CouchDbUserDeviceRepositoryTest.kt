@@ -150,6 +150,16 @@ class CouchDbUserDeviceRepositoryTest {
         assertThatCode { repository.deleteByDeviceToken("token-phone") }.doesNotThrowAnyException()
     }
 
+    /** Nothing is registered in a database that does not exist, so there is nothing left to delete. */
+    @Test
+    fun `deleting a device from a missing database does nothing`() {
+        // Given
+        stubDeleteFailure(DefaultCouchDbClientErrorCode.DATABASE_NOT_FOUND)
+
+        // When / Then
+        assertThatCode { repository.deleteByDeviceToken("token-phone") }.doesNotThrowAnyException()
+    }
+
     /** CouchDB answers 409 to a delete whose revision a concurrent delete removed first. */
     @Test
     fun `deleting a device whose revision is already gone does nothing`() {

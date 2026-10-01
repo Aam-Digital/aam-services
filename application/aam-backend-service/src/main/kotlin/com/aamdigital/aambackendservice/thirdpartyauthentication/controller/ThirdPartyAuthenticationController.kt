@@ -4,6 +4,7 @@ import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.security.AamAuthorities
+import com.aamdigital.aambackendservice.common.security.tokenSubject
 import com.aamdigital.aambackendservice.thirdpartyauthentication.ConditionalOnThirdPartyAuthenticationEnabled
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCaseRequest
@@ -103,7 +104,12 @@ class ThirdPartyAuthenticationController(
             }
 
             is UseCaseOutcome.Failure -> {
-                logger.warn(response.errorMessage, response.errorCode, response.cause)
+                logger.warn(
+                    "[POST /session]: Failed to create session: [{}] {}",
+                    response.errorCode,
+                    response.errorMessage,
+                    response.cause
+                )
                 ResponseEntity.badRequest().body(
                     HttpErrorDto(
                         errorMessage = response.errorMessage,
@@ -139,7 +145,11 @@ class ThirdPartyAuthenticationController(
 
             is UseCaseOutcome.Failure -> {
                 logger.warn(
-                    "[GET /session/{sessionId}]: Failed to validate session $sessionId: ${response.errorMessage}"
+                    "[GET /session/{sessionId}]: Failed to validate session {}: [{}] {}",
+                    sessionId,
+                    response.errorCode,
+                    response.errorMessage,
+                    response.cause
                 )
                 ResponseEntity.badRequest().body(
                     HttpErrorDto(
@@ -160,7 +170,7 @@ class ThirdPartyAuthenticationController(
             sessionRedirectUseCase.run(
                 SessionRedirectUseCaseRequest(
                     sessionId = sessionId,
-                    userId = principal.name
+                    userId = checkNotNull(principal.tokenSubject) { "No subject found in the token." }
                 )
             )
 
@@ -175,7 +185,11 @@ class ThirdPartyAuthenticationController(
 
             is UseCaseOutcome.Failure -> {
                 logger.warn(
-                    "[GET /session/{sessionId}/redirect]: Failed to return redirect for session $sessionId: ${response.errorMessage}"
+                    "[GET /session/{sessionId}/redirect]: Failed to return redirect for session {}: [{}] {}",
+                    sessionId,
+                    response.errorCode,
+                    response.errorMessage,
+                    response.cause
                 )
                 ResponseEntity.badRequest().body(
                     HttpErrorDto(

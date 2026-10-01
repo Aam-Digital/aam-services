@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.skill.repository
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.documentExists
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Instant
@@ -26,11 +27,10 @@ class CouchDbSkillLabUserProfileRepository(
     }
 
     override fun existsByExternalIdentifier(externalIdentifier: String): Boolean =
-        couchDbClient
-            .headDatabaseDocument(
-                database = SKILL_USER_PROFILE_DATABASE,
-                documentId = documentId(externalIdentifier)
-            ).eTag != null
+        couchDbClient.documentExists(
+            database = SKILL_USER_PROFILE_DATABASE,
+            documentId = documentId(externalIdentifier)
+        )
 
     override fun findByExternalIdentifier(externalIdentifier: String): SkillLabUserProfileEntity =
         couchDbClient.getDatabaseDocument(

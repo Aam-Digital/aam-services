@@ -13,11 +13,14 @@ import java.util.concurrent.ConcurrentHashMap
 internal data class SyncEntryDocument(
     val database: String,
     val latestRef: String,
+    val consumer: String? = null,
     @JsonProperty("_rev") val rev: String
 )
 
 /**
- * [SyncRepository] backed by one CouchDB document per watched database.
+ * [SyncRepository] backed by one CouchDB document per watched database and change consumer,
+ * `SyncEntry:<database>:<consumer>`. The shared cursor from before every consumer had its own is
+ * `SyncEntry:<database>`, until [SharedSyncEntryMigration] has split it up.
  *
  * The documents live in [BACKEND_STATE_DATABASE] rather than in a watched database: writing the
  * cursor into a database that change detection polls would make every write produce a change,
@@ -30,9 +33,10 @@ internal data class SyncEntryDocument(
  *
  * Change detection is the only writer and polls every few seconds, so each cursor is kept in memory
  * with the revision of its last write: a poll does not read it again, and a save names that
- * revision instead of looking it up first. A failed save forgets the cursor, so the next poll reads
- * it afresh. That is also how a cursor edited by hand in CouchDB is picked up: on the next save
- * for that database, which fails on the stale revision, or on a restart.
+ * revision instead of looking it up first. The memory is keyed by document id, because every
+ * consumer of a database writes its own document with its own revision. A failed save forgets the
+ * cursor, so the next poll reads it afresh. That is also how a cursor edited by hand in CouchDB is
+ * picked up: on the next save of that cursor, which fails on the stale revision, or on a restart.
  */
 class CouchDbSyncRepository(
     private val couchDbClient: CouchDbClient
@@ -45,7 +49,7 @@ class CouchDbSyncRepository(
         STATE_DATABASE_MISSING
     }
 
-    /** The last cursor read or written per database, with the revision that write produced. */
+    /** The last cursor read or written per document id, with the revision that write produced. */
     private data class KnownEntry(
         val entry: SyncEntry,
         val rev: String
@@ -53,20 +57,25 @@ class CouchDbSyncRepository(
 
     private val known = ConcurrentHashMap<String, KnownEntry>()
 
-    override fun findByDatabase(database: String): Optional<SyncEntry> {
-        known[database]?.let { return Optional.of(it.entry) }
+    override fun findByDatabase(
+        database: String,
+        consumer: String?
+    ): Optional<SyncEntry> {
+        val documentId = documentId(database, consumer)
+        known[documentId]?.let { return Optional.of(it.entry) }
 
-        val document = readDocument(database) ?: return Optional.empty()
-        val entry = SyncEntry(database = document.database, latestRef = document.latestRef)
-        known[database] = KnownEntry(entry, document.rev)
+        val document = readDocument(documentId) ?: return Optional.empty()
+        val entry =
+            SyncEntry(database = document.database, latestRef = document.latestRef, consumer = document.consumer)
+        known[documentId] = KnownEntry(entry, document.rev)
         return Optional.of(entry)
     }
 
-    private fun readDocument(database: String): SyncEntryDocument? =
+    private fun readDocument(documentId: String): SyncEntryDocument? =
         try {
             couchDbClient.getDatabaseDocument(
                 database = BACKEND_STATE_DATABASE,
-                documentId = documentId(database),
+                documentId = documentId,
                 kClass = SyncEntryDocument::class
             )
         } catch (ex: NotFoundException) {
@@ -90,21 +99,31 @@ class CouchDbSyncRepository(
 
     /** Creates the cursor if none was found, and otherwise writes over the revision last seen. */
     override fun save(syncEntry: SyncEntry): SyncEntry {
+        val documentId = documentId(syncEntry.database, syncEntry.consumer)
         val result =
             try {
                 couchDbClient.putDatabaseDocumentAtRevision(
                     database = BACKEND_STATE_DATABASE,
-                    documentId = documentId(syncEntry.database),
+                    documentId = documentId,
                     body = syncEntry,
-                    expectedRev = known[syncEntry.database]?.rev
+                    expectedRev = known[documentId]?.rev
                 )
             } catch (ex: Exception) {
-                known.remove(syncEntry.database)
+                known.remove(documentId)
                 throw ex
             }
-        known[syncEntry.database] = KnownEntry(syncEntry, result.rev)
+        known[documentId] = KnownEntry(syncEntry, result.rev)
         return syncEntry
     }
 
-    private fun documentId(database: String) = "$DOCUMENT_PREFIX:$database"
+    override fun delete(syncEntry: SyncEntry) {
+        val documentId = documentId(syncEntry.database, syncEntry.consumer)
+        known.remove(documentId)
+        couchDbClient.deleteDatabaseDocument(database = BACKEND_STATE_DATABASE, documentId = documentId)
+    }
+
+    private fun documentId(
+        database: String,
+        consumer: String?
+    ) = if (consumer == null) "$DOCUMENT_PREFIX:$database" else "$DOCUMENT_PREFIX:$database:$consumer"
 }

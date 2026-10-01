@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpEntity
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
-import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
 
@@ -133,7 +133,7 @@ class CouchDbTestingService(
         val responseHeaders = restTemplate.headForHeaders("/$database/$docId")
         val etag = responseHeaders.eTag?.replace("\"", "")
 
-        val headers = LinkedMultiValueMap<String, String>()
+        val headers = HttpHeaders()
         headers.set("If-Match", etag)
 
         val response =
@@ -186,7 +186,7 @@ class CouchDbTestingService(
 
         val etag = responseDocument.eTag?.replace("\"", "")
 
-        val headers = LinkedMultiValueMap<String, String>()
+        val headers = HttpHeaders()
         headers.set("If-Match", etag)
 
         val response =

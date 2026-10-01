@@ -90,6 +90,32 @@ You can make a request to the API to check if a certain feature is currently ena
 If the _aam-services backend_ is not deployed at all, such a request will usually return a HTTP 504 error.
 You should also account for that possibility.
 
+### Syncing profiles from SkillLab
+
+Every 10 minutes the backend fetches the profiles that changed in SkillLab since the last sync and
+stores them locally. The time of the last sync is kept per project. It advances with every sync
+that could fetch from SkillLab, even when individual profiles failed to sync.
+
+Known limitations (neither is retried automatically):
+
+- **A profile that fails to sync is skipped until it changes again.** The failure is logged as a
+  warning, but the next scheduled sync only asks for profiles changed since the last sync, so it
+  will not pick up the skipped profile unless that profile is edited in SkillLab again.
+- **At most 10,000 profiles are fetched per sync.** If more have changed, the rest are skipped the
+  same way, and this is not logged.
+
+To recover, an admin (role `skill_admin`) can trigger a sync manually:
+
+```
+# re-import everything
+> POST /v1/skill/sync/{projectId}?syncMode=FULL
+
+# re-import everything changed since a given time
+> POST /v1/skill/sync/{projectId}?syncMode=DELTA&updatedFrom=2024-12-03T11:50:00.231Z
+```
+
+A full re-import is still subject to the 10,000 profile limit.
+
 ### Configuration in Frontend
 Define an Entity attribute of dataType "external-profile" to integrate the API in the application for users.
 Refer to [external-profile.datatype](https://github.com/Aam-Digital/ndb-core/blob/master/src/app/features/skill/external-profile.datatype.ts) for required config details.

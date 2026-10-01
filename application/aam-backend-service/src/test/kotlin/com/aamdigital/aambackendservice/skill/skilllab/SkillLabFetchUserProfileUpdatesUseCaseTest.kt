@@ -4,14 +4,11 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.InternalServerException
-import com.aamdigital.aambackendservice.common.queue.core.QueueMessage
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
-import com.aamdigital.aambackendservice.skill.core.UserProfileUpdatePublisher
-import com.aamdigital.aambackendservice.skill.core.event.UserProfileUpdateEvent
-import com.aamdigital.aambackendservice.skill.di.UserProfileUpdateEventQueueConfiguration
+import com.aamdigital.aambackendservice.skill.core.SyncUserProfileRequest
+import com.aamdigital.aambackendservice.skill.core.SyncUserProfileUseCase
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncEntity
 import com.aamdigital.aambackendservice.skill.repository.SkillLabUserProfileSyncRepository
-import okio.IOException
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -22,12 +19,14 @@ import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.domain.Pageable
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -44,20 +43,20 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
     lateinit var skillLabUserProfileSyncRepository: SkillLabUserProfileSyncRepository
 
     @Mock
-    lateinit var userProfileUpdatePublisher: UserProfileUpdatePublisher
+    lateinit var syncUserProfileUseCase: SyncUserProfileUseCase
 
     @BeforeEach
     fun setup() {
         reset(
             skillLabClient,
             skillLabUserProfileSyncRepository,
-            userProfileUpdatePublisher
+            syncUserProfileUseCase
         )
         service =
             SkillLabFetchUserProfileUpdatesUseCase(
                 skillLabClient = skillLabClient,
                 skillLabUserProfileSyncRepository = skillLabUserProfileSyncRepository,
-                userProfileUpdatePublisher = userProfileUpdatePublisher
+                syncUserProfileUseCase = syncUserProfileUseCase
             )
     }
 
@@ -91,7 +90,7 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
     }
 
     @Test
-    fun `should publish UserProfileUpdateEvent for each UserProfile fetched from skillLabClient`() {
+    fun `should sync each UserProfile fetched from skillLabClient`() {
         // given
         `when`(skillLabClient.fetchUserProfiles(eq(Pageable.ofSize(50).withPage(1)), anyOrNull())).thenReturn(
             listOf(
@@ -99,10 +98,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
                 DomainReference("user-profile-2"),
                 DomainReference("user-profile-3")
             )
-        )
-
-        whenever(userProfileUpdatePublisher.publish(any(), any())).thenReturn(
-            getQueueMessage()
         )
 
         // when
@@ -116,44 +111,16 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         // then
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
 
-        verify(
-            userProfileUpdatePublisher,
-            times(1)
-        ).publish(
-            eq(UserProfileUpdateEventQueueConfiguration.USER_PROFILE_UPDATE_QUEUE),
-            eq(
-                UserProfileUpdateEvent(
-                    projectId = "1",
-                    userProfileId = "user-profile-1"
+        listOf("user-profile-1", "user-profile-2", "user-profile-3").forEach { userProfileId ->
+            verify(syncUserProfileUseCase, times(1)).run(
+                eq(
+                    SyncUserProfileRequest(
+                        userProfile = DomainReference(userProfileId),
+                        project = DomainReference("1")
+                    )
                 )
             )
-        )
-
-        verify(
-            userProfileUpdatePublisher,
-            times(1)
-        ).publish(
-            eq(UserProfileUpdateEventQueueConfiguration.USER_PROFILE_UPDATE_QUEUE),
-            eq(
-                UserProfileUpdateEvent(
-                    projectId = "1",
-                    userProfileId = "user-profile-2"
-                )
-            )
-        )
-
-        verify(
-            userProfileUpdatePublisher,
-            times(1)
-        ).publish(
-            eq(UserProfileUpdateEventQueueConfiguration.USER_PROFILE_UPDATE_QUEUE),
-            eq(
-                UserProfileUpdateEvent(
-                    projectId = "1",
-                    userProfileId = "user-profile-3"
-                )
-            )
-        )
+        }
     }
 
     @Test
@@ -173,10 +140,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             }
         )
 
-        whenever(userProfileUpdatePublisher.publish(any(), any())).thenReturn(
-            getQueueMessage()
-        )
-
         // when
         val response =
             service.run(
@@ -189,17 +152,16 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
 
         verify(
-            userProfileUpdatePublisher,
+            syncUserProfileUseCase,
             times(maxResultsLimit)
-        ).publish(
-            eq(UserProfileUpdateEventQueueConfiguration.USER_PROFILE_UPDATE_QUEUE),
+        ).run(
             any()
         )
     }
 
     @Test
-    fun `should return Failure when userProfileUpdatePublisher throws Exception`() {
-        // given
+    fun `should sync the remaining UserProfiles and advance the cursor when one fails to sync`() {
+        // given one profile that cannot be synced must not stall the project-wide sync
         whenever(
             skillLabClient.fetchUserProfiles(
                 any(),
@@ -212,9 +174,12 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             )
         )
 
-        whenever(userProfileUpdatePublisher.publish(any(), any())).thenAnswer {
-            throw IOException("mock-error")
-        }
+        whenever(syncUserProfileUseCase.run(any())).thenReturn(
+            UseCaseOutcome.Failure(
+                errorCode = TestErrorCode.TEST_EXCEPTION,
+                errorMessage = "could not store profile"
+            )
+        )
 
         // when
         val response =
@@ -225,12 +190,9 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             )
 
         // then
-        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
-        Assertions.assertEquals(
-            SkillLabFetchUserProfileUpdatesErrorCode.EVENT_PUBLISH_ERROR,
-            (response as UseCaseOutcome.Failure).errorCode
-        )
-        Assertions.assertEquals("mock-error", response.errorMessage)
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        verify(syncUserProfileUseCase, times(2)).run(any())
+        verify(skillLabUserProfileSyncRepository, times(1)).save(any())
     }
 
     @Test
@@ -255,10 +217,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
                 DomainReference("user-profile-2"),
                 DomainReference("user-profile-3")
             )
-        )
-
-        whenever(userProfileUpdatePublisher.publish(any(), any())).thenReturn(
-            getQueueMessage()
         )
 
         // when
@@ -291,10 +249,6 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
             )
         )
 
-        whenever(userProfileUpdatePublisher.publish(any(), any())).thenReturn(
-            getQueueMessage()
-        )
-
         // when
         val response =
             service.run(
@@ -314,15 +268,22 @@ class SkillLabFetchUserProfileUpdatesUseCaseTest {
         )
     }
 
-    private fun getQueueMessage(): QueueMessage =
-        QueueMessage(
-            id = UUID.fromString("00000000-0000-0000-0000-000000000000"),
-            eventType = "FOO",
-            event =
-                UserProfileUpdateEvent(
-                    projectId = "1",
-                    userProfileId = "mock"
-                ),
-            createdAt = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-        )
+    @Test
+    fun `should store the time the sync started, so profiles changed during the fetch are fetched again`() {
+        // given
+        var fetchedAt: Instant? = null
+        whenever(skillLabClient.fetchUserProfiles(any(), anyOrNull())).thenAnswer {
+            Thread.sleep(5)
+            fetchedAt = Instant.now()
+            listOf(DomainReference("user-profile-1"))
+        }
+
+        // when
+        service.run(FetchUserProfileUpdatesRequest(projectId = "1"))
+
+        // then
+        val captor = argumentCaptor<SkillLabUserProfileSyncEntity>()
+        verify(skillLabUserProfileSyncRepository).save(captor.capture())
+        assertThat(captor.firstValue.latestSync.toInstant()).isBefore(fetchedAt)
+    }
 }

@@ -1,13 +1,14 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
+import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -15,6 +16,8 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 @ExtendWith(MockitoExtension::class)
@@ -76,7 +79,6 @@ class DefaultNotificationConfigCacheTest {
         ).thenReturn(listOf(configDoc))
 
         // when
-        cache.refreshAll()
         val entries = cache.findAll()
 
         // then
@@ -90,7 +92,8 @@ class DefaultNotificationConfigCacheTest {
 
     @Test
     fun `should refresh one notification config in cache`() {
-        // given
+        // given the cache has already been loaded, with no configs yet
+        cache.findAll()
         whenever(
             couchDbClient.getDatabaseDocument(
                 database = eq("app"),
@@ -133,7 +136,8 @@ class DefaultNotificationConfigCacheTest {
 
     @Test
     fun `should remove notification config from cache when deleted`() {
-        // given
+        // given the cache has already been loaded, with no configs yet
+        cache.findAll()
         whenever(
             couchDbClient.getDatabaseDocument(
                 database = eq("tenant-db"),
@@ -170,7 +174,8 @@ class DefaultNotificationConfigCacheTest {
 
     @Test
     fun `should remove notification config when refresh fetch returns not found`() {
-        // given
+        // given the cache has already been loaded, with no configs yet
+        cache.findAll()
         whenever(
             couchDbClient.getDatabaseDocument(
                 database = eq("tenant-db"),
@@ -215,79 +220,47 @@ class DefaultNotificationConfigCacheTest {
     }
 
     @Test
-    fun `should schedule init retries with exponential backoff until successful`() {
-        // given
-        val scheduledDelays = mutableListOf<Long>()
-        cache =
-            DefaultNotificationConfigCache(
-                couchDbClient = couchDbClient,
-                objectMapper = objectMapper,
-                scheduleRetry = { delayMs, task ->
-                    scheduledDelays.add(delayMs)
-                    task()
-                }
-            )
-
-        var attempts = 0
+    fun `should load all notification configs on first use, and only once`() {
+        // given nothing loads the cache ahead of the first change, so nothing can race it
         whenever(
             couchDbClient.getDatabaseDocumentsByPrefix(
                 database = eq("app"),
                 prefix = eq("NotificationConfig"),
                 kClass = eq(ObjectNode::class)
             )
-        ).thenAnswer {
-            attempts += 1
-            if (attempts <= 2) {
-                throw RuntimeException("temporary startup issue")
-            }
-
-            emptyList<ObjectNode>()
-        }
+        ).thenReturn(listOf(configDoc("user-1")))
 
         // when
-        cache.init()
+        val first = cache.findAll()
+        val second = cache.findAll()
 
         // then
-        assertThat(scheduledDelays).containsExactly(0L, 5000L, 10000L)
+        assertThat(first.map { it.userIdentifier }).containsExactly("user-1")
+        assertThat(second).isEqualTo(first)
+        verify(couchDbClient, times(1)).getDatabaseDocumentsByPrefix(any(), any(), eq(ObjectNode::class))
     }
 
     @Test
-    fun `should continue retrying with capped delay after many failures`() {
-        // given
-        val scheduledDelays = mutableListOf<Long>()
-        val maxScheduledTasksToExecute = 18
-        cache =
-            DefaultNotificationConfigCache(
-                couchDbClient = couchDbClient,
-                objectMapper = objectMapper,
-                scheduleRetry = { delayMs, task ->
-                    scheduledDelays.add(delayMs)
-                    if (scheduledDelays.size <= maxScheduledTasksToExecute) {
-                        task()
-                    }
-                }
-            )
-
-        var attempts = 0
+    fun `should fail instead of reporting no configs when loading fails, and load again next time`() {
+        // given an empty result would read as "no rule matched" and drop the change's notifications
         whenever(
             couchDbClient.getDatabaseDocumentsByPrefix(
                 database = eq("app"),
                 prefix = eq("NotificationConfig"),
                 kClass = eq(ObjectNode::class)
             )
-        ).thenAnswer {
-            attempts += 1
-            throw RuntimeException("temporary startup issue")
-        }
+        ).thenThrow(RuntimeException("couchdb unreachable"))
+            .thenReturn(listOf(configDoc("user-1")))
 
-        // when
-        cache.init()
-
-        // then
-        assertThat(attempts).isEqualTo(maxScheduledTasksToExecute)
-        // Exponential backoff: 5000, 10000, 20000, 40000, 80000, 160000, 320000, 640000,
-        // 1280000, 2560000, 5120000, 10240000, 20480000, 40960000, 81920000, 86400000 (capped), ...
-        assertThat(scheduledDelays).startsWith(0L, 5000L, 10000L, 20000L, 40000L)
-        assertThat(scheduledDelays.last()).isEqualTo(86400000L)
+        // when / then
+        assertThatThrownBy { cache.findAll() }.hasMessage("couchdb unreachable")
+        assertThat(cache.findAll().map { it.userIdentifier }).containsExactly("user-1")
     }
+
+    private fun configDoc(userIdentifier: String): ObjectNode =
+        objectMapper
+            .createObjectNode()
+            .put("_id", "NotificationConfig:$userIdentifier")
+            .put("_rev", "1-abc")
+            .also { doc -> doc.putArray("notificationRules") }
 }

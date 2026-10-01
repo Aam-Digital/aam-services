@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.notification.controller
 
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.security.tokenSubject
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
 import com.aamdigital.aambackendservice.notification.repository.DeviceAlreadyRegisteredException
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceEntity
@@ -49,7 +50,8 @@ class NotificationDeviceController(
         @RequestBody deviceRegistrationDto: DeviceRegistrationDto,
         authentication: JwtAuthenticationToken
     ): ResponseEntity<Any> {
-        if (authentication.name == null) {
+        val subject = authentication.tokenSubject
+        if (subject == null) {
             return ResponseEntity.badRequest().body(
                 HttpErrorDto(
                     errorCode = "Bad Request",
@@ -72,7 +74,7 @@ class NotificationDeviceController(
         try {
             userDeviceRepository.save(
                 UserDeviceEntity(
-                    userIdentifier = authentication.name,
+                    userIdentifier = subject,
                     deviceToken = deviceToken,
                     deviceName = deviceRegistrationDto.deviceName
                 )
@@ -98,7 +100,7 @@ class NotificationDeviceController(
             userDeviceRepository.findByDeviceToken(id).getOrNull() ?: return ResponseEntity.notFound().build()
 
         if (userDevice.userIdentifier != (
-                authentication.name
+                authentication.tokenSubject
                     ?: authentication.tokenAttributes["username"].toString()
             )
         ) {
@@ -127,7 +129,7 @@ class NotificationDeviceController(
             userDeviceRepository.findByDeviceToken(id).getOrNull() ?: return ResponseEntity.notFound().build()
 
         if (userDevice.userIdentifier != (
-                authentication.name
+                authentication.tokenSubject
                     ?: authentication.tokenAttributes["username"].toString()
             )
         ) {

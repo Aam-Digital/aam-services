@@ -15,7 +15,7 @@ class AamAuthenticationConverterTest {
             .apply { claims.forEach { (name, value) -> claim(name, value) } }
             .build()
 
-    private fun authoritiesOf(jwt: Jwt): List<String> = converter.convert(jwt).authorities.map { it.authority }
+    private fun authoritiesOf(jwt: Jwt): List<String?> = converter.convert(jwt).authorities.map { it.authority }
 
     @Test
     fun `should map realm roles to ROLE authorities`() {

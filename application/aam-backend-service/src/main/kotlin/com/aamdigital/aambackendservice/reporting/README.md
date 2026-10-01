@@ -14,7 +14,10 @@ to execute SQL queries on the Aam Digital system's database.
 Queries are defined in as `ReportConfig` entities in the CouchDB and triggered through API requests.
 Results are persisted in a separate "report-calculation" CouchDB and returned through API requests.
 
-Processing is asynchronous and decoupled using RabbitMQ messages.
+Calculations are processed asynchronously on a bounded executor, so a handful of multi-second SQS
+queries can be in flight without overwhelming SQS and without holding up the caller. Once a
+calculation has stored a new result the subscribed webhooks are called on a second bounded executor,
+so a slow subscriber cannot hold up the calculation either.
 
 ```mermaid
 flowchart TD
@@ -23,20 +26,73 @@ flowchart TD
         externalDocChange>"CouchDB app doc changed"]
     end
 
-    externalDocChange -.-> Q_DocChanges
-    Q_DocChanges[[Queue: document.changes.report]] -.-> ChangeEventConsumer
-    ChangeEventConsumer(ReportDocumentChangeEventConsumer) --> CreateCalculation
+    externalDocChange --> ChangeHandler
+    ChangeHandler(ReportDocumentChangeHandler) --> Debouncer
+    Debouncer[ReportCalculationDebouncer - coalesce bursts] --> CreateCalculation
     calculationRequest --> CreateCalculation
 
-    CreateCalculation[CreateReportCalculationUseCase] -.-> Q_Calculation
-    Q_Calculation[[Queue: report.calculation]] -.-> CalculationListener
-    CalculationListener(ReportCalculationEventListener) --> Calculation
+    CreateCalculation[CreateReportCalculationUseCase - stores it PENDING] -.-> E_Calculation
+    E_Calculation[/report calculation executor/] -.-> CalculationProcessor
+    Sweeper[ReportCalculationSweeper - re-triggers stale PENDING] -.-> E_Calculation
+    CalculationProcessor(ReportCalculationProcessor) --> Calculation
     Calculation[ReportCalculationUseCase]
     style Calculation fill:#00C853
 
-    CalculationListener -- if FINISHED_SUCCESS --> Q_Completed
-    Q_Completed[[Queue: report.calculation.completed]] -.-> CompletedConsumer
-    CompletedConsumer(ReportCalculationCompletedEventConsumer) --> CalculationChange
-    CalculationChange[ReportCalculationChangeUseCase] -- if result changed --> WebhookNotification
-    WebhookNotification["NotificationService (call Webhooks)"]
+    CalculationProcessor -- if FINISHED_SUCCESS --> CalculationChange
+    CalculationChange[ReportCalculationChangeUseCase] -- if result changed --> WebhookTrigger
+    WebhookTrigger["WebhookTriggerService"] -.-> E_Webhook
+    E_Webhook[/webhook delivery executor/] -.-> TriggerWebhook
+    TriggerWebhook(TriggerWebhookUseCase - call the webhook)
 ```
+
+## Failed calculations
+`ReportCalculationProcessor` logs every failed calculation. Only a failure after the calculation
+and its ReportConfig are loaded, i.e. while the queries run and the result is stored, is also
+recorded on the calculation: `DefaultReportCalculationUseCase` stores it as `FINISHED_ERROR` with the
+exception message as `errorDetails`. If the calculation or its ReportConfig cannot be loaded, the
+calculation keeps its status (e.g. `PENDING`).
+
+Whether the failure alerts depends on whether the input is at fault:
+
+- A failure with an `InvalidArgumentException` anywhere in its cause chain is invalid input and is
+  logged at INFO only: it is the report author's or the instance's to fix, so it must not raise a
+  Sentry alert. The main case is a query SQS rejects: SQS answers an invalid query with 400, and
+  `SqsQueryStorage` throws an `InvalidArgumentException` (`QUERY_FAILED`) whose message ends with
+  the SQS response body. That message is stored as `errorDetails`, from which
+  `ReportCalculationController` returns SQS's explanation to the report editor. `DefaultReportStorage`
+  also throws one for a ReportConfig that is not an SQL report (`INVALID_REPORT_CONFIG`) or that
+  cannot be mapped to its entity (`PARSING_ERROR`), which fails while loading and so is not recorded
+  on the calculation.
+- Any other failure, including any other SQS error status (e.g. wrong credentials or a missing
+  design document), is logged at ERROR and so reaches Sentry. If it is recorded as
+  `FINISHED_ERROR`, the API returns "Unknown error" as its `errorDetails`.
+
+An SQS response body can quote the tenant's query, so it stays out of anything sent to Sentry:
+the processor's log lines name only the calculation and the error code (the attached exception
+carries the message into the console log), because INFO lines still become breadcrumbs on later
+Sentry events; and for any status other than 400, `SqsQueryStorage` leaves the body out of the
+exception and logs it at DEBUG instead.
+
+## Caches on the automatic change-detection path
+
+`ReportDocumentChangeHandler` runs for every changed document in the `app` database (up to
+`CHANGES_LIMIT = 100` per poll tick) and, since change handling is synchronous, on the reporting
+module's polling thread itself - so nothing on that path may do per-change CouchDB I/O.
+Two caches keep it in memory:
+
+- **`ReportConfigCache`** — `reportId -> affected entity types`, i.e. the result of
+  `SimpleReportQueryAnalyser`'s SQL regex, computed once per report definition instead of once per
+  document change. Marked stale by `DefaultIdentifyAffectedReportsUseCase` whenever a
+  `ReportConfig:*` change arrives, which is the only thing that can change it: `ReportConfig`
+  documents live in `app`, the one database in `database-change-detection.included-databases`.
+- **`WebhookSubscriptionCache`** — the set of report ids that any webhook is subscribed to. It
+  reads `WebhookEntity` documents directly, so it never decrypts a webhook secret. Webhooks live
+  in the `notification-webhook` database, which is deliberately *not* polled for changes, so this
+  cache is invalidated by `DefaultWebhookStorage` (the only writer of that database) and,
+  additionally, expires after `reporting.webhook-subscription-cache.ttl-millis` (default one hour)
+  to bound staleness from writes this process cannot see. Write-invalidation is the mechanism that
+  actually keeps this current; the TTL is only a backstop for a writer outside this process, so it
+  is deliberately long rather than tuned for freshness.
+
+  It is intentionally not used by `GET /v1/reporting/webhook` or by `WebhookTriggerService`, which
+  must always see the current webhook list.

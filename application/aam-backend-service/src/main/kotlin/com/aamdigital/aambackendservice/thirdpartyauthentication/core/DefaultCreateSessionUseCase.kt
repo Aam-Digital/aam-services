@@ -52,7 +52,8 @@ class DefaultCreateSessionUseCase(
                 sessionId = sessionId,
                 userId = user.userId,
                 externalUserId = request.userId,
-                sessionTokenHash = passwordEncoder.encode(sessionToken),
+                // declared nullable, but only returns null for a null input
+                sessionTokenHash = checkNotNull(passwordEncoder.encode(sessionToken)),
                 validUntil = validUntil
             )
         )

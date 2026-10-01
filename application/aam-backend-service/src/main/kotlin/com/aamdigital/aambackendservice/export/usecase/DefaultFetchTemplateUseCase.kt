@@ -77,8 +77,9 @@ class DefaultFetchTemplateUseCase(
         val forwardHeaders = HttpHeaders()
         forwardHeaders.contentType = responseHeaders.contentType
 
-        if (!responseHeaders["Content-Disposition"].isNullOrEmpty()) {
-            forwardHeaders["Content-Disposition"] = responseHeaders["Content-Disposition"]
+        val contentDisposition = responseHeaders["Content-Disposition"]
+        if (!contentDisposition.isNullOrEmpty()) {
+            forwardHeaders.put("Content-Disposition", contentDisposition)
         }
 
         val inputStream = ByteArrayInputStream(fileStream)

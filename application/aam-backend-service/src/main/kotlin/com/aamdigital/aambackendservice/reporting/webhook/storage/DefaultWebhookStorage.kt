@@ -17,7 +17,11 @@ enum class WebhookError : AamErrorCode {
 
 class DefaultWebhookStorage(
     private val webhookRepository: WebhookRepository,
-    private val cryptoService: CryptoService
+    private val cryptoService: CryptoService,
+    // this class is the only writer of the notification-webhook database, and that database is not
+    // in database-change-detection.included-databases, so invalidating here is the only way the
+    // subscription cache can learn about a write
+    private val webhookSubscriptionCache: WebhookSubscriptionCache
 ) : WebhookStorage {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -35,6 +39,7 @@ class DefaultWebhookStorage(
         }
 
         webhookRepository.storeWebhook(webhook)
+        webhookSubscriptionCache.invalidate()
     }
 
     override fun removeSubscription(
@@ -47,6 +52,7 @@ class DefaultWebhookStorage(
             )
         webhook.reportSubscriptions.remove(entityRef.id)
         webhookRepository.storeWebhook(webhook)
+        webhookSubscriptionCache.invalidate()
     }
 
     override fun fetchAllWebhooks(): List<Webhook> {
@@ -94,6 +100,10 @@ class DefaultWebhookStorage(
                     createdAt = Instant.now()
                 )
         )
+        // a new webhook has no subscriptions yet, so this is not strictly required today; it keeps
+        // the invariant "every write through this class invalidates", which is what makes the
+        // cache safe to reason about
+        webhookSubscriptionCache.invalidate()
 
         return DomainReference(newId)
     }
