@@ -70,6 +70,7 @@ class ReportCalculationProcessorTest {
 
     private lateinit var logger: Logger
     private lateinit var appender: ListAppender<ILoggingEvent>
+    private var previousLevel: Level? = null
 
     @BeforeEach
     fun setUp() {
@@ -77,12 +78,16 @@ class ReportCalculationProcessorTest {
         processor = processor()
         logger = LoggerFactory.getLogger(ReportCalculationProcessor::class.java) as Logger
         appender = ListAppender<ILoggingEvent>().apply { start() }
+        // the application.yaml default is WARN, and an earlier Spring test in the same JVM leaves it applied
+        previousLevel = logger.level
+        logger.level = Level.INFO
         logger.addAppender(appender)
     }
 
     @AfterEach
     fun tearDown() {
         logger.detachAppender(appender)
+        logger.level = previousLevel
     }
 
     @Test

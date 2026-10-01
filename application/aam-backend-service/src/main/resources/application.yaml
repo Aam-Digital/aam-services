@@ -114,8 +114,14 @@ aam-render-api-client-configuration:
 aam-replication-backend-client-configuration:
   base-path: ""
 
+sqs-client-configuration:
+  # the "sqs" service of the deployment's docker-compose stack
+  base-path: http://sqs:4984
+
 
 logging:
+  level:
+    com.aamdigital.aambackendservice: warn
   logback:
     rollingpolicy:
       max-file-size: 50MB
@@ -136,6 +142,8 @@ sentry:
   # always-active part of the config: the "local-development" document below is skipped in
   # production, where no Spring profile is active.
   release: ${APPLICATION_VERSION:}
+  traces-sample-rate: 0.25
+  attach-threads: true
   # Denials of method security (@PreAuthorize) are answered with 403 by AamAccessDeniedHandler.
   # They are expected client errors (e.g. an API client without the required client scope), not bugs.
   ignored-exceptions-for-type:

@@ -47,6 +47,8 @@ class RejectedReportQueryLoggingTest {
     private lateinit var mockWebServer: MockWebServer
     private lateinit var processor: ReportCalculationProcessor
     private lateinit var rootLogger: Logger
+    private lateinit var serviceLogger: Logger
+    private var previousServiceLevel: Level? = null
     private lateinit var appender: ListAppender<ILoggingEvent>
 
     @BeforeEach
@@ -72,12 +74,17 @@ class RejectedReportQueryLoggingTest {
             )
         rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger
         appender = ListAppender<ILoggingEvent>().apply { start() }
+        // the application.yaml default is WARN, and an earlier Spring test in the same JVM leaves it applied
+        serviceLogger = LoggerFactory.getLogger("com.aamdigital.aambackendservice") as Logger
+        previousServiceLevel = serviceLogger.level
+        serviceLogger.level = Level.INFO
         rootLogger.addAppender(appender)
     }
 
     @AfterEach
     fun tearDown() {
         rootLogger.detachAppender(appender)
+        serviceLogger.level = previousServiceLevel
         mockWebServer.shutdown()
     }
 
