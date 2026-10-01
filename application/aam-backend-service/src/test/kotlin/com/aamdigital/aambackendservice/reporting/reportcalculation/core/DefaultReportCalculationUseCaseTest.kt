@@ -778,4 +778,86 @@ class DefaultReportCalculationUseCaseTest {
         // then: multiple items stay wrapped so each item's result remains addressable as data[i]
         assertThat(storedData).isEqualTo("""[[{"name":"Alice"}],[{"age":5}]]""")
     }
+
+    @Test
+    fun `should escape a group title that contains a quote`() {
+        // given
+        val report =
+            Report(
+                id = "Report:1",
+                title = "Report",
+                items =
+                    listOf(
+                        ReportItem.ReportGroup(
+                            title = """Children "at risk"""",
+                            items = listOf(ReportItem.ReportQuery(sql = "SELECT count(*) AS count FROM foo"))
+                        )
+                    )
+            )
+        val reportCalculation = getPendingReportCalculation()
+
+        whenever(
+            reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:1")))
+        ).thenReturn(reportCalculation)
+
+        whenever(reportStorage.fetchReport(eq(DomainReference("Report:1")))).thenReturn(report)
+
+        whenever(queryStorage.executeQuery(any(), any()))
+            .thenReturn("""[{"count":275}]""".byteInputStream())
+
+        whenever(reportCalculationStorage.storeCalculation(any())).thenAnswer { i -> i.arguments[0] }
+
+        var storedData: String? = null
+        whenever(reportCalculationStorage.addReportCalculationData(any(), any())).thenAnswer { i ->
+            storedData = (i.arguments[1] as InputStream).readBytes().decodeToString()
+            i.arguments[0]
+        }
+
+        // when
+        service.run(ReportCalculationRequest(reportCalculationId = reportCalculation.id))
+
+        // then
+        assertThat(storedData).isEqualTo("""[{"Children \"at risk\"":[[{"count":275}]]}]""")
+    }
+
+    @Test
+    fun `should escape a group title that contains a line break`() {
+        // given
+        val report =
+            Report(
+                id = "Report:1",
+                title = "Report",
+                items =
+                    listOf(
+                        ReportItem.ReportGroup(
+                            title = "Children\nat risk",
+                            items = listOf(ReportItem.ReportQuery(sql = "SELECT count(*) AS count FROM foo"))
+                        )
+                    )
+            )
+        val reportCalculation = getPendingReportCalculation()
+
+        whenever(
+            reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:1")))
+        ).thenReturn(reportCalculation)
+
+        whenever(reportStorage.fetchReport(eq(DomainReference("Report:1")))).thenReturn(report)
+
+        whenever(queryStorage.executeQuery(any(), any()))
+            .thenReturn("""[{"count":275}]""".byteInputStream())
+
+        whenever(reportCalculationStorage.storeCalculation(any())).thenAnswer { i -> i.arguments[0] }
+
+        var storedData: String? = null
+        whenever(reportCalculationStorage.addReportCalculationData(any(), any())).thenAnswer { i ->
+            storedData = (i.arguments[1] as InputStream).readBytes().decodeToString()
+            i.arguments[0]
+        }
+
+        // when
+        service.run(ReportCalculationRequest(reportCalculationId = reportCalculation.id))
+
+        // then
+        assertThat(storedData).isEqualTo("""[{"Children\nat risk":[[{"count":275}]]}]""")
+    }
 }
