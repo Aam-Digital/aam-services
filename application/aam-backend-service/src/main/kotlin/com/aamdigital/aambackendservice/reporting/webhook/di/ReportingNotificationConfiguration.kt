@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.reporting.webhook.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.crypto.core.CryptoService
+import com.aamdigital.aambackendservice.common.execution.BoundedTaskRunner
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
@@ -12,19 +13,52 @@ import com.aamdigital.aambackendservice.reporting.webhook.core.DefaultUriParser
 import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationService
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.reporting.webhook.core.UriParser
-import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventPublisher
 import com.aamdigital.aambackendservice.reporting.webhook.storage.DefaultWebhookStorage
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookRepository
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
+import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookSubscriptionCache
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.client.RestClient
+import java.time.Duration
+import java.util.concurrent.Executor
 
 @Configuration
 @ConditionalOnReportingEnabled
 class ReportingNotificationConfiguration {
+    companion object {
+        /**
+         * Webhook delivery is one outbound HTTP call per subscribed report per new calculation
+         * result: low volume, but each call is external and has no client timeout yet, so the pool
+         * stays small and the backlog is bounded rather than unbounded like the queue it replaces.
+         *
+         * Two at a time is a modest widening of the single `notification.webhook` consumer
+         * (`prefetch: 1`) this replaces.
+         */
+        private const val WEBHOOK_DELIVERY_CONCURRENCY = 2
+        private const val WEBHOOK_DELIVERY_BACKLOG = 500
+        private val WEBHOOK_DELIVERY_SHUTDOWN_TIMEOUT: Duration = Duration.ofSeconds(30)
+    }
+
+    /**
+     * Delivers webhook callbacks off the caller's thread.
+     *
+     * On shutdown, in-flight and queued callbacks are given [WEBHOOK_DELIVERY_SHUTDOWN_TIMEOUT] to
+     * drain, matching the best-effort flush `ReportCalculationDebouncer` does for its pending
+     * triggers.
+     */
+    @Bean("webhook-delivery-executor")
+    fun webhookDeliveryExecutor(): Executor =
+        BoundedTaskRunner.threadPool(
+            name = "webhook-delivery",
+            concurrency = WEBHOOK_DELIVERY_CONCURRENCY,
+            backlog = WEBHOOK_DELIVERY_BACKLOG,
+            shutdownTimeout = WEBHOOK_DELIVERY_SHUTDOWN_TIMEOUT
+        )
+
     @Bean
     fun defaultAddWebhookSubscription(
         webhookStorage: WebhookStorage,
@@ -61,8 +95,19 @@ class ReportingNotificationConfiguration {
     @Bean
     fun defaultNotificationStorage(
         webhookRepository: WebhookRepository,
-        cryptoService: CryptoService
-    ): WebhookStorage = DefaultWebhookStorage(webhookRepository, cryptoService)
+        cryptoService: CryptoService,
+        webhookSubscriptionCache: WebhookSubscriptionCache
+    ): WebhookStorage = DefaultWebhookStorage(webhookRepository, cryptoService, webhookSubscriptionCache)
+
+    @Bean
+    fun webhookSubscriptionCache(
+        webhookRepository: WebhookRepository,
+        @Value("\${reporting.webhook-subscription-cache.ttl-millis:3600000}") ttlMillis: Long
+    ): WebhookSubscriptionCache =
+        WebhookSubscriptionCache(
+            webhookRepository = webhookRepository,
+            ttl = Duration.ofMillis(ttlMillis)
+        )
 
     @Bean
     fun webhookRepository(couchDbClient: CouchDbClient): WebhookRepository = WebhookRepository(couchDbClient)
@@ -70,6 +115,12 @@ class ReportingNotificationConfiguration {
     @Bean
     fun notificationService(
         webhookStorage: WebhookStorage,
-        webhookEventPublisher: WebhookEventPublisher
-    ): NotificationService = NotificationService(webhookStorage, webhookEventPublisher)
+        triggerWebhookUseCase: TriggerWebhookUseCase,
+        @Qualifier("webhook-delivery-executor") webhookDeliveryExecutor: Executor
+    ): NotificationService =
+        NotificationService(
+            webhookStorage = webhookStorage,
+            triggerWebhookUseCase = triggerWebhookUseCase,
+            webhookDeliveryRunner = BoundedTaskRunner("webhook-delivery", webhookDeliveryExecutor)
+        )
 }

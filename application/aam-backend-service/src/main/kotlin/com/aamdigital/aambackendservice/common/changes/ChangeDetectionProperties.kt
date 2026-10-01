@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
  *
  * [includedDatabases] is an allowlist: only databases whose name matches exactly are
  * polled for changes. This keeps auxiliary CouchDB databases (e.g. `audit`,
- * `notifications-*`, `app-attachments`) out of the `document.changes` fanout by default,
+ * `notifications-*`, `notification-outbox`, `app-attachments`) out of change detection by default,
  * since only the core `app` database is relevant to current consumers.
  */
 @ConfigurationProperties("database-change-detection")

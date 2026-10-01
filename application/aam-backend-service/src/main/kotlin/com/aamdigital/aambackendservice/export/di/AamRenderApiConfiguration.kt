@@ -2,14 +2,15 @@ package com.aamdigital.aambackendservice.export.di
 
 import com.aamdigital.aambackendservice.common.auth.core.AuthConfig
 import com.aamdigital.aambackendservice.common.auth.core.AuthProvider
+import com.aamdigital.aambackendservice.common.rest.requestFactoryWithTimeout
 import com.aamdigital.aambackendservice.export.ConditionalOnExportApiEnabled
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpHeaders
-import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestClient
+import java.time.Duration
 
 @ConfigurationProperties("aam-render-api-client-configuration")
 @ConditionalOnExportApiEnabled
@@ -43,10 +44,7 @@ class AamRenderApiConfiguration {
         }
 
         clientBuilder.requestFactory(
-            SimpleClientHttpRequestFactory().apply {
-                setReadTimeout(configuration.responseTimeoutInSeconds * 1000)
-                setConnectTimeout(configuration.responseTimeoutInSeconds * 1000)
-            }
+            requestFactoryWithTimeout(Duration.ofSeconds(configuration.responseTimeoutInSeconds.toLong()))
         )
 
         return clientBuilder.build()

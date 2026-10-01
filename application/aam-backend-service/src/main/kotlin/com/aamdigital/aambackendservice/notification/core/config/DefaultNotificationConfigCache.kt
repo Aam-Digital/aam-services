@@ -1,35 +1,30 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
+import com.aamdigital.aambackendservice.common.cache.LazySnapshot
 import com.aamdigital.aambackendservice.common.condition.DocumentCondition
 import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.error.NotFoundException
-import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
 import java.nio.charset.StandardCharsets
 import java.util.UUID
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * CouchDB-backed in-memory implementation of [NotificationConfigCache].
  *
- * It preloads all `NotificationConfig:*` documents on startup and updates one entry
- * whenever a matching document change event is consumed.
+ * All `NotificationConfig:*` documents are loaded on first use (see [LazySnapshot]), and one entry
+ * is updated whenever a matching document change is handled. Loading lazily rather than warming up
+ * at startup means the first change is never matched against a cache that has not finished loading
+ * - which used to drop that change's notifications silently - and a failed load throws, so it is
+ * logged as a failed change instead of looking like "no rule matched".
  */
 class DefaultNotificationConfigCache(
     private val couchDbClient: CouchDbClient,
     private val objectMapper: ObjectMapper,
-    private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine(),
-    private val scheduleRetry: (Long, () -> Unit) -> Unit = { delayMs, task ->
-        CompletableFuture.delayedExecutor(delayMs, TimeUnit.MILLISECONDS).execute(task)
-    }
+    private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
 ) : NotificationConfigCache {
     companion object {
         private const val DATABASE = "app"
@@ -37,72 +32,11 @@ class DefaultNotificationConfigCache(
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val cache = ConcurrentHashMap<String, NotificationConfigCacheEntry>()
-    private val cacheLock = Any()
-    private val initStarted = AtomicBoolean(false)
 
-    @PostConstruct
-    fun init() {
-        if (!initStarted.compareAndSet(false, true)) {
-            return
-        }
+    /** Cache entries by user identifier. */
+    private val configs = LazySnapshot { loadConfigs() }
 
-        scheduleInitAttempt(attempt = 1, delayMs = 0)
-    }
-
-    private fun scheduleInitAttempt(attempt: Int, delayMs: Long) {
-        scheduleRetry(delayMs) {
-            try {
-                refreshAll()
-                logger.debug("Notification config cache warmup completed")
-            } catch (ex: Exception) {
-                val retryDelayMs = ScheduledJobBackoff.calculateBackoffMs(attempt)
-
-                if (retryDelayMs >= ScheduledJobBackoff.MAX_BACKOFF_MS) {
-                    logger.error(
-                        "[NotificationConfigCache] Init failed (attempt {}). " +
-                            "Max backoff reached, retrying in {} ms: {}",
-                        attempt,
-                        retryDelayMs,
-                        ex.message
-                    )
-                } else {
-                    logger.warn(
-                        "[NotificationConfigCache] Init failed (attempt {}). Retrying in {} ms: {}",
-                        attempt,
-                        retryDelayMs,
-                        ex.message
-                    )
-                }
-                logger.debug("[NotificationConfigCache] Debug information", ex)
-
-                scheduleInitAttempt(attempt = attempt + 1, delayMs = retryDelayMs)
-            }
-        }
-    }
-
-    override fun findAll(): List<NotificationConfigCacheEntry> =
-        synchronized(cacheLock) {
-            cache.values.toList()
-        }
-
-    override fun refreshAll() {
-        val nextCache =
-            couchDbClient
-                .getDatabaseDocumentsByPrefix(
-                    database = DATABASE,
-                    prefix = DOCUMENT_PREFIX,
-                    kClass = ObjectNode::class
-                ).mapNotNull { doc -> parseConfigFromDoc(doc = doc) }
-                .associateBy { it.userIdentifier }
-
-        synchronized(cacheLock) {
-            cache.clear()
-            cache.putAll(nextCache)
-        }
-
-        logger.debug("Loaded {} notification configs into memory cache", cache.size)
-    }
+    override fun findAll(): List<NotificationConfigCacheEntry> = configs.get().values.toList()
 
     override fun refreshConfig(
         database: String,
@@ -112,9 +46,7 @@ class DefaultNotificationConfigCache(
         val userIdentifier = extractUserIdentifier(notificationConfigId) ?: return
 
         if (deleted) {
-            synchronized(cacheLock) {
-                cache.remove(userIdentifier)
-            }
+            configs.update { it - userIdentifier }
             logger.debug("Removed notification config from cache: {}", notificationConfigId)
             return
         }
@@ -130,9 +62,7 @@ class DefaultNotificationConfigCache(
             } catch (
                 @Suppress("SwallowedException") ex: NotFoundException
             ) {
-                synchronized(cacheLock) {
-                    cache.remove(userIdentifier)
-                }
+                configs.update { it - userIdentifier }
                 logger.debug(
                     "Notification config not found during refresh, removed from cache: {}",
                     notificationConfigId
@@ -140,30 +70,40 @@ class DefaultNotificationConfigCache(
                 return
             }
 
-        try {
-            synchronized(cacheLock) {
-                cache[userIdentifier] = toCacheEntry(notificationConfig)
+        val entry =
+            try {
+                toCacheEntry(notificationConfig)
+            } catch (ex: Exception) {
+                configs.update { it - userIdentifier }
+                logger.error(
+                    "Skipping invalid NotificationConfig during refresh: notificationConfigId={}, userIdentifier={}",
+                    notificationConfigId,
+                    userIdentifier,
+                    ex
+                )
+                return
             }
-            logger.debug("Refreshed notification config in cache: {}", notificationConfigId)
-        } catch (ex: Exception) {
-            synchronized(cacheLock) {
-                cache.remove(userIdentifier)
-            }
-            logger.error(
-                "Skipping invalid NotificationConfig during refresh: notificationConfigId={}, userIdentifier={}",
-                notificationConfigId,
-                userIdentifier,
-                ex
-            )
-        }
+
+        configs.update { it + (userIdentifier to entry) }
+        logger.debug("Refreshed notification config in cache: {}", notificationConfigId)
     }
+
+    private fun loadConfigs(): Map<String, NotificationConfigCacheEntry> =
+        couchDbClient
+            .getDatabaseDocumentsByPrefix(
+                database = DATABASE,
+                prefix = DOCUMENT_PREFIX,
+                kClass = ObjectNode::class
+            ).mapNotNull { doc -> parseConfigFromDoc(doc = doc) }
+            .associateBy { it.userIdentifier }
+            .also { loaded -> logger.debug("Loaded {} notification configs into memory cache", loaded.size) }
 
     private fun parseConfigFromDoc(doc: ObjectNode): NotificationConfigCacheEntry? =
         try {
             val dto = objectMapper.convertValue(doc, NotificationConfigDto::class.java)
             toCacheEntry(dto)
         } catch (ex: Exception) {
-            logger.warn("Skipping invalid NotificationConfig document in cache warmup", ex)
+            logger.warn("Skipping invalid NotificationConfig document while loading the cache", ex)
             null
         }
 

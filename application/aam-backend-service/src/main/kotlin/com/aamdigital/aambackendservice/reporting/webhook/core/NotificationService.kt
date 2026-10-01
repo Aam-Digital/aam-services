@@ -1,15 +1,27 @@
 package com.aamdigital.aambackendservice.reporting.webhook.core
 
 import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.execution.BoundedTaskRunner
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookEvent
-import com.aamdigital.aambackendservice.reporting.webhook.di.ReportingNotificationQueueConfiguration
-import com.aamdigital.aambackendservice.reporting.webhook.queue.WebhookEventPublisher
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookStorage
 import org.slf4j.LoggerFactory
 
+/**
+ * Calls the webhooks that subscribed to a report once a calculation produced a new result.
+ *
+ * Delivery is handed to [webhookDeliveryRunner] rather than performed inline, so that outbound HTTP
+ * to a slow or unreachable subscriber cannot hold up the report calculation that produced the
+ * result, nor the HTTP request that registers a subscription. The runner logs a failed callback at
+ * ERROR.
+ *
+ * Delivery stays fire-and-forget and is *not* retried: a failed callback is logged and dropped.
+ * Adding retry needs the ordering question answered first ("do not send an old event after a newer
+ * calculation already delivered") and is out of scope.
+ */
 class NotificationService(
     private val webhookStorage: WebhookStorage,
-    private val webhookEventPublisher: WebhookEventPublisher
+    private val triggerWebhookUseCase: TriggerWebhookUseCase,
+    private val webhookDeliveryRunner: BoundedTaskRunner
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -33,7 +45,7 @@ class NotificationService(
         logger.debug("[NotificationService]: Trigger all affected webhooks for ${report.id}")
         val affectedWebhooks = getAffectedWebhooks(report)
 
-        affectedWebhooks.map { webhook ->
+        affectedWebhooks.forEach { webhook ->
             triggerWebhook(
                 report = report,
                 reportCalculation = reportCalculation,
@@ -48,13 +60,33 @@ class NotificationService(
         webhook: DomainReference
     ) {
         logger.debug("[NotificationService]: Trigger NotificationEvent for ${webhook.id} and ${report.id}")
-        webhookEventPublisher.publish(
-            ReportingNotificationQueueConfiguration.NOTIFICATION_QUEUE,
+
+        val webhookEvent =
             WebhookEvent(
                 webhookId = webhook.id,
                 reportId = report.id,
                 calculationId = reportCalculation.id
             )
-        )
+
+        val accepted =
+            webhookDeliveryRunner.submit(
+                "webhook ${webhookEvent.webhookId} (report ${webhookEvent.reportId}, " +
+                    "calculation ${webhookEvent.calculationId})"
+            ) {
+                triggerWebhookUseCase.trigger(webhookEvent)
+            }
+
+        if (!accepted) {
+            // The backlog is bounded on purpose: rejecting keeps the calculation thread moving,
+            // which is the whole reason this hop exists. The callback is dropped, so log at
+            // ERROR to reach Sentry.
+            logger.error(
+                "Dropped webhook callback for webhook {} (report {}, calculation {}): " +
+                    "the webhook delivery executor is saturated or shutting down",
+                webhookEvent.webhookId,
+                webhookEvent.reportId,
+                webhookEvent.calculationId
+            )
+        }
     }
 }

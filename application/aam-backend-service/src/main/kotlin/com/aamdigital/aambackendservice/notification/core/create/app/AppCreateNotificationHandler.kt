@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.notification.core.create.app
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
+import com.aamdigital.aambackendservice.common.couchdb.core.documentExists
 import com.aamdigital.aambackendservice.common.domain.UpdateMetadata
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
@@ -34,9 +35,31 @@ class AppCreateNotificationHandler(
         NotificationChannelType.APP == notificationChannelType
 
     override fun createMessage(createUserNotificationEvent: CreateUserNotificationEvent): CreateNotificationData {
+        val userNotificationDb = "notifications_${createUserNotificationEvent.userIdentifier}"
+
+        couchDbInitializer.createDatabase(
+            DatabaseRequest(
+                name = userNotificationDb
+            )
+        )
+
+        val documentId = "NotificationEvent:${createUserNotificationEvent.details.id}"
+
+        // Notification ids are derived from the document change that caused them, so the same
+        // notification can be offered more than once (a replayed change, a retried delivery).
+        // Writing it again would overwrite the user's existing notification with a fresh timestamp,
+        // so an already-delivered notification is left exactly as it is.
+        if (couchDbClient.documentExists(userNotificationDb, documentId)) {
+            return CreateNotificationData(
+                success = true,
+                messageCreated = false,
+                messageReference = documentId
+            )
+        }
+
         val event =
             NotificationEventDto(
-                id = "NotificationEvent:${createUserNotificationEvent.details.id}",
+                id = documentId,
                 title = createUserNotificationEvent.details.title,
                 body = createUserNotificationEvent.details.body,
                 actionUrl = createUserNotificationEvent.details.actionUrl,
@@ -48,14 +71,6 @@ class AppCreateNotificationHandler(
                         by = "system"
                     )
             )
-
-        val userNotificationDb = "notifications_${createUserNotificationEvent.userIdentifier}"
-
-        couchDbInitializer.createDatabase(
-            DatabaseRequest(
-                name = userNotificationDb
-            )
-        )
 
         couchDbClient
             .putDatabaseDocument(

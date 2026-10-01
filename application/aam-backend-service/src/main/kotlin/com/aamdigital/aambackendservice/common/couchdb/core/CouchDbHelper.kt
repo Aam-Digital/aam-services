@@ -5,6 +5,12 @@ import org.springframework.util.LinkedMultiValueMap
 /** Creates an empty [LinkedMultiValueMap] for CouchDB query parameters. */
 fun getEmptyQueryParams() = LinkedMultiValueMap<String, String>()
 
+/** Whether [documentId] exists in [database], asked with a `HEAD` request instead of reading it. */
+fun CouchDbClient.documentExists(
+    database: String,
+    documentId: String
+): Boolean = !headDatabaseDocument(database = database, documentId = documentId).eTag.isNullOrBlank()
+
 /**
  * Database holding backend-internal state that is not part of the application's user-facing data:
  * the change-detection cursor, push device registrations and third-party-auth redirect bindings.

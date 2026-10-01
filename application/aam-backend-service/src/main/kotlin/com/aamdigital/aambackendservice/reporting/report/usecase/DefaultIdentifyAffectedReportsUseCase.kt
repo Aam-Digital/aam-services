@@ -3,23 +3,25 @@ package com.aamdigital.aambackendservice.reporting.report.usecase
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.report.core.IdentifyAffectedReportsUseCase
-import com.aamdigital.aambackendservice.reporting.report.core.ReportQueryAnalyser
-import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
+import com.aamdigital.aambackendservice.reporting.report.core.ReportConfigCache
 import org.slf4j.LoggerFactory
 
 class DefaultIdentifyAffectedReportsUseCase(
-    private val reportStorage: ReportStorage,
-    private val reportQueryAnalyser: ReportQueryAnalyser
+    private val reportConfigCache: ReportConfigCache
 ) : IdentifyAffectedReportsUseCase {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun analyse(documentChangeEvent: DocumentChangeEvent): List<DomainReference> {
         logger.trace("analyzing document change for auto report calculation {}", documentChangeEvent.documentId)
 
-        val changedEntity = documentChangeEvent.documentId.split(":").first()
+        val changedEntity = documentChangeEvent.entityType
 
         // special handling if ReportConfig changed
         if (changedEntity == "ReportConfig") {
+            // report definitions are cached, and this is the only event that can change them,
+            // so an added, edited or deleted definition has to be picked up here
+            reportConfigCache.markDirty()
+
             if (documentChangeEvent.deleted) {
                 logger.trace("Skipping ReportConfig delete event")
                 return emptyList()
@@ -36,20 +38,7 @@ class DefaultIdentifyAffectedReportsUseCase(
             return mutableListOf(DomainReference(reportRef))
         }
 
-        val reports = reportStorage.fetchAllReports("sql")
-        val affectedReports: MutableList<DomainReference> = mutableListOf()
-        reports.forEach { report ->
-            // todo better change detection (fields)
-            val affectedEntities = reportQueryAnalyser.getAffectedEntities(report)
-            val affected =
-                affectedEntities.any {
-                    it == changedEntity
-                }
-            if (affected) {
-                affectedReports.add(DomainReference(report.id))
-            }
-        }
-
-        return affectedReports
+        // todo better change detection (fields)
+        return reportConfigCache.findReportsForEntityType(changedEntity)
     }
 }
