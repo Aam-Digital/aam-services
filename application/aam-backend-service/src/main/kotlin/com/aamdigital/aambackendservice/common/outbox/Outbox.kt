@@ -1,8 +1,7 @@
 package com.aamdigital.aambackendservice.common.outbox
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
-import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
+import com.aamdigital.aambackendservice.common.couchdb.core.creatingDatabaseIfMissing
 import com.aamdigital.aambackendservice.common.couchdb.core.documentExists
 import com.fasterxml.jackson.databind.JavaType
 import com.fasterxml.jackson.databind.JsonNode
@@ -52,7 +51,6 @@ class Outbox<P : Any>(
     private val handler: OutboxHandler<P>,
     private val retryPolicy: OutboxRetryPolicy,
     private val couchDbClient: CouchDbClient,
-    private val couchDbInitializer: CouchDbInitializer,
     private val objectMapper: ObjectMapper,
     private val clock: Clock = Clock.systemUTC()
 ) {
@@ -78,10 +76,6 @@ class Outbox<P : Any>(
         key: String,
         payload: P
     ): Boolean {
-        // create on demand rather than only at startup: the database may not exist yet the first
-        // time something is owed
-        couchDbInitializer.createDatabase(DatabaseRequest(database))
-
         val id = OutboxEntry.idFor(key)
         if (couchDbClient.documentExists(database = database, documentId = id)) {
             logger.debug("{} entry {} is already waiting, not re-enqueueing", database, id)
@@ -89,7 +83,11 @@ class Outbox<P : Any>(
         }
 
         val now = clock.instant()
-        store(OutboxEntry(id = id, payload = payload, nextAttemptAt = now, createdAt = now))
+        // The module's DatabaseRequest creates the database at startup, but it may have been dropped
+        // since. Only a new entry brings it back: the drain reads a missing database as empty.
+        couchDbClient.creatingDatabaseIfMissing(database) {
+            store(OutboxEntry(id = id, payload = payload, nextAttemptAt = now, createdAt = now))
+        }
         return true
     }
 

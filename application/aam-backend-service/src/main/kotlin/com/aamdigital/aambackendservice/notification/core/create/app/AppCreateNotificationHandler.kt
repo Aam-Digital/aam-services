@@ -1,8 +1,7 @@
 package com.aamdigital.aambackendservice.notification.core.create.app
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
-import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
+import com.aamdigital.aambackendservice.common.couchdb.core.creatingDatabaseIfMissing
 import com.aamdigital.aambackendservice.common.couchdb.core.documentExists
 import com.aamdigital.aambackendservice.common.domain.UpdateMetadata
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
@@ -28,21 +27,13 @@ data class NotificationEventDto(
 )
 
 class AppCreateNotificationHandler(
-    private val couchDbClient: CouchDbClient,
-    private val couchDbInitializer: CouchDbInitializer
+    private val couchDbClient: CouchDbClient
 ) : CreateNotificationHandler {
     override fun canHandle(notificationChannelType: NotificationChannelType): Boolean =
         NotificationChannelType.APP == notificationChannelType
 
     override fun createMessage(createUserNotificationEvent: CreateUserNotificationEvent): CreateNotificationData {
         val userNotificationDb = "notifications_${createUserNotificationEvent.userIdentifier}"
-
-        couchDbInitializer.createDatabase(
-            DatabaseRequest(
-                name = userNotificationDb
-            )
-        )
-
         val documentId = "NotificationEvent:${createUserNotificationEvent.details.id}"
 
         // Notification ids are derived from the document change that caused them, so the same
@@ -72,12 +63,14 @@ class AppCreateNotificationHandler(
                     )
             )
 
-        couchDbClient
-            .putDatabaseDocument(
+        // every user has a database of their own, which the first notification they get creates
+        couchDbClient.creatingDatabaseIfMissing(userNotificationDb) {
+            couchDbClient.putDatabaseDocument(
                 database = userNotificationDb,
                 documentId = event.id,
                 body = event
             )
+        }
 
         return CreateNotificationData(
             success = true,

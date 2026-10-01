@@ -1,12 +1,15 @@
 package com.aamdigital.aambackendservice.common.couchdb.core
 
 import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.Companion.FIND_PAGE_SIZE
+import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
 import com.aamdigital.aambackendservice.common.couchdb.dto.FindResponse
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
@@ -18,14 +21,26 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.test.web.client.MockRestServiceServer
+import org.springframework.test.web.client.ResponseCreator
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
 import org.springframework.util.MultiValueMap
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
 
 class DefaultCouchDbClientTest {
+    companion object {
+        /** CouchDB's answer to a request for a document in a database that does not exist. */
+        private const val MISSING_DATABASE_BODY = """{"error":"not_found","reason":"Database does not exist."}"""
+        private const val DELETED_DOCUMENT_BODY = """{"error":"not_found","reason":"deleted"}"""
+        private const val DATABASE_EXISTS_BODY =
+            """{"error":"file_exists","reason":"The database could not be created, the file already exists."}"""
+        private const val UNAUTHORIZED_BODY = """{"error":"unauthorized","reason":"You are not a server admin."}"""
+    }
+
     private val objectMapper = ObjectMapper()
     private val couchDbClient = spy(DefaultCouchDbClient(mock<RestClient>(), objectMapper))
 
@@ -86,16 +101,30 @@ class DefaultCouchDbClientTest {
         )
     }
 
-    private fun headClientRespondingWith(status: HttpStatus): DefaultCouchDbClient {
+    /** A client whose requests are answered by [server], in the order they are expected there. */
+    private fun clientAnswering(server: MockRestServiceServer.() -> Unit): DefaultCouchDbClient {
         val builder = RestClient.builder()
-        MockRestServiceServer
-            .bindTo(builder)
-            .build()
-            .expect(requestTo("/db/doc"))
-            .andExpect(method(HttpMethod.HEAD))
-            .andRespond(withStatus(status))
-        return DefaultCouchDbClient(builder.build(), ObjectMapper())
+        MockRestServiceServer.bindTo(builder).build().server()
+        return DefaultCouchDbClient(builder.build(), objectMapper)
     }
+
+    private fun MockRestServiceServer.answer(
+        httpMethod: HttpMethod,
+        response: ResponseCreator,
+        path: String = "/db/doc"
+    ) {
+        expect(requestTo(path))
+            .andExpect(method(httpMethod))
+            .andRespond(response)
+    }
+
+    private fun couchDbError(
+        status: HttpStatus,
+        body: String
+    ): ResponseCreator = withStatus(status).contentType(MediaType.APPLICATION_JSON).body(body)
+
+    private fun headClientRespondingWith(status: HttpStatus): DefaultCouchDbClient =
+        clientAnswering { answer(HttpMethod.HEAD, withStatus(status)) }
 
     @Test
     fun `answers a HEAD for a missing document with empty headers`() {
@@ -110,6 +139,108 @@ class DefaultCouchDbClientTest {
             .isInstanceOf(ExternalSystemException::class.java)
             .extracting { (it as ExternalSystemException).code }
             .isEqualTo(DefaultCouchDbClient.DefaultCouchDbClientErrorCode.CLIENT_ERROR)
+    }
+
+    @Test
+    fun `reports a write into a missing database as DATABASE_NOT_FOUND`() {
+        // Given a HEAD answer has no body, so only the write learns that the database itself is missing
+        val client =
+            clientAnswering {
+                answer(HttpMethod.HEAD, withStatus(HttpStatus.NOT_FOUND))
+                answer(HttpMethod.PUT, couchDbError(HttpStatus.NOT_FOUND, MISSING_DATABASE_BODY))
+            }
+
+        // When
+        val thrown = catchThrowable { client.putDatabaseDocument("db", "doc", mapOf("a" to 1)) }
+
+        // Then
+        assertThat(thrown)
+            .isInstanceOf(ExternalSystemException::class.java)
+            .extracting { (it as ExternalSystemException).code }
+            .isEqualTo(DefaultCouchDbClientErrorCode.DATABASE_NOT_FOUND)
+    }
+
+    @Test
+    fun `keeps reporting a missing document as NOT_FOUND`() {
+        // Given
+        val client =
+            clientAnswering {
+                answer(HttpMethod.HEAD, withStatus(HttpStatus.NOT_FOUND))
+                answer(HttpMethod.DELETE, couchDbError(HttpStatus.NOT_FOUND, DELETED_DOCUMENT_BODY))
+            }
+
+        // When
+        val thrown = catchThrowable { client.deleteDatabaseDocument("db", "doc") }
+
+        // Then
+        assertThat(thrown)
+            .isInstanceOf(ExternalSystemException::class.java)
+            .extracting { (it as ExternalSystemException).code }
+            .isEqualTo(DefaultCouchDbClientErrorCode.NOT_FOUND)
+    }
+
+    @Test
+    fun `does not take a 404 without CouchDB's error body for a missing database`() {
+        // Given something in front of CouchDB answered, a proxy say
+        val client =
+            clientAnswering {
+                answer(HttpMethod.PUT, withStatus(HttpStatus.NOT_FOUND).body("<html>Not Found</html>"))
+            }
+
+        // When
+        val thrown = catchThrowable { client.putDatabaseDocumentAtRevision("db", "doc", mapOf("a" to 1), null) }
+
+        // Then
+        assertThat(thrown)
+            .isInstanceOf(ExternalSystemException::class.java)
+            .extracting { (it as ExternalSystemException).code }
+            .isEqualTo(DefaultCouchDbClientErrorCode.NOT_FOUND)
+    }
+
+    @Test
+    fun `leaves a query of a missing database to Spring's NotFound`() {
+        // Given only writes are told apart: the outbox reads a missing database as an empty one by
+        // catching exactly this
+        val client =
+            clientAnswering {
+                answer(HttpMethod.POST, couchDbError(HttpStatus.NOT_FOUND, MISSING_DATABASE_BODY), path = "/db/_find")
+            }
+
+        // When
+        val thrown = catchThrowable { client.findDatabaseDocuments("db", body = emptyMap(), kClass = Any::class) }
+
+        // Then
+        assertThat(thrown).isInstanceOf(HttpClientErrorException.NotFound::class.java)
+    }
+
+    @Test
+    fun `treats creating a database that already exists as done`() {
+        // Given two writes that find the same database missing both create it, and one of them loses
+        val client =
+            clientAnswering {
+                answer(HttpMethod.PUT, couchDbError(HttpStatus.PRECONDITION_FAILED, DATABASE_EXISTS_BODY), path = "/db")
+            }
+
+        // When / Then
+        assertThatCode { client.createDatabase("db") }.doesNotThrowAnyException()
+    }
+
+    @Test
+    fun `still fails creating a database CouchDB refuses`() {
+        // Given
+        val client =
+            clientAnswering {
+                answer(HttpMethod.PUT, couchDbError(HttpStatus.UNAUTHORIZED, UNAUTHORIZED_BODY), path = "/db")
+            }
+
+        // When
+        val thrown = catchThrowable { client.createDatabase("db") }
+
+        // Then
+        assertThat(thrown)
+            .isInstanceOf(ExternalSystemException::class.java)
+            .extracting { (it as ExternalSystemException).code }
+            .isEqualTo(DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR)
     }
 
     @Test

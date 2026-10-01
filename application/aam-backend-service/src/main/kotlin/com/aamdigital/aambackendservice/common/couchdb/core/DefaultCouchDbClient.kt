@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.common.couchdb.dto.FindResponse
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.fasterxml.jackson.core.JacksonException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
@@ -34,6 +35,13 @@ class DefaultCouchDbClient(
         PARSING_ERROR,
         EMPTY_RESPONSE,
         NOT_FOUND,
+
+        /**
+         * 404 on a write (PUT/DELETE) into a database that does not exist, as opposed to [NOT_FOUND]
+         * for a missing document. Reads never report it: they do not tell a missing database from a
+         * missing document, and [DefaultCouchDbClient.getDatabaseDocument] reports [NOT_FOUND] for both.
+         */
+        DATABASE_NOT_FOUND,
         CONFLICT,
         CLIENT_ERROR,
         OTHER_COUCHDB_ERROR
@@ -46,6 +54,9 @@ class DefaultCouchDbClient(
 
         /** Page size for a `_find` that returns all matches, paged through with the bookmark. */
         internal const val FIND_PAGE_SIZE = 1000
+
+        /** CouchDB's reason for a 404 on a missing database; a missing document is `missing` or `deleted`. */
+        private const val MISSING_DATABASE_REASON = "Database does not exist."
     }
 
     override fun allDatabases(): List<String> {
@@ -427,7 +438,7 @@ class DefaultCouchDbClient(
         if (!statusCode.is2xxSuccessful) {
             val errorCode =
                 when {
-                    statusCode.value() == 404 -> DefaultCouchDbClientErrorCode.NOT_FOUND
+                    statusCode.value() == 404 -> notFoundErrorCode(rawResponse)
                     statusCode.value() == 409 -> DefaultCouchDbClientErrorCode.CONFLICT
                     statusCode.is4xxClientError -> DefaultCouchDbClientErrorCode.CLIENT_ERROR
                     else -> DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR
@@ -457,6 +468,27 @@ class DefaultCouchDbClient(
         }
     }
 
+    /**
+     * CouchDB answers 404 for a missing database as well as for a missing document in it, and only
+     * the reason in its error body tells the two apart.
+     */
+    private fun notFoundErrorCode(rawResponse: String): DefaultCouchDbClientErrorCode {
+        val missingDatabase =
+            try {
+                val body = objectMapper.readTree(rawResponse)
+                body.path("error").asText() == "not_found" && body.path("reason").asText() == MISSING_DATABASE_REASON
+            } catch (_: JacksonException) {
+                // not CouchDB's own error body, but an error page of a proxy in front of it, say
+                false
+            }
+
+        return if (missingDatabase) {
+            DefaultCouchDbClientErrorCode.DATABASE_NOT_FOUND
+        } else {
+            DefaultCouchDbClientErrorCode.NOT_FOUND
+        }
+    }
+
     override fun createDatabase(databaseName: String) {
         httpClient
             .put()
@@ -466,6 +498,12 @@ class DefaultCouchDbClient(
             }.body("")
             .accept(MediaType.APPLICATION_JSON)
             .exchange { _, clientResponse ->
+                // CouchDB answers 412 when the database exists already, which is all the caller
+                // asked for: two writes that find the same database missing both create it
+                if (clientResponse.statusCode.value() == 412) {
+                    return@exchange
+                }
+
                 if (!clientResponse.statusCode.is2xxSuccessful) {
                     val responseBody = clientResponse.bodyTo(String::class.java)
                     logger.error(

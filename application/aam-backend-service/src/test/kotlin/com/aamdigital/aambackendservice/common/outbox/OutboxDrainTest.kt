@@ -1,11 +1,13 @@
 package com.aamdigital.aambackendservice.common.outbox
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbInitializer
+import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.rest.ObjectMapperConfiguration
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -18,6 +20,9 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
+import org.springframework.web.client.HttpClientErrorException
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -40,7 +45,6 @@ class OutboxDrainTest {
     private val now: Instant = Instant.parse("2026-01-01T00:00:00Z")
 
     private val couchDbClient = mock<CouchDbClient>()
-    private val couchDbInitializer = mock<CouchDbInitializer>()
     private val handler = mock<OutboxHandler<TestPayload>>()
     private val objectMapper = ObjectMapperConfiguration().objectMapper()
 
@@ -59,7 +63,6 @@ class OutboxDrainTest {
                     maxInterval = Duration.ofSeconds(60)
                 ),
             couchDbClient = couchDbClient,
-            couchDbInitializer = couchDbInitializer,
             objectMapper = objectMapper,
             clock = Clock.fixed(now, ZoneOffset.UTC)
         )
@@ -296,6 +299,36 @@ class OutboxDrainTest {
         // Then
         verify(handler, never()).deliver(any())
         verify(couchDbClient, never()).putDatabaseDocument(any(), any(), any())
+    }
+
+    @Test
+    fun `should drain a missing database as an empty outbox without creating it`() {
+        // Given it was dropped since startup, and nothing has been enqueued since
+        whenever(couchDbClient.findDatabaseDocumentsByPrefix(any(), any(), any(), anyOrNull(), eq(JsonNode::class)))
+            .thenThrow(
+                HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", HttpHeaders(), ByteArray(0), null)
+            )
+
+        // When
+        outbox().drain()
+
+        // Then
+        verify(handler, never()).deliver(any())
+        verify(couchDbClient, never()).createDatabase(any())
+    }
+
+    @Test
+    fun `should not bring back a dropped database to record a delivery attempt`() {
+        // Given the database was dropped after the entry was read, taking the entry with it
+        stubEmpty()
+        stubFound(retryableSelector, listOf(entry()))
+        whenever(handler.deliver(any())).thenReturn(OutboxDeliveryResult.RetryLater("SMTP connection failed"))
+        whenever(couchDbClient.putDatabaseDocument(any(), any(), any()))
+            .thenAnswer { throw ExternalSystemException(code = DefaultCouchDbClientErrorCode.DATABASE_NOT_FOUND) }
+
+        // When / Then the failed write is only logged, as any failure to record an attempt is
+        assertThatCode { outbox().drain() }.doesNotThrowAnyException()
+        verify(couchDbClient, never()).createDatabase(any())
     }
 
     @Test

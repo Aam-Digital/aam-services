@@ -43,7 +43,6 @@ class NotificationOutboxSerializationTest {
                     maxInterval = Duration.ofSeconds(60)
                 ),
             couchDbClient = couchDbClient,
-            couchDbInitializer = mock(),
             objectMapper = objectMapper
         )
 
