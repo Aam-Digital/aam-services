@@ -169,6 +169,9 @@ class EmailCreateNotificationHandlerTest {
         // Given
         val logger = LoggerFactory.getLogger(EmailCreateNotificationHandler::class.java) as LogbackLogger
         val logAppender = ListAppender<ILoggingEvent>().apply { start() }
+        // the application.yaml default is WARN, and an earlier Spring test in the same JVM leaves it applied
+        val previousLevel = logger.level
+        logger.level = Level.INFO
         logger.addAppender(logAppender)
         whenever(userEmailProvider.lookupEmail("user-123")).thenReturn(null)
 
@@ -182,6 +185,7 @@ class EmailCreateNotificationHandlerTest {
             verifyNoInteractions(mailSenderService)
         } finally {
             logger.detachAppender(logAppender)
+            logger.level = previousLevel
         }
 
         assertThat(logAppender.list)
