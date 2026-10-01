@@ -142,7 +142,7 @@ sentry:
   # always-active part of the config: the "local-development" document below is skipped in
   # production, where no Spring profile is active.
   release: ${APPLICATION_VERSION:}
-  traces-sample-rate: 1.0
+  traces-sample-rate: 0.25
   attach-threads: true
   # Denials of method security (@PreAuthorize) are answered with 403 by AamAccessDeniedHandler.
   # They are expected client errors (e.g. an API client without the required client scope), not bugs.
