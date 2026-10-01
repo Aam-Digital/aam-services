@@ -6,6 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.common.execution.InlineRetry
 import com.aamdigital.aambackendservice.reporting.report.sqs.SqsQueryStorage
@@ -143,11 +144,14 @@ class ReportCalculationProcessorTest {
         // When
         processor.process("ReportCalculation:1")
 
-        // Then
+        // Then: an INFO line still becomes a breadcrumb on later Sentry events, so it must not quote
+        // SQS's explanation, which can quote the query; the attached throwable keeps it in the console log
         assertThat(appender.list.filter { it.level == Level.ERROR }).isEmpty()
         val infos = appender.list.filter { it.level == Level.INFO }
         assertThat(infos).hasSize(1)
-        assertThat(infos.first().formattedMessage).contains("near \"FROM\": syntax error")
+        assertThat(infos.first().formattedMessage).contains("ReportCalculation:1", "QUERY_FAILED")
+        assertThat(infos.first().formattedMessage).doesNotContain("syntax error")
+        assertThat(infos.first().throwableProxy.message).contains("near \"FROM\": syntax error")
     }
 
     @Test
@@ -167,6 +171,35 @@ class ReportCalculationProcessorTest {
 
         // Then
         assertThat(appender.list.filter { it.level == Level.ERROR }).hasSize(1)
+    }
+
+    @Test
+    fun `should keep the failure message out of the ERROR log line`() {
+        // Given
+        val sqsFailure =
+            ExternalSystemException(
+                "[SqsQueryStorage] SQS failed to execute the query for report 'ReportConfig:1' " +
+                    "(500 INTERNAL_SERVER_ERROR)",
+                code = SqsQueryStorage.SqsQueryStorageErrorCode.QUERY_EXECUTION_FAILED
+            )
+        whenever(reportCalculationUseCase.run(any()))
+            .thenReturn(
+                UseCaseOutcome.Failure(
+                    errorCode = ReportCalculationError.UNEXPECTED_ERROR,
+                    errorMessage = sqsFailure.localizedMessage,
+                    cause = sqsFailure
+                )
+            )
+
+        // When
+        processor.process("ReportCalculation:1")
+
+        // Then: the attached exception already carries the message into the log and the Sentry event
+        val errors = appender.list.filter { it.level == Level.ERROR }
+        assertThat(errors).hasSize(1)
+        assertThat(errors.first().formattedMessage).contains("ReportCalculation:1", "UNEXPECTED_ERROR")
+        assertThat(errors.first().formattedMessage).doesNotContain("SQS failed to execute")
+        assertThat(errors.first().throwableProxy.message).isEqualTo(sqsFailure.message)
     }
 
     @Test

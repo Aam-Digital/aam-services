@@ -730,7 +730,11 @@ components:
         errorDetails:
           type: string
           nullable: true
-          description: Details of the failure when the calculation finished with status FINISHED_ERROR.
+          description: >-
+            Details of the failure when the calculation finished with status FINISHED_ERROR.
+            If the report's query is invalid, this is the query service's explanation of why,
+            so it can be shown to the author of the report; for any other failure it is "Unknown error".
+          example: 'near "FROM": syntax error'
 
     ReportMetadata:
       type: object
