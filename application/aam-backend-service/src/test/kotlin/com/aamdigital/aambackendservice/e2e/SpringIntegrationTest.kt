@@ -10,9 +10,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import org.springframework.boot.restclient.RestTemplateBuilder
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.context.ImportTestcontainers
-import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -67,8 +67,9 @@ abstract class SpringIntegrationTest {
 
     /**
      * The `sub` claim of the token most recently obtained by [fetchToken], i.e. exactly the value
-     * the application sees as `principal.name`. Endpoints that compare a stored `userId` against
-     * the caller (third-party-authentication's redirect lookup) need the test to know it.
+     * the application identifies the caller by (`tokenSubject`). Endpoints that compare a stored
+     * `userId` against the caller (third-party-authentication's redirect lookup) need the test to
+     * know it.
      */
     var authSubject: String? = null
 
@@ -208,7 +209,7 @@ abstract class SpringIntegrationTest {
             objectMapper.readValue<ObjectNode>(it)
         }
 
-    fun parseHeader(name: String): List<String> = latestResponseHeaders?.getOrElse(name) { emptyList() } ?: emptyList()
+    fun parseHeader(name: String): List<String> = latestResponseHeaders?.getOrEmpty(name) ?: emptyList()
 
     fun parseBodyToArrayNode(): ArrayNode? =
         latestResponseBody?.let {

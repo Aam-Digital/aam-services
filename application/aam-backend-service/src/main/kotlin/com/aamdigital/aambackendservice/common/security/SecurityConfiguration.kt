@@ -45,7 +45,7 @@ class SecurityConfiguration(
         jwtIssuerAuthenticationManagerResolver: JwtIssuerAuthenticationManagerResolver
     ): SecurityFilterChain {
         http {
-            authorizeRequests {
+            authorizeHttpRequests {
                 authorize(HttpMethod.GET, "/", permitAll)
                 authorize(HttpMethod.GET, "/actuator/health", permitAll)
                 authorize(HttpMethod.GET, "/actuator/health/liveness", permitAll)

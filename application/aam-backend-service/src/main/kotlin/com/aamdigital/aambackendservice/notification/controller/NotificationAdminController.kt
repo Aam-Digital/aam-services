@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.notification.controller
 
+import com.aamdigital.aambackendservice.common.security.tokenSubject
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationFirebaseMode
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
@@ -29,7 +30,7 @@ class NotificationAdminController(
     fun sendTestMessageToDevice(authentication: JwtAuthenticationToken): ResponseEntity<TestMessageResponse> {
         val testEvent =
             CreateUserNotificationEvent(
-                userIdentifier = authentication.name ?: authentication.tokenAttributes["username"].toString(),
+                userIdentifier = authentication.tokenSubject ?: authentication.tokenAttributes["username"].toString(),
                 notificationChannelType = NotificationChannelType.PUSH,
                 notificationRule = "test",
                 details =

@@ -65,8 +65,7 @@ class AamAuthenticationConverter(
             }
     }
 
-    private fun getScopeAuthorities(jwt: Jwt): Collection<GrantedAuthority> =
-        scopeAuthoritiesConverter.convert(jwt) ?: emptyList()
+    private fun getScopeAuthorities(jwt: Jwt): Collection<GrantedAuthority> = scopeAuthoritiesConverter.convert(jwt)
 
     private fun getClientAuthorities(jwt: Jwt): Collection<GrantedAuthority> =
         if (frontendClientId.isNotBlank() && jwt.getClaimAsString("azp") == frontendClientId) {

@@ -17,13 +17,22 @@ version = "0.0.1-SNAPSHOT"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
 configurations {
     compileOnly {
         extendsFrom(configurations.annotationProcessor.get())
+    }
+    configureEach {
+        // Jackson 2 only, until the code moves to Jackson 3. Spring Boot 4's web and restclient
+        // starters bring Jackson 3 and its auto-configuration; with it on the classpath, Spring
+        // Framework's default converters (RestClient.builder(), MockMvc standaloneSetup) switch
+        // to Jackson 3 and can no longer read or write the Jackson 2 JsonNode types this code
+        // passes through them. Without it, everything falls back to Jackson 2 as before.
+        exclude(group = "tools.jackson.core")
+        exclude(group = "org.springframework.boot", module = "spring-boot-jackson")
     }
 }
 
@@ -39,13 +48,22 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    // RestClient.Builder and RestTemplateBuilder are auto-configured by their own module since
+    // Spring Boot 4; nothing else pulls it in.
+    implementation("org.springframework.boot:spring-boot-starter-restclient")
     implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+    implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 
     implementation("org.apache.commons:commons-lang3")
+    // Spring Boot's Jackson 2 auto-configuration, which ships deprecated for removal in 4.3; see
+    // the Jackson 3 exclusion above.
+    implementation("org.springframework.boot:spring-boot-jackson2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
+    // The tracing auto-configuration moved out of actuator into this module in Spring Boot 4;
+    // without it the tracing dependencies below are on the classpath but no tracer is set up.
+    implementation("org.springframework.boot:spring-boot-micrometer-tracing-opentelemetry")
     implementation("io.micrometer:micrometer-tracing-bridge-otel")
     implementation("io.opentelemetry:opentelemetry-exporter-otlp")
 
@@ -79,7 +97,7 @@ dependencies {
     testImplementation(libs.okhttp.client)
     testImplementation(libs.okhttp.mockwebserver)
 
-    testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation(libs.testcontainers.keycloak)
 
     // Validates e2e request/response interactions against the OpenAPI specs in

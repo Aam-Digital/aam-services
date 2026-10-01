@@ -18,11 +18,11 @@ This repository provides the backend API as a modularized Spring Boot applicatio
 
 ### Architecture & Tech Stack
 
-- **Language**: Kotlin (target JVM 21)
+- **Language**: Kotlin (target JVM 25)
 - **Framework**: Spring Boot with Spring Security, Spring Data JPA
 - **Build Tool**: Gradle with Kotlin DSL
 - **Database**: CouchDB with SQL query capabilities (SQS), PostgreSQL via JPA
-- **Testing**: JUnit 5 with Mockito and AssertJ, Cucumber for BDD
+- **Testing**: JUnit Jupiter (JUnit 6) with Mockito and AssertJ, Cucumber for BDD
 - **Code Quality**: Detekt for static analysis, JaCoCo for coverage
 - **Architecture**: Clean Architecture with Domain-Driven Design principles
 - **Observability**: Micrometer, SLF4J, Spring Actuator, OpenTelemetry
@@ -191,7 +191,7 @@ internal tools (e.g. Sentry issues) are acceptable.
 
 ### Test Structure
 
-- Use JUnit 5, with test names written as backticked sentences.
+- Use JUnit Jupiter, with test names written as backticked sentences.
 - Follow the Given-When-Then pattern in test methods.
 - Assert with AssertJ, statically imported: `import org.assertj.core.api.Assertions.assertThat`.
 - Create and stub mocks with **mockito-kotlin** (`mock()`, `whenever()`, `verify()`, `any()`),
@@ -524,7 +524,7 @@ For local development setup (databases, queues, Keycloak), see `docs/developer/R
 
 ### Running the E2E (Cucumber) Tests
 
-Prerequisites: JDK 21 and a running Docker daemon (Testcontainers starts/stops the containers itself).
+Prerequisites: JDK 25 and a running Docker daemon (Testcontainers starts/stops the containers itself).
 
 Run only the e2e tests (skips unit tests):
 
