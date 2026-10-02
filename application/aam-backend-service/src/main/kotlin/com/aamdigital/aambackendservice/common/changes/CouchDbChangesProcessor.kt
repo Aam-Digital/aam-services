@@ -3,6 +3,8 @@ package com.aamdigital.aambackendservice.common.changes
 import com.aamdigital.aambackendservice.common.cache.LazySnapshot
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
+import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbChangeResult
+import com.aamdigital.aambackendservice.common.couchdb.dto.CouchDbChangesResponse
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
@@ -24,7 +26,8 @@ import java.time.Duration
  *
  * Triggered periodically by [CouchDbChangesPollingJob], separately for every handler: each handler
  * has its own cursor ([SyncEntry.consumer]), so it moves through the feed at its own pace and a
- * handler that is slow or stuck holds back only itself.
+ * handler that is slow or stuck holds back only itself. A poll keeps reading batches while CouchDB
+ * reports more changes pending, so a backlog does not wait one polling interval per batch.
  *
  * The handler is called synchronously and its cursor is saved after each change rather than once
  * per batch, so a crash re-processes at most the one change that was in flight instead of the whole
@@ -39,6 +42,12 @@ class CouchDbChangesProcessor(
 ) {
     companion object {
         private const val CHANGES_LIMIT: Int = 100
+
+        /**
+         * Batches read back to back in one poll while CouchDB reports more changes pending, so at
+         * most `CHANGES_LIMIT * MAX_BATCHES_PER_POLL` changes before the next polling delay.
+         */
+        internal const val MAX_BATCHES_PER_POLL: Int = 100
 
         private val POLLED_DATABASES_TTL: Duration = Duration.ofMinutes(1)
     }
@@ -90,12 +99,19 @@ class CouchDbChangesProcessor(
             )
         }
 
+    /**
+     * Reads the handler's changes in [database] in batches of [CHANGES_LIMIT], and keeps reading
+     * right away while CouchDB reports more `pending`, so that a bulk edit is worked through at
+     * the handlers' pace instead of one batch per polling interval. The fixed delay of
+     * [CouchDbChangesPollingJob] then only applies once the feed is drained, or after
+     * [MAX_BATCHES_PER_POLL] batches, which bounds how long one poll holds its thread.
+     */
     private fun fetchChangesForDatabase(
         database: String,
         handler: DocumentChangeHandler
     ) {
         val storedEntry = syncRepository.findByDatabase(database, handler.consumerName).orElse(null)
-        val syncEntry =
+        var syncEntry =
             storedEntry
                 // On first run we intentionally skip historic changes and start from "now"
                 // to avoid replaying the full backlog into downstream consumers.
@@ -105,47 +121,79 @@ class CouchDbChangesProcessor(
                     consumer = handler.consumerName
                 )
 
-        val queryParams = getEmptyQueryParams()
+        var batches = 0
+        var handledChanges = 0
+        do {
+            val changes = fetchChanges(database, syncEntry.latestRef)
+            changes.results.forEach { couchDbChangeResult ->
+                handleChangeResult(database, couchDbChangeResult, handler)
 
-        if (syncEntry.latestRef.isNotEmpty()) {
-            queryParams.set("last-event-id", syncEntry.latestRef)
-        }
-
-        queryParams.set("limit", CHANGES_LIMIT.toString())
-        queryParams.set("include_docs", "true")
-
-        val changes =
-            couchDbClient.getDatabaseChanges(
-                database = database,
-                queryParams = queryParams
-            )
-
-        changes.results.forEach { couchDbChangeResult ->
-            val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
-
-            if (!couchDbChangeResult.id.startsWith("_design") && rev != null) {
-                val changeEvent = enrichChange(
-                    database = database,
-                    documentId = couchDbChangeResult.id,
-                    rev = rev,
-                    deleted = couchDbChangeResult.deleted == true,
-                    currentDoc = couchDbChangeResult.doc,
-                )
-
-                handleChange(changeEvent, handler)
+                // Saved per change, not per batch: a failure part way through then re-processes
+                // only this one change instead of everything already handled in this batch.
+                syncEntry = syncEntry.copy(latestRef = couchDbChangeResult.seq)
+                syncRepository.save(syncEntry)
             }
+            batches++
+            handledChanges += changes.results.size
+            // An empty batch ends the loop even if `pending` says otherwise: CouchDB's count is an
+            // estimate in a cluster, and without results the cursor could not move anyway.
+        } while (changes.pending > 0 && changes.results.isNotEmpty() && batches < MAX_BATCHES_PER_POLL)
 
-            // Saved per change, not per batch: a failure part way through then re-processes only
-            // this one change instead of everything already handled in this batch.
-            syncRepository.save(syncEntry.copy(latestRef = couchDbChangeResult.seq))
+        if (batches == MAX_BATCHES_PER_POLL) {
+            logger.debug(
+                "{} handled {} changes of db={} in {} batches, the most one poll reads; any rest follows next poll",
+                handler.consumerName,
+                handledChanges,
+                database,
+                batches
+            )
         }
 
         // Every save is a new CouchDB revision, and this runs every few seconds: an idle poll must
         // not write. A cursor created just now still has to be persisted, though: otherwise every
         // tick would re-anchor a fresh database to "now" and silently skip whatever changed between
         // two ticks.
-        if (storedEntry == null && changes.results.isEmpty()) {
+        if (storedEntry == null && handledChanges == 0) {
             syncRepository.save(syncEntry)
+        }
+    }
+
+    private fun fetchChanges(
+        database: String,
+        latestRef: String
+    ): CouchDbChangesResponse {
+        val queryParams = getEmptyQueryParams()
+
+        if (latestRef.isNotEmpty()) {
+            queryParams.set("last-event-id", latestRef)
+        }
+
+        queryParams.set("limit", CHANGES_LIMIT.toString())
+        queryParams.set("include_docs", "true")
+
+        return couchDbClient.getDatabaseChanges(
+            database = database,
+            queryParams = queryParams
+        )
+    }
+
+    private fun handleChangeResult(
+        database: String,
+        couchDbChangeResult: CouchDbChangeResult,
+        handler: DocumentChangeHandler
+    ) {
+        val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
+
+        if (!couchDbChangeResult.id.startsWith("_design") && rev != null) {
+            val changeEvent = enrichChange(
+                database = database,
+                documentId = couchDbChangeResult.id,
+                rev = rev,
+                deleted = couchDbChangeResult.deleted == true,
+                currentDoc = couchDbChangeResult.doc,
+            )
+
+            handleChange(changeEvent, handler)
         }
     }
 
