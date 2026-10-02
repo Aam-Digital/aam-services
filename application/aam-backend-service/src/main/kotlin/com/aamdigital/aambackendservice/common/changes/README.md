@@ -20,13 +20,17 @@ ReportDocumentChangeHandler     NotificationDocumentChangeHandler
 For each handler, `CouchDbChangesProcessor`:
 
 - only polls databases allowlisted in `ChangeDetectionProperties` (default: `app`)
-- fetches the current and previous document revision
 - builds a `DocumentChangeEvent` (database, documentId, before/after)
 - calls the handler, then advances that handler's cursor
 
-The feed is the durable event log: each module keeps its own position in it, the way each queue
-bound to a fanout exchange used to. A module blocked on a slow dependency therefore holds back only
-itself.
+The current revision arrives with the change itself, because the feed is read with `include_docs`.
+The previous revision is a separate request, so it is loaded only if a handler reads
+`previousVersion` — otherwise it would cost one round trip per change *per consumer*, including for
+consumers that never look at it. The list of databases to poll is the same answer for every
+consumer, so it is read once and shared rather than per consumer per tick.
+
+The feed is the durable event log: each module keeps its own position in it, so a module blocked on
+a slow dependency holds back only itself.
 
 ## Subscribing to Changes
 
@@ -41,8 +45,8 @@ finds no cursor and starts again from "now", skipping whatever changed in betwee
 what a newly enabled module does on its first poll.
 
 Add the module's feature flag to `ChangesConfiguration.AnyChangeConsumerEnabled` as well, so change
-detection itself turns on with it, and raise `SchedulingConfiguration`'s `poolSize` by one for the
-new polling task.
+detection itself turns on with it, and count the new polling task in `SchedulingConfiguration`'s
+`SCHEDULED_TASKS`.
 
 ## What a handler may do
 
@@ -51,8 +55,8 @@ handler's cursor is advanced once it has handled the change. A slow handler dela
 module — but it does delay it, so a handler must not do slow or unbounded work inline: no per-change
 database scan, and any external call bounded by a timeout. Answer from memory (see
 `ReportConfigCache`, `WebhookSubscriptionCache`, `NotificationConfigCache`) and hand real work to a
-bounded executor or record it durably for a scheduled job to pick up (see `NotificationOutboxDrainer`
-and the report calculation executor).
+bounded executor or record it durably in an outbox for a scheduled job to pick up (see
+`common/outbox/README.md` and the report calculation executor).
 
 An exception escaping a handler is logged at ERROR and the handler's cursor advances past the
 change, so one document a module cannot handle does not stall that module's feed. The change is
@@ -63,9 +67,9 @@ therefore not redelivered, and a handler is responsible for its own recovery.
 | Class | Purpose |
 | --- | --- |
 | `CouchDbChangesPollingJob` | One scheduled task per handler (every 8 s), each with its own backoff (`ChangeConsumerPoller`) |
-| `CouchDbChangesProcessor` | Core logic, per handler: poll changes, enrich with doc revisions, call the handler, advance its cursor |
+| `CouchDbChangesProcessor` | Core logic, per handler: poll changes, call the handler, advance its cursor |
 | `ChangeDetectionProperties` | Config: allowlist of databases to poll (`included-databases`) |
-| `DocumentChangeEvent` | Event payload: database, documentId, current/previous doc |
+| `DocumentChangeEvent` | Event payload: database, documentId, current doc, previous doc loaded on demand |
 | `DocumentChangeHandler` | Interface a feature module implements to react to changes; `consumerName` names its cursor |
 | `SyncRepository` / `SyncEntry` | last processed `update_seq` per database and handler, stored in `aam-backend-state` |
 | `ChangesConfiguration` | Spring DI wiring for change-detection beans; active whenever a consuming feature module (reporting, notification-api) is enabled |

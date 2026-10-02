@@ -1,11 +1,16 @@
 package com.aamdigital.aambackendservice.skill.job
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.aamdigital.aambackendservice.common.domain.DomainUseCase
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesData
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesUseCase
 import com.aamdigital.aambackendservice.skill.di.SkillLabApiClientConfiguration
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -16,6 +21,7 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.slf4j.LoggerFactory
 
 @ExtendWith(MockitoExtension::class)
 class SyncSkillsJobTest {
@@ -158,5 +164,26 @@ class SyncSkillsJobTest {
         currentTime = 35000L + 5000L
         job.checkForSkillLabChanges()
         verify(fetchUserProfileUpdatesUseCase, times(6)).run(any())
+    }
+
+    @Test
+    fun `should name the failure's error code in the backoff log`() {
+        // Given
+        whenever(fetchUserProfileUpdatesUseCase.run(any())).thenReturn(failureOutcome)
+        val logger = LoggerFactory.getLogger(SyncSkillsJob::class.java) as Logger
+        val logAppender = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(logAppender)
+
+        // When
+        try {
+            job.checkForSkillLabChanges()
+        } finally {
+            logger.detachAppender(logAppender)
+        }
+
+        // Then
+        val warnings = logAppender.list.filter { it.level == Level.WARN }
+        assertThat(warnings).hasSize(1)
+        assertThat(warnings.single().formattedMessage).endsWith(": [UNHANDLED_EXCEPTION_IN_USE_CASE] error")
     }
 }

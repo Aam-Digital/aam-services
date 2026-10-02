@@ -27,7 +27,7 @@ class AamAccessDeniedHandler(
     override fun handle(
         request: HttpServletRequest,
         response: HttpServletResponse,
-        accessDeniedException: AccessDeniedException?
+        accessDeniedException: AccessDeniedException
     ) {
         val parameters: MutableMap<String, String?> = LinkedHashMap()
 

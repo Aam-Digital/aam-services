@@ -137,9 +137,9 @@ internal class CarboneRenderApiClient(
                     val forwardHeaders = HttpHeaders()
                     forwardHeaders.contentType = responseHeaders.contentType
 
-                    if (!responseHeaders[HttpHeaders.CONTENT_DISPOSITION].isNullOrEmpty()) {
-                        forwardHeaders[HttpHeaders.CONTENT_DISPOSITION] =
-                            responseHeaders[HttpHeaders.CONTENT_DISPOSITION]
+                    val contentDisposition = responseHeaders[HttpHeaders.CONTENT_DISPOSITION]
+                    if (!contentDisposition.isNullOrEmpty()) {
+                        forwardHeaders.put(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                     }
 
                     val buffer =
@@ -150,11 +150,7 @@ internal class CarboneRenderApiClient(
                         )
 
                     RenderResult(file = buffer, headers = forwardHeaders)
-                } ?: throw ExternalSystemException(
-                cause = null,
-                message = "Could not fetch render response from template engine.",
-                code = fetchRenderResultFailedCode,
-            )
+                }
         } catch (ex: Exception) {
             throw when (ex) {
                 is ResourceAccessException ->

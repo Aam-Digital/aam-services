@@ -5,7 +5,7 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationChangeUseCase
-import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationService
+import com.aamdigital.aambackendservice.reporting.webhook.core.WebhookTriggerService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -28,15 +28,15 @@ class DefaultReportCalculationChangeUseCaseTest {
     lateinit var reportCalculationStorage: ReportCalculationStorage
 
     @Mock
-    lateinit var notificationService: NotificationService
+    lateinit var webhookTriggerService: WebhookTriggerService
 
     @BeforeEach
     fun setUp() {
-        reset(reportCalculationStorage, notificationService)
+        reset(reportCalculationStorage, webhookTriggerService)
         service =
             DefaultReportCalculationChangeUseCase(
                 reportCalculationStorage = reportCalculationStorage,
-                notificationService = notificationService
+                webhookTriggerService = webhookTriggerService
             )
     }
 
@@ -78,11 +78,11 @@ class DefaultReportCalculationChangeUseCaseTest {
 
         // then
         verify(reportCalculationStorage, never()).fetchReportCalculations(any())
-        verify(notificationService, never()).sendNotifications(any(), any())
+        verify(webhookTriggerService, never()).triggerWebhooks(any(), any())
     }
 
     @Test
-    fun `should send notifications if data is changed`() {
+    fun `should trigger webhooks if data is changed`() {
         // given
         val current = reportCalculation(id = "ReportCalculation:2", digest = "new-digest")
         val existing = reportCalculation(id = "ReportCalculation:1", digest = "old-digest")
@@ -95,7 +95,7 @@ class DefaultReportCalculationChangeUseCaseTest {
         service.handle("ReportCalculation:2")
 
         // then
-        verify(notificationService).sendNotifications(
+        verify(webhookTriggerService).triggerWebhooks(
             eq(DomainReference("Report:1")),
             eq(DomainReference("ReportCalculation:2"))
         )
@@ -123,6 +123,6 @@ class DefaultReportCalculationChangeUseCaseTest {
         verify(reportCalculationStorage).deleteReportCalculation(
             eq(DomainReference("ReportCalculation:2"))
         )
-        verify(notificationService, never()).sendNotifications(any(), any())
+        verify(webhookTriggerService, never()).triggerWebhooks(any(), any())
     }
 }

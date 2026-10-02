@@ -4,12 +4,12 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationChangeUseCase
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
-import com.aamdigital.aambackendservice.reporting.webhook.core.NotificationService
+import com.aamdigital.aambackendservice.reporting.webhook.core.WebhookTriggerService
 import org.slf4j.LoggerFactory
 
 class DefaultReportCalculationChangeUseCase(
     private val reportCalculationStorage: ReportCalculationStorage,
-    private val notificationService: NotificationService
+    private val webhookTriggerService: WebhookTriggerService
 ) : ReportCalculationChangeUseCase {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -42,13 +42,13 @@ class DefaultReportCalculationChangeUseCase(
         val currentDigest = currentReportCalculation.attachments["data.json"]?.digest
 
         if (existingDigest != currentDigest) {
-            notificationService.sendNotifications(
+            webhookTriggerService.triggerWebhooks(
                 report = currentReportCalculation.report,
                 reportCalculation = DomainReference(currentReportCalculation.id)
             )
         } else {
             logger.debug(
-                "skipped notification for {} {} because data is unchanged",
+                "skipped webhook trigger for {} {} because data is unchanged",
                 currentReportCalculation.report.id,
                 currentReportCalculation.id
             )

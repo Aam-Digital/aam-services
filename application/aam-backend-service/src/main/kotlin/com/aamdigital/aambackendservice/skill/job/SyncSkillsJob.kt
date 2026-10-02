@@ -28,9 +28,7 @@ class SyncSkillsJob(
 
     @Scheduled(fixedDelay = (60000 * 10)) // every 10 minutes
     fun checkForSkillLabChanges() {
-        if (backoff.shouldSkip()) return
-
-        backoff.execute {
+        backoff.run {
             val outcome = skillLabFetchUserProfileUpdatesUseCase.run(
                 request =
                     FetchUserProfileUpdatesRequest(
@@ -39,7 +37,7 @@ class SyncSkillsJob(
             )
 
             if (outcome is UseCaseOutcome.Failure) {
-                throw RuntimeException(outcome.errorMessage, outcome.cause)
+                throw RuntimeException("[${outcome.errorCode}] ${outcome.errorMessage}", outcome.cause)
             }
         }
     }

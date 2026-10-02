@@ -6,12 +6,13 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.common.execution.InlineRetry
 import com.aamdigital.aambackendservice.reporting.report.sqs.SqsQueryStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.observation.ObservationRegistry
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -47,10 +48,8 @@ class ReportCalculationProcessorTest {
     ) = ReportCalculationProcessor(
         observationRegistry = ObservationRegistry.create(),
         reportCalculationUseCase = reportCalculationUseCase,
-        objectMapper = jacksonObjectMapper(),
         reportCalculationChangeUseCase = reportCalculationChangeUseCase,
-        completionRetryAttempts = attempts,
-        completionRetryInitialInterval = interval
+        completionRetry = InlineRetry(attempts = attempts, initialInterval = interval)
     )
 
     private fun succeeds(reportCalculationId: String) {
@@ -71,6 +70,7 @@ class ReportCalculationProcessorTest {
 
     private lateinit var logger: Logger
     private lateinit var appender: ListAppender<ILoggingEvent>
+    private var previousLevel: Level? = null
 
     @BeforeEach
     fun setUp() {
@@ -78,12 +78,16 @@ class ReportCalculationProcessorTest {
         processor = processor()
         logger = LoggerFactory.getLogger(ReportCalculationProcessor::class.java) as Logger
         appender = ListAppender<ILoggingEvent>().apply { start() }
+        // the application.yaml default is WARN, and an earlier Spring test in the same JVM leaves it applied
+        previousLevel = logger.level
+        logger.level = Level.INFO
         logger.addAppender(appender)
     }
 
     @AfterEach
     fun tearDown() {
         logger.detachAppender(appender)
+        logger.level = previousLevel
     }
 
     @Test
@@ -145,11 +149,14 @@ class ReportCalculationProcessorTest {
         // When
         processor.process("ReportCalculation:1")
 
-        // Then
+        // Then: an INFO line still becomes a breadcrumb on later Sentry events, so it must not quote
+        // SQS's explanation, which can quote the query; the attached throwable keeps it in the console log
         assertThat(appender.list.filter { it.level == Level.ERROR }).isEmpty()
         val infos = appender.list.filter { it.level == Level.INFO }
         assertThat(infos).hasSize(1)
-        assertThat(infos.first().formattedMessage).contains("near \"FROM\": syntax error")
+        assertThat(infos.first().formattedMessage).contains("ReportCalculation:1", "QUERY_FAILED")
+        assertThat(infos.first().formattedMessage).doesNotContain("syntax error")
+        assertThat(infos.first().throwableProxy.message).contains("near \"FROM\": syntax error")
     }
 
     @Test
@@ -172,14 +179,32 @@ class ReportCalculationProcessorTest {
     }
 
     @Test
-    fun `should not let an unexpected failure escape onto the executor thread`() {
-        // Given nothing above this call is on a caller's stack, so an escaping exception would only
-        // reach the thread's default handler and never be logged
-        whenever(reportCalculationUseCase.run(any())).thenThrow(RuntimeException("boom"))
+    fun `should keep the failure message out of the ERROR log line`() {
+        // Given
+        val sqsFailure =
+            ExternalSystemException(
+                "[SqsQueryStorage] SQS failed to execute the query for report 'ReportConfig:1' " +
+                    "(500 INTERNAL_SERVER_ERROR)",
+                code = SqsQueryStorage.SqsQueryStorageErrorCode.QUERY_EXECUTION_FAILED
+            )
+        whenever(reportCalculationUseCase.run(any()))
+            .thenReturn(
+                UseCaseOutcome.Failure(
+                    errorCode = ReportCalculationError.UNEXPECTED_ERROR,
+                    errorMessage = sqsFailure.localizedMessage,
+                    cause = sqsFailure
+                )
+            )
 
-        // When / Then
+        // When
         processor.process("ReportCalculation:1")
-        verify(reportCalculationChangeUseCase, never()).handle(any())
+
+        // Then: the attached exception already carries the message into the log and the Sentry event
+        val errors = appender.list.filter { it.level == Level.ERROR }
+        assertThat(errors).hasSize(1)
+        assertThat(errors.first().formattedMessage).contains("ReportCalculation:1", "UNEXPECTED_ERROR")
+        assertThat(errors.first().formattedMessage).doesNotContain("SQS failed to execute")
+        assertThat(errors.first().throwableProxy.message).isEqualTo(sqsFailure.message)
     }
 
     @Test

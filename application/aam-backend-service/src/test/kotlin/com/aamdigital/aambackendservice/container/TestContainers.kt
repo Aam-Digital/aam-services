@@ -32,6 +32,11 @@ object TestContainers {
             "http://localhost:${CONTAINER_KEYCLOAK.getMappedPort(8080)}"
         }
         registry.add(
+            "keycloak.server-url"
+        ) {
+            "http://localhost:${CONTAINER_KEYCLOAK.getMappedPort(8080)}"
+        }
+        registry.add(
             "couch-db-client-configuration.base-path"
         ) {
             "http://localhost:${CONTAINER_COUCHDB.getMappedPort(5984)}"

@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.reporting.webhook.storage
 
+import com.aamdigital.aambackendservice.common.cache.LazySnapshot
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration
@@ -7,7 +8,7 @@ import java.time.Duration
 /**
  * Caches only "which reports is any webhook subscribed to", for automatic change detection.
  *
- * [com.aamdigital.aambackendservice.reporting.report.queue.ReportDocumentChangeEventConsumer] needs
+ * [com.aamdigital.aambackendservice.reporting.report.core.ReportDocumentChangeHandler] needs
  * this answer for every single document change, and reading it through
  * [WebhookStorage.fetchAllWebhooks] costs a CouchDB `_all_docs` request plus one AES decrypt per
  * webhook every time. This cache reads [WebhookEntity] documents directly instead, so it never
@@ -28,54 +29,32 @@ import java.time.Duration
  * A [ttl] of zero disables caching and reloads on every read.
  *
  * This cache is intentionally *not* consulted by `GET /v1/reporting/webhook` or by
- * `NotificationService`: those must never serve a stale webhook list.
+ * `WebhookTriggerService`: those must never serve a stale webhook list.
  */
 class WebhookSubscriptionCache(
     private val webhookRepository: WebhookRepository,
-    private val ttl: Duration,
-    private val clock: Clock = Clock.systemUTC()
+    ttl: Duration,
+    clock: Clock = Clock.systemUTC()
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val cacheLock = Any()
 
-    private var subscribedReportIds: Set<String>? = null
-    private var loadedAtMillis: Long = 0
+    private val snapshot = LazySnapshot(ttl, clock) { loadSubscribedReportIds() }
 
     /**
      * Ids of all reports that at least one webhook is subscribed to.
      *
-     * Reloads from CouchDB when the cache is empty or older than [ttl], propagating the same
-     * failures [WebhookRepository.fetchAllWebhooks] does. The reload runs inside the lock: the only
-     * caller is the single-threaded reporting change-detection path, so there is no concurrency to
-     * trade away and two callers can never issue the same reload twice.
+     * Reloads from CouchDB when nothing is cached or the copy is older than the ttl, propagating
+     * the same failures [WebhookRepository.fetchAllWebhooks] does.
      */
-    fun subscribedReportIds(): Set<String> =
-        synchronized(cacheLock) {
-            val now = clock.millis()
-            val cached = subscribedReportIds
-
-            if (cached != null && now - loadedAtMillis < ttl.toMillis()) {
-                return cached
-            }
-
-            val reloaded =
-                webhookRepository
-                    .fetchAllWebhooks()
-                    .flatMap { entity -> entity.reportSubscriptions }
-                    .toSet()
-
-            subscribedReportIds = reloaded
-            loadedAtMillis = now
-
-            logger.trace("Loaded {} subscribed report ids into memory cache", reloaded.size)
-
-            reloaded
-        }
+    fun subscribedReportIds(): Set<String> = snapshot.get()
 
     /** Drops the cached snapshot so the next read goes to CouchDB. */
-    fun invalidate() {
-        synchronized(cacheLock) {
-            subscribedReportIds = null
-        }
-    }
+    fun invalidate() = snapshot.invalidate()
+
+    private fun loadSubscribedReportIds(): Set<String> =
+        webhookRepository
+            .fetchAllWebhooks()
+            .flatMap { entity -> entity.reportSubscriptions }
+            .toSet()
+            .also { loaded -> logger.trace("Loaded {} subscribed report ids into memory cache", loaded.size) }
 }

@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
+import com.aamdigital.aambackendservice.reporting.RequiresReportingReadAccess
 import com.aamdigital.aambackendservice.reporting.report.ReportSchema
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import org.springframework.http.HttpStatus
@@ -28,6 +29,7 @@ data class ReportDto(
 @RestController
 @RequestMapping("/v1/reporting/report")
 @ConditionalOnReportingEnabled
+@RequiresReportingReadAccess
 @Validated
 class ReportController(
     private val reportStorage: ReportStorage

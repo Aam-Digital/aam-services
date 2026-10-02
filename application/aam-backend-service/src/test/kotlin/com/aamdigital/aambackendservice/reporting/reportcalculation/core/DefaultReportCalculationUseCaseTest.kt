@@ -4,12 +4,14 @@ import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.InternalServerException
+import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.report.Report
 import com.aamdigital.aambackendservice.reporting.report.ReportItem
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.report.sqs.QueryRequest
+import com.aamdigital.aambackendservice.reporting.report.sqs.SqsQueryStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
@@ -25,6 +27,8 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
@@ -177,6 +181,55 @@ class DefaultReportCalculationUseCaseTest {
         // real root cause so it reaches Sentry instead of being dropped
         assertThat(failure.cause).isInstanceOf(InternalServerException::class.java)
         assertThat(failure.cause?.cause).isSameAs(rootCause)
+    }
+
+    @Test
+    fun `should record the SQS explanation of a rejected query on the failed calculation`() {
+        // given
+        val report =
+            Report(
+                id = "Report:1",
+                title = "Report",
+                items = listOf(ReportItem.ReportQuery(sql = "SELECT FROM foo"))
+            )
+
+        val reportCalculation = getPendingReportCalculation()
+
+        whenever(
+            reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:1")))
+        ).thenReturn(reportCalculation)
+
+        whenever(reportStorage.fetchReport(eq(DomainReference("Report:1")))).thenReturn(report)
+
+        whenever(reportCalculationStorage.storeCalculation(any())).thenAnswer { i -> i.arguments[0] }
+
+        // as SqsQueryStorage reports a query that SQS rejects as invalid
+        val sqsRejection =
+            InvalidArgumentException(
+                message =
+                    "[SqsQueryStorage] SQS rejected the query for report 'Report:1' (400 BAD_REQUEST): " +
+                        """{"statusCode":400,"error":"Bad Request","message":"near \"FROM\": syntax error"}""",
+                code = SqsQueryStorage.SqsQueryStorageErrorCode.QUERY_FAILED
+            )
+        whenever(queryStorage.executeQuery(any(), any())).thenAnswer { throw sqsRejection }
+
+        // when
+        val response =
+            service.run(
+                ReportCalculationRequest(reportCalculationId = reportCalculation.id)
+            )
+
+        // then: ReportCalculationController returns the SQS explanation from errorDetails to the
+        // report editor, and ReportCalculationProcessor logs the failure at INFO only because its
+        // cause is an InvalidArgumentException
+        val storedCalculation = argumentCaptor<ReportCalculation>()
+        verify(reportCalculationStorage, atLeastOnce()).storeCalculation(storedCalculation.capture())
+        assertThat(storedCalculation.lastValue.status).isEqualTo(ReportCalculationStatus.FINISHED_ERROR)
+        assertThat(storedCalculation.lastValue.errorDetails).isEqualTo(sqsRejection.message)
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        val failure = response as UseCaseOutcome.Failure
+        assertThat(failure.errorCode).isEqualTo(SqsQueryStorage.SqsQueryStorageErrorCode.QUERY_FAILED)
+        assertThat(failure.cause).isInstanceOf(InvalidArgumentException::class.java)
     }
 
     @Test
@@ -724,5 +777,87 @@ class DefaultReportCalculationUseCaseTest {
 
         // then: multiple items stay wrapped so each item's result remains addressable as data[i]
         assertThat(storedData).isEqualTo("""[[{"name":"Alice"}],[{"age":5}]]""")
+    }
+
+    @Test
+    fun `should escape a group title that contains a quote`() {
+        // given
+        val report =
+            Report(
+                id = "Report:1",
+                title = "Report",
+                items =
+                    listOf(
+                        ReportItem.ReportGroup(
+                            title = """Children "at risk"""",
+                            items = listOf(ReportItem.ReportQuery(sql = "SELECT count(*) AS count FROM foo"))
+                        )
+                    )
+            )
+        val reportCalculation = getPendingReportCalculation()
+
+        whenever(
+            reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:1")))
+        ).thenReturn(reportCalculation)
+
+        whenever(reportStorage.fetchReport(eq(DomainReference("Report:1")))).thenReturn(report)
+
+        whenever(queryStorage.executeQuery(any(), any()))
+            .thenReturn("""[{"count":275}]""".byteInputStream())
+
+        whenever(reportCalculationStorage.storeCalculation(any())).thenAnswer { i -> i.arguments[0] }
+
+        var storedData: String? = null
+        whenever(reportCalculationStorage.addReportCalculationData(any(), any())).thenAnswer { i ->
+            storedData = (i.arguments[1] as InputStream).readBytes().decodeToString()
+            i.arguments[0]
+        }
+
+        // when
+        service.run(ReportCalculationRequest(reportCalculationId = reportCalculation.id))
+
+        // then
+        assertThat(storedData).isEqualTo("""[{"Children \"at risk\"":[[{"count":275}]]}]""")
+    }
+
+    @Test
+    fun `should escape a group title that contains a line break`() {
+        // given
+        val report =
+            Report(
+                id = "Report:1",
+                title = "Report",
+                items =
+                    listOf(
+                        ReportItem.ReportGroup(
+                            title = "Children\nat risk",
+                            items = listOf(ReportItem.ReportQuery(sql = "SELECT count(*) AS count FROM foo"))
+                        )
+                    )
+            )
+        val reportCalculation = getPendingReportCalculation()
+
+        whenever(
+            reportCalculationStorage.fetchReportCalculation(eq(DomainReference("ReportCalculation:1")))
+        ).thenReturn(reportCalculation)
+
+        whenever(reportStorage.fetchReport(eq(DomainReference("Report:1")))).thenReturn(report)
+
+        whenever(queryStorage.executeQuery(any(), any()))
+            .thenReturn("""[{"count":275}]""".byteInputStream())
+
+        whenever(reportCalculationStorage.storeCalculation(any())).thenAnswer { i -> i.arguments[0] }
+
+        var storedData: String? = null
+        whenever(reportCalculationStorage.addReportCalculationData(any(), any())).thenAnswer { i ->
+            storedData = (i.arguments[1] as InputStream).readBytes().decodeToString()
+            i.arguments[0]
+        }
+
+        // when
+        service.run(ReportCalculationRequest(reportCalculationId = reportCalculation.id))
+
+        // then
+        assertThat(storedData).isEqualTo("""[{"Children\nat risk":[[{"count":275}]]}]""")
     }
 }

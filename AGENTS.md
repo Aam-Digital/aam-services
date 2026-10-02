@@ -18,11 +18,11 @@ This repository provides the backend API as a modularized Spring Boot applicatio
 
 ### Architecture & Tech Stack
 
-- **Language**: Kotlin (target JVM 21)
+- **Language**: Kotlin (target JVM 25)
 - **Framework**: Spring Boot with Spring Security
 - **Build Tool**: Gradle with Kotlin DSL
 - **Database**: CouchDB with SQL query capabilities (SQS)
-- **Testing**: JUnit 5 with Mockito and AssertJ, Cucumber for BDD
+- **Testing**: JUnit Jupiter (JUnit 6) with Mockito and AssertJ, Cucumber for BDD
 - **Code Quality**: Detekt for static analysis, JaCoCo for coverage
 - **Architecture**: Clean Architecture with Domain-Driven Design principles
 - **Observability**: Micrometer, SLF4J, Spring Actuator, OpenTelemetry
@@ -95,7 +95,7 @@ module/
 ├── controller/       # REST endpoints
 ├── di/               # Configuration of dependency injection
 ├── storage/          # Repositories and data access
-├── queue/            # Message queue wiring with listeners and publishers
+├── job/              # @Scheduled jobs (thin: ScheduledJobBackoff around one call)
 ├── usecase/          # Domain logic and use cases
 └── README.md         # Module-specific developer documentation
 ```
@@ -137,7 +137,15 @@ The `DomainUseCase` base class handles error wrapping:
 
 - Override `apply(request)` to implement business logic
 - Return `UseCaseOutcome.Success(data)` or `UseCaseOutcome.Failure(errorCode, errorMessage)`
-- Uncaught exceptions are automatically wrapped as `Failure`
+- Uncaught exceptions are automatically wrapped as `Failure`, with the exception as its `cause`
+- The caller of `run(request)` logs the `Failure`, not the use case, which logs an exception only
+  at DEBUG. Log every `Failure` you get back at the level the context calls for (ERROR reaches
+  Sentry, WARN stays in the logs, INFO suits expected outcomes such as invalid input), with
+  placeholders for the error code and message and the `cause` as the last argument, or hand it on
+  to something that logs it. A `Failure` the caller drops leaves no trace.
+- The production template (`templates/aam-backend-service/application.template.env`) logs this
+  service at WARN, so INFO and below never reach production logs: use WARN or above for any
+  `Failure` that must be visible there.
 
 ---
 
@@ -183,7 +191,7 @@ internal tools (e.g. Sentry issues) are acceptable.
 
 ### Test Structure
 
-- Use JUnit 5, with test names written as backticked sentences.
+- Use JUnit Jupiter, with test names written as backticked sentences.
 - Follow the Given-When-Then pattern in test methods.
 - Assert with AssertJ, statically imported: `import org.assertj.core.api.Assertions.assertThat`.
 - Create and stub mocks with **mockito-kotlin** (`mock()`, `whenever()`, `verify()`, `any()`),
@@ -214,7 +222,7 @@ fun `should return success when valid request is provided`() {
     val request = CreateExampleRequest("valid-data")
 
     // When
-    val result = useCase.execute(request)
+    val result = useCase.run(request)
 
     // Then
     assertThat(result).isInstanceOf(Success::class.java)
@@ -287,15 +295,26 @@ sealed interface UseCaseOutcome<D : UseCaseData> {
 class ExampleController(
     private val useCase: ExampleUseCase
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     @PostMapping
     fun createExample(
         @Valid @RequestBody request: CreateExampleRequestDto
     ): ResponseEntity<*> {
-        return when (val result = useCase.execute(request.toDomain())) {
+        return when (val result = useCase.run(request.toDomain())) {
             is Success -> ResponseEntity.ok(result.data.toDto())
-            is Failure -> ResponseEntity.badRequest().body(
-                HttpErrorDto(result.errorCode, result.errorMessage)
-            )
+            is Failure -> {
+                // the use case does not log a Failure, so this line is its only record
+                logger.warn(
+                    "Could not create example: [{}] {}",
+                    result.errorCode,
+                    result.errorMessage,
+                    result.cause
+                )
+                ResponseEntity.badRequest().body(
+                    HttpErrorDto(result.errorCode.toString(), result.errorMessage)
+                )
+            }
         }
     }
 }
@@ -345,12 +364,14 @@ data class ModuleConfiguration(
 There is no message broker. Work is either handed to a bounded executor or recorded durably and
 picked up by a scheduled job. Pick by what the work needs:
 
-- **Must not block the caller, may be lost** — a bounded `ThreadPoolTaskExecutor` bean, with the
-  backlog bounded on purpose so a saturated executor rejects instead of growing without limit
-  (see the webhook delivery executor in `ReportingNotificationConfiguration`).
-- **Must not be lost** — write the work to CouchDB first, then let a `@Scheduled` job pick it up
-  and own the retry policy (see `NotificationOutboxDrainer`). Derive the document id from whatever
-  caused the work so a replay is idempotent rather than a duplicate.
+- **Must not block the caller, may be lost** — a `BoundedTaskRunner` over a
+  `BoundedTaskRunner.threadPool(...)` bean: bounded concurrency and backlog, so a saturated executor
+  rejects instead of growing without limit; the runner reports the rejection, logs failures and
+  tracks what is in flight (see `reporting/webhook/di/WebhookConfiguration.kt`).
+- **Must not be lost** — `enqueue` it in an `Outbox` and implement only an `OutboxHandler` that
+  delivers one payload; the generic `OutboxDrainer`, triggered by a `@Scheduled` job, owns the retry
+  policy (see `common/outbox/README.md`). Derive the key from whatever caused the work so a replay
+  is idempotent rather than a duplicate.
 - **Reacting to data changes** — declare a `DocumentChangeHandler` bean with a unique, never-renamed
   `consumerName` (it names the handler's persisted cursor). Each handler is polled on its own thread
   with its own cursor, and runs synchronously on it, so it must answer from memory, hand real work to
@@ -359,7 +380,7 @@ picked up by a scheduled job. Pick by what the work needs:
 
 Every `@Scheduled` job wraps its body in `ScheduledJobBackoff` and gets a thread from
 `SchedulingConfiguration`'s pool, which is sized to the number of jobs, counting one change poller
-per `DocumentChangeHandler` - update `poolSize` when adding either.
+per `DocumentChangeHandler` - update its `SCHEDULED_TASKS` and job list when adding either.
 
 ---
 
@@ -466,6 +487,10 @@ e2e gates rely on it.
 - Externalize configuration via environment variables
 - Provide sensible defaults for development
 - Document required environment variables
+- A setting with the same value on every deployment gets its default in `application.yaml`, not only in
+  `templates/aam-backend-service/application.template.env`. Deployments copy the template once, when the backend
+  is enabled, so a key added to it later never reaches existing instances. The template only lists
+  instance-specific values, secrets and feature toggles.
 
 ---
 
@@ -499,7 +524,7 @@ For local development setup (databases, queues, Keycloak), see `docs/developer/R
 
 ### Running the E2E (Cucumber) Tests
 
-Prerequisites: JDK 21 and a running Docker daemon (Testcontainers starts/stops the containers itself).
+Prerequisites: JDK 25 and a running Docker daemon (Testcontainers starts/stops the containers itself).
 
 Run only the e2e tests (skips unit tests):
 

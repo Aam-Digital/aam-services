@@ -6,8 +6,15 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 
+/**
+ * The shared [ObjectMapper], which Spring Boot also wraps in the JSON message converter of Spring MVC
+ * and of its `RestClient.Builder`.
+ *
+ * There is deliberately no `HttpMessageConverter` bean for it: Spring Boot 4 puts such beans ahead of
+ * all default converters, so Jackson would answer String and Resource bodies too, instead of the
+ * converters that pass them through as they are.
+ */
 @Configuration
 class ObjectMapperConfiguration {
     @Bean
@@ -19,15 +26,5 @@ class ObjectMapperConfiguration {
             DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE
         )
         return mapper.build()
-    }
-
-    @Bean
-    fun mappingJackson2HttpMessageConverter(): MappingJackson2HttpMessageConverter {
-        val builder = Jackson2ObjectMapperBuilder()
-        builder.featuresToEnable(
-            DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT,
-            DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE
-        )
-        return MappingJackson2HttpMessageConverter(builder.build())
     }
 }

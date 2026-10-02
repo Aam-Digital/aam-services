@@ -3,7 +3,10 @@ package com.aamdigital.aambackendservice.reporting.webhook.controller
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.security.tokenSubject
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
+import com.aamdigital.aambackendservice.reporting.RequiresReportingReadAccess
+import com.aamdigital.aambackendservice.reporting.RequiresReportingWriteAccess
 import com.aamdigital.aambackendservice.reporting.webhook.Webhook
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookAuthenticationType
 import com.aamdigital.aambackendservice.reporting.webhook.WebhookTarget
@@ -58,6 +61,7 @@ data class CreateWebhookRequestDto(
 @RestController
 @RequestMapping("/v1/reporting/webhook")
 @ConditionalOnReportingEnabled
+@RequiresReportingReadAccess
 @Validated
 class WebhookController(
     private val webhookStorage: WebhookStorage,
@@ -70,7 +74,7 @@ class WebhookController(
                 webhookStorage
                     .fetchAllWebhooks()
                     .filter { webhook ->
-                        webhook.owner.creator == principal.name
+                        webhook.owner.creator == principal.tokenSubject
                     }.map { webhook ->
                         mapToDto(webhook)
                     }
@@ -132,7 +136,7 @@ class WebhookController(
                 }
             }
 
-        return if (webhook.owner.creator == principal.name) {
+        return if (webhook.owner.creator == principal.tokenSubject) {
             ResponseEntity.ok(mapToDto(webhook))
         } else {
             ResponseEntity.status(HttpStatus.FORBIDDEN).build()
@@ -140,6 +144,7 @@ class WebhookController(
     }
 
     @PostMapping
+    @RequiresReportingWriteAccess
     fun storeWebhook(
         @RequestBody request: CreateWebhookRequestDto,
         principal: Principal
@@ -148,7 +153,7 @@ class WebhookController(
             try {
                 webhookStorage.createWebhook(
                     CreateWebhookRequest(
-                        user = principal.name,
+                        user = checkNotNull(principal.tokenSubject) { "No subject found in the token." },
                         label = request.label,
                         target = request.target,
                         authentication = request.authentication
@@ -182,7 +187,8 @@ class WebhookController(
     }
 
     @PostMapping("/{webhookId}/subscribe/report/{reportId}")
-    fun registerReportNotification(
+    @RequiresReportingWriteAccess
+    fun registerReportSubscription(
         @PathVariable webhookId: String,
         @PathVariable reportId: String
     ): ResponseEntity<*> {
@@ -195,7 +201,8 @@ class WebhookController(
     }
 
     @DeleteMapping("/{webhookId}/subscribe/report/{reportId}")
-    fun unregisterReportNotification(
+    @RequiresReportingWriteAccess
+    fun unregisterReportSubscription(
         @PathVariable webhookId: String,
         @PathVariable reportId: String
     ): ResponseEntity<*> {

@@ -16,22 +16,32 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
  * [com.aamdigital.aambackendservice.common.changes.CouchDbChangesPollingJob] and stall change detection.
  *
  * Defining this bean makes it the [TaskScheduler] used for `@Scheduled` (the auto-configuration
- * backs off on the existing bean), giving the jobs their own pool so they no longer block each
- * other. The pool is sized to the number of scheduled tasks, counting the ones that only exist when
- * their feature module is enabled
- * (`[com.aamdigital.aambackendservice.notification.job.NotificationOutboxDrainJob]`,
- * `[com.aamdigital.aambackendservice.reporting.reportcalculation.job.ReportCalculationSweepJob]`),
- * and counting [com.aamdigital.aambackendservice.common.changes.CouchDbChangesPollingJob] once per
- * change consumer (reporting, notification): a consumer stuck on a slow dependency holds its
- * thread, and must not leave another consumer waiting for one.
+ * backs off on the existing bean), giving the jobs their own pool so they do not block each
+ * other. A task stuck on a slow dependency holds its thread, and must not leave another task waiting
+ * for one, so the pool has a thread for every scheduled task with all feature modules enabled:
+ *
+ * - [com.aamdigital.aambackendservice.common.changes.CouchDbChangesPollingJob], once per change
+ *   consumer (reporting, notification)
+ * - [com.aamdigital.aambackendservice.notification.job.NotificationOutboxDrainJob]
+ * - [com.aamdigital.aambackendservice.reporting.reportcalculation.job.ReportCalculationSweepJob]
+ * - [com.aamdigital.aambackendservice.reporting.reportcalculation.job.ReportCalculationDebounceJob]
+ * - [com.aamdigital.aambackendservice.skill.job.SyncSkillsJob]
+ *
+ * That is [SCHEDULED_TASKS]; the pool adds [SPARE_THREADS] so one new job does not silently
+ * start sharing threads. Update the list and the count when adding a job or a change consumer.
  * This only affects scheduling; web request handling and `@Async` keep using virtual threads.
  */
 @Configuration
 class SchedulingConfiguration {
+    companion object {
+        private const val SCHEDULED_TASKS = 6
+        private const val SPARE_THREADS = 2
+    }
+
     @Bean
     fun taskScheduler(): TaskScheduler =
         ThreadPoolTaskScheduler().apply {
-            poolSize = 6
+            poolSize = SCHEDULED_TASKS + SPARE_THREADS
             setThreadNamePrefix("scheduled-")
         }
 }

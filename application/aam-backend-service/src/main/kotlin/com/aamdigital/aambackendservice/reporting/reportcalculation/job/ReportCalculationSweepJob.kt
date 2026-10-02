@@ -23,9 +23,7 @@ class ReportCalculationSweepJob(
 
     @Scheduled(fixedDelayString = "\${report-calculation-sweeper.fixed-delay:300000}")
     fun sweepStalePendingReportCalculations() {
-        if (backoff.shouldSkip()) return
-
-        backoff.execute {
+        backoff.run {
             reportCalculationSweeper.sweepStalePendingCalculations()
         }
     }

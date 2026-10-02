@@ -42,6 +42,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: The access token lacks the client scope required for this endpoint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         500:
           description: On internal server errors or broken server configuration
           content:
@@ -76,6 +82,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Report'
+        403:
+          description: The access token lacks the client scope required for this endpoint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
           description: If the Report does not exist
           content:
@@ -126,6 +138,12 @@ paths:
                   $ref: '#/components/schemas/ReportCalculation'
         401:
           description: If the access token does not grant permission to this Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: The access token lacks the client scope required for this endpoint
           content:
             application/json:
               schema:
@@ -190,6 +208,12 @@ paths:
                 properties:
                   id:
                     type: string
+        403:
+          description: The access token lacks the client scope required for this endpoint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
           description: If the report does not exist
           content:
@@ -242,6 +266,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        403:
+          description: The access token lacks the client scope required for this endpoint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
           description: If the calculation identifier does not exist
           content:
@@ -283,6 +313,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportMetadata'
+        403:
+          description: The access token lacks the client scope required for this endpoint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
           description: report data is not available yet (when either the calculation id is not valid or the calculation is still running).
             Note that if the report calculation was successfully completed but the result is empty (because no data matched the report's query)
@@ -334,6 +370,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportData'
+        403:
+          description: The access token lacks the client scope required for this endpoint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         404:
           description: report data is not available yet (when either the calculation id is not valid or the calculation is still running).
             Note that if the report calculation was successfully completed but the result is empty (because no data matched the report's query)
@@ -431,6 +473,12 @@ paths:
                     type: string
         401:
           description: If no valid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: The access token lacks the client scope required for this endpoint
           content:
             application/json:
               schema:
@@ -682,7 +730,11 @@ components:
         errorDetails:
           type: string
           nullable: true
-          description: Details of the failure when the calculation finished with status FINISHED_ERROR.
+          description: >-
+            Details of the failure when the calculation finished with status FINISHED_ERROR.
+            If the report's query is invalid, this is the query service's explanation of why,
+            so it can be shown to the author of the report; for any other failure it is "Unknown error".
+          example: 'near "FROM": syntax error'
 
     ReportMetadata:
       type: object
@@ -870,7 +922,11 @@ components:
   securitySchemes:
     development:
       type: oauth2
-      description: This API uses OAuth2 with the Client Credentials Flow
+      description: |-
+        This API uses OAuth2 with the Client Credentials Flow.
+        The API client needs the listed client scopes assigned as "Default" client scopes in Keycloak,
+        so that they are included in its access tokens.
+        Users of the Aam Digital frontend app are authorized without these scopes.
       flows:
         clientCredentials:
           tokenUrl: https://keycloak.aam-digital.net/realms/TolaData/protocol/openid-connect/token

@@ -20,6 +20,7 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportC
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationStorage
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationUseCase
 import com.aamdigital.aambackendservice.reporting.transformation.DataTransformation
+import com.fasterxml.jackson.core.io.JsonStringEncoder
 import java.io.InputStream
 import java.io.SequenceInputStream
 import java.time.ZoneOffset
@@ -168,7 +169,7 @@ class DefaultReportCalculationUseCase(
                         }
 
                         is ReportItem.ReportGroup -> {
-                            val prefix = "{\"${queryItem.title}\":[".byteInputStream()
+                            val prefix = "{${asJsonString(queryItem.title)}:[".byteInputStream()
                             val queryResult = handleReportItems(reportId, queryItem.items, reportCalculation)
                             val suffix = "]}".byteInputStream()
                             mutableListOf(prefix, queryResult, suffix)
@@ -192,6 +193,14 @@ class DefaultReportCalculationUseCase(
             )
         )
     }
+
+    /**
+     * The group title is concatenated into the result JSON, so it has to be escaped as a JSON
+     * string value. A title containing a quote, a backslash or a line break would otherwise
+     * produce a payload that clients cannot parse.
+     */
+    private fun asJsonString(value: String): String =
+        "\"" + String(JsonStringEncoder.getInstance().quoteAsString(value)) + "\""
 
     private fun handleReportQuery(
         query: ReportItem.ReportQuery,

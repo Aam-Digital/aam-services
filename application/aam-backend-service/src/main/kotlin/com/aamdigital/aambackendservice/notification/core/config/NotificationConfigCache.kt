@@ -38,8 +38,6 @@ data class NotificationRuleCacheEntry(
 interface NotificationConfigCache {
     fun findAll(): List<NotificationConfigCacheEntry>
 
-    fun refreshAll()
-
     fun refreshConfig(
         database: String,
         notificationConfigId: String,

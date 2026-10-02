@@ -1,12 +1,13 @@
 package com.aamdigital.aambackendservice.common.permission.di
 
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
+import com.aamdigital.aambackendservice.common.rest.requestFactoryWithTimeout
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestClient
+import java.time.Duration
 
 /**
  * Connection settings for the replication-backend HTTP client,
@@ -62,10 +63,7 @@ class PermissionConfiguration {
         val restClient = RestClient.builder()
             .baseUrl(configuration.basePath)
             .requestFactory(
-                SimpleClientHttpRequestFactory().apply {
-                    setReadTimeout(configuration.responseTimeoutInSeconds * 1000)
-                    setConnectTimeout(configuration.responseTimeoutInSeconds * 1000)
-                }
+                requestFactoryWithTimeout(Duration.ofSeconds(configuration.responseTimeoutInSeconds.toLong()))
             )
             .defaultHeaders { headers ->
                 headers.setBasicAuth(

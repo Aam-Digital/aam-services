@@ -37,7 +37,7 @@ jobs:
         uses: actions/setup-java@v6
         with:
           distribution: 'corretto'
-          java-version: 21
+          java-version: 25
           cache: 'gradle'
 
       - name: Login to GitHub Container Registry
@@ -261,7 +261,7 @@ jobs:
         run: rustup update --no-self-update
 
       - name: Install conventional_commits_next_version
-        run: cargo install conventional_commits_next_version --version ^6
+        run: cargo install conventional_commits_next_version --version ^7.0.0
 
       - name: Set current tag and version
         run: |
@@ -270,36 +270,44 @@ jobs:
           CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'aam-backend-service/[0-9]*' --match 'aam-backend-service/v*')
           CURRENT_VERSION=${CURRENT_TAG#aam-backend-service/}
           CURRENT_VERSION=${CURRENT_VERSION#v}
-          echo "CURRENT_TAG=$CURRENT_TAG" >> $GITHUB_ENV
-          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          echo "CURRENT_TAG=$CURRENT_TAG" >> "$GITHUB_ENV"
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> "$GITHUB_ENV"
 
       - name: Set from commit hash
         run: |
-          FROM_COMMIT_HASH=$(git rev-list -n 1 ${{ env.CURRENT_TAG }})
-          echo "FROM_COMMIT_HASH=$FROM_COMMIT_HASH" >> $GITHUB_ENV
+          FROM_COMMIT_HASH=$(git rev-list -n 1 "$CURRENT_TAG")
+          echo "FROM_COMMIT_HASH=$FROM_COMMIT_HASH" >> "$GITHUB_ENV"
 
       - name: Calculate next version
+        env:
+          MODULE_PATH: application/aam-backend-service
         run: |
-          NEXT_VERSION=$(conventional_commits_next_version \
-            --calculation-mode "Batch" \
-            --from-commit-hash ${{ env.FROM_COMMIT_HASH }} \
-            --from-version ${{ env.CURRENT_VERSION }} \
-            --monorepo application/aam-backend-service)
-          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
+          # conventional_commits_next_version (>= 7.1) fails if no commit in the range touches
+          # MODULE_PATH, so keep the current version (= no release) in that case.
+          if [ -z "$(git rev-list --first-parent --max-count=1 "$FROM_COMMIT_HASH"..HEAD -- ":(top)$MODULE_PATH")" ]; then
+            NEXT_VERSION=$CURRENT_VERSION
+          else
+            NEXT_VERSION=$(conventional_commits_next_version \
+              --calculation-mode "Batch" \
+              --from-version "$CURRENT_VERSION" \
+              --monorepo "$MODULE_PATH" \
+              "$FROM_COMMIT_HASH")
+          fi
+          echo "NEXT_VERSION=$NEXT_VERSION" >> "$GITHUB_ENV"
 
       - name: Create Release
         if: env.CURRENT_VERSION != env.NEXT_VERSION
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          TAG_NAME=aam-backend-service/${{ env.NEXT_VERSION }}
+          TAG_NAME=aam-backend-service/$NEXT_VERSION
           gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             /repos/Aam-Digital/aam-services/releases \
             -f "tag_name=$TAG_NAME" \
-            -f "target_commitish=${{ github.sha }}" \
+            -f "target_commitish=$GITHUB_SHA" \
             -f "name=$TAG_NAME" \
             -F "draft=false" \
             -F "prerelease=false" \

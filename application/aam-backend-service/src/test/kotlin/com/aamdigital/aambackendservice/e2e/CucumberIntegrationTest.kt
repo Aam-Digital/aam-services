@@ -30,9 +30,9 @@ import org.mockito.kotlin.timeout
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
-import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.core.io.ClassPathResource
 import org.springframework.http.HttpMethod
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import java.io.File
 import java.util.Optional
 
@@ -44,21 +44,21 @@ class CucumberIntegrationTest(
 ) : SpringIntegrationTest() {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    @MockBean
+    @MockitoBean
     lateinit var mailSenderService: MailSenderService
 
-    @MockBean
+    @MockitoBean
     lateinit var userEmailProvider: UserEmailProvider
 
     // mocked so the guardrail can verify the webhook is triggered without needing a real HTTP
     // receiver; the mock still sits downstream of the calculation and of the delivery executor
-    @MockBean
+    @MockitoBean
     lateinit var triggerWebhookUseCase: TriggerWebhookUseCase
 
     // mocked so the SSO scenarios never need a reachable Keycloak admin client: the provider is the
     // only part of third-party-authentication that talks to Keycloak, everything downstream of it
     // (session storage, redirect binding, HTTP contract) stays real.
-    @MockBean
+    @MockitoBean
     lateinit var authenticationProvider: AuthenticationProvider
 
     private var storedId: String? = null
@@ -105,6 +105,16 @@ class CucumberIntegrationTest(
         realm: String
     ) {
         fetchToken(client, secret, realm)
+    }
+
+    @Given("signed in as user {} with password {} through client {} in realm {}")
+    fun `sign in as app user in realm`(
+        username: String,
+        password: String,
+        client: String,
+        realm: String
+    ) {
+        fetchUserToken(client, username, password, realm)
     }
 
     @Given("all default databases are created")
@@ -287,6 +297,28 @@ class CucumberIntegrationTest(
         }
     }
 
+    @Then("the access token contains client scope {word}")
+    fun `the access token contains client scope`(scope: String) {
+        val scopes =
+            authTokenClaims()
+                ?.get("scope")
+                ?.textValue()
+                .orEmpty()
+                .split(" ")
+        Assert.assertTrue("Client scope $scope not in token scopes $scopes", scopes.contains(scope))
+    }
+
+    @Then("the access token does not contain realm role {word}")
+    fun `the access token does not contain realm role`(role: String) {
+        val roles =
+            authTokenClaims()
+                ?.get("realm_access")
+                ?.get("roles")
+                ?.map { it.textValue() }
+                .orEmpty()
+        Assert.assertFalse("Realm role $role still in token roles $roles", roles.contains(role))
+    }
+
     @Then("the client receives array with {int} elements")
     @Throws(Throwable::class)
     fun `the client receives array with n elements`(numberOfElements: Int) {
@@ -388,7 +420,8 @@ class CucumberIntegrationTest(
 
     /**
      * Binds the SSO session to the account the test itself is signed in as, so that the
-     * redirect endpoint - which compares the stored userId against `principal.name` - accepts it.
+     * redirect endpoint - which compares the stored userId against the caller's `sub` claim -
+     * accepts it.
      */
     @Given("the external user account already exists")
     fun `the external user account already exists`() {

@@ -10,9 +10,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import org.springframework.boot.restclient.RestTemplateBuilder
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.context.ImportTestcontainers
-import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -67,8 +67,9 @@ abstract class SpringIntegrationTest {
 
     /**
      * The `sub` claim of the token most recently obtained by [fetchToken], i.e. exactly the value
-     * the application sees as `principal.name`. Endpoints that compare a stored `userId` against
-     * the caller (third-party-authentication's redirect lookup) need the test to know it.
+     * the application identifies the caller by (`tokenSubject`). Endpoints that compare a stored
+     * `userId` against the caller (third-party-authentication's redirect lookup) need the test to
+     * know it.
      */
     var authSubject: String? = null
 
@@ -208,7 +209,7 @@ abstract class SpringIntegrationTest {
             objectMapper.readValue<ObjectNode>(it)
         }
 
-    fun parseHeader(name: String): List<String> = latestResponseHeaders?.getOrElse(name) { emptyList() } ?: emptyList()
+    fun parseHeader(name: String): List<String> = latestResponseHeaders?.getOrEmpty(name) ?: emptyList()
 
     fun parseBodyToArrayNode(): ArrayNode? =
         latestResponseBody?.let {
@@ -224,10 +225,25 @@ abstract class SpringIntegrationTest {
         authSubject = authToken?.let { subjectOf(it) }
     }
 
+    fun fetchUserToken(
+        client: String,
+        username: String,
+        password: String,
+        realm: String
+    ) {
+        authToken = authTestingService.fetchUserToken(client, username, password, realm)
+        authSubject = authToken?.let { subjectOf(it) }
+    }
+
     /** Reads the `sub` claim out of a JWT without verifying it - the test already trusts the issuer. */
-    private fun subjectOf(token: String): String? {
+    private fun subjectOf(token: String): String? = claimsOf(token)?.get("sub")?.textValue()
+
+    /** The claims of the token most recently obtained, e.g. to check its `scope` claim. */
+    fun authTokenClaims(): ObjectNode? = authToken?.let { claimsOf(it) }
+
+    private fun claimsOf(token: String): ObjectNode? {
         val payload = token.split(".").getOrNull(1) ?: return null
         val decoded = String(Base64.getUrlDecoder().decode(payload))
-        return objectMapper.readValue<ObjectNode>(decoded).get("sub")?.textValue()
+        return objectMapper.readValue<ObjectNode>(decoded)
     }
 }

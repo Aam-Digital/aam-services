@@ -83,8 +83,14 @@ aam-render-api-client-configuration:
 aam-replication-backend-client-configuration:
   base-path: ""
 
+sqs-client-configuration:
+  # the "sqs" service of the deployment's docker-compose stack
+  base-path: http://sqs:4984
+
 
 logging:
+  level:
+    com.aamdigital.aambackendservice: warn
   logback:
     rollingpolicy:
       max-file-size: 50MB
@@ -94,12 +100,23 @@ logging:
 application:
   base-url: "" # default for backwards compatibility - this should be set in env however!
 
+aam-security:
+  # Keycloak client of the Aam Digital frontend. Tokens issued to it (azp claim) may use the reporting API
+  # without API client scopes, because the app runs report calculations for its users.
+  frontend-client-id: app
+
 sentry:
   # Version of the running build, baked into the image from the APPLICATION_VERSION build arg
   # (see Dockerfile), so error events are tagged with a release. This has to stay in the
   # always-active part of the config: the "local-development" document below is skipped in
   # production, where no Spring profile is active.
   release: ${APPLICATION_VERSION:}
+  traces-sample-rate: 0.25
+  attach-threads: true
+  # Denials of method security (@PreAuthorize) are answered with 403 by AamAccessDeniedHandler.
+  # They are expected client errors (e.g. an API client without the required client scope), not bugs.
+  ignored-exceptions-for-type:
+    - org.springframework.security.authorization.AuthorizationDeniedException
 
 ---
 # <second part of the config, just active with profile "local-development">
@@ -108,6 +125,10 @@ spring:
   config:
     activate:
       on-profile: local-development
+  web:
+    error:
+      include-message: always
+      include-binding-errors: always
   security:
     oauth2:
       resourceserver:
@@ -132,9 +153,6 @@ spring:
 server:
   servlet:
     context-path: /
-  error:
-    include-message: always
-    include-binding-errors: always
   port: 9000
 
 logging:
@@ -209,6 +227,8 @@ application:
   base-url: https://aam.localhost
 
 #management:
-#  otlp:
+#  opentelemetry:
 #    tracing:
-#      endpoint: http://localhost:4318/v1/traces
+#      export:
+#        otlp:
+#          endpoint: http://localhost:4318/v1/traces

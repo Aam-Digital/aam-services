@@ -103,14 +103,4 @@ class NotificationDocumentChangeHandlerTest {
                     .contains("PERMISSION_CHECK_FAILED")
             }
     }
-
-    @Test
-    fun `should not propagate a failed config refresh`() {
-        // Given the cache is reloaded on startup, so this instance keeps the previous rules
-        whenever(notificationConfigCache.refreshConfig(any(), any(), any()))
-            .thenThrow(RuntimeException("couchdb unreachable"))
-
-        // When / Then
-        handler.handle(event("NotificationConfig:user-1"))
-    }
 }

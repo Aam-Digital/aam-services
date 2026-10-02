@@ -1,6 +1,13 @@
 # Reporting Module (implementation)
 _for details about setup & usage of this module [see README in docs folder](../../../../../../../../../docs/modules/reporting.md)_
 
+## Access Control
+Controllers are annotated with `@RequiresReportingReadAccess` (class level) and `@RequiresReportingWriteAccess`
+(POST / DELETE endpoints), see `ReportingAccess.kt`. These require the `reporting_read` / `reporting_write` client scope,
+or a token issued to the frontend client (`FRONTEND_CLIENT` authority), because the app itself runs report calculations
+for its users. The scopes are registered as `ClientScopeRequest`s in `ReportingClientScopeConfiguration`,
+so they are created in Keycloak on startup.
+
 ## Use Case / Flow
 This backend module uses CouchDB [Structured Query Service (SQS)](https://neighbourhood.ie/products-and-services/structured-query-server)
 to execute SQL queries on the Aam Digital system's database.
@@ -32,11 +39,39 @@ flowchart TD
     style Calculation fill:#00C853
 
     CalculationProcessor -- if FINISHED_SUCCESS --> CalculationChange
-    CalculationChange[ReportCalculationChangeUseCase] -- if result changed --> WebhookNotification
-    WebhookNotification["NotificationService"] -.-> E_Webhook
+    CalculationChange[ReportCalculationChangeUseCase] -- if result changed --> WebhookTrigger
+    WebhookTrigger["WebhookTriggerService"] -.-> E_Webhook
     E_Webhook[/webhook delivery executor/] -.-> TriggerWebhook
     TriggerWebhook(TriggerWebhookUseCase - call the webhook)
 ```
+
+## Failed calculations
+`ReportCalculationProcessor` logs every failed calculation. Only a failure after the calculation
+and its ReportConfig are loaded, i.e. while the queries run and the result is stored, is also
+recorded on the calculation: `DefaultReportCalculationUseCase` stores it as `FINISHED_ERROR` with the
+exception message as `errorDetails`. If the calculation or its ReportConfig cannot be loaded, the
+calculation keeps its status (e.g. `PENDING`).
+
+Whether the failure alerts depends on whether the input is at fault:
+
+- A failure with an `InvalidArgumentException` anywhere in its cause chain is invalid input and is
+  logged at INFO only: it is the report author's or the instance's to fix, so it must not raise a
+  Sentry alert. The main case is a query SQS rejects: SQS answers an invalid query with 400, and
+  `SqsQueryStorage` throws an `InvalidArgumentException` (`QUERY_FAILED`) whose message ends with
+  the SQS response body. That message is stored as `errorDetails`, from which
+  `ReportCalculationController` returns SQS's explanation to the report editor. `DefaultReportStorage`
+  also throws one for a ReportConfig that is not an SQL report (`INVALID_REPORT_CONFIG`) or that
+  cannot be mapped to its entity (`PARSING_ERROR`), which fails while loading and so is not recorded
+  on the calculation.
+- Any other failure, including any other SQS error status (e.g. wrong credentials or a missing
+  design document), is logged at ERROR and so reaches Sentry. If it is recorded as
+  `FINISHED_ERROR`, the API returns "Unknown error" as its `errorDetails`.
+
+An SQS response body can quote the tenant's query, so it stays out of anything sent to Sentry:
+the processor's log lines name only the calculation and the error code (the attached exception
+carries the message into the console log), because INFO lines still become breadcrumbs on later
+Sentry events; and for any status other than 400, `SqsQueryStorage` leaves the body out of the
+exception and logs it at DEBUG instead.
 
 ## Caches on the automatic change-detection path
 
@@ -54,8 +89,10 @@ Two caches keep it in memory:
   reads `WebhookEntity` documents directly, so it never decrypts a webhook secret. Webhooks live
   in the `notification-webhook` database, which is deliberately *not* polled for changes, so this
   cache is invalidated by `DefaultWebhookStorage` (the only writer of that database) and,
-  additionally, expires after `reporting.webhook-subscription-cache.ttl-millis` (default 1000) to
-  bound staleness from writes this process cannot see.
+  additionally, expires after `reporting.webhook-subscription-cache.ttl-millis` (default one hour)
+  to bound staleness from writes this process cannot see. Write-invalidation is the mechanism that
+  actually keeps this current; the TTL is only a backstop for a writer outside this process, so it
+  is deliberately long rather than tuned for freshness.
 
-  It is intentionally not used by `GET /v1/reporting/webhook` or by `NotificationService`, which
+  It is intentionally not used by `GET /v1/reporting/webhook` or by `WebhookTriggerService`, which
   must always see the current webhook list.

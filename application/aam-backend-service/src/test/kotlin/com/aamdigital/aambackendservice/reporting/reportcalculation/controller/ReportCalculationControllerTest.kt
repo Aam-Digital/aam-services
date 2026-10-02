@@ -19,6 +19,7 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
@@ -46,6 +47,12 @@ class ReportCalculationControllerTest {
     companion object {
         private const val CALCULATION_ID = "ReportCalculation:1"
         private const val DATA = """[{"name":"Bärbel"}]"""
+
+        // errorDetails of a calculation whose query SQS rejected, as SqsQueryStorage words it
+        private const val SQS_REJECTION_PREFIX =
+            "[SqsQueryStorage] SQS rejected the query for report 'ReportConfig:1' (400 BAD_REQUEST): "
+        private const val SQS_REJECTION_BODY =
+            """{"statusCode":400,"error":"Bad Request","message":"near \"FROM\": syntax error"}"""
     }
 
     @BeforeEach
@@ -80,6 +87,95 @@ class ReportCalculationControllerTest {
                         )
                 )
         )
+
+    private fun failedCalculation(errorDetails: String): ReportCalculation =
+        ReportCalculation(
+            id = CALCULATION_ID,
+            report = DomainReference(id = "ReportConfig:1"),
+            status = ReportCalculationStatus.FINISHED_ERROR,
+            errorDetails = errorDetails
+        )
+
+    private fun fetchErrorDetails(): String? =
+        ObjectMapper()
+            .readTree(
+                mockMvc
+                    .perform(get("/v1/reporting/report-calculation/$CALCULATION_ID").accept(MediaType.APPLICATION_JSON))
+                    .andReturn()
+                    .response
+                    .contentAsString
+            ).get("errorDetails")
+            ?.asText()
+
+    @Test
+    fun `returns the SQS explanation of a rejected query as errorDetails, including escaped quotes`() {
+        // Given
+        whenever(reportCalculationStorage.fetchReportCalculation(DomainReference(id = CALCULATION_ID)))
+            .thenReturn(failedCalculation(errorDetails = "$SQS_REJECTION_PREFIX$SQS_REJECTION_BODY"))
+
+        // When
+        val errorDetails = fetchErrorDetails()
+
+        // Then
+        assertThat(errorDetails).isEqualTo("near \"FROM\": syntax error")
+    }
+
+    @Test
+    fun `returns the SQS explanation of calculations stored in the older error format`() {
+        // Given
+        whenever(reportCalculationStorage.fetchReportCalculation(DomainReference(id = CALCULATION_ID)))
+            .thenReturn(
+                failedCalculation(
+                    errorDetails =
+                        """400 Bad Request: "{"statusCode":400,"error":"Bad Request",""" +
+                            """"message":"no such column: i.xxx"}""""
+                )
+            )
+
+        // When
+        val errorDetails = fetchErrorDetails()
+
+        // Then
+        assertThat(errorDetails).isEqualTo("no such column: i.xxx")
+    }
+
+    @Test
+    fun `returns the start of the SQS explanation when the stored response was cut off`() {
+        // Given the SQS response body is stored cut off after a maximum length
+        whenever(reportCalculationStorage.fetchReportCalculation(DomainReference(id = CALCULATION_ID)))
+            .thenReturn(
+                failedCalculation(
+                    errorDetails =
+                        SQS_REJECTION_PREFIX +
+                            """{"statusCode":400,"error":"Bad Request","message":"near \"FROM\": synt"""
+                )
+            )
+
+        // When
+        val errorDetails = fetchErrorDetails()
+
+        // Then
+        assertThat(errorDetails).isEqualTo("near \"FROM\": synt")
+    }
+
+    @Test
+    fun `returns Unknown error when a calculation failed for another reason`() {
+        // Given
+        whenever(reportCalculationStorage.fetchReportCalculation(DomainReference(id = CALCULATION_ID)))
+            .thenReturn(
+                failedCalculation(
+                    errorDetails =
+                        "[SqsQueryStorage] SQS failed to execute the query for report 'ReportConfig:1' " +
+                            "(500 INTERNAL_SERVER_ERROR)"
+                )
+            )
+
+        // When
+        val errorDetails = fetchErrorDetails()
+
+        // Then: internal failure messages are not meant for API clients
+        assertThat(errorDetails).isEqualTo("Unknown error")
+    }
 
     @Test
     fun `writes the data on the request thread instead of starting an async response`() {

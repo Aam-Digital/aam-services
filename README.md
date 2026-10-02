@@ -112,14 +112,14 @@ All commands should be run from `application/aam-backend-service/`.
 
 The test suite includes:
 
-- **Unit tests** (JUnit 5 + Mockito) for individual use cases and services
+- **Unit tests** (JUnit Jupiter + Mockito) for individual use cases and services
 - **E2E / integration tests** (Cucumber BDD) that spin up real Docker containers via Testcontainers (Keycloak, CouchDB, Carbone, SQS) and test full API flows. Cucumber feature files are located in `src/test/resources/cucumber/features/`.
 
 Both run together with `./gradlew test`.
 
 ### Running the e2e tests
 
-**Prerequisites:** JDK 21 and a **running Docker daemon** — Testcontainers starts
+**Prerequisites:** JDK 25 and a **running Docker daemon** — Testcontainers starts
 and tears down all the containers itself, so no other local setup (no
 docker-compose, no manual Keycloak) is needed.
 
@@ -182,7 +182,7 @@ spec (and `docs/modules/<module>.md`) in the same change.
 
 ## Running the Application Locally
 
-**Prerequisites:** JDK 21 and a running local dev stack (databases, message queues, Keycloak).
+**Prerequisites:** JDK 25 and a running local dev stack (databases, message queues, Keycloak).
 See [docs/developer/README.md](docs/developer/README.md) for full environment setup instructions.
 
 ```shell
@@ -280,4 +280,5 @@ is recorded durably first and picked up by a scheduled job.
   asked to run it, and `ReportCalculationSweeper` re-triggers anything left `PENDING`.
 - **Webhook callbacks** are delivered on their own bounded executor, fire-and-forget.
 - **Notifications** are written to the `notification-outbox` CouchDB database and delivered by
-  `NotificationOutboxDrainJob`, which owns the retry and backoff policy.
+  `NotificationOutboxDrainJob`, through the generic `OutboxDrainer` that owns the retry and backoff
+  policy (see `common/outbox/README.md`).

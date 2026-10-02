@@ -28,11 +28,8 @@ class DefaultApplyNotificationRulesUseCase(
     private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
 ) : ApplyNotificationRulesUseCase() {
     override fun apply(request: ApplyNotificationRulesRequest): UseCaseOutcome<ApplyNotificationRulesData> {
-        val changedEntity =
-            request.documentChangeEvent.documentId
-                .split(":")
-                .first()
-        val changeType = extractChangeType(request.documentChangeEvent)
+        val changedEntity = request.documentChangeEvent.entityType
+        val changeType = request.documentChangeEvent.changeType
 
         val notificationConfigurations = notificationConfigCache.findAll()
 
@@ -106,23 +103,6 @@ class DefaultApplyNotificationRulesUseCase(
                 triggeredEvents.size
             )
         )
-    }
-
-    private fun extractChangeType(documentChangeEvent: DocumentChangeEvent): String {
-        if (documentChangeEvent.deleted) {
-            return "deleted"
-        }
-
-        // Parse CouchDB revision prefix to determine change type.
-        // Revisions have format "<generation>-<hash>" where generation 1 = created, 2+ = updated.
-        // This is more reliable than checking previousVersion which may be empty even for updates
-        // (e.g. when the previous revision has been purged).
-        val generation = documentChangeEvent.rev.substringBefore("-").toIntOrNull()
-        if (generation != null && generation > 1) {
-            return "updated"
-        }
-
-        return "created"
     }
 
     /**

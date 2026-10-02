@@ -2,169 +2,91 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.core
 
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
+import com.aamdigital.aambackendservice.common.execution.InlineRetry
 import com.aamdigital.aambackendservice.reporting.reportcalculation.usecase.DefaultReportCalculationUseCase
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.observation.Observation
 import io.micrometer.observation.ObservationRegistry
 import org.slf4j.LoggerFactory
-import org.springframework.core.NestedExceptionUtils
-import java.time.Duration
 
 /**
  * Executes one stored report calculation and, when it produced a new result, notifies the webhooks
  * subscribed to that report.
  *
- * Called on the report calculation executor (see [ExecutorReportCalculationTrigger]), so it must
- * never let an exception escape: there is no caller to handle it, and the executor's thread would
- * only hand it to the default handler. A failed calculation is already recorded on the calculation
- * document as `FINISHED_ERROR`, which is what the API serves.
+ * Called off the caller's thread (see [ExecutorReportCalculationTrigger]). This logs every failed
+ * calculation. A failure while the queries run or the result is stored is also recorded on the
+ * calculation document as `FINISHED_ERROR`, which is what the API serves; one that happens before
+ * the calculation and its ReportConfig are loaded leaves the calculation's status as it was.
  *
  * A calculation that failed on invalid input (an [InvalidArgumentException] anywhere in the cause
  * chain, e.g. a ReportConfig whose query SQS rejects) is logged at INFO rather than ERROR: it is a
  * configuration problem of the individual instance, not a backend defect, so it must not raise
- * Sentry alerts.
+ * Sentry alerts. Neither log line quotes the failure message, only the attached exception carries
+ * it: an INFO line still becomes a breadcrumb on later Sentry events, and the message of an invalid
+ * query is SQS's explanation, which can quote the tenant's query.
  *
- * The webhook notification sits in its own try/catch with a bounded retry, because the calculation
- * is complete and persisted by then - failing to notify must not re-run it or re-status it. Three
- * attempts and then give up is the same disposition as before, when the failure was retried by the
- * listener retry policy and then dead-lettered to a queue nothing has ever drained.
+ * The webhook notification gets its own bounded [InlineRetry], because the calculation is complete
+ * and persisted by then - failing to notify must not re-run it or re-status it. It is tried three
+ * times and then given up on.
  */
 class ReportCalculationProcessor(
-    val observationRegistry: ObservationRegistry,
-    val reportCalculationUseCase: DefaultReportCalculationUseCase,
-    val objectMapper: ObjectMapper,
-    val reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
-    private val completionRetryAttempts: Int,
-    private val completionRetryInitialInterval: Duration
+    private val observationRegistry: ObservationRegistry,
+    private val reportCalculationUseCase: DefaultReportCalculationUseCase,
+    private val reportCalculationChangeUseCase: ReportCalculationChangeUseCase,
+    private val completionRetry: InlineRetry
 ) {
-    companion object {
-        private const val COMPLETION_RETRY_MULTIPLIER = 2L
-    }
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     fun process(reportCalculationId: String) {
-        val observation = Observation.createNotStarted("report-calculation-use-case", this.observationRegistry)
+        val observation = Observation.createNotStarted("report-calculation-use-case", observationRegistry)
         observation.lowCardinalityKeyValue("reportCalculationId", reportCalculationId)
         observation.observe {
-            try {
-                runCalculation(reportCalculationId)
-            } catch (ex: Exception) {
-                val rootCause = NestedExceptionUtils.getMostSpecificCause(ex)
-                if (isInvalidInput(ex)) {
-                    logger.info(
-                        "Report calculation {} rejected invalid input: {}",
-                        reportCalculationId,
-                        rootCause.message,
-                        rootCause
-                    )
-                } else {
-                    logger.error(
-                        "Report calculation {} failed unexpectedly: {}",
-                        reportCalculationId,
-                        rootCause.message,
-                        rootCause
-                    )
-                }
+            val outcome =
+                reportCalculationUseCase.run(
+                    request = ReportCalculationRequest(reportCalculationId = reportCalculationId)
+                )
+
+            when (outcome) {
+                is UseCaseOutcome.Failure -> logFailure(reportCalculationId, outcome)
+                is UseCaseOutcome.Success -> notifyCompletion(reportCalculationId)
             }
         }
     }
 
-    private fun runCalculation(reportCalculationId: String) {
-        val response =
-            reportCalculationUseCase.run(
-                request = ReportCalculationRequest(reportCalculationId = reportCalculationId)
+    private fun logFailure(
+        reportCalculationId: String,
+        failure: UseCaseOutcome.Failure<ReportCalculationData>
+    ) {
+        val invalidInput =
+            generateSequence(failure.cause) { it.cause.takeIf { cause -> cause !== it } }
+                .any { it is InvalidArgumentException }
+
+        if (invalidInput) {
+            logger.info(
+                "Report calculation {} rejected invalid input: [{}]",
+                reportCalculationId,
+                failure.errorCode,
+                failure.cause
             )
-
-        when (response) {
-            is UseCaseOutcome.Failure -> {
-                if (isInvalidInput(response.cause)) {
-                    logger.info(
-                        "Report calculation {} rejected invalid input: [{}] {}",
-                        reportCalculationId,
-                        response.errorCode,
-                        response.errorMessage,
-                        response.cause
-                    )
-                } else {
-                    logger.error(
-                        "Report calculation {} failed: [{}] {}",
-                        reportCalculationId,
-                        response.errorCode,
-                        response.errorMessage,
-                        response.cause
-                    )
-                }
-            }
-
-            is UseCaseOutcome.Success -> {
-                logger.trace(objectMapper.writeValueAsString(response))
-                notifyCompletion(reportCalculationId)
-            }
+        } else {
+            logger.error(
+                "Report calculation {} failed: [{}]",
+                reportCalculationId,
+                failure.errorCode,
+                failure.cause
+            )
         }
     }
-
-    private fun isInvalidInput(t: Throwable?): Boolean =
-        generateSequence(t) { it.cause.takeIf { cause -> cause !== it } }
-            .any { it is InvalidArgumentException }
 
     private fun notifyCompletion(reportCalculationId: String) {
         val observation =
             Observation.createNotStarted("report-calculation-completed-use-case", observationRegistry)
         observation.lowCardinalityKeyValue("reportCalculationId", reportCalculationId)
         observation.observe {
-            handleCompletionWithRetry(reportCalculationId)
-        }
-    }
-
-    private fun handleCompletionWithRetry(reportCalculationId: String) {
-        var interval = completionRetryInitialInterval
-
-        for (attempt in 1..completionRetryAttempts) {
-            try {
+            completionRetry.run(
+                "notifying webhook subscribers of completed report calculation $reportCalculationId"
+            ) {
                 reportCalculationChangeUseCase.handle(reportCalculationId)
-                return
-            } catch (ex: Exception) {
-                if (attempt >= completionRetryAttempts) {
-                    // ERROR so this is reported once to Sentry, grouped by its real cause
-                    val rootCause = NestedExceptionUtils.getMostSpecificCause(ex)
-                    logger.error(
-                        "Giving up notifying webhook subscribers of completed report calculation {} " +
-                            "after {} attempts: {}",
-                        reportCalculationId,
-                        completionRetryAttempts,
-                        rootCause.message,
-                        rootCause
-                    )
-                    return
-                }
-
-                logger.warn(
-                    "Could not notify webhook subscribers of completed report calculation {} " +
-                        "(attempt {} of {}), retrying in {}ms: {}",
-                    reportCalculationId,
-                    attempt,
-                    completionRetryAttempts,
-                    interval.toMillis(),
-                    ex.localizedMessage
-                )
-
-                sleepBeforeRetry(interval)
-                interval = interval.multipliedBy(COMPLETION_RETRY_MULTIPLIER)
             }
-        }
-    }
-
-    private fun sleepBeforeRetry(interval: Duration) {
-        if (interval.isZero || interval.isNegative) {
-            return
-        }
-
-        try {
-            Thread.sleep(interval.toMillis())
-        } catch (ex: InterruptedException) {
-            Thread.currentThread().interrupt()
-            logger.debug("interrupted while waiting to retry completion notification", ex)
         }
     }
 }

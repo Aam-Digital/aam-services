@@ -44,9 +44,7 @@ class CouchDbFileStorage(
                 .body { outputStream ->
                     handleInputStreamToOutputStream(outputStream, file)
                 }.headers {
-                    fileHeaders.forEach { (key, value) ->
-                        it[key] = value
-                    }
+                    it.putAll(fileHeaders)
                 }.retrieve()
                 .body(String::class.java)
 
@@ -135,10 +133,7 @@ class CouchDbFileStorage(
                             code = DefaultCouchDbClientErrorCode.INVALID_RESPONSE
                         )
                     }
-                } ?: throw ExternalSystemException(
-                message = "Exchange returned null HttpHeaders for path: $path",
-                code = DefaultCouchDbClientErrorCode.EMPTY_RESPONSE
-            )
+                }
 
         val etag = fileHeaders.eTag?.replace("\"", "")
 

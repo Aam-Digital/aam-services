@@ -156,9 +156,6 @@ class SkillLabClient(
                         code = SkillLabUserProfileStorageAamErrorCode.INTERNAL_SERVER_ERROR
                     )
                 }
-            } ?: throw ExternalSystemException(
-            message = "Exchange returned null response when fetching user profiles",
-            code = SkillLabUserProfileStorageAamErrorCode.EMPTY_RESPONSE
-        )
+            }
     }
 }

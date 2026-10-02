@@ -1,10 +1,11 @@
 package com.aamdigital.aambackendservice.reporting.report.core
 
-import com.aamdigital.aambackendservice.common.changes.AbstractDocumentChangeHandler
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
+import com.aamdigital.aambackendservice.common.changes.DocumentChangeHandler
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationRequest
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationDebouncer
 import com.aamdigital.aambackendservice.reporting.webhook.storage.WebhookSubscriptionCache
+import org.slf4j.LoggerFactory
 
 /**
  * Recalculates the reports affected by a document change, for the reports a webhook subscribed to.
@@ -20,8 +21,12 @@ class ReportDocumentChangeHandler(
     private val reportCalculationDebouncer: ReportCalculationDebouncer,
     private val identifyAffectedReportsUseCase: IdentifyAffectedReportsUseCase,
     private val webhookSubscriptionCache: WebhookSubscriptionCache
-) : AbstractDocumentChangeHandler(consumerName = "reporting") {
-    override fun onChange(event: DocumentChangeEvent) {
+) : DocumentChangeHandler {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
+    override val consumerName = "reporting"
+
+    override fun handle(event: DocumentChangeEvent) {
         val affectedReports = identifyAffectedReportsUseCase.analyse(documentChangeEvent = event)
 
         if (affectedReports.isEmpty()) {

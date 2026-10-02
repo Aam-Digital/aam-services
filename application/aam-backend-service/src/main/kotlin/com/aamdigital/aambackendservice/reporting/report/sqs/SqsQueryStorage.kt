@@ -4,7 +4,9 @@ import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.reporting.report.core.QueryStorage
+import org.slf4j.LoggerFactory
 import org.springframework.core.io.Resource
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.client.ClientHttpResponse
 import org.springframework.web.client.RestClient
@@ -15,17 +17,34 @@ data class QueryRequest(
     val args: List<String>
 )
 
+/**
+ * Runs report queries on SQS.
+ *
+ * The body of an SQS error response can quote the tenant's query, so it is kept only where the
+ * report author needs it:
+ * - A 400 means the query is invalid. The body is SQS's explanation of why and stays in the
+ *   [InvalidArgumentException] message, which becomes the calculation's `errorDetails` that the API
+ *   returns to the report editor. A calculation failing with this cause is only logged at INFO.
+ * - Any other error status (e.g. wrong credentials or a failure of SQS itself) is not the report
+ *   author's to fix and is logged at ERROR, where the exception message becomes the title of a
+ *   Sentry event. That message leaves the body out, which is logged at DEBUG instead.
+ */
 class SqsQueryStorage(
     private val sqsClient: RestClient,
     private val schemaService: SqsSchemaService
 ) : QueryStorage {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     enum class SqsQueryStorageErrorCode : AamErrorCode {
         EMPTY_RESPONSE,
 
-        /** SQS rejected the query (4xx) - typically an invalid query in the ReportConfig. */
+        /** SQS rejected the query as invalid (400) - an invalid query in the ReportConfig. */
         QUERY_FAILED,
 
-        /** SQS failed to execute the query (5xx). */
+        /**
+         * SQS answered with any other error status: another 4xx (e.g. wrong credentials or a missing
+         * design document) or a 5xx.
+         */
         QUERY_EXECUTION_FAILED,
     }
 
@@ -46,19 +65,28 @@ class SqsQueryStorage(
                 .body(query)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
-                // translate transport-level errors into typed AamExceptions that carry the SQS response
-                // body, so an invalid ReportConfig query surfaces with an actionable message instead of an
-                // opaque, untyped HttpClientErrorException
-                .onStatus({ it.is4xxClientError }) { _, clientResponse ->
+                // translate error statuses into typed AamExceptions instead of an untyped
+                // HttpClientErrorException. Only a 400 means the query itself is invalid, which is the
+                // report author's to fix; any other error status is a problem of SQS or its deployment
+                // and must alert. The first matching handler applies, so the 400 one has to come first.
+                .onStatus({ it.isSameCodeAs(HttpStatus.BAD_REQUEST) }) { _, clientResponse ->
                     throw InvalidArgumentException(
                         message = "[SqsQueryStorage] SQS rejected the query for report '$reportId' " +
                             "(${clientResponse.statusCode}): ${readErrorBody(clientResponse)}",
                         code = SqsQueryStorageErrorCode.QUERY_FAILED,
                     )
-                }.onStatus({ it.is5xxServerError }) { _, clientResponse ->
+                }.onStatus({ it.isError }) { _, clientResponse ->
+                    if (logger.isDebugEnabled) {
+                        logger.debug(
+                            "[SqsQueryStorage] SQS response to the query for report {} ({}): {}",
+                            reportId,
+                            clientResponse.statusCode,
+                            readErrorBody(clientResponse)
+                        )
+                    }
                     throw ExternalSystemException(
                         message = "[SqsQueryStorage] SQS failed to execute the query for report '$reportId' " +
-                            "(${clientResponse.statusCode}): ${readErrorBody(clientResponse)}",
+                            "(${clientResponse.statusCode})",
                         code = SqsQueryStorageErrorCode.QUERY_EXECUTION_FAILED,
                     )
                 }.body(Resource::class.java)

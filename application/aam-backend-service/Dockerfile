@@ -1,4 +1,4 @@
-FROM gradle:9.7.1-jdk21-alpine AS BUILD
+FROM gradle:9.7.1-jdk25-alpine AS BUILD
 WORKDIR /opt/app
 COPY . .
 # With SENTRY_UPLOAD_SOURCES=true the sources of this build are bundled and uploaded, so Sentry
@@ -25,11 +25,11 @@ RUN --mount=type=secret,id=sentry_auth_token \
       gradle installDist; \
     fi
 
-# Pinned to a full JDK patch version on purpose. The floating "21-alpine" tag never changes,
+# Pinned to a full JDK patch version on purpose. The floating "25-alpine" tag never changes,
 # so Renovate had nothing to update and a JDK security fix produced no signal at all — the
 # published release image would keep the old runtime until someone happened to cut a release.
 # The alpine base is left floating so OS patches still flow in on every build.
-FROM amazoncorretto:21.0.12-alpine
+FROM amazoncorretto:25.0.4-alpine
 WORKDIR /opt/app
 COPY --from=BUILD /opt/app/build/install/aam-backend-service /opt/app
 # Consumed at runtime as sentry.release (see application.yaml) so error events are tagged with a

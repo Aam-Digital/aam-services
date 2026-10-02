@@ -1,9 +1,11 @@
 package com.aamdigital.aambackendservice.thirdpartyauthentication.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.keycloak.core.ClientScopeRequest
 import com.aamdigital.aambackendservice.thirdpartyauthentication.ConditionalOnThirdPartyAuthenticationEnabled
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
+import com.aamdigital.aambackendservice.thirdpartyauthentication.ThirdPartyAuthenticationScopes
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.AuthenticationProvider
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.AuthenticationSessionStore
@@ -26,6 +28,14 @@ class AuthenticationConfiguration {
         /** How long a login ticket can be redeemed after it was issued. */
         val SESSION_VALIDITY: Duration = Duration.ofMinutes(5)
     }
+
+    @Bean("third-party-authentication-client-scope-request")
+    fun thirdPartyAuthenticationClientScopeRequest(): ClientScopeRequest =
+        ClientScopeRequest(
+            name = ThirdPartyAuthenticationScopes.SESSION_PROVIDER,
+            description = "Access to create user sessions through the third-party-authentication API",
+            replacesRealmRole = ThirdPartyAuthenticationScopes.LEGACY_PROVIDER_ROLE
+        )
 
     @Bean
     fun passwordEncoder(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()

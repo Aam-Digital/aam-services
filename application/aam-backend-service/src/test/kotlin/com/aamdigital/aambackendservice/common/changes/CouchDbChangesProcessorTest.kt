@@ -299,8 +299,6 @@ class CouchDbChangesProcessorTest {
                     pending = 0
                 )
             )
-        whenever(couchDbClient.getPreviousDocumentRevision(any(), any(), any(), eq(ObjectNode::class)))
-            .thenReturn(Optional.of(objectMapper.createObjectNode()))
         whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
 
         service.checkForChanges(handler)
@@ -322,8 +320,6 @@ class CouchDbChangesProcessorTest {
             .thenReturn(
                 CouchDbChangesResponse(lastSeq = "seq-1", results = listOf(change("X:1", "seq-1")), pending = 0)
             )
-        whenever(couchDbClient.getPreviousDocumentRevision(any(), any(), any(), eq(ObjectNode::class)))
-            .thenReturn(Optional.of(objectMapper.createObjectNode()))
         whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
 
         service.checkForChanges(RecordingHandler(consumerName = "reporting"))
@@ -348,13 +344,72 @@ class CouchDbChangesProcessorTest {
                     pending = 0
                 )
             )
-        whenever(couchDbClient.getPreviousDocumentRevision(any(), any(), any(), eq(ObjectNode::class)))
-            .thenReturn(Optional.of(objectMapper.createObjectNode()))
         whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
 
         service.checkForChanges(failingHandler)
 
         assertThat(failingHandler.received.map { it.documentId }).containsExactly("X:1", "X:2")
         verify(syncRepository).save(eq(cursor("seq-2")))
+    }
+
+    @Test
+    fun `should not read the previous revision when no handler asks for it`() {
+        // the feed already carries the current document; the previous revision is an extra round
+        // trip per change *per consumer*, so it must not be paid for speculatively
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
+        whenever(syncRepository.findByDatabase("app", "test")).thenReturn(Optional.of(cursor("seq-0")))
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
+            .thenReturn(
+                CouchDbChangesResponse(
+                    lastSeq = "seq-2",
+                    results = listOf(change("X:1", "seq-1"), change("X:2", "seq-2")),
+                    pending = 0
+                )
+            )
+        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
+
+        service.checkForChanges(handler)
+
+        // deliberately does not touch event.previousVersion, which would load it
+        assertThat(handler.received.map { it.documentId }).containsExactly("X:1", "X:2")
+        verify(couchDbClient, never()).getPreviousDocumentRevision(any(), any(), any(), eq(ObjectNode::class))
+    }
+
+    @Test
+    fun `should read the previous revision only once however often a handler asks`() {
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
+        whenever(syncRepository.findByDatabase("app", "test")).thenReturn(Optional.of(cursor("seq-0")))
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
+            .thenReturn(
+                CouchDbChangesResponse(lastSeq = "seq-1", results = listOf(change("X:1", "seq-1")), pending = 0)
+            )
+        whenever(couchDbClient.getPreviousDocumentRevision(eq("app"), eq("X:1"), eq("1-a"), eq(ObjectNode::class)))
+            .thenReturn(Optional.of(objectMapper.createObjectNode().put("name", "Bob")))
+        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
+
+        service.checkForChanges(handler)
+
+        val event = handler.received.single()
+        assertThat(event.previousVersion["name"]).isEqualTo("Bob")
+        assertThat(event.previousVersion["name"]).isEqualTo("Bob")
+        verify(couchDbClient, times(1))
+            .getPreviousDocumentRevision(eq("app"), eq("X:1"), eq("1-a"), eq(ObjectNode::class))
+    }
+
+    @Test
+    fun `should list the databases to poll once for several consumers`() {
+        // every consumer polls on its own thread and would otherwise compute the same list per tick
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
+        whenever(syncRepository.findByDatabase(eq("app"), any())).thenAnswer {
+            Optional.of(SyncEntry(database = "app", latestRef = "seq-1", consumer = it.arguments[1] as String))
+        }
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
+            .thenReturn(CouchDbChangesResponse(lastSeq = "seq-1", results = emptyList(), pending = 0))
+
+        service.checkForChanges(RecordingHandler(consumerName = "reporting"))
+        service.checkForChanges(RecordingHandler(consumerName = "notification"))
+
+        verify(couchDbClient, times(1)).allDatabases()
+        verify(couchDbClient, times(2)).getDatabaseChanges(eq("app"), any())
     }
 }

@@ -3,11 +3,14 @@ package com.aamdigital.aambackendservice.thirdpartyauthentication.controller
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.security.AamAuthorities
+import com.aamdigital.aambackendservice.common.security.tokenSubject
 import com.aamdigital.aambackendservice.thirdpartyauthentication.ConditionalOnThirdPartyAuthenticationEnabled
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCaseRequest
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCaseRequest
+import com.aamdigital.aambackendservice.thirdpartyauthentication.ThirdPartyAuthenticationScopes
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCaseRequest
 import jakarta.validation.constraints.Email
@@ -61,8 +64,14 @@ class ThirdPartyAuthenticationController(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    // TODO: stop accepting the legacy realm role with the next major version (#221)
     @PostMapping("/session")
-    @PreAuthorize("hasAuthority('ROLE_third-party-authentication-provider')")
+    @PreAuthorize(
+        "hasAnyAuthority(" +
+            "'${AamAuthorities.SCOPE_PREFIX}${ThirdPartyAuthenticationScopes.SESSION_PROVIDER}', " +
+            "'${AamAuthorities.ROLE_PREFIX}${ThirdPartyAuthenticationScopes.LEGACY_PROVIDER_ROLE}'" +
+            ")"
+    )
     fun startSession(
         @RequestBody userSessionRequest: UserSessionRequest
     ): ResponseEntity<Any> {
@@ -95,7 +104,12 @@ class ThirdPartyAuthenticationController(
             }
 
             is UseCaseOutcome.Failure -> {
-                logger.warn(response.errorMessage, response.errorCode, response.cause)
+                logger.warn(
+                    "[POST /session]: Failed to create session: [{}] {}",
+                    response.errorCode,
+                    response.errorMessage,
+                    response.cause
+                )
                 ResponseEntity.badRequest().body(
                     HttpErrorDto(
                         errorMessage = response.errorMessage,
@@ -131,7 +145,11 @@ class ThirdPartyAuthenticationController(
 
             is UseCaseOutcome.Failure -> {
                 logger.warn(
-                    "[GET /session/{sessionId}]: Failed to validate session $sessionId: ${response.errorMessage}"
+                    "[GET /session/{sessionId}]: Failed to validate session {}: [{}] {}",
+                    sessionId,
+                    response.errorCode,
+                    response.errorMessage,
+                    response.cause
                 )
                 ResponseEntity.badRequest().body(
                     HttpErrorDto(
@@ -152,7 +170,7 @@ class ThirdPartyAuthenticationController(
             sessionRedirectUseCase.run(
                 SessionRedirectUseCaseRequest(
                     sessionId = sessionId,
-                    userId = principal.name
+                    userId = checkNotNull(principal.tokenSubject) { "No subject found in the token." }
                 )
             )
 
@@ -167,7 +185,11 @@ class ThirdPartyAuthenticationController(
 
             is UseCaseOutcome.Failure -> {
                 logger.warn(
-                    "[GET /session/{sessionId}/redirect]: Failed to return redirect for session $sessionId: ${response.errorMessage}"
+                    "[GET /session/{sessionId}/redirect]: Failed to return redirect for session {}: [{}] {}",
+                    sessionId,
+                    response.errorCode,
+                    response.errorMessage,
+                    response.cause
                 )
                 ResponseEntity.badRequest().body(
                     HttpErrorDto(

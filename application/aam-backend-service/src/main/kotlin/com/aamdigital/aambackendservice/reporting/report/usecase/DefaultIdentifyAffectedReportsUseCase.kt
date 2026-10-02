@@ -14,7 +14,7 @@ class DefaultIdentifyAffectedReportsUseCase(
     override fun analyse(documentChangeEvent: DocumentChangeEvent): List<DomainReference> {
         logger.trace("analyzing document change for auto report calculation {}", documentChangeEvent.documentId)
 
-        val changedEntity = documentChangeEvent.documentId.split(":").first()
+        val changedEntity = documentChangeEvent.entityType
 
         // special handling if ReportConfig changed
         if (changedEntity == "ReportConfig") {

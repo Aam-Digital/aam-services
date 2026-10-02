@@ -45,7 +45,7 @@ class DefaultVerifySessionUseCaseTest {
                 sessionId = sessionId,
                 userId = "keycloak-user-1",
                 externalUserId = "external-user-1",
-                sessionTokenHash = passwordEncoder.encode(sessionToken),
+                sessionTokenHash = checkNotNull(passwordEncoder.encode(sessionToken)),
                 validUntil = validUntil
             )
         )
