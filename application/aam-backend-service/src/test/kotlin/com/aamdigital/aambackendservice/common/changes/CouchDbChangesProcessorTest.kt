@@ -412,4 +412,69 @@ class CouchDbChangesProcessorTest {
         verify(couchDbClient, times(1)).allDatabases()
         verify(couchDbClient, times(2)).getDatabaseChanges(eq("app"), any())
     }
+
+    @Test
+    fun `should keep reading batches right away while changes are pending`() {
+        // a bulk edit must not wait one polling interval per batch of changes
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
+        whenever(syncRepository.findByDatabase("app", "test")).thenReturn(Optional.of(cursor("seq-0")))
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), argThat { getFirst("last-event-id") == "seq-0" }))
+            .thenReturn(
+                CouchDbChangesResponse(
+                    lastSeq = "seq-2",
+                    results = listOf(change("X:1", "seq-1"), change("X:2", "seq-2")),
+                    pending = 1
+                )
+            )
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), argThat { getFirst("last-event-id") == "seq-2" }))
+            .thenReturn(
+                CouchDbChangesResponse(lastSeq = "seq-3", results = listOf(change("X:3", "seq-3")), pending = 0)
+            )
+        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
+
+        service.checkForChanges(handler)
+
+        assertThat(handler.received.map { it.documentId }).containsExactly("X:1", "X:2", "X:3")
+        verify(couchDbClient, times(2)).getDatabaseChanges(eq("app"), any())
+        verify(syncRepository).save(eq(cursor("seq-3")))
+    }
+
+    @Test
+    fun `should stop reading when a batch is empty although changes are reported pending`() {
+        // CouchDB's pending count is an estimate in a cluster; without results the cursor cannot
+        // move, so asking again would loop on the same position
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
+        whenever(syncRepository.findByDatabase("app", "test")).thenReturn(Optional.of(cursor("seq-0")))
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
+            .thenReturn(CouchDbChangesResponse(lastSeq = "seq-0", results = emptyList(), pending = 3))
+
+        service.checkForChanges(handler)
+
+        verify(couchDbClient, times(1)).getDatabaseChanges(eq("app"), any())
+        verify(syncRepository, never()).save(any())
+    }
+
+    @Test
+    fun `should leave the rest of a backlog to the next poll after the maximum number of batches`() {
+        // bounds how long one poll holds its scheduler thread under a never-ending stream of writes
+        whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
+        whenever(syncRepository.findByDatabase("app", "test")).thenReturn(Optional.of(cursor("seq-0")))
+        var batch = 0
+        whenever(couchDbClient.getDatabaseChanges(eq("app"), any())).thenAnswer {
+            batch++
+            CouchDbChangesResponse(
+                lastSeq = "seq-$batch",
+                results = listOf(change("X:$batch", "seq-$batch")),
+                pending = 1
+            )
+        }
+        whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
+
+        service.checkForChanges(handler)
+
+        val maxBatches = CouchDbChangesProcessor.MAX_BATCHES_PER_POLL
+        verify(couchDbClient, times(maxBatches)).getDatabaseChanges(eq("app"), any())
+        assertThat(handler.received).hasSize(maxBatches)
+        verify(syncRepository).save(eq(cursor("seq-$maxBatches")))
+    }
 }
