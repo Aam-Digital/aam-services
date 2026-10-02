@@ -20,8 +20,14 @@ import org.springframework.scheduling.annotation.Scheduled
 class NotificationOutboxDrainJob(
     private val notificationOutbox: Outbox<CreateUserNotificationEvent>
 ) {
+    companion object {
+        /** Bounds how long notification delivery stays stalled after an outage has ended. */
+        const val MAX_BACKOFF_MS = 300_000L // 5 minutes
+    }
+
     private val logger = LoggerFactory.getLogger(javaClass)
-    internal val backoff = ScheduledJobBackoff(logger, "NotificationOutboxDrainJob")
+    internal val backoff =
+        ScheduledJobBackoff(logger, "NotificationOutboxDrainJob", maxBackoffMs = MAX_BACKOFF_MS)
 
     @Scheduled(fixedDelayString = "\${notification.outbox.fixed-delay:2000}")
     fun drainNotificationOutbox() {
