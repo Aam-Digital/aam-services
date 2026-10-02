@@ -119,15 +119,15 @@ class SyncSkillsJobTest {
         // Trigger enough failures to exceed 24h cap
         repeat(20) {
             job.checkForSkillLabChanges()
-            currentTime += ScheduledJobBackoff.MAX_BACKOFF_MS
+            currentTime += ScheduledJobBackoff.DEFAULT_MAX_BACKOFF_MS
         }
 
-        // After 20 failures, next backoff should be capped at MAX_BACKOFF_MS
+        // After 20 failures, next backoff should be capped at DEFAULT_MAX_BACKOFF_MS
         val timeBefore = currentTime
         job.checkForSkillLabChanges()
 
-        // Verify the job resumes at exactly timeBefore + MAX_BACKOFF_MS
-        currentTime = timeBefore + ScheduledJobBackoff.MAX_BACKOFF_MS
+        // Verify the job resumes at exactly timeBefore + DEFAULT_MAX_BACKOFF_MS
+        currentTime = timeBefore + ScheduledJobBackoff.DEFAULT_MAX_BACKOFF_MS
         job.checkForSkillLabChanges()
     }
 
