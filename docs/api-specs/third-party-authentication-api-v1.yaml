@@ -43,7 +43,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         403:
-          description: The access token has neither the third_party_authentication client scope nor the (deprecated) third-party-authentication-provider realm role
+          description: The access token does not have the third_party_authentication client scope
           content:
             application/json:
               schema:
@@ -124,8 +124,6 @@ components:
         OAuth2 Client Credentials Flow of the external system's Keycloak client.
         The client needs the third_party_authentication client scope assigned as "Default" client scope,
         so that it is included in its access tokens.
-        Deprecated: until the backend has migrated it to this scope, the realm role
-        third-party-authentication-provider is accepted as well.
       flows:
         clientCredentials:
           tokenUrl: https://keycloak.aam-digital.net/realms/your-realm/protocol/openid-connect/token

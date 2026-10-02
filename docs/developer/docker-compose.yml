@@ -162,29 +162,14 @@ services:
     external_links:
       - reverse-proxy:aam.localhost
     depends_on:
-      aam-backend-service-db:
-        condition: service_started
       reverse-proxy:
         condition: service_healthy
     env_file:
       - .env
     environment:
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-} # (macOS only) bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
-      # In container, use Docker service DNS for postgres instead of localhost
-      SPRING_DATASOURCE_URL: jdbc:postgresql://aam-backend-service-db:5432/aam-backend-service
       # Use mounted Caddy CA cert instead of classpath resource in prebuilt Docker image
       SPRING_SSL_BUNDLE_PEM_LOCAL_DEVELOPMENT_TRUSTSTORE_CERTIFICATE: file:/opt/app/reverse-proxy.crt
-
-  aam-backend-service-db:
-    image: postgres:16.15-bookworm
-    networks:
-      - aam-digital
-    environment:
-      POSTGRES_DB: aam-backend-service
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: docker
-    ports:
-      - "5402:5432"
 
   # ***************************************************************
   # aam-backend-service feature dependencies (todo: os specific platform and images)

@@ -159,26 +159,4 @@ class CouchDbSyncRepositoryTest {
         verify(couchDbClient).putDatabaseDocumentAtRevision(any(), eq("SyncEntry:app:reporting"), any(), eq("1-r"))
         verify(couchDbClient).putDatabaseDocumentAtRevision(any(), eq("SyncEntry:app:notification"), any(), eq("1-n"))
     }
-
-    @Test
-    fun `keeps the cursor from before consumers had their own under its old id`() {
-        stubStoredCursor("SyncEntry:app")
-            .thenReturn(SyncEntryDocument(database = "app", latestRef = "seq-shared", rev = "7-s"))
-
-        assertThat(repository.findByDatabase("app", consumer = null)).contains(SyncEntry("app", "seq-shared"))
-    }
-
-    @Test
-    fun `deletes a cursor and reads it afresh afterwards`() {
-        stubStoredCursor("SyncEntry:app")
-            .thenReturn(SyncEntryDocument(database = "app", latestRef = "seq-shared", rev = "7-s"))
-            .thenThrow(NotFoundException(code = TestErrorCode.TEST_EXCEPTION))
-        whenever(couchDbClient.databaseExists(BACKEND_STATE_DATABASE)).thenReturn(true)
-        val shared = repository.findByDatabase("app", consumer = null).get()
-
-        repository.delete(shared)
-
-        verify(couchDbClient).deleteDatabaseDocument(BACKEND_STATE_DATABASE, "SyncEntry:app")
-        assertThat(repository.findByDatabase("app", consumer = null)).isEmpty()
-    }
 }

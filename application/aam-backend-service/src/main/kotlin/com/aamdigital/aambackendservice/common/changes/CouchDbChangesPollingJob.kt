@@ -24,7 +24,6 @@ import java.time.Duration
 class CouchDbChangesPollingJob(
     private val changesProcessor: CouchDbChangesProcessor,
     documentChangeHandlers: List<DocumentChangeHandler>,
-    private val sharedSyncEntryMigration: SharedSyncEntryMigration,
     private val fixedDelay: Duration
 ) : SchedulingConfigurer {
     internal val pollers: List<ChangeConsumerPoller>
@@ -43,7 +42,6 @@ class CouchDbChangesPollingJob(
         pollers =
             documentChangeHandlers.map { handler ->
                 ChangeConsumerPoller(handler.consumerName) {
-                    sharedSyncEntryMigration.migrateIfPending()
                     changesProcessor.checkForChanges(handler)
                 }
             }

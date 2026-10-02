@@ -14,9 +14,6 @@ object TestImages {
     // renovate: datasource=docker depName=couchdb
     const val COUCHDB = "3.5.2"
 
-    // renovate: datasource=docker depName=postgres
-    const val POSTGRES = "16.14-bookworm"
-
     // Upstream replaced the plain numeric tags with full-/slim- prefixed ones and has moved
     // on to 5.x, so updating this is a behaviour change for the export module rather than a
     // version bump. renovate.json groups it with the dev stack's carbone service and forces

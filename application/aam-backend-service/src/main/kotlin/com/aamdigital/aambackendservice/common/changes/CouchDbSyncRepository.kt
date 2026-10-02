@@ -13,14 +13,13 @@ import java.util.concurrent.ConcurrentHashMap
 internal data class SyncEntryDocument(
     val database: String,
     val latestRef: String,
-    val consumer: String? = null,
+    val consumer: String,
     @JsonProperty("_rev") val rev: String
 )
 
 /**
  * [SyncRepository] backed by one CouchDB document per watched database and change consumer,
- * `SyncEntry:<database>:<consumer>`. The shared cursor from before every consumer had its own is
- * `SyncEntry:<database>`, until [SharedSyncEntryMigration] has split it up.
+ * `SyncEntry:<database>:<consumer>`.
  *
  * The documents live in [BACKEND_STATE_DATABASE] rather than in a watched database: writing the
  * cursor into a database that change detection polls would make every write produce a change,
@@ -59,7 +58,7 @@ class CouchDbSyncRepository(
 
     override fun findByDatabase(
         database: String,
-        consumer: String?
+        consumer: String
     ): Optional<SyncEntry> {
         val documentId = documentId(database, consumer)
         known[documentId]?.let { return Optional.of(it.entry) }
@@ -116,14 +115,8 @@ class CouchDbSyncRepository(
         return syncEntry
     }
 
-    override fun delete(syncEntry: SyncEntry) {
-        val documentId = documentId(syncEntry.database, syncEntry.consumer)
-        known.remove(documentId)
-        couchDbClient.deleteDatabaseDocument(database = BACKEND_STATE_DATABASE, documentId = documentId)
-    }
-
     private fun documentId(
         database: String,
-        consumer: String?
-    ) = if (consumer == null) "$DOCUMENT_PREFIX:$database" else "$DOCUMENT_PREFIX:$database:$consumer"
+        consumer: String
+    ) = "$DOCUMENT_PREFIX:$database:$consumer"
 }
