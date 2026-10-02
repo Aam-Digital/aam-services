@@ -20,7 +20,7 @@ Feature: Third-party authentication SSO session API
 
     # dummy-client holds the legacy third-party-authentication-provider realm role in the imported realm;
     # on startup the backend gives it the third_party_authentication client scope instead and deletes the role.
-    # Checked on the token itself, because the deprecated role would still grant access to the endpoint.
+    # Checked on the token itself, because only the token shows that the role is gone.
     Scenario: The startup migration replaces the legacy realm role with the client scope
         Given signed in as client dummy-client with secret client-secret in realm dummy-realm
         Then the access token contains client scope third_party_authentication

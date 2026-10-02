@@ -91,8 +91,7 @@ This is different from the Client shared with the external system!
      If it is missing, create it manually under "Client scopes" (protocol OpenID Connect, "Include in token scope" on).
 
 `POST /v1/third-party-authentication/session` rejects tokens without the `third_party_authentication` scope
-with `403`. (For the transition, tokens with the deprecated realm role `third-party-authentication-provider`
-are accepted as well, see below.)
+with `403`.
 
 #### Keycloak client scope setup and migration from the realm role
 On every startup, the backend makes sure the `third_party_authentication` client scope exists in the realm.
@@ -107,15 +106,10 @@ If one of these steps fails (e.g. missing permissions of the `aam-backend` clien
 keeps the role, and retries on the next startup.
 The role is also kept (and nothing is migrated) if an existing `third_party_authentication` client scope has
 "Include in token scope" disabled.
-As long as the role exists, the backend still accepts it instead of the client scope, so the external system
-keeps working until the migration succeeds.
-This fallback is deprecated and will be removed with the next major version:
-from then on, only the `third_party_authentication` client scope grants access.
-
-> **Before upgrading to the next major version**, make sure the migration has run
-> (the realm role `third-party-authentication-provider` no longer exists).
-> For that, the `aam-backend` service account needs the `realm-management` roles `manage-clients`, `view-users` and
-> `manage-realm` (all included in `realm-admin`), and the `KEYCLOAK_*` variables have to be set.
+The role itself does not grant access: until the migration has run (or the client scope has been assigned
+manually), the external system is rejected with `403`.
+For the migration, the `aam-backend` service account needs the `realm-management` roles `manage-clients`,
+`view-users` and `manage-realm` (all included in `realm-admin`), and the `KEYCLOAK_*` variables have to be set.
 
 Note that backend versions from before this change rely on the role and stop accepting the external system
 once the role is deleted.
