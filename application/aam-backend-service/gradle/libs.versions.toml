@@ -36,7 +36,7 @@ junitJsonParams = "5.10.2-r0"
 parsson = "1.1.9"
 okhttp = "5.5.0"
 # Supplies its own default Keycloak image, which is what the e2e suite runs against.
-testcontainersKeycloak = "4.3.1"
+testcontainersKeycloak = "4.4.0"
 swaggerRequestValidator = "3.0.0"
 
 # --- security constraints (see the constraints block in build.gradle.kts) ---
