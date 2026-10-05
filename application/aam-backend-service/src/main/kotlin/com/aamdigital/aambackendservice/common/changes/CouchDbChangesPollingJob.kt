@@ -57,16 +57,25 @@ class CouchDbChangesPollingJob(
 }
 
 /**
- * One consumer's poll, with exponential backoff on consecutive failures (capped at one retry per
- * day) that resets on the next successful run. The backoff is per consumer, so one consumer
- * failing does not slow down the others.
+ * One consumer's poll, with exponential backoff on consecutive failures (capped at
+ * [MAX_BACKOFF_MS]) that resets on the next successful run. The backoff is per consumer, so one
+ * consumer failing does not slow down the others.
  */
 class ChangeConsumerPoller(
     val consumerName: String,
     private val poll: () -> Unit
 ) {
+    companion object {
+        /**
+         * Change detection is the only way changes reach notifications and reporting, so after an
+         * outage it should resume within minutes, not on the default once-a-day retry.
+         */
+        const val MAX_BACKOFF_MS = 300_000L // 5 minutes
+    }
+
     private val logger = LoggerFactory.getLogger(javaClass)
-    internal val backoff = ScheduledJobBackoff(logger, "CouchDbChangesPollingJob:$consumerName")
+    internal val backoff =
+        ScheduledJobBackoff(logger, "CouchDbChangesPollingJob:$consumerName", maxBackoffMs = MAX_BACKOFF_MS)
 
     fun run() = backoff.run(poll)
 }

@@ -18,8 +18,13 @@ import org.springframework.scheduling.annotation.Scheduled
 class ReportCalculationSweepJob(
     private val reportCalculationSweeper: ReportCalculationSweeper
 ) {
+    companion object {
+        const val MAX_BACKOFF_MS = 3_600_000L // 1 hour
+    }
+
     private val logger = LoggerFactory.getLogger(javaClass)
-    internal val backoff = ScheduledJobBackoff(logger, "ReportCalculationSweepJob")
+    internal val backoff =
+        ScheduledJobBackoff(logger, "ReportCalculationSweepJob", maxBackoffMs = MAX_BACKOFF_MS)
 
     @Scheduled(fixedDelayString = "\${report-calculation-sweeper.fixed-delay:300000}")
     fun sweepStalePendingReportCalculations() {

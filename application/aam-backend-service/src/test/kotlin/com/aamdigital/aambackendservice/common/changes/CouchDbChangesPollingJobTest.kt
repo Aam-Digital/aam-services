@@ -1,6 +1,5 @@
 package com.aamdigital.aambackendservice.common.changes
 
-import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Nested
@@ -193,17 +192,17 @@ class CouchDbChangesPollingJobTest {
         }
 
         @Test
-        fun `should cap backoff delay at 24 hours`() {
+        fun capsBackoffDelayAtFiveMinutes() {
             failNext(25)
 
             repeat(20) {
                 poller.run()
-                currentTime += ScheduledJobBackoff.MAX_BACKOFF_MS
+                currentTime += ChangeConsumerPoller.MAX_BACKOFF_MS
             }
             val pollsBefore = polls
 
             poller.run()
-            currentTime += ScheduledJobBackoff.MAX_BACKOFF_MS - 1
+            currentTime += ChangeConsumerPoller.MAX_BACKOFF_MS - 1
             poller.run()
             assertThat(polls).isEqualTo(pollsBefore + 1)
 
