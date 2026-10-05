@@ -30,7 +30,7 @@ firebaseAdmin = "9.11.0"
 postgresql = "42.7.13"
 
 # --- test ---
-cucumber = "7.34.9"
+cucumber = "8.0.4"
 mockitoKotlin = "6.4.0"
 junitJsonParams = "5.10.2-r0"
 parsson = "1.1.9"
