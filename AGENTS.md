@@ -191,21 +191,10 @@ internal tools (e.g. Sentry issues) are acceptable.
 An issue that is planned for implementation has two parts with two different readers. Keep them
 separate, so a reviewer gets the point in a minute and an implementer finds everything in one place.
 
-**Issue description: the objective**, for reviewers and anyone triaging. Short and not too
-technical: no code, config keys or file paths unless they are the point.
-
-```markdown
-## What
-The intended outcome, as observable behaviour. What is explicitly out of scope.
-
-## Why
-The problem and who is affected by it (users, admins, operators), in a few sentences.
-
-## How
-The approach in a few sentences. A small table or list where it helps to compare options or parts.
-
-Implementation plan: <link to the plan comment>
-```
+**Issue description: the objective**, for reviewers and anyone triaging. Use the templates in
+`.github/ISSUE_TEMPLATE/` (feature request, bug report, technical task); all follow **What / Why /
+How** and end with a link to the implementation plan. Keep it short and not too technical: no
+code, config keys or file paths unless they are the point.
 
 **Implementation plan: one comment on the issue**, for the developer or agent implementing it.
 Self-contained: someone who reads only this comment and the code can implement the change without
