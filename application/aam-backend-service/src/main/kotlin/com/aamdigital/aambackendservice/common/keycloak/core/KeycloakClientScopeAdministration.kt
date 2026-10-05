@@ -17,9 +17,8 @@ enum class KeycloakClientScopeAdministrationError : AamErrorCode {
 /**
  * [ClientScopeAdministration] through the Keycloak Admin REST API.
  *
- * The service account of the backend's own Keycloak client needs the `realm-management` roles
- * `manage-clients` (client scopes and their assignment), `view-users` (role mappings of service accounts)
- * and `manage-realm` (deleting a replaced realm role).
+ * The service account of the backend's own Keycloak client needs the `realm-management` role
+ * `manage-clients`, for the client scopes and their assignment.
  */
 class KeycloakClientScopeAdministration(
     private val keycloak: Keycloak,
@@ -134,31 +133,6 @@ class KeycloakClientScopeAdministration(
         }
     }
 
-    override fun realmRoleExists(roleName: String): Boolean =
-        call("find realm role '$roleName'") {
-            realmResource.roles().list(roleName, true).any { it.name == roleName }
-        }
-
-    override fun serviceAccountHasRealmRole(
-        client: KeycloakServiceAccountClient,
-        roleName: String
-    ): Boolean =
-        call("read realm roles of the service account of client '${client.clientId}'") {
-            val serviceAccountUser = realmResource.clients().get(client.id).serviceAccountUser
-            realmResource
-                .users()
-                .get(serviceAccountUser.id)
-                .roles()
-                .realmLevel()
-                .listEffective()
-                .any { it.name == roleName }
-        }
-
-    override fun deleteRealmRole(roleName: String) =
-        call("delete realm role '$roleName'") {
-            realmResource.roles().deleteRole(roleName)
-        }
-
     private fun <T> call(
         action: String,
         block: () -> T
@@ -169,9 +143,9 @@ class KeycloakClientScopeAdministration(
             throw ForbiddenAccessException(
                 message =
                     "Keycloak denied to $action in realm '$realm'. " +
-                        "Assign the realm-management roles 'manage-clients', 'view-users' and 'manage-realm' " +
+                        "Assign the realm-management role 'manage-clients' " +
                         "to the service account of Keycloak client '$backendClientId'. Until then, client scopes " +
-                        "are neither created nor migrated, and API clients relying on them are denied access.",
+                        "are not created, and API clients relying on them are denied access.",
                 cause = ex,
                 code = KeycloakClientScopeAdministrationError.MISSING_KEYCLOAK_PERMISSION
             )

@@ -40,8 +40,8 @@ class ReportCalculationConfiguration {
     companion object {
         /**
          * A calculation holds an SQS query open for seconds to minutes and SQS is effectively
-         * single-threaded, so only a few may run at once. The `report.calculation` queue's
-         * consumers scaled between 2 and 5 under load; this runs 2 at a time.
+         * single-threaded, so only a few may run at once. Under load, report calculations
+         * previously ran 2 to 5 at a time; this runs 2.
          */
         private const val CALCULATION_CONCURRENCY = 2
         private const val CALCULATION_BACKLOG = 500

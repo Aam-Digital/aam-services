@@ -94,15 +94,6 @@
         "attributes": {}
       },
       {
-        "id": "0a3f7c18-6e51-4d0a-9c3f-2b6a1d4e8f70",
-        "name": "third-party-authentication-provider",
-        "description": "Allows an external system to start SSO sessions via POST /v1/third-party-authentication/session",
-        "composite": false,
-        "clientRole": false,
-        "containerId": "70730a8c-c613-4e01-b472-a293b9686749",
-        "attributes": {}
-      },
-      {
         "id": "d9e751f6-42c2-499a-abc0-3827b52e3506",
         "name": "offline_access",
         "description": "${role_offline-access}",
@@ -510,8 +501,7 @@
       "realmRoles": [
         "default-roles-dummy-realm",
         "user_app",
-        "admin_app",
-        "third-party-authentication-provider"
+        "admin_app"
       ],
       "notBefore": 0,
       "groups": []
@@ -886,7 +876,8 @@
         }
       ],
       "defaultClientScopes": [
-        "roles"
+        "roles",
+        "third_party_authentication"
       ],
       "optionalClientScopes": [
         "reporting_read",
@@ -1255,6 +1246,18 @@
       "attributes": {
         "consent.screen.text": "${offlineAccessScopeConsentText}",
         "display.on.consent.screen": "true"
+      }
+    },
+    {
+      "id": "3c7a1f52-9b8e-4d6a-8f21-5e0c7a4b9d33",
+      "name": "third_party_authentication",
+      "description": "Access to create user sessions through the third-party-authentication API",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false",
+        "gui.order": "",
+        "consent.screen.text": ""
       }
     },
     {

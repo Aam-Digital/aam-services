@@ -4,13 +4,10 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 import org.springframework.scheduling.config.ScheduledTaskRegistrar
 import java.time.Duration
@@ -31,13 +28,10 @@ class CouchDbChangesPollingJobTest {
     private fun job(
         processor: CouchDbChangesProcessor,
         handlers: List<DocumentChangeHandler> = listOf(reporting, notification),
-        syncRepository: SyncRepository = InMemorySyncRepository(),
         fixedDelay: Duration = Duration.ofSeconds(8)
     ) = CouchDbChangesPollingJob(
         changesProcessor = processor,
         documentChangeHandlers = handlers,
-        sharedSyncEntryMigration =
-            SharedSyncEntryMigration(syncRepository, listOf("app"), handlers.map { it.consumerName }),
         fixedDelay = fixedDelay
     )
 
@@ -67,19 +61,6 @@ class CouchDbChangesPollingJobTest {
         assertThatThrownBy { job(mock(), handlers = listOf(reporting, NamedHandler("reporting"))) }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("reporting")
-    }
-
-    @Test
-    fun `should not poll before the shared cursor has been split up`() {
-        // a consumer that polled first would start from "now" and skip what changed during the upgrade
-        val processor = mock<CouchDbChangesProcessor>()
-        val unreadable = mock<SyncRepository>()
-        whenever(unreadable.findByDatabase(any(), anyOrNull())).thenThrow(IllegalStateException("couchdb down"))
-        val job = job(processor, syncRepository = unreadable)
-
-        job.pollers.first().run()
-
-        verify(processor, never()).checkForChanges(any())
     }
 
     @Test

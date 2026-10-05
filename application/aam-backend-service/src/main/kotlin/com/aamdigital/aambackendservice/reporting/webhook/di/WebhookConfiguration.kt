@@ -33,10 +33,9 @@ class WebhookConfiguration {
         /**
          * Webhook delivery is one outbound HTTP call per subscribed report per new calculation
          * result: low volume, but each call is external and has no client timeout yet, so the pool
-         * stays small and the backlog is bounded rather than unbounded like the queue it replaces.
+         * stays small and the backlog is bounded.
          *
-         * Two at a time is a modest widening of the single `notification.webhook` consumer
-         * (`prefetch: 1`) this replaces.
+         * Two at a time is a modest widening of the one-at-a-time delivery this replaces.
          */
         private const val WEBHOOK_DELIVERY_CONCURRENCY = 2
         private const val WEBHOOK_DELIVERY_BACKLOG = 500

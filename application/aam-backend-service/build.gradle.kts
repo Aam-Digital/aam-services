@@ -4,7 +4,6 @@ plugins {
     jacoco
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
-    alias(libs.plugins.kotlin.jpa)
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.kotlin.kapt)
@@ -46,7 +45,6 @@ repositories {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     // RestClient.Builder and RestTemplateBuilder are auto-configured by their own module since
@@ -59,6 +57,8 @@ dependencies {
     // Spring Boot's Jackson 2 auto-configuration, which ships deprecated for removal in 4.3; see
     // the Jackson 3 exclusion above.
     implementation("org.springframework.boot:spring-boot-jackson2")
+    // only for the Page/Pageable paging types; no Spring Data repositories are used
+    implementation("org.springframework.data:spring-data-commons")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
     // The tracing auto-configuration moved out of actuator into this module in Spring Boot 4;
@@ -77,8 +77,6 @@ dependencies {
     implementation("com.github.ben-manes.caffeine:caffeine")
 
     implementation(libs.firebase.admin)
-
-    runtimeOnly(libs.postgresql)
 
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 

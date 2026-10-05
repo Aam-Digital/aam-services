@@ -13,8 +13,7 @@ import java.time.OffsetDateTime
 import java.util.*
 
 /**
- * [UserDeviceRepository] backed by one CouchDB document per device, keyed by the device token -
- * the same shape as the PostgreSQL table it replaces.
+ * [UserDeviceRepository] backed by one CouchDB document per device, keyed by the device token.
  */
 class CouchDbUserDeviceRepository(
     private val couchDbClient: CouchDbClient
@@ -80,7 +79,7 @@ class CouchDbUserDeviceRepository(
 
     /**
      * Written only if no document exists for the token yet, which keeps the token unique across
-     * users like the unique column of the PostgreSQL table did.
+     * users.
      */
     override fun save(userDevice: UserDeviceEntity) {
         try {

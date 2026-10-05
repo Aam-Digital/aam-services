@@ -188,7 +188,7 @@ If the backend has admin access to Keycloak (`KEYCLOAK_*` environment variables,
   change it to a "Default" client scope, so that existing integrations that don't request the scopes keep working
 
 For this, the service account of the backend's own Keycloak client (`KEYCLOAK_CLIENTID`, usually `aam-backend`) needs
-the `realm-management` roles `manage-clients` and `view-users`.
+the `realm-management` role `manage-clients`.
 If Keycloak admin access is not configured or permissions are missing, the backend logs a warning and starts anyway;
 then create and assign the client scopes manually in the Keycloak admin console.
 

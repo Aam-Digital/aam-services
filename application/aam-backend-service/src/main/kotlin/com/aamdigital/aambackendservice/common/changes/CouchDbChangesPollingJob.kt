@@ -14,8 +14,7 @@ import java.time.Duration
  * That separation is the point. Handlers run synchronously on the thread that polls for them, so
  * with a single shared poll a handler blocked on a slow dependency - the notification module's
  * permission check, say - would stop change detection for every module. Polled separately, each
- * with its own cursor, a stuck module holds back only itself, which is what the separate queues per
- * module used to guarantee.
+ * with its own cursor, a stuck module holds back only itself.
  *
  * Registered as a [SchedulingConfigurer] rather than with `@Scheduled`, because the number of tasks
  * depends on which modules are enabled. The scheduler pool is sized for one task per handler (see
@@ -24,7 +23,6 @@ import java.time.Duration
 class CouchDbChangesPollingJob(
     private val changesProcessor: CouchDbChangesProcessor,
     documentChangeHandlers: List<DocumentChangeHandler>,
-    private val sharedSyncEntryMigration: SharedSyncEntryMigration,
     private val fixedDelay: Duration
 ) : SchedulingConfigurer {
     internal val pollers: List<ChangeConsumerPoller>
@@ -43,7 +41,6 @@ class CouchDbChangesPollingJob(
         pollers =
             documentChangeHandlers.map { handler ->
                 ChangeConsumerPoller(handler.consumerName) {
-                    sharedSyncEntryMigration.migrateIfPending()
                     changesProcessor.checkForChanges(handler)
                 }
             }

@@ -47,16 +47,4 @@ interface ClientScopeAdministration {
         client: KeycloakServiceAccountClient,
         scope: KeycloakClientScope
     )
-
-    fun realmRoleExists(roleName: String): Boolean
-
-    /**
-     * Whether the service account of the client holds the realm role, directly or through a composite role or group.
-     */
-    fun serviceAccountHasRealmRole(
-        client: KeycloakServiceAccountClient,
-        roleName: String
-    ): Boolean
-
-    fun deleteRealmRole(roleName: String)
 }

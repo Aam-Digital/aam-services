@@ -19,11 +19,11 @@ This repository provides the backend API as a modularized Spring Boot applicatio
 ### Architecture & Tech Stack
 
 - **Language**: Kotlin (target JVM 25)
-- **Framework**: Spring Boot with Spring Security, Spring Data JPA
+- **Framework**: Spring Boot with Spring Security
 - **Build Tool**: Gradle with Kotlin DSL
-- **Database**: CouchDB with SQL query capabilities (SQS), PostgreSQL via JPA
+- **Database**: CouchDB with SQL query capabilities (SQS)
 - **Testing**: JUnit Jupiter (JUnit 6) with Mockito and AssertJ, Cucumber for BDD
-- **Code Quality**: Detekt for static analysis, JaCoCo for coverage
+- **Code Quality**: ktlint for formatting, JaCoCo for coverage
 - **Architecture**: Clean Architecture with Domain-Driven Design principles
 - **Observability**: Micrometer, SLF4J, Spring Actuator, OpenTelemetry
 
@@ -45,7 +45,6 @@ aam-services/
 ├── application/
 │   ├── aam-backend-service/          # Main Spring Boot application
 │   │   ├── build.gradle.kts
-│   │   ├── detekt-config.yml
 │   │   ├── Dockerfile
 │   │   └── src/
 │   │       ├── main/kotlin/com/aamdigital/aambackendservice/
@@ -93,12 +92,19 @@ Modules are located under `com.aamdigital.aambackendservice.<module>`.
 ```
 module/
 ├── controller/       # REST endpoints
+├── core/             # Domain logic: use case interfaces and their implementations
 ├── di/               # Configuration of dependency injection
-├── storage/          # Repositories and data access
+├── domain/           # Types the module's API and handlers are expressed in
+├── repository/       # Repositories, data access and their entities
 ├── job/              # @Scheduled jobs (thin: ScheduledJobBackoff around one call)
-├── usecase/          # Domain logic and use cases
 └── README.md         # Module-specific developer documentation
 ```
+
+Not every module has every folder, and the layout is not uniform. This is the shape of the most
+recently reworked modules (`notification`, `skill`, `thirdpartyauthentication`) — follow it for new
+code. The older style, in `export` and in the `reporting` sub-modules (`report/`,
+`reportcalculation/`, `webhook/`; `transformation/` is flat), instead splits use cases into `core/`
+for the interfaces and `usecase/` for the implementations, and calls its data access `storage/`.
 
 ### Domain Architecture
 
@@ -392,12 +398,8 @@ per `DocumentChangeHandler` - update its `SCHEDULED_TASKS` and job list when add
 - Implement document change listeners for reactive processing
 - Handle document versioning and conflicts appropriately
 - Use SQS for complex SQL queries
-
-### JPA Integration
-
-- Use Spring Data JPA for relational data (PostgreSQL)
-- Implement proper transaction boundaries
-- Use `@Transactional` appropriately
+- Keep the service's own state (cursors, registrations, sessions) in CouchDB as well, e.g. in
+  the `aam-backend-state` database; there is no relational database
 - Follow repository pattern for data access
 
 ---
@@ -511,14 +513,19 @@ e2e gates rely on it.
 
 ## Common Commands
 
-- `./gradlew build` — Full build (compile, test, checks)
 - `./gradlew test` — Run all tests
-- `./gradlew jacocoTestReport` — Run tests with coverage report
-- `./gradlew detekt` — Run static analysis
+- `./gradlew jacocoTestReport` — Run tests with coverage report (what CI runs)
+- `./gradlew ktlintCheck` — Check formatting
+- `./gradlew build` — Compile, test and check
+
+`ktlintCheck` currently reports several hundred pre-existing findings, so it fails, and `build`
+fails with it. Neither is a usable gate for a change: verify with `./gradlew test` and compare the
+failure count and the test count against the same command before your change. Do not run
+`ktlintFormat` to fix this — it reformats unrelated files across the repository.
 
 All Gradle commands should be run from `application/aam-backend-service/`.
 
-For local development setup (databases, queues, Keycloak), see `docs/developer/README.md` and the docker-compose files there.
+For local development setup (databases, Keycloak), see `docs/developer/README.md` and the docker-compose files there.
 
 ### Running a Single Unit Test Class
 

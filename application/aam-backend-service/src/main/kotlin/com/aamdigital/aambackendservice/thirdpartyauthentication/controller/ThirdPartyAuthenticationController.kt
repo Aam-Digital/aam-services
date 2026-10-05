@@ -64,14 +64,8 @@ class ThirdPartyAuthenticationController(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    // TODO: stop accepting the legacy realm role with the next major version (#221)
     @PostMapping("/session")
-    @PreAuthorize(
-        "hasAnyAuthority(" +
-            "'${AamAuthorities.SCOPE_PREFIX}${ThirdPartyAuthenticationScopes.SESSION_PROVIDER}', " +
-            "'${AamAuthorities.ROLE_PREFIX}${ThirdPartyAuthenticationScopes.LEGACY_PROVIDER_ROLE}'" +
-            ")"
-    )
+    @PreAuthorize("hasAuthority('${AamAuthorities.SCOPE_PREFIX}${ThirdPartyAuthenticationScopes.SESSION_PROVIDER}')")
     fun startSession(
         @RequestBody userSessionRequest: UserSessionRequest
     ): ResponseEntity<Any> {

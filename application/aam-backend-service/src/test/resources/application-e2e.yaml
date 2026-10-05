@@ -7,14 +7,6 @@ spring:
     deserialization:
       accept-empty-string-as-null-object: true
       read-unknown-enum-values-using-default-value: true
-  datasource:
-    driver-class-name: org.postgresql.Driver
-    username: admin
-    password: docker
-  jpa:
-    generate-ddl: true
-    hibernate:
-      ddl-auto: create-drop
   threads:
     virtual:
       enabled: true

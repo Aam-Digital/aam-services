@@ -35,7 +35,7 @@ class KeycloakClientScopeConfiguration {
             if (keycloak == null || keycloakConfig == null || keycloakConfig.serverUrl.isBlank()) {
                 logger.warn(
                     "Keycloak admin access is not configured (keycloak.server-url unset or empty), " +
-                        "so the client scopes {} cannot be checked or migrated. Make sure they exist in the realm " +
+                        "so the client scopes {} cannot be checked. Make sure they exist in the realm " +
                         "and are assigned as Default scopes to the API clients that need them, " +
                         "otherwise those API clients are denied access.",
                     requests.map { it.name }
