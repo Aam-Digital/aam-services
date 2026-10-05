@@ -26,7 +26,6 @@ import java.util.*
 
 @ExtendWith(MockitoExtension::class)
 class CouchDbChangesProcessorTest {
-
     private lateinit var service: CouchDbChangesProcessor
     private val objectMapper = ObjectMapper()
 
@@ -68,12 +67,13 @@ class CouchDbChangesProcessorTest {
     @BeforeEach
     fun setUp() {
         reset(couchDbClient, syncRepository)
-        service = CouchDbChangesProcessor(
-            couchDbClient = couchDbClient,
-            syncRepository = syncRepository,
-            objectMapper = objectMapper,
-            changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app")),
-        )
+        service =
+            CouchDbChangesProcessor(
+                couchDbClient = couchDbClient,
+                syncRepository = syncRepository,
+                objectMapper = objectMapper,
+                changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app"))
+            )
     }
 
     @Test
@@ -110,12 +110,13 @@ class CouchDbChangesProcessorTest {
 
     @Test
     fun `should poll databases added to a custom included-databases allowlist`() {
-        service = CouchDbChangesProcessor(
-            couchDbClient = couchDbClient,
-            syncRepository = syncRepository,
-            objectMapper = objectMapper,
-            changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app", "audit")),
-        )
+        service =
+            CouchDbChangesProcessor(
+                couchDbClient = couchDbClient,
+                syncRepository = syncRepository,
+                objectMapper = objectMapper,
+                changeDetectionProperties = ChangeDetectionProperties(includedDatabases = listOf("app", "audit"))
+            )
 
         whenever(couchDbClient.allDatabases()).thenReturn(listOf("app", "audit", "notifications-x"))
 
@@ -137,15 +138,18 @@ class CouchDbChangesProcessorTest {
         whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
         whenever(syncRepository.findByDatabase("app", "test")).thenReturn(Optional.of(cursor("seq-0")))
 
-        val designDoc = objectMapper.createObjectNode()
-            .put("_id", "_design/myview")
-            .put("_rev", "1-abc")
-        val changeResult = CouchDbChangeResult(
-            id = "_design/myview",
-            changes = emptyList(),
-            seq = "seq-1",
-            doc = designDoc,
-        )
+        val designDoc =
+            objectMapper
+                .createObjectNode()
+                .put("_id", "_design/myview")
+                .put("_rev", "1-abc")
+        val changeResult =
+            CouchDbChangeResult(
+                id = "_design/myview",
+                changes = emptyList(),
+                seq = "seq-1",
+                doc = designDoc
+            )
         whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
             .thenReturn(CouchDbChangesResponse(lastSeq = "seq-1", results = listOf(changeResult), pending = 0))
         whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
@@ -160,25 +164,31 @@ class CouchDbChangesProcessorTest {
         whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
         whenever(syncRepository.findByDatabase("app", "test")).thenReturn(Optional.of(cursor("seq-0")))
 
-        val currentDoc = objectMapper.createObjectNode()
-            .put("_id", "Child:1")
-            .put("_rev", "2-def")
-            .put("name", "Alice")
-        val changeResult = CouchDbChangeResult(
-            id = "Child:1",
-            changes = emptyList(),
-            seq = "seq-1",
-            doc = currentDoc,
-        )
+        val currentDoc =
+            objectMapper
+                .createObjectNode()
+                .put("_id", "Child:1")
+                .put("_rev", "2-def")
+                .put("name", "Alice")
+        val changeResult =
+            CouchDbChangeResult(
+                id = "Child:1",
+                changes = emptyList(),
+                seq = "seq-1",
+                doc = currentDoc
+            )
         whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
             .thenReturn(CouchDbChangesResponse(lastSeq = "seq-1", results = listOf(changeResult), pending = 0))
 
-        val previousDoc = objectMapper.createObjectNode()
-            .put("_id", "Child:1")
-            .put("_rev", "1-abc")
-            .put("name", "Bob")
-        whenever(couchDbClient.getPreviousDocumentRevision(eq("app"), eq("Child:1"), eq("2-def"), eq(ObjectNode::class)))
-            .thenReturn(Optional.of(previousDoc))
+        val previousDoc =
+            objectMapper
+                .createObjectNode()
+                .put("_id", "Child:1")
+                .put("_rev", "1-abc")
+                .put("name", "Bob")
+        whenever(
+            couchDbClient.getPreviousDocumentRevision(eq("app"), eq("Child:1"), eq("2-def"), eq(ObjectNode::class))
+        ).thenReturn(Optional.of(previousDoc))
 
         whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
 
@@ -199,17 +209,20 @@ class CouchDbChangesProcessorTest {
         whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
         whenever(syncRepository.findByDatabase("app", "test")).thenReturn(Optional.of(cursor("seq-0")))
 
-        val deletedDoc = objectMapper.createObjectNode()
-            .put("_id", "Child:2")
-            .put("_rev", "3-xyz")
-            .put("_deleted", true)
-        val changeResult = CouchDbChangeResult(
-            id = "Child:2",
-            changes = emptyList(),
-            seq = "seq-2",
-            doc = deletedDoc,
-            deleted = true,
-        )
+        val deletedDoc =
+            objectMapper
+                .createObjectNode()
+                .put("_id", "Child:2")
+                .put("_rev", "3-xyz")
+                .put("_deleted", true)
+        val changeResult =
+            CouchDbChangeResult(
+                id = "Child:2",
+                changes = emptyList(),
+                seq = "seq-2",
+                doc = deletedDoc,
+                deleted = true
+            )
         whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
             .thenReturn(CouchDbChangesResponse(lastSeq = "seq-2", results = listOf(changeResult), pending = 0))
         whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
@@ -229,23 +242,27 @@ class CouchDbChangesProcessorTest {
         whenever(couchDbClient.allDatabases()).thenReturn(listOf("app"))
         whenever(syncRepository.findByDatabase("app", "test")).thenReturn(Optional.of(cursor("seq-0")))
 
-        val currentDoc = objectMapper.createObjectNode()
-            .put("_id", "Child:3")
-            .put("_rev", "1-first")
-        val changeResult = CouchDbChangeResult(
-            id = "Child:3",
-            changes = emptyList(),
-            seq = "seq-3",
-            doc = currentDoc,
-        )
+        val currentDoc =
+            objectMapper
+                .createObjectNode()
+                .put("_id", "Child:3")
+                .put("_rev", "1-first")
+        val changeResult =
+            CouchDbChangeResult(
+                id = "Child:3",
+                changes = emptyList(),
+                seq = "seq-3",
+                doc = currentDoc
+            )
         whenever(couchDbClient.getDatabaseChanges(eq("app"), any()))
             .thenReturn(CouchDbChangesResponse(lastSeq = "seq-3", results = listOf(changeResult), pending = 0))
 
         val testErrorCode = TestErrorCode.TEST_EXCEPTION
-        whenever(couchDbClient.getPreviousDocumentRevision(eq("app"), eq("Child:3"), eq("1-first"), eq(ObjectNode::class)))
-            .thenAnswer {
-                throw ExternalSystemException(message = "rev not available", code = testErrorCode)
-            }
+        whenever(
+            couchDbClient.getPreviousDocumentRevision(eq("app"), eq("Child:3"), eq("1-first"), eq(ObjectNode::class))
+        ).thenAnswer {
+            throw ExternalSystemException(message = "rev not available", code = testErrorCode)
+        }
         whenever(syncRepository.save(any<SyncEntry>())).thenAnswer { it.arguments[0] }
 
         service.checkForChanges(handler)

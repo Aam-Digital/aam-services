@@ -76,7 +76,7 @@ class ReportController(
 
     private fun handleException(ex: AamException): ResponseEntity<Any> =
         when (ex) {
-            is NotFoundException ->
+            is NotFoundException -> {
                 ResponseEntity
                     .status(HttpStatus.NOT_FOUND)
                     .body(
@@ -85,8 +85,9 @@ class ReportController(
                             errorMessage = ex.localizedMessage
                         )
                     )
+            }
 
-            is InvalidArgumentException ->
+            is InvalidArgumentException -> {
                 ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
                     .body(
@@ -95,8 +96,9 @@ class ReportController(
                             errorMessage = ex.localizedMessage
                         )
                     )
+            }
 
-            else ->
+            else -> {
                 ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(
@@ -105,5 +107,6 @@ class ReportController(
                             errorMessage = ex.localizedMessage
                         )
                     )
+            }
         }
 }

@@ -138,32 +138,36 @@ class DefaultReportCalculationStorage(
 
     private fun handleException(ex: Exception): Throwable =
         when (ex) {
-            is NotFoundException ->
+            is NotFoundException -> {
                 NotFoundException(
                     message = ex.localizedMessage,
                     cause = ex,
                     code = DefaultReportCalculationStorageError.NOT_FOUND
                 )
+            }
 
-            is InterruptedIOException ->
+            is InterruptedIOException -> {
                 ExternalSystemException(
                     message = ex.localizedMessage,
                     cause = ex,
                     code = DefaultReportCalculationStorageError.NETWORK_ERROR
                 )
+            }
 
-            is HttpClientErrorException ->
+            is HttpClientErrorException -> {
                 ExternalSystemException(
                     message = ex.localizedMessage,
                     cause = ex,
                     code = DefaultReportCalculationStorageError.NETWORK_ERROR
                 )
+            }
 
-            else ->
+            else -> {
                 InternalServerException(
                     message = ex.localizedMessage,
                     code = DefaultReportCalculationStorageError.UNEXPECTED,
                     cause = ex
                 )
+            }
         }
 }

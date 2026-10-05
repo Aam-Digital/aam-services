@@ -32,11 +32,12 @@ class PermissionCheckClient(
             return userIds.associateWith { true }
         }
 
-        val request = PermissionCheckRequest(
-            userIds = userIds,
-            entityId = entityId,
-            action = action
-        )
+        val request =
+            PermissionCheckRequest(
+                userIds = userIds,
+                entityId = entityId,
+                action = action
+            )
         logger.debug(
             "Sending permission check: userIds={}, entityId={}, action={}",
             request.userIds,

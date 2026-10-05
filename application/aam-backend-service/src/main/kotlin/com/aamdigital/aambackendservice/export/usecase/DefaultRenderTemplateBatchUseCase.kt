@@ -39,7 +39,7 @@ import java.util.zip.ZipOutputStream
 class DefaultRenderTemplateBatchUseCase(
     renderClient: RestClient,
     private val objectMapper: ObjectMapper,
-    templateStorage: TemplateStorage,
+    templateStorage: TemplateStorage
 ) : RenderTemplateBatchUseCase() {
     private val carboneClient =
         CarboneRenderApiClient(
@@ -51,7 +51,7 @@ class DefaultRenderTemplateBatchUseCase(
             createRenderRequestFailedCode = RenderTemplateBatchError.CREATE_RENDER_REQUEST_FAILED_ERROR,
             batchRejectedCode = RenderTemplateBatchError.BATCH_REJECTED_ERROR,
             fetchRenderResultFailedCode = RenderTemplateBatchError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
-            parseResponseCode = RenderTemplateBatchError.PARSE_RESPONSE_ERROR,
+            parseResponseCode = RenderTemplateBatchError.PARSE_RESPONSE_ERROR
         )
 
     override fun apply(request: RenderTemplateBatchRequest): UseCaseOutcome<RenderTemplateBatchData> {
@@ -60,7 +60,7 @@ class DefaultRenderTemplateBatchUseCase(
             return UseCaseOutcome.Failure(
                 errorCode = RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR,
                 errorMessage = "Request body must be a JSON object.",
-                cause = null,
+                cause = null
             )
         }
         val dataArray =
@@ -68,13 +68,13 @@ class DefaultRenderTemplateBatchUseCase(
                 ?: return UseCaseOutcome.Failure(
                     errorCode = RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR,
                     errorMessage = "Request body must contain a 'data' field of type array.",
-                    cause = null,
+                    cause = null
                 )
         if (dataArray.isEmpty) {
             return UseCaseOutcome.Failure(
                 errorCode = RenderTemplateBatchError.EMPTY_DATA_LIST_ERROR,
                 errorMessage = "Request 'data' array must not be empty.",
-                cause = null,
+                cause = null
             )
         }
 
@@ -110,8 +110,8 @@ class DefaultRenderTemplateBatchUseCase(
             data =
                 RenderTemplateBatchData(
                     file = ByteArrayInputStream(fileBytes),
-                    responseHeaders = result.headers,
-                ),
+                    responseHeaders = result.headers
+                )
         )
     }
 
@@ -147,7 +147,7 @@ class DefaultRenderTemplateBatchUseCase(
 
     private data class ZipEntryData(
         val name: String,
-        val content: ByteArray,
+        val content: ByteArray
     )
 
     /**
@@ -162,7 +162,7 @@ class DefaultRenderTemplateBatchUseCase(
             } catch (ex: Exception) {
                 logger.warn(
                     "Could not parse Carbone batch ZIP; returning archive with engine-generated entry names.",
-                    ex,
+                    ex
                 )
                 return zipBytes
             }
@@ -218,7 +218,7 @@ class DefaultRenderTemplateBatchUseCase(
                     .map { entry ->
                         ZipEntryData(
                             name = entry.name,
-                            content = zip.getInputStream(entry).use { it.readBytes() },
+                            content = zip.getInputStream(entry).use { it.readBytes() }
                         )
                     }.toList()
             }
@@ -236,7 +236,7 @@ class DefaultRenderTemplateBatchUseCase(
 
     private fun uniqueFileName(
         fileName: String,
-        usedNames: MutableSet<String>,
+        usedNames: MutableSet<String>
     ): String {
         var candidate = fileName
         val extensionStart = fileName.lastIndexOf('.')

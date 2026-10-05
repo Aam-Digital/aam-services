@@ -26,8 +26,7 @@ class ChangesConfigurationConditionalTest {
             .withPropertyValues(
                 "features.reporting.enabled=true",
                 "features.notification-api.enabled=false"
-            )
-            .run { context ->
+            ).run { context ->
                 assertThat(context).hasSingleBean(CouchDbChangesProcessor::class.java)
                 assertThat(context).hasSingleBean(CouchDbChangesPollingJob::class.java)
             }
@@ -39,8 +38,7 @@ class ChangesConfigurationConditionalTest {
             .withPropertyValues(
                 "features.reporting.enabled=false",
                 "features.notification-api.enabled=true"
-            )
-            .run { context ->
+            ).run { context ->
                 assertThat(context).hasSingleBean(CouchDbChangesProcessor::class.java)
                 assertThat(context).hasSingleBean(CouchDbChangesPollingJob::class.java)
             }
@@ -52,8 +50,7 @@ class ChangesConfigurationConditionalTest {
             .withPropertyValues(
                 "features.reporting.enabled=false",
                 "features.notification-api.enabled=false"
-            )
-            .run { context ->
+            ).run { context ->
                 assertThat(context).doesNotHaveBean(CouchDbChangesProcessor::class.java)
                 assertThat(context).doesNotHaveBean(CouchDbChangesPollingJob::class.java)
             }

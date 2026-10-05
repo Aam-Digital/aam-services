@@ -92,7 +92,7 @@ class SkillController(
                 )
 
                 when (result.errorCode) {
-                    else ->
+                    else -> {
                         ResponseEntity.badRequest().body(
                             ResponseEntity.internalServerError().body(
                                 HttpErrorDto(
@@ -101,13 +101,14 @@ class SkillController(
                                 )
                             )
                         )
+                    }
                 }
                 ResponseEntity.badRequest().body(
                     result.errorMessage
                 )
             }
 
-            is UseCaseOutcome.Success<SearchUserProfileData> ->
+            is UseCaseOutcome.Success<SearchUserProfileData> -> {
                 ResponseEntity.ok().body(
                     FetchUserProfilesDto(
                         pagination =
@@ -120,6 +121,7 @@ class SkillController(
                         results = result.data.result
                     )
                 )
+            }
         }
     }
 

@@ -24,7 +24,6 @@ import java.time.Duration
 @Configuration
 @Conditional(ChangesConfiguration.AnyChangeConsumerEnabled::class)
 class ChangesConfiguration {
-
     class AnyChangeConsumerEnabled : AnyNestedCondition(ConfigurationPhase.PARSE_CONFIGURATION) {
         @ConditionalOnProperty("features.reporting.enabled", havingValue = "true")
         class Reporting

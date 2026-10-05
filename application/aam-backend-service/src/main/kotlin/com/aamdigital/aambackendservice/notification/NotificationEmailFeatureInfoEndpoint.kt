@@ -7,6 +7,5 @@ import org.springframework.stereotype.Component
 @Component
 @ConditionalOnNotificationEmailEnabled
 class NotificationEmailFeatureInfoEndpoint : FeatureRegistrar {
-    override fun getFeatureInfo(): Pair<String, FeaturesInfoDto> =
-        "notification.email" to FeaturesInfoDto(true)
+    override fun getFeatureInfo(): Pair<String, FeaturesInfoDto> = "notification.email" to FeaturesInfoDto(true)
 }

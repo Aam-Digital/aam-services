@@ -146,8 +146,8 @@ class CouchDbTestingService(
         logger.info("[CouchDbSetup] update Document: $database, $documentName, ${response.statusCode}")
     }
 
-    fun countDocuments(database: String): Int {
-        return try {
+    fun countDocuments(database: String): Int =
+        try {
             val response =
                 restTemplate
                     .exchange("/$database/_all_docs", HttpMethod.GET, HttpEntity.EMPTY, ObjectNode::class.java)
@@ -155,16 +155,17 @@ class CouchDbTestingService(
         } catch (e: HttpClientErrorException) {
             if (e.statusCode.value() == 404) 0 else throw e
         }
-    }
 
-    fun getDocumentRev(database: String, docId: String): String? {
-        return try {
+    fun getDocumentRev(
+        database: String,
+        docId: String
+    ): String? =
+        try {
             val headers = restTemplate.headForHeaders("/$database/$docId")
             headers.eTag?.replace("\"", "")
         } catch (e: HttpClientErrorException) {
             "ERROR: ${e.statusCode}"
         }
-    }
 
     fun addAttachment(
         database: String,

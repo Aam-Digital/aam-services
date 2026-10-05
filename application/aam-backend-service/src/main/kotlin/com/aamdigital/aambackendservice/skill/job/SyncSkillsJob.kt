@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.skill.job
 
-import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
+import com.aamdigital.aambackendservice.common.scheduling.ScheduledJobBackoff
 import com.aamdigital.aambackendservice.skill.ConditionalOnSkillApiEnabled
 import com.aamdigital.aambackendservice.skill.ConditionalOnSkillLabMode
 import com.aamdigital.aambackendservice.skill.core.FetchUserProfileUpdatesRequest
@@ -21,7 +21,7 @@ import org.springframework.scheduling.annotation.Scheduled
 @ConditionalOnSkillLabMode
 class SyncSkillsJob(
     private val skillLabFetchUserProfileUpdatesUseCase: FetchUserProfileUpdatesUseCase,
-    private val skillLabApiClientConfiguration: SkillLabApiClientConfiguration,
+    private val skillLabApiClientConfiguration: SkillLabApiClientConfiguration
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     internal val backoff = ScheduledJobBackoff(logger, "SyncSkillsJob")
@@ -29,12 +29,13 @@ class SyncSkillsJob(
     @Scheduled(fixedDelay = (60000 * 10)) // every 10 minutes
     fun checkForSkillLabChanges() {
         backoff.run {
-            val outcome = skillLabFetchUserProfileUpdatesUseCase.run(
-                request =
-                    FetchUserProfileUpdatesRequest(
-                        projectId = skillLabApiClientConfiguration.projectId
-                    )
-            )
+            val outcome =
+                skillLabFetchUserProfileUpdatesUseCase.run(
+                    request =
+                        FetchUserProfileUpdatesRequest(
+                            projectId = skillLabApiClientConfiguration.projectId
+                        )
+                )
 
             if (outcome is UseCaseOutcome.Failure) {
                 throw RuntimeException("[${outcome.errorCode}] ${outcome.errorMessage}", outcome.cause)

@@ -64,14 +64,14 @@ class NotificationConfiguration {
             if (emailEnabled && !keycloakAvailable) {
                 logger.error(
                     "Notification email is ENABLED (features.notification-api.email.enabled=true) but Keycloak is " +
-                            "not configured (keycloak.server-url unset), so no email handler exists and email " +
-                            "notifications will be skipped. Set keycloak.server-url (+ realm/client-id/client-secret) " +
-                            "and spring.mail.host to enable them."
+                        "not configured (keycloak.server-url unset), so no email handler exists and email " +
+                        "notifications will be skipped. Set keycloak.server-url (+ realm/client-id/client-secret) " +
+                        "and spring.mail.host to enable them."
                 )
             } else {
                 logger.info(
                     "Notification startup diagnostics: emailFeatureEnabled={}, keycloakBeanAvailable={}, " +
-                            "mailHostConfigured={}",
+                        "mailHostConfigured={}",
                     emailEnabled,
                     keycloakAvailable,
                     mailHostConfigured

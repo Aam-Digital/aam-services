@@ -22,7 +22,6 @@ class DefaultCreateSessionUseCase(
     private val couchDbClient: CouchDbClient,
     private val sessionValidity: Duration
 ) : CreateSessionUseCase() {
-
     override fun apply(request: CreateSessionUseCaseRequest): UseCaseOutcome<CreateSessionUseCaseData> {
         val user: UserModel =
             try {

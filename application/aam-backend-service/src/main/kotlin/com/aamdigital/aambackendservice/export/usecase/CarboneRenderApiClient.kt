@@ -18,18 +18,18 @@ import org.springframework.web.client.RestClient
 @JsonIgnoreProperties(ignoreUnknown = true)
 internal data class RenderRequestResponseDto(
     val success: Boolean,
-    val data: RenderRequestResponseDataDto,
+    val data: RenderRequestResponseDataDto
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 internal data class RenderRequestErrorResponseDto(
     val success: Boolean,
-    val error: String,
+    val error: String
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 internal data class RenderRequestResponseDataDto(
-    val renderId: String,
+    val renderId: String
 )
 
 /**
@@ -48,11 +48,11 @@ internal class CarboneRenderApiClient(
     private val createRenderRequestFailedCode: AamErrorCode,
     private val batchRejectedCode: AamErrorCode? = null,
     private val fetchRenderResultFailedCode: AamErrorCode,
-    private val parseResponseCode: AamErrorCode,
+    private val parseResponseCode: AamErrorCode
 ) {
     class RenderResult(
         val file: ByteArray,
-        val headers: HttpHeaders,
+        val headers: HttpHeaders
     )
 
     fun fetchTemplate(templateRef: DomainReference): TemplateExport =
@@ -60,32 +60,35 @@ internal class CarboneRenderApiClient(
             templateStorage.fetchTemplate(templateRef)
         } catch (ex: Exception) {
             throw when (ex) {
-                is NotFoundException ->
+                is NotFoundException -> {
                     NotFoundException(
                         cause = ex.cause ?: ex,
                         message = ex.localizedMessage,
-                        code = notFoundCode,
+                        code = notFoundCode
                     )
+                }
 
-                is ExternalSystemException ->
+                is ExternalSystemException -> {
                     ExternalSystemException(
                         cause = ex.cause ?: ex,
                         message = ex.localizedMessage,
-                        code = fetchTemplateFailedCode,
+                        code = fetchTemplateFailedCode
                     )
+                }
 
-                else ->
+                else -> {
                     ExternalSystemException(
                         cause = ex.cause ?: ex,
                         message = "Could not fetch template metadata.",
-                        code = fetchTemplateFailedCode,
+                        code = fetchTemplateFailedCode
                     )
+                }
             }
         }
 
     fun createRenderRequest(
         templateId: String,
-        bodyData: JsonNode,
+        bodyData: JsonNode
     ): String {
         val response =
             try {
@@ -104,14 +107,14 @@ internal class CarboneRenderApiClient(
                         throw ExternalSystemException(
                             cause = ex,
                             message = carboneMessage,
-                            code = batchRejectedCode,
+                            code = batchRejectedCode
                         )
                     }
                 }
                 throw ExternalSystemException(
                     cause = ex,
                     message = ex.localizedMessage,
-                    code = createRenderRequestFailedCode,
+                    code = createRenderRequestFailedCode
                 )
             }
 
@@ -119,7 +122,7 @@ internal class CarboneRenderApiClient(
             throw ExternalSystemException(
                 cause = null,
                 message = "Null or empty response from renderClient.",
-                code = createRenderRequestFailedCode,
+                code = createRenderRequestFailedCode
             )
         }
 
@@ -146,26 +149,28 @@ internal class CarboneRenderApiClient(
                         clientResponse.bodyTo(ByteArray::class.java) ?: throw ExternalSystemException(
                             cause = null,
                             message = "Could not read body bytes from template engine response.",
-                            code = fetchRenderResultFailedCode,
+                            code = fetchRenderResultFailedCode
                         )
 
                     RenderResult(file = buffer, headers = forwardHeaders)
                 }
         } catch (ex: Exception) {
             throw when (ex) {
-                is ResourceAccessException ->
+                is ResourceAccessException -> {
                     ExternalSystemException(
                         cause = ex.cause ?: ex,
                         message = ex.localizedMessage,
-                        code = fetchRenderResultFailedCode,
+                        code = fetchRenderResultFailedCode
                     )
+                }
 
-                else ->
+                else -> {
                     ExternalSystemException(
                         cause = ex.cause ?: ex,
                         message = "Could not fetch render result from template engine.",
-                        code = fetchRenderResultFailedCode,
+                        code = fetchRenderResultFailedCode
                     )
+                }
             }
         }
 
@@ -183,7 +188,7 @@ internal class CarboneRenderApiClient(
             throw ExternalSystemException(
                 cause = ex,
                 message = errorMessage,
-                code = parseResponseCode,
+                code = parseResponseCode
             )
         }
     }

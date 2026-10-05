@@ -14,6 +14,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
     prefix = "features.notification-api",
     name = ["mode"],
     havingValue = "firebase",
-    matchIfMissing = false,
+    matchIfMissing = false
 )
 annotation class ConditionalOnNotificationFirebaseMode

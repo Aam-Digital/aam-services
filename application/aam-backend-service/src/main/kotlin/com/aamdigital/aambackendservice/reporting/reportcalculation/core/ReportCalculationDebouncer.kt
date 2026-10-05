@@ -29,14 +29,14 @@ class ReportCalculationDebouncer(
     private val createReportCalculationUseCase: CreateReportCalculationUseCase,
     private val quietPeriod: Duration,
     private val maxWait: Duration,
-    private val clock: Clock = Clock.systemUTC(),
+    private val clock: Clock = Clock.systemUTC()
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     private class PendingTrigger(
         val request: CreateReportCalculationRequest,
         val firstChangeAt: Instant,
-        @Volatile var lastChangeAt: Instant,
+        @Volatile var lastChangeAt: Instant
     )
 
     private val pendingTriggers = ConcurrentHashMap<String, PendingTrigger>()
@@ -81,7 +81,7 @@ class ReportCalculationDebouncer(
                     logger.debug(
                         "created debounced report calculation {} for report {}",
                         result.calculation.id,
-                        reportId,
+                        reportId
                     )
                 }
 
@@ -91,7 +91,7 @@ class ReportCalculationDebouncer(
                         reportId,
                         result.errorCode,
                         result.errorMessage,
-                        result.cause,
+                        result.cause
                     )
                     restorePendingTrigger(reportId, trigger)
                 }
@@ -102,7 +102,7 @@ class ReportCalculationDebouncer(
             logger.error(
                 "unexpected error creating debounced report calculation for report {}, will retry",
                 reportId,
-                ex,
+                ex
             )
             restorePendingTrigger(reportId, trigger)
         }

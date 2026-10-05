@@ -39,7 +39,10 @@ class LocalizedTemplateLoader(
      * A region suffix in [locale] is ignored (`de-DE` -> `de`); a blank locale falls back to
      * [defaultLocale].
      */
-    fun load(relativePath: String, locale: String): String? {
+    fun load(
+        relativePath: String,
+        locale: String
+    ): String? {
         val normalizedLocale = normalizeLocale(locale)
 
         val localizedOverride = templatesBaseDir.resolve(normalizedLocale).resolve(relativePath)
@@ -63,7 +66,10 @@ class LocalizedTemplateLoader(
      * Like [load] but throws when the resource cannot be resolved anywhere — for templates that
      * must always exist (a bundled classpath default is expected).
      */
-    fun loadRequired(relativePath: String, locale: String): String =
+    fun loadRequired(
+        relativePath: String,
+        locale: String
+    ): String =
         load(relativePath, locale)
             ?: throw IllegalStateException(
                 "Missing template resource: /$classpathRoot/$defaultLocale/$relativePath"
@@ -82,7 +88,12 @@ class LocalizedTemplateLoader(
      * folder name, e.g. `en-US` -> `en`, `de_DE` -> `de`. Falls back to [defaultLocale] for blank input.
      */
     private fun normalizeLocale(locale: String): String =
-        locale.substringBefore('-').substringBefore('_').trim().lowercase().ifBlank { defaultLocale }
+        locale
+            .substringBefore('-')
+            .substringBefore('_')
+            .trim()
+            .lowercase()
+            .ifBlank { defaultLocale }
 
     companion object {
         const val DEFAULT_LOCALE = "en"

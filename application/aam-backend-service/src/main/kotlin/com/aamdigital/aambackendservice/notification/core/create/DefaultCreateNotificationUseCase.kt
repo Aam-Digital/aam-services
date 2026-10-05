@@ -11,8 +11,11 @@ class DefaultCreateNotificationUseCase(
     }
 
     override fun errorHandler(it: Throwable): UseCaseOutcome<CreateNotificationData> =
-        if (it is TransientNotificationException) throw it
-        else super.errorHandler(it)
+        if (it is TransientNotificationException) {
+            throw it
+        } else {
+            super.errorHandler(it)
+        }
 
     override fun apply(request: CreateNotificationRequest): UseCaseOutcome<CreateNotificationData> {
         for (handler in createNotificationHandler) {

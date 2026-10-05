@@ -133,12 +133,12 @@ class ReportCalculationConfiguration {
     fun reportCalculationDebouncer(
         createReportCalculationUseCase: CreateReportCalculationUseCase,
         @Value("\${report-calculation-debounce.quiet-period-seconds:60}") quietPeriodSeconds: Long,
-        @Value("\${report-calculation-debounce.max-wait-seconds:300}") maxWaitSeconds: Long,
+        @Value("\${report-calculation-debounce.max-wait-seconds:300}") maxWaitSeconds: Long
     ): ReportCalculationDebouncer =
         ReportCalculationDebouncer(
             createReportCalculationUseCase = createReportCalculationUseCase,
             quietPeriod = Duration.ofSeconds(quietPeriodSeconds),
-            maxWait = Duration.ofSeconds(maxWaitSeconds),
+            maxWait = Duration.ofSeconds(maxWaitSeconds)
         )
 
     @Bean

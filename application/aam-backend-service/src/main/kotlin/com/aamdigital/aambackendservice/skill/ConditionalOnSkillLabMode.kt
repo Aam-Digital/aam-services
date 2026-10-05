@@ -14,6 +14,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
     prefix = "features.skill-api",
     name = ["mode"],
     havingValue = "skilllab",
-    matchIfMissing = false,
+    matchIfMissing = false
 )
 annotation class ConditionalOnSkillLabMode

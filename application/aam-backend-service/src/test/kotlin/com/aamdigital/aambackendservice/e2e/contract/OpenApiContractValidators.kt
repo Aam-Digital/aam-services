@@ -92,7 +92,10 @@ object OpenApiContractValidators {
 
         val validator =
             when (val state = stateFor(module)) {
-                is Loaded -> state.validator
+                is Loaded -> {
+                    state.validator
+                }
+
                 is LoadFailed -> {
                     val msg = "Could not load OpenAPI spec for module '${module.name}': ${state.message}"
                     if (strict) {

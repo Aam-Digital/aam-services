@@ -58,21 +58,33 @@ class DocumentConditionEngine {
         return when (condition.operator) {
             "\$eq" -> {
                 when (currentValue) {
-                    is String -> currentValue == conditionValue
-                    is List<*> ->
-                        currentValue.size == 1 && currentValue.first() == conditionValue
+                    is String -> {
+                        currentValue == conditionValue
+                    }
 
-                    else -> false
+                    is List<*> -> {
+                        currentValue.size == 1 && currentValue.first() == conditionValue
+                    }
+
+                    else -> {
+                        false
+                    }
                 }
             }
 
             "\$nq" -> {
                 when (currentValue) {
-                    is String -> currentValue != conditionValue
-                    is List<*> ->
-                        currentValue.size == 1 && currentValue.first() != conditionValue
+                    is String -> {
+                        currentValue != conditionValue
+                    }
 
-                    else -> false
+                    is List<*> -> {
+                        currentValue.size == 1 && currentValue.first() != conditionValue
+                    }
+
+                    else -> {
+                        false
+                    }
                 }
             }
 
@@ -87,7 +99,6 @@ class DocumentConditionEngine {
             "\$gt" -> {
                 when (currentValue) {
                     is Number -> conditionValue.toFloatOrNull()?.let { currentValue.toFloat() > it } ?: false
-
                     else -> false
                 }
             }
@@ -95,7 +106,6 @@ class DocumentConditionEngine {
             "\$gte" -> {
                 when (currentValue) {
                     is Number -> conditionValue.toFloatOrNull()?.let { currentValue.toFloat() >= it } ?: false
-
                     else -> false
                 }
             }
@@ -103,7 +113,6 @@ class DocumentConditionEngine {
             "\$lt" -> {
                 when (currentValue) {
                     is Number -> conditionValue.toFloatOrNull()?.let { currentValue.toFloat() < it } ?: false
-
                     else -> false
                 }
             }
@@ -111,7 +120,6 @@ class DocumentConditionEngine {
             "\$lte" -> {
                 when (currentValue) {
                     is Number -> conditionValue.toFloatOrNull()?.let { currentValue.toFloat() <= it } ?: false
-
                     else -> false
                 }
             }

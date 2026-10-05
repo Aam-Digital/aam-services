@@ -184,7 +184,9 @@ class SqsSchemaService(
                 "INTEGER"
             }
 
-            else -> "TEXT"
+            else -> {
+                "TEXT"
+            }
         }
 
     private fun getDefaultEntityAttributes(): List<EntityAttribute> =

@@ -9,4 +9,7 @@ package com.aamdigital.aambackendservice.notification.core.create
  * worth retrying, so the outbox retries it with backoff rather than parking it immediately as a
  * permanent failure would.
  */
-class TransientNotificationException(message: String, cause: Throwable) : RuntimeException(message, cause)
+class TransientNotificationException(
+    message: String,
+    cause: Throwable
+) : RuntimeException(message, cause)

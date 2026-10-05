@@ -44,30 +44,30 @@ class DefaultNotificationConfigCacheTest {
             objectMapper
                 .readTree(
                     """
-                                        {
-                                            "_id": "NotificationConfig:user-1",
-                                            "_rev": "1-abc",
-                                            "channels": {
-                                                "push": true,
-                                                "email": false
-                                            },
-                                            "notificationRules": [
-                                                {
-                                                    "label": "Rule 1",
-                                                    "notificationType": "entity_change",
-                                                    "entityType": "Child",
-                                                    "changeType": ["updated"],
-                                                    "conditions": {
-                                                        "${'$'}or": [
-                                                            {"name": {"${'$'}eq": "Bert"}},
-                                                            {"age": {"${'$'}gte": "18"}}
-                                                        ]
-                                                    },
-                                                    "enabled": true
-                                                }
-                                            ]
-                                        }
-                                        """.trimIndent()
+                    {
+                        "_id": "NotificationConfig:user-1",
+                        "_rev": "1-abc",
+                        "channels": {
+                            "push": true,
+                            "email": false
+                        },
+                        "notificationRules": [
+                            {
+                                "label": "Rule 1",
+                                "notificationType": "entity_change",
+                                "entityType": "Child",
+                                "changeType": ["updated"],
+                                "conditions": {
+                                    "${'$'}or": [
+                                        {"name": {"${'$'}eq": "Bert"}},
+                                        {"age": {"${'$'}gte": "18"}}
+                                    ]
+                                },
+                                "enabled": true
+                            }
+                        ]
+                    }
+                    """.trimIndent()
                 ).deepCopy<ObjectNode>()
 
         whenever(

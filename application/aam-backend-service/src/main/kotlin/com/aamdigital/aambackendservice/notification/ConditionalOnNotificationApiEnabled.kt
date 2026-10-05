@@ -15,6 +15,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
     prefix = "features.notification-api",
     name = ["enabled"],
     havingValue = "true",
-    matchIfMissing = false,
+    matchIfMissing = false
 )
 annotation class ConditionalOnNotificationApiEnabled
