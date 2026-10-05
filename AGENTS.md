@@ -186,6 +186,20 @@ generalized insights instead (e.g. "a large production instance", "an external w
 consumer"). Scrub quoted log or monitoring output before posting. Links to access-restricted
 internal tools (e.g. Sentry issues) are acceptable.
 
+### Issue Structure
+
+An issue that is planned for implementation has two parts with two different readers:
+
+- **Issue description: the objective** (What / Why / How), short and not too technical, for
+  reviewers and anyone triaging.
+- **Implementation plan: one comment on the issue** (Context / Decisions / Changes / Open
+  questions), self-contained for the developer or agent implementing it, and edited in place when
+  decisions change.
+
+Write both following the templates in `.github/ISSUE_TEMPLATE/` (feature request, bug report,
+technical task); the guidelines for the plan comment are a hidden comment at the end of each
+template.
+
 ### Refactoring & Legacy Code
 
 - Some existing code may not follow current conventions. For existing code, analyse the status and refactor only after confirmation.
