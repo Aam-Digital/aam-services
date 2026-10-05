@@ -188,38 +188,17 @@ internal tools (e.g. Sentry issues) are acceptable.
 
 ### Issue Structure
 
-An issue that is planned for implementation has two parts with two different readers. Keep them
-separate, so a reviewer gets the point in a minute and an implementer finds everything in one place.
+An issue that is planned for implementation has two parts with two different readers:
 
-**Issue description: the objective**, for reviewers and anyone triaging. Use the templates in
-`.github/ISSUE_TEMPLATE/` (feature request, bug report, technical task); all follow **What / Why /
-How** and end with a link to the implementation plan. Keep it short and not too technical: no
-code, config keys or file paths unless they are the point.
+- **Issue description: the objective** (What / Why / How), short and not too technical, for
+  reviewers and anyone triaging.
+- **Implementation plan: one comment on the issue** (Context / Decisions / Changes / Open
+  questions), self-contained for the developer or agent implementing it, and edited in place when
+  decisions change.
 
-**Implementation plan: one comment on the issue**, for the developer or agent implementing it.
-Self-contained: someone who reads only this comment and the code can implement the change without
-the rest of the discussion.
-
-```markdown
-## Implementation plan
-
-### Context
-The current state, verified against the code: file paths, how it behaves today. Anything assumed
-but not verified is marked as such.
-
-### Decisions
-Each decision with its reason and the rejected alternative, including how risks are handled.
-
-### Changes
-Concrete steps: files, config keys, snippets where precision matters, then the tests and docs to
-add or change.
-
-### Open questions
-What is still undecided and how it gets settled. Omit when there are none.
-```
-
-When decisions change, edit the plan comment in place rather than adding further comments, so it
-stays the single source for implementation. Change the description only if the objective changes.
+Write both following the templates in `.github/ISSUE_TEMPLATE/` (feature request, bug report,
+technical task); the guidelines for the plan comment are a hidden comment at the end of each
+template.
 
 ### Refactoring & Legacy Code
 
