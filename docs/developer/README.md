@@ -236,8 +236,8 @@ have to create yourself:
 - Turn **Client authentication** on (confidential) and enable **Service accounts roles**.
   Standard flow and direct access grants are not needed.
 - Under the client's **Client scopes** tab, add `roles` as a **Default** scope.
-- On its **Service accounts roles** tab, assign the `manage-realm`, `query-users`, `view-users`,
-  `manage-users` and `manage-clients` roles from the **realm-management** client.
+- On its **Service accounts roles** tab, assign the `query-users`, `view-users`, `manage-users` and
+  `manage-clients` roles from the **realm-management** client.
   (`manage-clients` lets `aam-backend-service` create the client scopes its API modules check,
   like `reporting_read` or `third_party_authentication`, on startup. It only does this when its `KEYCLOAK_*`
   settings point at this Keycloak and it trusts the Keycloak certificate; otherwise it logs a warning, and you

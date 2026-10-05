@@ -67,8 +67,8 @@ If the `aam-backend` Keycloak Client does not exist in your realm yet, create it
    - check only "Service Accounts roles" for Authentication flow
 - After creating the client, open its details and go to the "Service accounts roles" tab
    - Add "realm-admin" role to the client, to allow the backend to create users in Keycloak
-     (this includes the `manage-clients`, `view-users` and `manage-realm` roles the backend needs to set up
-     the `third_party_authentication` client scope, see below)
+     (this includes `manage-clients`, which the backend needs to create the `third_party_authentication`
+     client scope, see below)
 - Add "roles" as a "Client Scope" for the client, so that the roles are included in the JWT token.
 
 ### Keycloak configuration
