@@ -1,0 +1,7 @@
+# Commits that only reformatted code. `git blame` skips them and shows the commit that last
+# changed the logic. Enable once per clone with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub reads this file automatically.
+
+# style: bring the code base to zero ktlint findings
+e2a92b22d005aee3b45ae9137da4cd7d016a11c0

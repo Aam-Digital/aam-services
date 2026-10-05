@@ -95,6 +95,33 @@ This backend is developed as independent modules that share some common services
 - Spring Boot ([see intro](https://docs.spring.io/spring-boot/reference/using/index.html))
 - Gradle ([see intro](https://docs.gradle.org/current/userguide/getting_started_eng.html))
 
+## Code Style
+
+Formatting is checked with [ktlint](https://pinterest.github.io/ktlint/), configured in
+`application/aam-backend-service/.editorconfig`. CI runs `ktlintCheck` and fails on any finding.
+Run these from `application/aam-backend-service/`:
+
+```shell
+# Check formatting (what CI runs)
+./gradlew ktlintCheck
+
+# Fix what can be fixed automatically
+./gradlew ktlintFormat
+```
+
+`ktlintFormat` cannot fix everything (for example lines over the 120 character limit); the rest
+`ktlintCheck` reports needs a manual edit.
+
+### Ignoring the reformat commit in `git blame`
+
+The commit that brought the code base to zero findings changed many files without changing any
+behaviour. It is listed in [`.git-blame-ignore-revs`](.git-blame-ignore-revs). GitHub's blame view
+honours that file automatically; for local `git blame` (and most IDEs), enable it once per clone:
+
+```shell
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 ## Running Tests
 
 All commands should be run from `application/aam-backend-service/`.

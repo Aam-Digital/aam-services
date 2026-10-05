@@ -17,6 +17,7 @@ ktlintPlugin = "14.2.0"
 # ktlint and jacoco are tool versions consumed by the ktlint {} and jacoco {} blocks.
 # Leaving them unset is not an option: Gradle 9.6.1 defaults to JaCoCo 0.8.14 and the
 # ktlint plugin 14.2.0 defaults to ktlint 1.5.0, both older than what we run.
+# Qlty pins the same ktlint version in /.qlty/qlty.toml; change both together.
 ktlint = "1.8.0"
 jacoco = "0.8.15"
 
