@@ -7,7 +7,8 @@ Polls the CouchDB `_changes` feed and hands each enriched `DocumentChangeEvent` 
 ```text
 CouchDB _changes feed
         │  (polled every 8 s by CouchDbChangesPollingJob — one task per handler,
-        │   each on its own scheduler thread and reading from its own cursor)
+        │   each on its own scheduler thread and reading from its own cursor;
+        │   a backlog is read back to back while CouchDB reports changes pending)
         ├──────────────────────────────┐
         ▼                              ▼
 CouchDbChangesProcessor         CouchDbChangesProcessor
@@ -22,6 +23,10 @@ For each handler, `CouchDbChangesProcessor`:
 - only polls databases allowlisted in `ChangeDetectionProperties` (default: `app`)
 - builds a `DocumentChangeEvent` (database, documentId, before/after)
 - calls the handler, then advances that handler's cursor
+- reads the next batch of 100 changes right away while CouchDB reports more `pending`, so a bulk
+  edit is worked through at the handlers' pace instead of one batch per polling interval. The
+  polling delay applies once the feed is drained, or after 100 batches (10,000 changes) in one poll,
+  which bounds how long a poll holds its thread
 
 The current revision arrives with the change itself, because the feed is read with `include_docs`.
 The previous revision is a separate request, so it is loaded only if a handler reads
@@ -74,8 +79,8 @@ migration.
 
 | Class | Purpose |
 | --- | --- |
-| `CouchDbChangesPollingJob` | One scheduled task per handler (every 8 s), each with its own backoff (`ChangeConsumerPoller`) |
-| `CouchDbChangesProcessor` | Core logic, per handler: poll changes, call the handler, advance its cursor |
+| `CouchDbChangesPollingJob` | One scheduled task per handler (8 s after the previous poll drained the feed), each with its own backoff (`ChangeConsumerPoller`) |
+| `CouchDbChangesProcessor` | Core logic, per handler: poll changes (batch after batch while more are pending), call the handler, advance its cursor |
 | `ChangeDetectionProperties` | Config: allowlist of databases to poll (`included-databases`) |
 | `DocumentChangeEvent` | Event payload: database, documentId, current doc, previous doc loaded on demand |
 | `DocumentChangeHandler` | Interface a feature module implements to react to changes; `consumerName` names its cursor |
