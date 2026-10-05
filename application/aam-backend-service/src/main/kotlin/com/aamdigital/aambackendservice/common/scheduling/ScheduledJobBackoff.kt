@@ -17,7 +17,7 @@ import org.slf4j.Logger
 class ScheduledJobBackoff(
     private val logger: Logger,
     private val jobLabel: String,
-    private val maxBackoffMs: Long = DEFAULT_MAX_BACKOFF_MS
+    private val maxBackoffMs: Long = DEFAULT_MAX_BACKOFF_MS,
     internal var clock: () -> Long = System::currentTimeMillis,
 ) {
     companion object {
