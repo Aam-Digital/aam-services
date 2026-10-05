@@ -215,26 +215,18 @@ the rest of the discussion.
 ## Implementation plan
 
 ### Context
-The current state, verified against the code (file paths, how it behaves today, how that was
-verified). Facts only; anything assumed but not verified is marked as such.
+The current state, verified against the code: file paths, how it behaves today. Anything assumed
+but not verified is marked as such.
 
 ### Decisions
-Each decision taken, with its reason, and the alternatives that were rejected and why.
+Each decision with its reason and the rejected alternative, including how risks are handled.
 
 ### Changes
-Concrete steps, grouped by part: files, classes, config keys, snippets where precision matters.
-
-### Tests & verification
-Unit, integration and e2e tests to add or change, and the manual checks that prove it works.
-
-### Documentation
-Which docs change (`docs/modules/`, `docs/api-specs/`, READMEs).
-
-### Risks
-What could go wrong in production and how the plan prevents or limits it.
+Concrete steps: files, config keys, snippets where precision matters, then the tests and docs to
+add or change.
 
 ### Open questions
-What is still undecided, the options, and how and when it gets settled.
+What is still undecided and how it gets settled. Omit when there are none.
 ```
 
 When decisions change, edit the plan comment in place rather than adding further comments, so it
