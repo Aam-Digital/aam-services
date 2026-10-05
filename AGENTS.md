@@ -195,11 +195,11 @@ separate, so a reviewer gets the point in a minute and an implementer finds ever
 technical: no code, config keys or file paths unless they are the point.
 
 ```markdown
-## Why
-The problem and who is affected by it (users, admins, operators), in a few sentences.
-
 ## What
 The intended outcome, as observable behaviour. What is explicitly out of scope.
+
+## Why
+The problem and who is affected by it (users, admins, operators), in a few sentences.
 
 ## How
 The approach in a few sentences. A small table or list where it helps to compare options or parts.
