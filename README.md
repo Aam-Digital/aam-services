@@ -79,7 +79,7 @@ The individual modules like "Reporting" require some setup and environment varia
 Please refer to the respective READMEs in the "API Modules" list above for instructions about each API Module.
 
 To run the system locally for development, refer to the [docs/developer/README.md](docs/developer/README.md) and sample docker files there.
-These allow you to run required additional services like databases and queues on your machine.
+These allow you to run required additional services like databases and Keycloak on your machine.
 
 ---
 
@@ -182,7 +182,7 @@ spec (and `docs/modules/<module>.md`) in the same change.
 
 ## Running the Application Locally
 
-**Prerequisites:** JDK 25 and a running local dev stack (databases, message queues, Keycloak).
+**Prerequisites:** JDK 25 and a running local dev stack (CouchDB, Keycloak, SQS).
 See [docs/developer/README.md](docs/developer/README.md) for full environment setup instructions.
 
 ```shell
