@@ -192,7 +192,7 @@ class CouchDbChangesPollingJobTest {
         }
 
         @Test
-        fun `should cap backoff delay at five minutes`() {
+        fun capsBackoffDelayAtFiveMinutes() {
             failNext(25)
 
             repeat(20) {

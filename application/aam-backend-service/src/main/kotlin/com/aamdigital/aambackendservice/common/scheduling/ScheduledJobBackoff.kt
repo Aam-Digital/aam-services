@@ -24,7 +24,10 @@ class ScheduledJobBackoff(
         const val INITIAL_BACKOFF_MS = 5_000L
         const val DEFAULT_MAX_BACKOFF_MS = 86_400_000L // 24 hours
 
-        fun calculateBackoffMs(attempt: Int, maxBackoffMs: Long = DEFAULT_MAX_BACKOFF_MS): Long {
+        fun calculateBackoffMs(
+            attempt: Int,
+            maxBackoffMs: Long = DEFAULT_MAX_BACKOFF_MS,
+        ): Long {
             val multiplier = 1L shl (attempt - 1).coerceAtMost(30)
             return (INITIAL_BACKOFF_MS * multiplier).coerceAtMost(maxBackoffMs)
         }

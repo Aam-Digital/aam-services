@@ -9,7 +9,7 @@ class ScheduledJobBackoffTest {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @Test
-    fun `should double the backoff up to the default cap of 24 hours`() {
+    fun doublesBackoffUpToDefaultCapOf24Hours() {
         assertThat(ScheduledJobBackoff.calculateBackoffMs(1)).isEqualTo(5_000L)
         assertThat(ScheduledJobBackoff.calculateBackoffMs(2)).isEqualTo(10_000L)
         assertThat(ScheduledJobBackoff.calculateBackoffMs(3)).isEqualTo(20_000L)
@@ -17,13 +17,13 @@ class ScheduledJobBackoffTest {
     }
 
     @Test
-    fun `should cap the backoff at the given maximum`() {
+    fun capsBackoffAtGivenMaximum() {
         assertThat(ScheduledJobBackoff.calculateBackoffMs(6, maxBackoffMs = 60_000L)).isEqualTo(60_000L)
         assertThat(ScheduledJobBackoff.calculateBackoffMs(100, maxBackoffMs = 60_000L)).isEqualTo(60_000L)
     }
 
     @Test
-    fun `should retry at the custom maximum once it is reached`() {
+    fun retriesAtCustomMaximumOnceReached() {
         // given
         var currentTime = 0L
         var runs = 0
@@ -52,7 +52,7 @@ class ScheduledJobBackoffTest {
     }
 
     @Test
-    fun `should reject a maximum below the initial backoff`() {
+    fun rejectsMaximumBelowInitialBackoff() {
         assertThatThrownBy { ScheduledJobBackoff(logger, "test", maxBackoffMs = 1_000L) }
             .isInstanceOf(IllegalArgumentException::class.java)
     }
