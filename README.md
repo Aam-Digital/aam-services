@@ -112,16 +112,6 @@ Run these from `application/aam-backend-service/`:
 `ktlintFormat` cannot fix everything (for example lines over the 120 character limit); the rest
 `ktlintCheck` reports needs a manual edit.
 
-### Ignoring the reformat commit in `git blame`
-
-The commit that brought the code base to zero findings changed many files without changing any
-behaviour. It is listed in [`.git-blame-ignore-revs`](.git-blame-ignore-revs). GitHub's blame view
-honours that file automatically; for local `git blame` (and most IDEs), enable it once per clone:
-
-```shell
-git config blame.ignoreRevsFile .git-blame-ignore-revs
-```
-
 ## Running Tests
 
 All commands should be run from `application/aam-backend-service/`.
