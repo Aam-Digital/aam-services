@@ -5,12 +5,4 @@ package com.aamdigital.aambackendservice.thirdpartyauthentication
  */
 object ThirdPartyAuthenticationScopes {
     const val SESSION_PROVIDER = "third_party_authentication"
-
-    /**
-     * Realm role that granted this access before the client scope existed.
-     * On startup, clients whose service account holds it are given the [SESSION_PROVIDER] scope,
-     * and the role is deleted afterward (see ClientScopeRequest.replacesRealmRole).
-     * The role itself no longer grants access.
-     */
-    const val LEGACY_PROVIDER_ROLE = "third-party-authentication-provider"
 }

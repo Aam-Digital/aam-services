@@ -4,8 +4,8 @@ import com.aamdigital.aambackendservice.common.error.ForbiddenAccessException
 import org.slf4j.LoggerFactory
 
 /**
- * Makes sure the client scopes required by the enabled feature modules exist in the Keycloak realm,
- * and runs the migrations requested for them (see [ClientScopeRequest]).
+ * Makes sure the client scopes required by the enabled feature modules exist in the Keycloak realm
+ * (see [ClientScopeRequest]).
  *
  * This is best effort: each scope is handled independently, and a failure is logged as a warning
  * without stopping the application. Endpoints check the scopes of each access token regardless,
@@ -45,10 +45,6 @@ class ClientScopeInitializer(
         if (request.promoteOptionalToDefault) {
             promoteOptionalAssignments(scope)
         }
-
-        request.replacesRealmRole?.let { roleName ->
-            migrateRealmRole(roleName, scope)
-        }
     }
 
     private fun findOrCreateClientScope(request: ClientScopeRequest): KeycloakClientScope {
@@ -73,81 +69,5 @@ class ClientScopeInitializer(
                     client.clientId
                 )
             }
-    }
-
-    /**
-     * Give the scope to every API client that has access through the legacy realm role, and delete the role then.
-     * The role is only deleted once all of these clients have the scope,
-     * so a failed migration is repeated on the next startup instead of locking out an API client.
-     */
-    private fun migrateRealmRole(
-        roleName: String,
-        scope: KeycloakClientScope
-    ) {
-        if (!administration.realmRoleExists(roleName)) {
-            return
-        }
-
-        if (!scope.includedInTokenScope) {
-            logger.warn(
-                "Keeping realm role '{}' and not migrating it, because client scope '{}' is not included in tokens.",
-                roleName,
-                scope.name
-            )
-            return
-        }
-
-        val failedClients =
-            administration
-                .findServiceAccountClients()
-                .filterNot { client -> migrateClient(client, roleName, scope) }
-        if (failedClients.isNotEmpty()) {
-            logger.warn(
-                "Keeping realm role '{}', because client scope '{}' could not be assigned to all its clients " +
-                    "(failed: {}). The migration is retried on the next startup.",
-                roleName,
-                scope.name,
-                failedClients.map { it.clientId }
-            )
-            return
-        }
-
-        administration.deleteRealmRole(roleName)
-        logger.info("Deleted realm role '{}', which is replaced by client scope '{}'.", roleName, scope.name)
-    }
-
-    /**
-     * Assign the scope to the client if its service account holds the realm role.
-     * Failures are handled per client, so that one broken client does not stop the migration of the others.
-     *
-     * @return false if the client could not be checked or migrated
-     */
-    private fun migrateClient(
-        client: KeycloakServiceAccountClient,
-        roleName: String,
-        scope: KeycloakClientScope
-    ): Boolean =
-        try {
-            val needsScope = scope.name !in client.defaultClientScopes
-            if (needsScope && administration.serviceAccountHasRealmRole(client, roleName)) {
-                administration.assignDefaultClientScope(client, scope)
-                logger.info(
-                    "Assigned Keycloak client scope '{}' as Default to client '{}', replacing realm role '{}'.",
-                    scope.name,
-                    client.clientId,
-                    roleName
-                )
-            }
-            true
-        } catch (ex: ForbiddenAccessException) {
-            logger.warn(MIGRATE_CLIENT_FAILED, client.clientId, scope.name, ex.message)
-            false
-        } catch (ex: Exception) {
-            logger.warn(MIGRATE_CLIENT_FAILED, client.clientId, scope.name, ex.message, ex)
-            false
-        }
-
-    private companion object {
-        const val MIGRATE_CLIENT_FAILED = "Could not migrate client '{}' to client scope '{}': {}"
     }
 }

@@ -9,8 +9,6 @@ class ClientScopeInitializerTest {
     private class InMemoryClientScopeAdministration : ClientScopeAdministration {
         val clientScopes = mutableListOf<KeycloakClientScope>()
         val clients = mutableListOf<KeycloakServiceAccountClient>()
-        val realmRoles = mutableSetOf<String>()
-        val serviceAccountRoles = mutableMapOf<String, Set<String>>()
         var failingClientId: String? = null
 
         fun client(clientId: String) = clients.single { it.clientId == clientId }
@@ -42,18 +40,6 @@ class ClientScopeInitializerTest {
                 }
             }
         }
-
-        override fun realmRoleExists(roleName: String) = roleName in realmRoles
-
-        override fun serviceAccountHasRealmRole(
-            client: KeycloakServiceAccountClient,
-            roleName: String
-        ) = roleName in serviceAccountRoles[client.clientId].orEmpty()
-
-        override fun deleteRealmRole(roleName: String) {
-            realmRoles -= roleName
-            serviceAccountRoles.replaceAll { _, roles -> roles - roleName }
-        }
     }
 
     private lateinit var administration: InMemoryClientScopeAdministration
@@ -66,8 +52,7 @@ class ClientScopeInitializerTest {
     private fun addClient(
         clientId: String,
         defaultScopes: Set<String> = emptySet(),
-        optionalScopes: Set<String> = emptySet(),
-        realmRoles: Set<String> = emptySet()
+        optionalScopes: Set<String> = emptySet()
     ) {
         administration.clients +=
             KeycloakServiceAccountClient(
@@ -76,7 +61,6 @@ class ClientScopeInitializerTest {
                 defaultClientScopes = defaultScopes,
                 optionalClientScopes = optionalScopes
             )
-        administration.serviceAccountRoles[clientId] = realmRoles
     }
 
     private fun addClientScope(name: String) {
@@ -140,83 +124,6 @@ class ClientScopeInitializerTest {
         // Then
         assertThat(administration.client("optional-client").optionalClientScopes).containsExactly("reporting_read")
         assertThat(administration.client("optional-client").defaultClientScopes).isEmpty()
-    }
-
-    @Test
-    fun `should assign the scope to clients holding the replaced realm role and delete the role`() {
-        // Given
-        administration.realmRoles += "legacy-role"
-        addClient("legacy-client", realmRoles = setOf("legacy-role"))
-        addClient("other-client", realmRoles = setOf("user_app"))
-
-        // When
-        initialize(ClientScopeRequest(name = "new_scope", description = "new", replacesRealmRole = "legacy-role"))
-
-        // Then
-        assertThat(administration.client("legacy-client").defaultClientScopes).containsExactly("new_scope")
-        assertThat(administration.client("other-client").defaultClientScopes).isEmpty()
-        assertThat(administration.realmRoles).doesNotContain("legacy-role")
-    }
-
-    @Test
-    fun `should skip the role migration if the replaced realm role does not exist`() {
-        // Given
-        addClient("api-client")
-
-        // When
-        initialize(ClientScopeRequest(name = "new_scope", description = "new", replacesRealmRole = "legacy-role"))
-
-        // Then
-        assertThat(administration.clientScopes.map { it.name }).containsExactly("new_scope")
-        assertThat(administration.client("api-client").defaultClientScopes).isEmpty()
-    }
-
-    @Test
-    fun `should keep the replaced realm role if a client could not be migrated`() {
-        // Given
-        administration.realmRoles += "legacy-role"
-        addClient("legacy-client", realmRoles = setOf("legacy-role"))
-        administration.failingClientId = "legacy-client"
-
-        // When
-        initialize(ClientScopeRequest(name = "new_scope", description = "new", replacesRealmRole = "legacy-role"))
-
-        // Then
-        assertThat(administration.realmRoles).contains("legacy-role")
-        assertThat(administration.serviceAccountRoles["legacy-client"]).contains("legacy-role")
-    }
-
-    @Test
-    fun `should still migrate the other clients if one client fails`() {
-        // Given
-        administration.realmRoles += "legacy-role"
-        addClient("failing-client", realmRoles = setOf("legacy-role"))
-        addClient("legacy-client", realmRoles = setOf("legacy-role"))
-        administration.failingClientId = "failing-client"
-
-        // When
-        initialize(ClientScopeRequest(name = "new_scope", description = "new", replacesRealmRole = "legacy-role"))
-
-        // Then
-        assertThat(administration.client("legacy-client").defaultClientScopes).containsExactly("new_scope")
-        assertThat(administration.client("failing-client").defaultClientScopes).isEmpty()
-        assertThat(administration.realmRoles).contains("legacy-role")
-    }
-
-    @Test
-    fun `should keep the replaced realm role if the client scope is not included in tokens`() {
-        // Given
-        administration.clientScopes +=
-            KeycloakClientScope(id = "id-new_scope", name = "new_scope", includedInTokenScope = false)
-        administration.realmRoles += "legacy-role"
-        addClient("legacy-client", realmRoles = setOf("legacy-role"))
-
-        // When
-        initialize(ClientScopeRequest(name = "new_scope", description = "new", replacesRealmRole = "legacy-role"))
-
-        // Then
-        assertThat(administration.realmRoles).contains("legacy-role")
-        assertThat(administration.client("legacy-client").defaultClientScopes).isEmpty()
     }
 
     @Test

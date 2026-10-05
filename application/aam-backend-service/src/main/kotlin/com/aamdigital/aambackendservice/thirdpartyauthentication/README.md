@@ -12,9 +12,8 @@ The module here
 ## Access Control
 `POST /session` requires the `third_party_authentication` client scope in the access token
 (`SCOPE_third_party_authentication` authority, see `ThirdPartyAuthenticationScopes`).
-The module registers a `ClientScopeRequest` (common `keycloak` package), so the scope is created on startup,
-and API clients with the former realm role `third-party-authentication-provider` are migrated to the scope.
-The role itself does not grant access.
+The module registers a `ClientScopeRequest` (common `keycloak` package), so the scope is created on startup.
+Assigning it to an API client is up to the Keycloak administrator.
 
 
 ## Development Setup

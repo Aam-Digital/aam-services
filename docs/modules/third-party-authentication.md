@@ -93,26 +93,14 @@ This is different from the Client shared with the external system!
 `POST /v1/third-party-authentication/session` rejects tokens without the `third_party_authentication` scope
 with `403`.
 
-#### Keycloak client scope setup and migration from the realm role
+#### Keycloak client scope setup
 On every startup, the backend makes sure the `third_party_authentication` client scope exists in the realm.
+For that, the `aam-backend` service account needs the `realm-management` role `manage-clients`
+(included in `realm-admin`), and the `KEYCLOAK_*` variables have to be set.
+If the scope cannot be created, the backend logs a warning and starts anyway; create it by hand then.
 
-Previously, access was granted through the realm role `third-party-authentication-provider`,
-which also showed up in the role lists for normal users. If that role still exists, the backend migrates it on startup:
-1. every client whose service account has the role gets the `third_party_authentication` client scope
-   as "Default" client scope
-2. then the realm role is deleted
-
-If one of these steps fails (e.g. missing permissions of the `aam-backend` client), the backend logs a warning,
-keeps the role, and retries on the next startup.
-The role is also kept (and nothing is migrated) if an existing `third_party_authentication` client scope has
-"Include in token scope" disabled.
-The role itself does not grant access: until the migration has run (or the client scope has been assigned
-manually), the external system is rejected with `403`.
-For the migration, the `aam-backend` service account needs the `realm-management` roles `manage-clients`,
-`view-users` and `manage-realm` (all included in `realm-admin`), and the `KEYCLOAK_*` variables have to be set.
-
-Note that backend versions from before this change rely on the role and stop accepting the external system
-once the role is deleted.
+The backend never assigns the scope to a client. Assign it as a **Default** client scope of the external
+system's client as described above, otherwise that client is rejected with `403`.
 
 #### Create an Authentication Flow
 1. Go to the `Authentication` settings in your Realm and copy the default `browser` flow and name it `browser-sso`.

@@ -33,8 +33,7 @@ class AuthenticationConfiguration {
     fun thirdPartyAuthenticationClientScopeRequest(): ClientScopeRequest =
         ClientScopeRequest(
             name = ThirdPartyAuthenticationScopes.SESSION_PROVIDER,
-            description = "Access to create user sessions through the third-party-authentication API",
-            replacesRealmRole = ThirdPartyAuthenticationScopes.LEGACY_PROVIDER_ROLE
+            description = "Access to create user sessions through the third-party-authentication API"
         )
 
     @Bean
