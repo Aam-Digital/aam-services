@@ -186,6 +186,60 @@ generalized insights instead (e.g. "a large production instance", "an external w
 consumer"). Scrub quoted log or monitoring output before posting. Links to access-restricted
 internal tools (e.g. Sentry issues) are acceptable.
 
+### Issue Structure
+
+An issue that is planned for implementation has two parts with two different readers. Keep them
+separate, so a reviewer gets the point in a minute and an implementer finds everything in one place.
+
+**Issue description: the objective**, for reviewers and anyone triaging. Short and not too
+technical: no code, config keys or file paths unless they are the point.
+
+```markdown
+## Why
+The problem and who is affected by it (users, admins, operators), in a few sentences.
+
+## What
+The intended outcome, as observable behaviour. What is explicitly out of scope.
+
+## How
+The approach in a few sentences. A small table or list where it helps to compare options or parts.
+
+Implementation plan: <link to the plan comment>
+```
+
+**Implementation plan: one comment on the issue**, for the developer or agent implementing it.
+Self-contained: someone who reads only this comment and the code can implement the change without
+the rest of the discussion.
+
+```markdown
+## Implementation plan
+
+### Context
+The current state, verified against the code (file paths, how it behaves today, how that was
+verified). Facts only; anything assumed but not verified is marked as such.
+
+### Decisions
+Each decision taken, with its reason, and the alternatives that were rejected and why.
+
+### Changes
+Concrete steps, grouped by part: files, classes, config keys, snippets where precision matters.
+
+### Tests & verification
+Unit, integration and e2e tests to add or change, and the manual checks that prove it works.
+
+### Documentation
+Which docs change (`docs/modules/`, `docs/api-specs/`, READMEs).
+
+### Risks
+What could go wrong in production and how the plan prevents or limits it.
+
+### Open questions
+What is still undecided, the options, and how and when it gets settled.
+```
+
+When decisions change, edit the plan comment in place rather than adding further comments, so it
+stays the single source for implementation. Change the description only if the objective changes.
+
 ### Refactoring & Legacy Code
 
 - Some existing code may not follow current conventions. For existing code, analyse the status and refactor only after confirmation.
