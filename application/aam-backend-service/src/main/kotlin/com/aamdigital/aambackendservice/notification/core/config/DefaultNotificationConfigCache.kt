@@ -1,8 +1,9 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
 import com.aamdigital.aambackendservice.common.cache.LazySnapshot
-import com.aamdigital.aambackendservice.common.condition.DocumentCondition
 import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
+import com.aamdigital.aambackendservice.common.condition.DocumentConditions
+import com.aamdigital.aambackendservice.common.condition.InvalidDocumentConditionsException
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.error.NotFoundException
@@ -131,32 +132,40 @@ class DefaultNotificationConfigCache(
 
     private fun mapToNotificationRules(notificationConfig: NotificationConfigDto): List<NotificationRuleCacheEntry> =
         notificationConfig.notificationRules.withIndex().flatMap { (ruleIndex, rule) ->
-            val conditionGroups =
-                documentConditionEngine.parseConditionGroups(rule.conditions)
+            val conditions =
+                try {
+                    documentConditionEngine.parse(rule.conditions)
+                } catch (ex: InvalidDocumentConditionsException) {
+                    // skip only this rule, so one broken rule does not disable the user's others
+                    logger.warn(
+                        "Skipping notification rule with invalid conditions: notificationConfigId={}, ruleIndex={}",
+                        notificationConfig.id,
+                        ruleIndex,
+                        ex
+                    )
+                    return@flatMap emptyList()
+                }
 
-            rule.changeType.flatMap { changeType ->
-                conditionGroups.withIndex().map { (conditionGroupIndex, conditions) ->
-                    val externalIdentifierInput =
-                        ExternalIdentifierInput(
-                            notificationConfigId = notificationConfig.id,
-                            ruleIndex = ruleIndex,
-                            label = rule.label,
-                            entityType = rule.entityType,
-                            changeType = changeType,
-                            conditionGroupIndex = conditionGroupIndex,
-                            conditions = conditions
-                        )
-
-                    NotificationRuleCacheEntry(
+            rule.changeType.map { changeType ->
+                val externalIdentifierInput =
+                    ExternalIdentifierInput(
+                        notificationConfigId = notificationConfig.id,
+                        ruleIndex = ruleIndex,
                         label = rule.label,
-                        externalIdentifier = buildExternalIdentifier(externalIdentifierInput),
-                        notificationType = rule.notificationType,
                         entityType = rule.entityType,
                         changeType = changeType,
-                        conditions = conditions,
-                        enabled = rule.enabled
+                        conditions = conditions
                     )
-                }
+
+                NotificationRuleCacheEntry(
+                    label = rule.label,
+                    externalIdentifier = buildExternalIdentifier(externalIdentifierInput),
+                    notificationType = rule.notificationType,
+                    entityType = rule.entityType,
+                    changeType = changeType,
+                    conditions = conditions,
+                    enabled = rule.enabled
+                )
             }
         }
 
@@ -166,13 +175,10 @@ class DefaultNotificationConfigCache(
         val label: String,
         val entityType: String,
         val changeType: String,
-        val conditionGroupIndex: Int,
-        val conditions: List<DocumentCondition>
+        val conditions: DocumentConditions
     )
 
     private fun buildExternalIdentifier(input: ExternalIdentifierInput): String {
-        val conditionSignature =
-            input.conditions.joinToString(separator = "|") { "${it.field}:${it.operator}:${it.value}" }
         val stableIdentifier =
             listOf(
                 input.notificationConfigId,
@@ -180,8 +186,7 @@ class DefaultNotificationConfigCache(
                 input.label,
                 input.entityType,
                 input.changeType,
-                input.conditionGroupIndex.toString(),
-                conditionSignature
+                input.conditions.canonicalJson
             ).joinToString("#")
 
         return UUID.nameUUIDFromBytes(stableIdentifier.toByteArray(StandardCharsets.UTF_8)).toString()

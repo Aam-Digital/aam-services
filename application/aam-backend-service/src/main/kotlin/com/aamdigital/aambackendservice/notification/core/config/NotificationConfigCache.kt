@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
-import com.aamdigital.aambackendservice.common.condition.DocumentCondition
+import com.aamdigital.aambackendservice.common.condition.DocumentConditions
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 
 /**
@@ -18,7 +18,7 @@ data class NotificationConfigCacheEntry(
 /**
  * Flattened and pre-parsed notification rule entry used during rule matching.
  *
- * Each entry represents one effective change-type + condition-group combination.
+ * Each entry represents one change type of a rule, with the rule's complete condition tree.
  */
 data class NotificationRuleCacheEntry(
     val label: String,
@@ -26,7 +26,7 @@ data class NotificationRuleCacheEntry(
     val notificationType: NotificationType,
     val entityType: String,
     val changeType: String,
-    val conditions: List<DocumentCondition>,
+    val conditions: DocumentConditions,
     val enabled: Boolean
 )
 

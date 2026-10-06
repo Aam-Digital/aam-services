@@ -38,7 +38,7 @@ class DefaultNotificationConfigCacheTest {
     }
 
     @Test
-    fun `should load notification configs from couchdb and expand rule conditions`() {
+    fun `should load notification configs from couchdb with one rule entry per change type`() {
         // given
         val configDoc =
             objectMapper
@@ -56,11 +56,11 @@ class DefaultNotificationConfigCacheTest {
                                 "label": "Rule 1",
                                 "notificationType": "entity_change",
                                 "entityType": "Child",
-                                "changeType": ["updated"],
+                                "changeType": ["created", "updated"],
                                 "conditions": {
                                     "${'$'}or": [
                                         {"name": {"${'$'}eq": "Bert"}},
-                                        {"age": {"${'$'}gte": "18"}}
+                                        {"age": {"${'$'}not": {"${'$'}gte": 18}}}
                                     ]
                                 },
                                 "enabled": true
@@ -84,10 +84,115 @@ class DefaultNotificationConfigCacheTest {
         // then
         assertThat(entries).hasSize(1)
         assertThat(entries.first().userIdentifier).isEqualTo("user-1")
-        assertThat(entries.first().rules).hasSize(2)
+        // the `${'$'}or` is kept as one rule, so a document matching several branches notifies only once
+        assertThat(entries.first().rules.map { it.changeType }).containsExactly("created", "updated")
         assertThat(entries.first().rules.map { it.externalIdentifier })
             .doesNotContainNull()
             .doesNotHaveDuplicates()
+    }
+
+    @Test
+    fun `should skip only the rule with invalid conditions`() {
+        // given
+        val configDoc =
+            objectMapper
+                .readTree(
+                    """
+                    {
+                        "_id": "NotificationConfig:user-1",
+                        "_rev": "1-abc",
+                        "notificationRules": [
+                            {
+                                "label": "Invalid rule",
+                                "notificationType": "entity_change",
+                                "entityType": "Child",
+                                "changeType": ["created"],
+                                "conditions": {"name": {"${'$'}unknownOperator": "Bert"}},
+                                "enabled": true
+                            },
+                            {
+                                "label": "Valid rule",
+                                "notificationType": "entity_change",
+                                "entityType": "Child",
+                                "changeType": ["created"],
+                                "conditions": {"name": {"${'$'}not": {"${'$'}eq": "Bert"}}},
+                                "enabled": true
+                            }
+                        ]
+                    }
+                    """.trimIndent()
+                ).deepCopy<ObjectNode>()
+
+        whenever(
+            couchDbClient.getDatabaseDocumentsByPrefix(
+                database = eq("app"),
+                prefix = eq("NotificationConfig"),
+                kClass = eq(ObjectNode::class)
+            )
+        ).thenReturn(listOf(configDoc))
+
+        // when
+        val entries = cache.findAll()
+
+        // then
+        assertThat(entries).hasSize(1)
+        assertThat(entries.first().rules.map { it.label }).containsExactly("Valid rule")
+    }
+
+    @Test
+    fun `should derive the same rule identifier for the same conditions in a different key order`() {
+        // given
+        fun configWithConditions(conditions: String): ObjectNode =
+            objectMapper
+                .readTree(
+                    """
+                    {
+                        "_id": "NotificationConfig:user-1",
+                        "_rev": "1-abc",
+                        "notificationRules": [
+                            {
+                                "label": "Rule",
+                                "notificationType": "entity_change",
+                                "entityType": "Child",
+                                "changeType": ["created"],
+                                "conditions": $conditions,
+                                "enabled": true
+                            }
+                        ]
+                    }
+                    """.trimIndent()
+                ).deepCopy<ObjectNode>()
+
+        whenever(
+            couchDbClient.getDatabaseDocumentsByPrefix(
+                database = eq("app"),
+                prefix = eq("NotificationConfig"),
+                kClass = eq(ObjectNode::class)
+            )
+        ).thenReturn(
+            listOf(configWithConditions("""{"name": "Bert", "age": 18}""")),
+            listOf(configWithConditions("""{"age": 18, "name": "Bert"}"""))
+        )
+
+        // when
+        val first =
+            cache
+                .findAll()
+                .single()
+                .rules
+                .single()
+                .externalIdentifier
+        val otherCache = DefaultNotificationConfigCache(couchDbClient = couchDbClient, objectMapper = objectMapper)
+        val second =
+            otherCache
+                .findAll()
+                .single()
+                .rules
+                .single()
+                .externalIdentifier
+
+        // then
+        assertThat(second).isEqualTo(first)
     }
 
     @Test
