@@ -17,7 +17,9 @@ import java.net.URI
  * log (and the Sentry event it produces) reads as "the receiver rejected our callback"
  * instead of a bare, unattributed `HttpClientErrorException` message.
  */
-class WebhookCallbackRejectedException(message: String) : RuntimeException(message)
+class WebhookCallbackRejectedException(
+    message: String
+) : RuntimeException(message)
 
 /**
  * Calls a configured (external) webhook

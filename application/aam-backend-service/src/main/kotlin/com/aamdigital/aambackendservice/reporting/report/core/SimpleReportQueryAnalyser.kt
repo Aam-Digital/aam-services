@@ -17,13 +17,17 @@ class SimpleReportQueryAnalyser : ReportQueryAnalyser {
     private fun extractEntitiesFromItems(items: List<ReportItem>): List<String> =
         items.flatMap { reportItem ->
             when (reportItem) {
-                is ReportItem.ReportGroup -> extractEntitiesFromItems(reportItem.items)
-                is ReportItem.ReportQuery ->
+                is ReportItem.ReportGroup -> {
+                    extractEntitiesFromItems(reportItem.items)
+                }
+
+                is ReportItem.ReportQuery -> {
                     EXTRACT_ENTITIES_FROM_SQL_REGEX
                         .matcher(reportItem.sql)
                         .results()
                         .map { it.group(2) }
                         .toList()
+                }
             }
         }
 }

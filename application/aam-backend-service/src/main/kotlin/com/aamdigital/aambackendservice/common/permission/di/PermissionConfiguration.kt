@@ -44,9 +44,7 @@ class PermissionConfiguration {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @Bean
-    fun permissionCheckClient(
-        configuration: ReplicationBackendClientConfiguration
-    ): PermissionCheckClient {
+    fun permissionCheckClient(configuration: ReplicationBackendClientConfiguration): PermissionCheckClient {
         if (configuration.basePath.isBlank()) {
             logger.info(
                 "aam-replication-backend-client-configuration.base-path is not configured. " +
@@ -60,18 +58,18 @@ class PermissionConfiguration {
             configuration.basePath
         )
 
-        val restClient = RestClient.builder()
-            .baseUrl(configuration.basePath)
-            .requestFactory(
-                requestFactoryWithTimeout(Duration.ofSeconds(configuration.responseTimeoutInSeconds.toLong()))
-            )
-            .defaultHeaders { headers ->
-                headers.setBasicAuth(
-                    configuration.basicAuthUsername,
-                    configuration.basicAuthPassword
-                )
-            }
-            .build()
+        val restClient =
+            RestClient
+                .builder()
+                .baseUrl(configuration.basePath)
+                .requestFactory(
+                    requestFactoryWithTimeout(Duration.ofSeconds(configuration.responseTimeoutInSeconds.toLong()))
+                ).defaultHeaders { headers ->
+                    headers.setBasicAuth(
+                        configuration.basicAuthUsername,
+                        configuration.basicAuthPassword
+                    )
+                }.build()
 
         return PermissionCheckClient(restClient)
     }

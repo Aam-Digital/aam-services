@@ -1,5 +1,8 @@
 package com.aamdigital.aambackendservice.notification.core.create.email
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.aamdigital.aambackendservice.common.mail.MailSenderRequest
 import com.aamdigital.aambackendservice.common.mail.MailSenderResponse
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
@@ -9,15 +12,11 @@ import com.aamdigital.aambackendservice.notification.domain.EntityNotificationCo
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
-import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.Logger as LogbackLogger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.io.TempDir
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
@@ -29,6 +28,7 @@ import org.slf4j.LoggerFactory
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import ch.qos.logback.classic.Logger as LogbackLogger
 
 @ExtendWith(MockitoExtension::class)
 class EmailCreateNotificationHandlerTest {
@@ -71,20 +71,23 @@ class EmailCreateNotificationHandlerTest {
     private fun createHandler(
         templatesBaseDir: Path = tempDir,
         locale: String = "en"
-    ) =
-        EmailCreateNotificationHandler(
-            mailSenderService = mailSenderService,
-            userEmailProvider = userEmailProvider,
-            notificationEmailProperties = emailProperties.copy(locale = locale),
-            templatesBaseDir = templatesBaseDir
-        )
+    ) = EmailCreateNotificationHandler(
+        mailSenderService = mailSenderService,
+        userEmailProvider = userEmailProvider,
+        notificationEmailProperties = emailProperties.copy(locale = locale),
+        templatesBaseDir = templatesBaseDir
+    )
 
     /**
      * Writes a template override under [baseDir]. A [locale] of `null` writes the
      * legacy unsuffixed location `{baseDir}/notification/...`; otherwise it writes
      * `{baseDir}/{locale}/notification/...`.
      */
-    private fun writeTemplateOverride(baseDir: Path, locale: String?, content: String): Path {
+    private fun writeTemplateOverride(
+        baseDir: Path,
+        locale: String?,
+        content: String
+    ): Path {
         val dir =
             if (locale == null) {
                 baseDir.resolve("notification")
@@ -101,7 +104,11 @@ class EmailCreateNotificationHandlerTest {
      * Writes a branding override under [baseDir]. A [locale] of `null` writes the legacy
      * unsuffixed location `{baseDir}/notification/...`; otherwise `{baseDir}/{locale}/notification/...`.
      */
-    private fun writeBrandingOverride(baseDir: Path, locale: String?, content: String): Path {
+    private fun writeBrandingOverride(
+        baseDir: Path,
+        locale: String?,
+        content: String
+    ): Path {
         val dir =
             if (locale == null) {
                 baseDir.resolve("notification")

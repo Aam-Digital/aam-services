@@ -80,7 +80,7 @@ class WebhookController(
                     }
             } catch (ex: Exception) {
                 return when (ex) {
-                    is NotFoundException ->
+                    is NotFoundException -> {
                         ResponseEntity
                             .status(HttpStatus.NOT_FOUND)
                             .body(
@@ -89,8 +89,9 @@ class WebhookController(
                                     errorMessage = ex.localizedMessage
                                 )
                             )
+                    }
 
-                    else ->
+                    else -> {
                         ResponseEntity
                             .status(HttpStatus.INTERNAL_SERVER_ERROR)
                             .body(
@@ -99,6 +100,7 @@ class WebhookController(
                                     errorMessage = ex.localizedMessage
                                 )
                             )
+                    }
                 }
             }
         return ResponseEntity.ok(webhooks)
@@ -114,7 +116,7 @@ class WebhookController(
                 webhookStorage.fetchWebhook(DomainReference(webhookId))
             } catch (ex: Exception) {
                 return when (ex) {
-                    is NotFoundException ->
+                    is NotFoundException -> {
                         ResponseEntity
                             .status(HttpStatus.NOT_FOUND)
                             .body(
@@ -123,8 +125,9 @@ class WebhookController(
                                     errorMessage = ex.localizedMessage
                                 )
                             )
+                    }
 
-                    else ->
+                    else -> {
                         ResponseEntity
                             .status(HttpStatus.INTERNAL_SERVER_ERROR)
                             .body(
@@ -133,6 +136,7 @@ class WebhookController(
                                     errorMessage = ex.localizedMessage
                                 )
                             )
+                    }
                 }
             }
 
@@ -161,7 +165,7 @@ class WebhookController(
                 )
             } catch (ex: Exception) {
                 return when (ex) {
-                    is NotFoundException ->
+                    is NotFoundException -> {
                         ResponseEntity
                             .status(HttpStatus.NOT_FOUND)
                             .body(
@@ -170,8 +174,9 @@ class WebhookController(
                                     errorMessage = ex.localizedMessage
                                 )
                             )
+                    }
 
-                    else ->
+                    else -> {
                         ResponseEntity
                             .status(HttpStatus.INTERNAL_SERVER_ERROR)
                             .body(
@@ -180,6 +185,7 @@ class WebhookController(
                                     errorMessage = ex.localizedMessage
                                 )
                             )
+                    }
                 }
             }
 

@@ -327,7 +327,7 @@ class DefaultReportCalculationUseCaseTest {
                         ReportItem.ReportQuery(
                             sql =
                                 "SELECT *, json_extract(foo.children, '\$[0]') FROM foo " +
-                                        "WHERE time BETWEEN \$startDate and \$endDate"
+                                    "WHERE time BETWEEN \$startDate and \$endDate"
                         )
                     ),
                 transformations =
@@ -412,7 +412,7 @@ class DefaultReportCalculationUseCaseTest {
                         ReportItem.ReportQuery(
                             sql =
                                 "SELECT * FROM foo WHERE time BETWEEN \$startDate and \$endDate " +
-                                        "AND date BETWEEN \$startDate AND \$endDate"
+                                    "AND date BETWEEN \$startDate AND \$endDate"
                         )
                     ),
                 transformations =

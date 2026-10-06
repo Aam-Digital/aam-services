@@ -13,7 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled
 @Configuration
 @ConditionalOnReportingEnabled
 class ReportCalculationDebounceJob(
-    private val reportCalculationDebouncer: ReportCalculationDebouncer,
+    private val reportCalculationDebouncer: ReportCalculationDebouncer
 ) {
     @Scheduled(fixedDelayString = "\${report-calculation-debounce.flush-fixed-delay:10000}")
     fun flushDueReportCalculations() {

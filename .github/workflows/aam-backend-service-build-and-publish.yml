@@ -40,6 +40,13 @@ jobs:
           java-version: 25
           cache: 'gradle'
 
+      - name: Check code style (ktlint)
+        # Runs before the tests so that a formatting problem fails fast. Locally,
+        # `./gradlew ktlintFormat` fixes what this reports. The `publish` job needs this job,
+        # so unformatted code cannot be released.
+        run: |
+          ./gradlew ktlintCheck --no-daemon
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
         with:

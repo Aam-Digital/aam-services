@@ -1,8 +1,8 @@
 package com.aamdigital.aambackendservice.notification.core.create.email
 
+import com.aamdigital.aambackendservice.common.domain.normalizeUrlWithHttpsDefault
 import com.aamdigital.aambackendservice.common.mail.MailSenderRequest
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
-import com.aamdigital.aambackendservice.common.domain.normalizeUrlWithHttpsDefault
 import com.aamdigital.aambackendservice.common.templating.LocalizedTemplateLoader
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationData
@@ -13,11 +13,11 @@ import com.aamdigital.aambackendservice.notification.domain.NotificationChannelT
 import org.slf4j.LoggerFactory
 import org.springframework.mail.MailSendException
 import org.springframework.web.util.HtmlUtils
+import java.io.StringReader
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.io.StringReader
 import java.util.Properties
 
 class EmailCreateNotificationHandler(
@@ -31,7 +31,8 @@ class EmailCreateNotificationHandler(
     private val emailBodyTemplate: String =
         templateLoader.loadRequired(TEMPLATE_RELATIVE_PATH, notificationEmailProperties.locale)
     private val branding: EmailBranding = loadEmailBranding(notificationEmailProperties.locale)
-    private val normalizedManageSettingsUrl: String = normalizeUrlWithHttpsDefault(notificationEmailProperties.manageSettingsUrl)
+    private val normalizedManageSettingsUrl: String =
+        normalizeUrlWithHttpsDefault(notificationEmailProperties.manageSettingsUrl)
     private val resolvedFrom: String = resolveFrom(notificationEmailProperties.from, branding.fromName)
 
     override fun canHandle(notificationChannelType: NotificationChannelType): Boolean =
@@ -86,10 +87,11 @@ class EmailCreateNotificationHandler(
     }
 
     private fun isTransientMailFailure(ex: MailSendException): Boolean {
-        val candidates = buildList {
-            add(ex as Throwable)
-            addAll(ex.failedMessages.values)
-        }
+        val candidates =
+            buildList {
+                add(ex as Throwable)
+                addAll(ex.failedMessages.values)
+            }
         return candidates.any { root ->
             generateSequence(root) { it.cause }
                 .any { it is ConnectException || it is SocketTimeoutException }
@@ -114,7 +116,10 @@ class EmailCreateNotificationHandler(
      * Falls back to the bare configured address when no [fromName] is configured (or the address
      * is empty).
      */
-    private fun resolveFrom(configuredFrom: String, fromName: String): String {
+    private fun resolveFrom(
+        configuredFrom: String,
+        fromName: String
+    ): String {
         val address = configuredFrom.trim()
         if (address.isEmpty() || fromName.isBlank()) {
             return configuredFrom

@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory
 
 @ExtendWith(MockitoExtension::class)
 class SyncSkillsJobTest {
-
     private lateinit var job: SyncSkillsJob
 
     @Mock
@@ -39,20 +38,22 @@ class SyncSkillsJobTest {
             errorMessage = "error"
         )
 
-    private val skillLabApiClientConfiguration = SkillLabApiClientConfiguration(
-        basePath = "https://example.com",
-        apiKey = "test-key",
-        projectId = "test-project",
-    )
+    private val skillLabApiClientConfiguration =
+        SkillLabApiClientConfiguration(
+            basePath = "https://example.com",
+            apiKey = "test-key",
+            projectId = "test-project"
+        )
 
     @BeforeEach
     fun setUp() {
         reset(fetchUserProfileUpdatesUseCase)
         currentTime = 0L
-        job = SyncSkillsJob(
-            skillLabFetchUserProfileUpdatesUseCase = fetchUserProfileUpdatesUseCase,
-            skillLabApiClientConfiguration = skillLabApiClientConfiguration,
-        )
+        job =
+            SyncSkillsJob(
+                skillLabFetchUserProfileUpdatesUseCase = fetchUserProfileUpdatesUseCase,
+                skillLabApiClientConfiguration = skillLabApiClientConfiguration
+            )
         job.backoff.clock = { currentTime }
     }
 

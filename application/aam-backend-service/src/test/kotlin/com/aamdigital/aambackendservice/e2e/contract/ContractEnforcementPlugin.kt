@@ -59,8 +59,8 @@ class ContractEnforcementPlugin : ConcurrentEventListener {
         } else {
             listOf(
                 "[${gate.name}] documented operations never exercised by an e2e test " +
-                        "(add a scenario, or remove from the spec):\n" +
-                        uncovered.joinToString("\n") { "    - $it" }
+                    "(add a scenario, or remove from the spec):\n" +
+                    uncovered.joinToString("\n") { "    - $it" }
             )
         }
     }
@@ -71,15 +71,15 @@ class ContractEnforcementPlugin : ConcurrentEventListener {
     ): List<String> {
         val undocumented =
             (
-                    ControllerEndpointScanner.endpointKeys(gate.basePackage, gate.prefix) - spec.documentedOperationKeys
-                    ).sorted()
+                ControllerEndpointScanner.endpointKeys(gate.basePackage, gate.prefix) - spec.documentedOperationKeys
+            ).sorted()
         return if (undocumented.isEmpty()) {
             emptyList()
         } else {
             listOf(
                 "[${gate.name}] endpoints implemented in code but missing from the OpenAPI spec " +
-                        "(document them in docs/api-specs/${gate.specFileName}):\n" +
-                        undocumented.joinToString("\n") { "    - $it" }
+                    "(document them in docs/api-specs/${gate.specFileName}):\n" +
+                    undocumented.joinToString("\n") { "    - $it" }
             )
         }
     }

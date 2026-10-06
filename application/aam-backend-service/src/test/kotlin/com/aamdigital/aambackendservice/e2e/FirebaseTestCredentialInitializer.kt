@@ -16,11 +16,14 @@ import java.util.Base64
 class FirebaseTestCredentialInitializer : ApplicationContextInitializer<ConfigurableApplicationContext> {
     override fun initialize(applicationContext: ConfigurableApplicationContext) {
         val keyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-        val pem = buildString {
-            append("-----BEGIN PRIVATE KEY-----\n")
-            append(Base64.getMimeEncoder(64, byteArrayOf('\n'.code.toByte())).encodeToString(keyPair.private.encoded))
-            append("\n-----END PRIVATE KEY-----\n")
-        }
+        val pem =
+            buildString {
+                append("-----BEGIN PRIVATE KEY-----\n")
+                append(
+                    Base64.getMimeEncoder(64, byteArrayOf('\n'.code.toByte())).encodeToString(keyPair.private.encoded)
+                )
+                append("\n-----END PRIVATE KEY-----\n")
+            }
         val pemJson = pem.replace("\n", "\\n")
 
         val serviceAccountJson =

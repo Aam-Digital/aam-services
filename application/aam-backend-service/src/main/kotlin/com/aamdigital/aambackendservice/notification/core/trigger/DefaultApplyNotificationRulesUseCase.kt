@@ -9,10 +9,10 @@ import com.aamdigital.aambackendservice.notification.core.CreateUserNotification
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
 import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
+import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.domain.EntityNotificationContext
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
-import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import org.springframework.web.util.UriComponentsBuilder
 import java.nio.charset.StandardCharsets
 import java.util.UUID

@@ -25,7 +25,6 @@ import org.springframework.data.domain.PageImpl
 
 @ExtendWith(MockitoExtension::class)
 class PushCreateNotificationHandlerTest {
-
     private lateinit var handler: PushCreateNotificationHandler
 
     @Mock
@@ -42,24 +41,27 @@ class PushCreateNotificationHandlerTest {
 
     private val applicationConfig = ApplicationConfig(baseUrl = "https://app.test")
 
-    private val notificationEvent = CreateUserNotificationEvent(
-        userIdentifier = "test-user",
-        notificationChannelType = NotificationChannelType.PUSH,
-        notificationRule = "test-rule",
-        details = NotificationDetails(
-            notificationType = NotificationType.ENTITY_CHANGE,
-            title = "A new record was added",
-            context = EntityNotificationContext(entityType = "Child", entityId = "Child:1")
+    private val notificationEvent =
+        CreateUserNotificationEvent(
+            userIdentifier = "test-user",
+            notificationChannelType = NotificationChannelType.PUSH,
+            notificationRule = "test-rule",
+            details =
+                NotificationDetails(
+                    notificationType = NotificationType.ENTITY_CHANGE,
+                    title = "A new record was added",
+                    context = EntityNotificationContext(entityType = "Child", entityId = "Child:1")
+                )
         )
-    )
 
     @BeforeEach
     fun setUp() {
-        handler = PushCreateNotificationHandler(
-            firebaseMessaging = firebaseMessaging,
-            userDeviceRepository = userDeviceRepository,
-            applicationConfig = applicationConfig
-        )
+        handler =
+            PushCreateNotificationHandler(
+                firebaseMessaging = firebaseMessaging,
+                userDeviceRepository = userDeviceRepository,
+                applicationConfig = applicationConfig
+            )
     }
 
     @Test
@@ -92,11 +94,12 @@ class PushCreateNotificationHandlerTest {
     @Test
     fun `should send push notification when user has registered devices`() {
         // Given
-        val device = UserDeviceEntity(
-            deviceName = "My Phone",
-            deviceToken = "device-token-abc",
-            userIdentifier = "test-user"
-        )
+        val device =
+            UserDeviceEntity(
+                deviceName = "My Phone",
+                deviceToken = "device-token-abc",
+                userIdentifier = "test-user"
+            )
         whenever(userDeviceRepository.findByUserIdentifier(any(), any()))
             .thenReturn(PageImpl(listOf(device)))
         whenever(sendResponse.messageId).thenReturn("firebase-msg-id-1")
@@ -116,10 +119,11 @@ class PushCreateNotificationHandlerTest {
     @Test
     fun `should include all device tokens when user has multiple registered devices`() {
         // Given
-        val devices = listOf(
-            UserDeviceEntity(deviceName = "Phone", deviceToken = "token-1", userIdentifier = "test-user"),
-            UserDeviceEntity(deviceName = "Tablet", deviceToken = "token-2", userIdentifier = "test-user")
-        )
+        val devices =
+            listOf(
+                UserDeviceEntity(deviceName = "Phone", deviceToken = "token-1", userIdentifier = "test-user"),
+                UserDeviceEntity(deviceName = "Tablet", deviceToken = "token-2", userIdentifier = "test-user")
+            )
         whenever(userDeviceRepository.findByUserIdentifier(any(), any()))
             .thenReturn(PageImpl(devices))
         whenever(sendResponse.messageId).thenReturn("msg-id")

@@ -65,7 +65,7 @@ class ReportCalculationDebouncerTest {
                 createReportCalculationUseCase = createReportCalculationUseCase,
                 quietPeriod = quietPeriod,
                 maxWait = maxWait,
-                clock = clock,
+                clock = clock
             )
     }
 

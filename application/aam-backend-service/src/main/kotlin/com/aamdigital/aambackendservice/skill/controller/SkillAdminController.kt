@@ -70,13 +70,16 @@ class SkillAdminController(
             }
 
         when (syncMode) {
-            SyncModeDto.DELTA ->
+            SyncModeDto.DELTA -> {
                 if (!updatedFrom.isNullOrBlank()) {
                     result.latestSync = Instant.parse(updatedFrom).atOffset(ZoneOffset.UTC)
                     skillLabUserProfileSyncRepository.save(result)
                 }
+            }
 
-            SyncModeDto.FULL -> skillLabUserProfileSyncRepository.delete(result)
+            SyncModeDto.FULL -> {
+                skillLabUserProfileSyncRepository.delete(result)
+            }
         }
 
         try {

@@ -4,7 +4,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class UrlNormalizationTest {
-
     @Test
     fun `should return empty string for blank input`() {
         assertThat(normalizeUrlWithHttpsDefault("   ")).isEqualTo("")

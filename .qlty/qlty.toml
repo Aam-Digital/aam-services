@@ -69,6 +69,11 @@ name = "hadolint"
 
 [[plugin]]
 name = "ktlint"
+# Pinned to the ktlint version of the Gradle build (`ktlint` in
+# application/aam-backend-service/gradle/libs.versions.toml), so that Qlty and the CI gate
+# (`./gradlew ktlintCheck`) apply the same rules from the same .editorconfig. Without a pin
+# Qlty follows its own default version and the two can disagree. Update both together.
+version = "1.8.0"
 drivers = [
   "lint",
 ]

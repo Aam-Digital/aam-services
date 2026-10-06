@@ -12,5 +12,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties
  */
 @ConfigurationProperties("database-change-detection")
 class ChangeDetectionProperties(
-    val includedDatabases: List<String> = listOf("app"),
+    val includedDatabases: List<String> = listOf("app")
 )

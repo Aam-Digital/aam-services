@@ -135,20 +135,24 @@ class DefaultReportStorage(
 
     private fun handleException(ex: Exception): Throwable =
         when (ex) {
-            is JacksonException ->
+            is JacksonException -> {
                 InvalidArgumentException(
                     message = "Could not parse Report to Entity",
                     code = ReportStorageErrorCode.PARSING_ERROR,
                     cause = ex
                 )
+            }
 
-            is InterruptedIOException ->
+            is InterruptedIOException -> {
                 ExternalSystemException(
                     message = ex.localizedMessage,
                     cause = ex,
                     code = DefaultReportCalculationStorageError.NETWORK_ERROR
                 )
+            }
 
-            else -> ex
+            else -> {
+                ex
+            }
         }
 }

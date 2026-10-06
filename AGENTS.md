@@ -529,13 +529,14 @@ e2e gates rely on it.
 
 - `./gradlew test` — Run all tests
 - `./gradlew jacocoTestReport` — Run tests with coverage report (what CI runs)
-- `./gradlew ktlintCheck` — Check formatting
+- `./gradlew ktlintCheck` — Check formatting (CI runs it before the tests and fails the build on any finding)
+- `./gradlew ktlintFormat` — Fix formatting findings automatically
 - `./gradlew build` — Compile, test and check
 
-`ktlintCheck` currently reports several hundred pre-existing findings, so it fails, and `build`
-fails with it. Neither is a usable gate for a change: verify with `./gradlew test` and compare the
-failure count and the test count against the same command before your change. Do not run
-`ktlintFormat` to fix this — it reformats unrelated files across the repository.
+The repository is kept at zero ktlint findings, so run `./gradlew ktlintFormat` before committing and
+fix what it cannot (for example `max-line-length`). Rules are configured in
+`application/aam-backend-service/.editorconfig`; Qlty runs the same ktlint version (pinned in
+`.qlty/qlty.toml`) against that file. Keep formatting changes out of unrelated commits.
 
 All Gradle commands should be run from `application/aam-backend-service/`.
 

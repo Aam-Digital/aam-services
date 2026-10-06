@@ -9,9 +9,9 @@ import com.aamdigital.aambackendservice.notification.core.CreateUserNotification
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCacheEntry
 import com.aamdigital.aambackendservice.notification.core.config.NotificationRuleCacheEntry
+import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
-import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -653,7 +653,8 @@ class DefaultApplyNotificationRulesUseCaseTest {
         assertThat(eventCaptor.allValues.map { it.notificationChannelType })
             .containsExactlyInAnyOrder(
                 NotificationChannelType.APP,
-                NotificationChannelType.PUSH // currently always sent regardless of the channelPush config flag, see TODO in use case
+                // currently always sent regardless of the channelPush config flag, see TODO in use case
+                NotificationChannelType.PUSH
             )
     }
 
@@ -747,7 +748,8 @@ class DefaultApplyNotificationRulesUseCaseTest {
         val channelTypes = eventCaptor.allValues.map { it.notificationChannelType }
         assertThat(channelTypes).containsExactlyInAnyOrder(
             NotificationChannelType.APP,
-            NotificationChannelType.PUSH, // currently always sent regardless of the channelPush config flag, see TODO in use case
+            // currently always sent regardless of the channelPush config flag, see TODO in use case
+            NotificationChannelType.PUSH,
             NotificationChannelType.EMAIL
         )
     }

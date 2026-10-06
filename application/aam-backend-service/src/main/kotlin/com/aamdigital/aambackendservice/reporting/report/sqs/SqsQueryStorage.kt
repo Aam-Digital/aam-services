@@ -45,7 +45,7 @@ class SqsQueryStorage(
          * SQS answered with any other error status: another 4xx (e.g. wrong credentials or a missing
          * design document) or a 5xx.
          */
-        QUERY_EXECUTION_FAILED,
+        QUERY_EXECUTION_FAILED
     }
 
     companion object {
@@ -53,7 +53,10 @@ class SqsQueryStorage(
         private const val MAX_ERROR_BODY_LENGTH = 500
     }
 
-    override fun executeQuery(query: QueryRequest, reportId: String): InputStream {
+    override fun executeQuery(
+        query: QueryRequest,
+        reportId: String
+    ): InputStream {
         val schemaPath = schemaService.getSchemaPath()
         schemaService.updateSchema()
 
@@ -71,9 +74,10 @@ class SqsQueryStorage(
                 // and must alert. The first matching handler applies, so the 400 one has to come first.
                 .onStatus({ it.isSameCodeAs(HttpStatus.BAD_REQUEST) }) { _, clientResponse ->
                     throw InvalidArgumentException(
-                        message = "[SqsQueryStorage] SQS rejected the query for report '$reportId' " +
-                            "(${clientResponse.statusCode}): ${readErrorBody(clientResponse)}",
-                        code = SqsQueryStorageErrorCode.QUERY_FAILED,
+                        message =
+                            "[SqsQueryStorage] SQS rejected the query for report '$reportId' " +
+                                "(${clientResponse.statusCode}): ${readErrorBody(clientResponse)}",
+                        code = SqsQueryStorageErrorCode.QUERY_FAILED
                     )
                 }.onStatus({ it.isError }) { _, clientResponse ->
                     if (logger.isDebugEnabled) {
@@ -85,9 +89,10 @@ class SqsQueryStorage(
                         )
                     }
                     throw ExternalSystemException(
-                        message = "[SqsQueryStorage] SQS failed to execute the query for report '$reportId' " +
-                            "(${clientResponse.statusCode})",
-                        code = SqsQueryStorageErrorCode.QUERY_EXECUTION_FAILED,
+                        message =
+                            "[SqsQueryStorage] SQS failed to execute the query for report '$reportId' " +
+                                "(${clientResponse.statusCode})",
+                        code = SqsQueryStorageErrorCode.QUERY_EXECUTION_FAILED
                     )
                 }.body(Resource::class.java)
 
@@ -103,6 +108,10 @@ class SqsQueryStorage(
 
     private fun readErrorBody(response: ClientHttpResponse): String =
         runCatching {
-            response.body.readBytes().decodeToString().trim().take(MAX_ERROR_BODY_LENGTH)
+            response.body
+                .readBytes()
+                .decodeToString()
+                .trim()
+                .take(MAX_ERROR_BODY_LENGTH)
         }.getOrDefault("<error body unavailable>")
 }

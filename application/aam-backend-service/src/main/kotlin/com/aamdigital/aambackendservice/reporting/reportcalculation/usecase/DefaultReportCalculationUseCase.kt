@@ -287,28 +287,31 @@ class DefaultReportCalculationUseCase(
     ): UseCaseOutcome<ReportCalculationData> {
         val useCaseException: AamException =
             when (exception) {
-                is NotFoundException ->
+                is NotFoundException -> {
                     NotFoundException(
                         message = exception.localizedMessage,
                         code = useCaseStepCode ?: ReportCalculationError.UNEXPECTED_ERROR,
                         cause = exception
                     )
+                }
 
-                is ExternalSystemException ->
+                is ExternalSystemException -> {
                     ExternalSystemException(
                         message = exception.localizedMessage,
                         code = useCaseStepCode ?: ReportCalculationError.UNEXPECTED_ERROR,
                         cause = exception
                     )
+                }
 
-                is InvalidArgumentException ->
+                is InvalidArgumentException -> {
                     InvalidArgumentException(
                         message = exception.localizedMessage,
                         code = exception.code,
                         cause = exception
                     )
+                }
 
-                else ->
+                else -> {
                     InternalServerException(
                         message = exception.localizedMessage,
                         code = ReportCalculationError.UNEXPECTED_ERROR,
@@ -316,6 +319,7 @@ class DefaultReportCalculationUseCase(
                         // HttpClientErrorException from an invalid query) is the root cause we need in Sentry
                         cause = exception
                     )
+                }
             }
 
         return UseCaseOutcome.Failure(

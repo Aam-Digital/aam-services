@@ -136,9 +136,10 @@ class DefaultCouchDbClient(
             )
         }
 
-        val data = docsNode.map { entry ->
-            objectMapper.convertValue(entry, kClass.java)
-        }
+        val data =
+            docsNode.map { entry ->
+                objectMapper.convertValue(entry, kClass.java)
+            }
 
         return FindResponse(docs = data, bookmark = response.get("bookmark")?.asText())
     }
@@ -441,8 +442,9 @@ class DefaultCouchDbClient(
                     else -> DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR
                 }
 
+            val httpStatus = statusCode.value()
             throw ExternalSystemException(
-                message = "[DefaultCouchDbClient] CouchDB request failed with status ${statusCode.value()}: $rawResponse",
+                message = "[DefaultCouchDbClient] CouchDB request failed with status $httpStatus: $rawResponse",
                 code = errorCode
             )
         }
@@ -523,32 +525,37 @@ class DefaultCouchDbClient(
                 it.build()
             }.exchange { _, clientResponse ->
                 val statusCode = clientResponse.statusCode
+                val failureMessage =
+                    "Could not determine existence of CouchDB database $name: " +
+                        "status ${statusCode.value()}"
                 return@exchange when {
                     statusCode.is2xxSuccessful -> true
+
                     statusCode.value() == 404 -> false
+
                     statusCode.is4xxClientError -> throw ExternalSystemException(
-                        message = "Could not determine existence of CouchDB database $name: status ${statusCode.value()}",
+                        message = failureMessage,
                         code = DefaultCouchDbClientErrorCode.CLIENT_ERROR
                     )
 
                     else -> throw ExternalSystemException(
-                        message = "Could not determine existence of CouchDB database $name: status ${statusCode.value()}",
+                        message = failureMessage,
                         code = DefaultCouchDbClientErrorCode.OTHER_COUCHDB_ERROR
                     )
                 }
             }
     }
 
-    private fun serializeBody(body: Any): ByteArray {
-        return try {
+    private fun serializeBody(body: Any): ByteArray =
+        try {
             objectMapper.writeValueAsBytes(body)
         } catch (ex: Exception) {
             throw ExternalSystemException(
-                message = "[DefaultCouchDbClient] Could not serialize request body for CouchDB PUT: ${ex.localizedMessage}",
+                message =
+                    "[DefaultCouchDbClient] Could not serialize request body for CouchDB PUT: " +
+                        "${ex.localizedMessage}",
                 cause = ex,
                 code = DefaultCouchDbClientErrorCode.PARSING_ERROR
             )
         }
-    }
-
 }

@@ -21,12 +21,12 @@ import io.cucumber.spring.CucumberContextConfiguration
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
-import org.mockito.kotlin.any
 import org.mockito.kotlin.after
+import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.reset
-import org.mockito.kotlin.times
 import org.mockito.kotlin.timeout
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
@@ -237,13 +237,19 @@ class CucumberIntegrationTest(
 
     @When("the client calls POST {} with stored id and suffix {}")
     @Throws(Throwable::class)
-    fun `the client issues POST endpoint with stored id and suffix`(prefix: String, suffix: String) {
+    fun `the client issues POST endpoint with stored id and suffix`(
+        prefix: String,
+        suffix: String
+    ) {
         exchange("$prefix$storedId$suffix", HttpMethod.POST)
     }
 
     @When("the client calls DELETE {} with stored id and suffix {}")
     @Throws(Throwable::class)
-    fun `the client issues DELETE endpoint with stored id and suffix`(prefix: String, suffix: String) {
+    fun `the client issues DELETE endpoint with stored id and suffix`(
+        prefix: String,
+        suffix: String
+    ) {
         exchange("$prefix$storedId$suffix", HttpMethod.DELETE)
     }
 
@@ -284,10 +290,11 @@ class CucumberIntegrationTest(
         Assert.assertEquals(true, parseBodyToObjectNode()?.has(property))
         val actualValue = parseBodyToObjectNode()?.get(property)?.textValue()
         if (value.contains("|")) {
-            val acceptedValues = value
-                .split("|")
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
+            val acceptedValues =
+                value
+                    .split("|")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
             Assert.assertTrue(
                 "Expected one of $acceptedValues for property $property but was $actualValue",
                 acceptedValues.contains(actualValue)
@@ -316,7 +323,10 @@ class CucumberIntegrationTest(
 
     @Then("the client receives property {} as array with {int} elements")
     @Throws(Throwable::class)
-    fun `the client receives property as array with n elements`(property: String, numberOfElements: Int) {
+    fun `the client receives property as array with n elements`(
+        property: String,
+        numberOfElements: Int
+    ) {
         val arrayNode = parseBodyToObjectNode()?.get(property)
         Assert.assertNotNull("Property $property not found in response", arrayNode)
         Assert.assertEquals(numberOfElements, arrayNode?.size())
@@ -331,8 +341,11 @@ class CucumberIntegrationTest(
 
     @Then("the client waits until the notification config is applied")
     fun `the client waits until the notification config is applied`() {
-        val userIdentifier = latestNotificationConfigUserIdentifier
-            ?: throw AssertionError("Expected a NotificationConfig document to be stored before waiting for config application")
+        val userIdentifier =
+            latestNotificationConfigUserIdentifier
+                ?: throw AssertionError(
+                    "Expected a NotificationConfig document to be stored before waiting for config application"
+                )
 
         waitUntil(
             timeoutMs = 20_000L,
@@ -373,7 +386,9 @@ class CucumberIntegrationTest(
         var actualCount: Int
 
         val syncEntries = syncRepository.findAll().map { "${it.database}/${it.consumer}=${it.latestRef.take(30)}" }
-        System.err.println("[CucumberTest] Waiting for $expectedCount notifications for user $userId (timeout: ${maxWaitMs}ms)")
+        System.err.println(
+            "[CucumberTest] Waiting for $expectedCount notifications for user $userId (timeout: ${maxWaitMs}ms)"
+        )
         System.err.println("[CucumberTest] SyncEntries: $syncEntries")
 
         do {

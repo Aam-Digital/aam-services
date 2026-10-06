@@ -174,11 +174,12 @@ class TemplateExportController(
 
                 val responseEntity =
                     when (result.errorCode as CreateTemplateError) {
-                        else ->
+                        else -> {
                             getErrorEntity(
                                 errorCode = result.errorCode.toString(),
                                 errorMessage = result.errorMessage
                             )
+                        }
                     }
 
                 logger.trace(
@@ -226,19 +227,21 @@ class TemplateExportController(
 
                 val responseEntity =
                     when (result.errorCode as FetchTemplateError) {
-                        FetchTemplateError.NOT_FOUND_ERROR ->
+                        FetchTemplateError.NOT_FOUND_ERROR -> {
                             ResponseEntity(
                                 errorBody,
                                 headers,
                                 HttpStatus.NOT_FOUND
                             )
+                        }
 
-                        else ->
+                        else -> {
                             ResponseEntity(
                                 errorBody,
                                 headers,
                                 HttpStatus.INTERNAL_SERVER_ERROR
                             )
+                        }
                     }
 
                 return responseEntity
@@ -283,19 +286,21 @@ class TemplateExportController(
 
                 val responseEntity =
                     when (result.errorCode as RenderTemplateError) {
-                        RenderTemplateError.NOT_FOUND_ERROR ->
+                        RenderTemplateError.NOT_FOUND_ERROR -> {
                             ResponseEntity(
                                 errorBody,
                                 headers,
                                 HttpStatus.NOT_FOUND
                             )
+                        }
 
-                        else ->
+                        else -> {
                             ResponseEntity(
                                 errorBody,
                                 headers,
                                 HttpStatus.INTERNAL_SERVER_ERROR
                             )
+                        }
                     }
 
                 return responseEntity

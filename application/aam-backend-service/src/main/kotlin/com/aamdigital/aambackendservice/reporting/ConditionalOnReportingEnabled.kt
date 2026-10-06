@@ -12,6 +12,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
     prefix = "features.reporting",
     name = ["enabled"],
     havingValue = "true",
-    matchIfMissing = false,
+    matchIfMissing = false
 )
 annotation class ConditionalOnReportingEnabled

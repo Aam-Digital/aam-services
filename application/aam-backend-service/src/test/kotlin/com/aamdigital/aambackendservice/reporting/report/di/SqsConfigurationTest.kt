@@ -32,13 +32,18 @@ class SqsConfigurationTest {
                 SqsClientConfiguration(
                     basePath = mockWebServer.url("/").toString(),
                     basicAuthUsername = "admin",
-                    basicAuthPassword = "secret",
+                    basicAuthPassword = "secret"
                 )
             )
 
         // When
         repeat(2) {
-            client.post().uri("/app/_design/sqlite:config").body("{}").retrieve().body(String::class.java)
+            client
+                .post()
+                .uri("/app/_design/sqlite:config")
+                .body("{}")
+                .retrieve()
+                .body(String::class.java)
         }
 
         // Then

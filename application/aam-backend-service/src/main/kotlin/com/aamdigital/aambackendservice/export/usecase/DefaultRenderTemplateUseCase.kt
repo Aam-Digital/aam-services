@@ -14,7 +14,7 @@ import org.springframework.web.client.RestClient
 class DefaultRenderTemplateUseCase(
     renderClient: RestClient,
     objectMapper: ObjectMapper,
-    templateStorage: TemplateStorage,
+    templateStorage: TemplateStorage
 ) : RenderTemplateUseCase() {
     private val carboneClient =
         CarboneRenderApiClient(
@@ -25,7 +25,7 @@ class DefaultRenderTemplateUseCase(
             fetchTemplateFailedCode = RenderTemplateError.FETCH_TEMPLATE_FAILED_ERROR,
             createRenderRequestFailedCode = RenderTemplateError.CREATE_RENDER_REQUEST_FAILED_ERROR,
             fetchRenderResultFailedCode = RenderTemplateError.FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
-            parseResponseCode = RenderTemplateError.PARSE_RESPONSE_ERROR,
+            parseResponseCode = RenderTemplateError.PARSE_RESPONSE_ERROR
         )
 
     override fun apply(request: RenderTemplateRequest): UseCaseOutcome<RenderTemplateData> {
@@ -40,7 +40,7 @@ class DefaultRenderTemplateUseCase(
 
         (request.bodyData as ObjectNode).put(
             "reportName",
-            targetFileName,
+            targetFileName
         )
 
         val raw = carboneClient.createRenderRequest(template.templateId, request.bodyData)
@@ -51,8 +51,8 @@ class DefaultRenderTemplateUseCase(
             data =
                 RenderTemplateData(
                     file = result.file.inputStream(),
-                    responseHeaders = result.headers,
-                ),
+                    responseHeaders = result.headers
+                )
         )
     }
 }

@@ -38,7 +38,7 @@ class CouchDbChangesProcessor(
     private val couchDbClient: CouchDbClient,
     private val syncRepository: SyncRepository,
     private val objectMapper: ObjectMapper,
-    private val changeDetectionProperties: ChangeDetectionProperties,
+    private val changeDetectionProperties: ChangeDetectionProperties
 ) {
     companion object {
         private const val CHANGES_LIMIT: Int = 100
@@ -185,13 +185,14 @@ class CouchDbChangesProcessor(
         val rev = couchDbChangeResult.doc?.get("_rev")?.textValue()
 
         if (!couchDbChangeResult.id.startsWith("_design") && rev != null) {
-            val changeEvent = enrichChange(
-                database = database,
-                documentId = couchDbChangeResult.id,
-                rev = rev,
-                deleted = couchDbChangeResult.deleted == true,
-                currentDoc = couchDbChangeResult.doc,
-            )
+            val changeEvent =
+                enrichChange(
+                    database = database,
+                    documentId = couchDbChangeResult.id,
+                    rev = rev,
+                    deleted = couchDbChangeResult.deleted == true,
+                    currentDoc = couchDbChangeResult.doc
+                )
 
             handleChange(changeEvent, handler)
         }
@@ -234,12 +235,15 @@ class CouchDbChangesProcessor(
         documentId: String,
         rev: String,
         deleted: Boolean,
-        currentDoc: ObjectNode?,
+        currentDoc: ObjectNode?
     ): DocumentChangeEvent {
-        val isDeleted = deleted ||
-            (currentDoc?.has("_deleted") == true &&
-                currentDoc.get("_deleted").isBoolean &&
-                currentDoc.get("_deleted").booleanValue())
+        val isDeleted =
+            deleted ||
+                (
+                    currentDoc?.has("_deleted") == true &&
+                        currentDoc.get("_deleted").isBoolean &&
+                        currentDoc.get("_deleted").booleanValue()
+                )
 
         if (isDeleted) {
             return DocumentChangeEvent(

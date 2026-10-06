@@ -18,7 +18,7 @@ class ScheduledJobBackoff(
     private val logger: Logger,
     private val jobLabel: String,
     private val maxBackoffMs: Long = DEFAULT_MAX_BACKOFF_MS,
-    internal var clock: () -> Long = System::currentTimeMillis,
+    internal var clock: () -> Long = System::currentTimeMillis
 ) {
     companion object {
         const val INITIAL_BACKOFF_MS = 5_000L
@@ -57,7 +57,7 @@ class ScheduledJobBackoff(
             if (backoffMs >= maxBackoffMs) {
                 logger.error(
                     "[$jobLabel] An error occurred (count: {}). " +
-                            "Max backoff reached, retrying in {} ms: {}",
+                        "Max backoff reached, retrying in {} ms: {}",
                     errorCounter,
                     backoffMs,
                     ex.message

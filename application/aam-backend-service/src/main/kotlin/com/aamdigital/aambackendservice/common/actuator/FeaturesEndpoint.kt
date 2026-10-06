@@ -30,10 +30,11 @@ class FeaturesEndpoint(
         featureRegistrars.forEach { registrar ->
             val (name, info) = registrar.getFeatureInfo()
             // Order-independent: ensures parent nodes exist regardless of registrar order
-            val node = name.split(".").fold(root) { current, segment ->
-                @Suppress("UNCHECKED_CAST")
-                current.getOrPut(segment) { mutableMapOf<String, Any>() } as MutableMap<String, Any>
-            }
+            val node =
+                name.split(".").fold(root) { current, segment ->
+                    @Suppress("UNCHECKED_CAST")
+                    current.getOrPut(segment) { mutableMapOf<String, Any>() } as MutableMap<String, Any>
+                }
             node["enabled"] = info.enabled
         }
         return root
