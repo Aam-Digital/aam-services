@@ -28,6 +28,11 @@ management:
     health:
       probes:
         enabled: true
+  health:
+    mail:
+      # spring.mail.host above is a placeholder that nothing connects to; Spring Boot's mail health check
+      # would try to and report /actuator/health as DOWN
+      enabled: false
   endpoints:
     web:
       exposure:
