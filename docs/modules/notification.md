@@ -10,7 +10,7 @@ This module watches for database changes and creates notification events which c
 
 - **Push Notifications** through Firebase
 - **"In-App" Notifications** directly in the toolbar of our frontend UI
-- **Email Notifications** through SMTP (optional, active as soon as an SMTP server is configured, see [Setup](#setup))
+- **Email Notifications** through SMTP (optional, active when the SMTP host, sender address and Keycloak access are configured, see [Setup](#setup))
 
 ### Dependencies
 
@@ -104,6 +104,10 @@ The email channel is on when the notification API is enabled and `SPRING_MAIL_HO
 `NOTIFICATION_EMAIL_FROM` and `KEYCLOAK_SERVERURL` all have a non-blank value. An empty value, as in
 the deployment template (`SPRING_MAIL_HOST=`), counts as not set. Without them the service starts
 normally and only sends notifications through its other channels.
+
+`KEYCLOAK_SERVERURL` (with the realm and client settings next to it) is needed because a notification
+only identifies the recipient by user id. The email address itself is looked up in the user's Keycloak
+account when the email is created.
 
 On startup the service logs which state it is in. If an SMTP host is set but the sender address or the
 Keycloak access is missing, it logs an error naming the missing settings, so a half-finished
