@@ -20,6 +20,8 @@ user itself).
 
 Deployment-specific values are keycloak-config-cli placeholders, `$(env:NAME)`. The names are a contract. The
 files never contain a secret; use secrets that need no JSON escaping, e.g. `openssl rand -hex 32`.
+An import sets the client's secret to `AAM_BACKEND_CLIENT_SECRET`: for an existing client pass its current secret,
+and generate a new one only when the client does not exist yet, or the running services lose access.
 
 | Variable | File | Value |
 |---|---|---|
@@ -67,6 +69,8 @@ docker run --rm -v "$PWD:/definitions:ro" \
   -e IMPORT_FILES_LOCATIONS=/definitions/aam-backend-client.json \
   -e IMPORT_VARSUBSTITUTION_ENABLED=true \
   -e IMPORT_MANAGED_CLIENT=no-delete \
+  -e IMPORT_REMOTE_STATE_ENABLED=false \
+  -e IMPORT_CACHE_ENABLED=false \
   -e AAM_BACKEND_REALM=<realm> -e AAM_BACKEND_CLIENT_SECRET=<secret> \
   adorsys/keycloak-config-cli:latest-26
 ```
@@ -75,8 +79,17 @@ docker run --rm -v "$PWD:/definitions:ro" \
 - **`IMPORT_MANAGED_CLIENT=no-delete` is required.** By default, clients that an earlier import of the realm
   created and the current files do not declare are deleted, e.g. `aam-backend` by any other import, or the
   render clients of other instances in the shared realm.
+- **`IMPORT_REMOTE_STATE_ENABLED=false`**: otherwise each import stores the clients it declared in a realm
+  attribute, and any other import of that realm in default managed mode deletes the rest, e.g. all `carbone-*`
+  clients but the last imported.
+- `IMPORT_CACHE_ENABLED=false`: otherwise an import is skipped when its file, after substitution, is unchanged
+  since the last import into the realm, so a client deleted by hand is not recreated.
+- **Check that the realm exists first** (`GET /admin/realms/<realm>` returns 200): keycloak-config-cli creates a
+  realm it does not find, so a wrong name yields a new, almost empty realm instead of an error.
 - The import makes the client and its service account match the file, including resetting hand-made changes.
-- An unchanged file is skipped (`IMPORT_CACHE_ENABLED=false` turns this off).
+  It removes the realm's default client scopes (`basic`, `profile`, ...) from the client; the token of a service
+  account still has `sub`, so the services are not affected. The `service_account` scope that Keycloak adds
+  itself stays.
 
 ### Keycloak partial import
 
