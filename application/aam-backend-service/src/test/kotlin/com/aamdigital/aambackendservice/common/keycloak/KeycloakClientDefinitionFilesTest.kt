@@ -8,9 +8,10 @@ import org.junit.jupiter.api.Test
 import java.io.File
 
 /**
- * Pins what deployments rely on in the Keycloak client definitions that ship with the application (`keycloak/`):
- * the paths, the variables, and that the files never contain a secret. Changing one of them is a breaking change
- * for the deployments that import the files, so it has to show up in a diff of this test and in the release notes.
+ * Pins what deployments rely on in the Keycloak client definitions that ship with the application (see
+ * `keycloak/README.md`): the file names in the image, the variables, and that the files never contain a secret.
+ * Changing one of them is a breaking change for the deployments that import the files, so it has to show up in
+ * a diff of this test and in the release notes.
  *
  * That the definitions work in Keycloak is proven by [KeycloakClientDefinitionsIntegrationTest].
  */
@@ -19,32 +20,30 @@ class KeycloakClientDefinitionFilesTest {
 
     @Test
     fun `should ship the definitions under the file names deployments read`() {
-        // Given
-        val files =
-            KeycloakClientDefinitions.DIRECTORY
-                .list()
-                .orEmpty()
-                .toList()
+        // When
+        val names = KeycloakClientDefinitions.ALL.map { it.name }
 
         // Then
-        assertThat(files).contains("aam-backend-client.json", "carbone-render-client.json", "README.md")
+        assertThat(names).containsExactlyInAnyOrder("aam-backend-client.json", "carbone-render-client.json")
+        assertThat(KeycloakClientDefinitions.ALL).allSatisfy { assertThat(it).isFile() }
     }
 
     @Test
-    fun `should be copied into the image at the path deployments read them from`() {
+    fun `should copy every definition into the same folder of the image, where deployments read them`() {
         // Given
         val dockerfile = File("Dockerfile").readText()
 
         // Then
-        assertThat(dockerfile).containsPattern("""(?m)^COPY\s+keycloak/\s+/opt/app/keycloak/\s*$""")
+        assertThat(KeycloakClientDefinitions.ALL).allSatisfy { definition ->
+            val folder = Regex.escape(definition.parentFile.invariantSeparatorsPath)
+            assertThat(dockerfile).containsPattern("""(?m)^COPY\s+$folder/\s+/opt/app/keycloak/\s*$""")
+        }
     }
 
     @Test
     fun `should use the variables that deployments fill in`() {
         // When
-        val variables =
-            listOf(AAM_BACKEND_CLIENT, CARBONE_RENDER_CLIENT)
-                .flatMap { KeycloakClientDefinitions.variablesOf(it) }
+        val variables = KeycloakClientDefinitions.ALL.flatMap { KeycloakClientDefinitions.variablesOf(it) }
 
         // Then
         assertThat(variables).containsExactlyInAnyOrder(
@@ -58,30 +57,25 @@ class KeycloakClientDefinitionFilesTest {
     }
 
     @Test
-    fun `should document every variable in the README`() {
-        // Given
-        val documented =
-            Regex("""(?m)^\|\s*`([A-Z][A-Z0-9_]*)`\s*\|""")
-                .findAll(File(KeycloakClientDefinitions.DIRECTORY, "README.md").readText())
-                .map { it.groupValues[1] }
-                .toSet()
-
-        // When
-        val used =
-            listOf(AAM_BACKEND_CLIENT, CARBONE_RENDER_CLIENT)
-                .flatMap { KeycloakClientDefinitions.variablesOf(it) }
-                .toSet()
+    fun `should document the variables of each definition where deployments look for them`() {
+        // Given the README of the definitions for aam-backend, and the documentation of the export module for Carbone
+        val aamBackendReadme = File(AAM_BACKEND_CLIENT.parentFile, "README.md").readText()
+        val exportDocumentation = File("../../docs/modules/export.md").readText()
+        val carboneSection = exportDocumentation.substringAfter("### OAuth Proxy & Keycloak Client", "")
 
         // Then
-        assertThat(documented).isEqualTo(used)
+        assertThat(documentedVariables(aamBackendReadme))
+            .isEqualTo(KeycloakClientDefinitions.variablesOf(AAM_BACKEND_CLIENT))
+        assertThat(documentedVariables(carboneSection))
+            .isEqualTo(KeycloakClientDefinitions.variablesOf(CARBONE_RENDER_CLIENT))
     }
 
     @Test
     fun `should hold no secret but a placeholder for it`() {
         // When
         val secrets =
-            listOf(AAM_BACKEND_CLIENT, CARBONE_RENDER_CLIENT)
-                .flatMap { file -> KeycloakClientDefinitions.read(file).clients.map { it.secret } }
+            KeycloakClientDefinitions.ALL
+                .flatMap { definition -> KeycloakClientDefinitions.read(definition).clients.map { it.secret } }
 
         // Then
         assertThat(secrets).hasSize(2).allSatisfy { assertThat(it).matches(placeholder.toPattern()) }
@@ -90,9 +84,7 @@ class KeycloakClientDefinitionFilesTest {
     @Test
     fun `should name the realm by a variable, as keycloak-config-cli cannot import a file without one`() {
         // When
-        val realms =
-            listOf(AAM_BACKEND_CLIENT, CARBONE_RENDER_CLIENT)
-                .map { KeycloakClientDefinitions.read(it).realm }
+        val realms = KeycloakClientDefinitions.ALL.map { KeycloakClientDefinitions.read(it).realm }
 
         // Then
         assertThat(realms).hasSize(2).allSatisfy { assertThat(it).matches(placeholder.toPattern()) }
@@ -160,9 +152,9 @@ class KeycloakClientDefinitionFilesTest {
 
     @Test
     fun `should define the service account user of each client, which a partial import does not create`() {
-        listOf(AAM_BACKEND_CLIENT, CARBONE_RENDER_CLIENT).forEach { fileName ->
+        KeycloakClientDefinitions.ALL.forEach { definitionFile ->
             // When
-            val definition = KeycloakClientDefinitions.read(fileName)
+            val definition = KeycloakClientDefinitions.read(definitionFile)
             val client = definition.clients.single()
             val serviceAccount = definition.users.single()
 
@@ -171,4 +163,11 @@ class KeycloakClientDefinitionFilesTest {
             assertThat(serviceAccount.username).isEqualTo("service-account-${client.clientId}")
         }
     }
+
+    /** The variables in the first column of the tables of [markdown], like `| `NAME` | value |`. */
+    private fun documentedVariables(markdown: String): Set<String> =
+        Regex("""(?m)^\|\s*`([A-Z][A-Z0-9_]*)`\s*\|""")
+            .findAll(markdown)
+            .map { it.groupValues[1] }
+            .toSet()
 }

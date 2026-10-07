@@ -163,7 +163,7 @@ class KeycloakClientDefinitionsIntegrationTest {
             KeycloakClientDefinitions.import(
                 keycloak = admin,
                 realm = REALM,
-                fileName = KeycloakClientDefinitions.CARBONE_RENDER_CLIENT,
+                definition = KeycloakClientDefinitions.CARBONE_RENDER_CLIENT,
                 variables =
                     mapOf(
                         "CARBONE_REALM" to REALM,

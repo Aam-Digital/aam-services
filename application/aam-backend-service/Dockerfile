@@ -33,10 +33,12 @@ FROM amazoncorretto:25.0.4-alpine
 WORKDIR /opt/app
 COPY --from=BUILD /opt/app/build/install/aam-backend-service /opt/app
 # The Keycloak client definitions that deployments import, so that every deployment reads the ones that
-# match exactly the version it runs. The path is a contract with them (see keycloak/README.md). They are made
-# readable for any user, because the image also runs as non-root and the files keep the mode they have
-# in the checkout the image is built from.
+# match exactly the version it runs. Those that several modules need are in keycloak/, the others live with
+# the module that needs them. All end up in the same folder, whose path is a contract with the deployments
+# (see keycloak/README.md). They are made readable for any user, because the image also runs as non-root and
+# the files keep the mode they have in the checkout the image is built from.
 COPY keycloak/ /opt/app/keycloak/
+COPY src/main/kotlin/com/aamdigital/aambackendservice/export/keycloak/ /opt/app/keycloak/
 RUN chmod -R a+rX /opt/app/keycloak
 # Consumed at runtime as sentry.release (see application.yaml) so error events are tagged with a
 # version. Left empty rather than a placeholder like "unknown" when not passed at build time, so

@@ -11,29 +11,34 @@ the version of the image that runs. Read them from the image you deploy, not fro
 Out of scope: the frontend `app` client and the realm's shared configuration. Which realm a client goes into,
 and when it exists, stays a deployment decision.
 
-| File | Client | Goes into | Used by |
-|---|---|---|---|
-| [`aam-backend-client.json`](aam-backend-client.json) | `aam-backend` | the instance realm | aam-services (Keycloak admin access) and replication-backend (user and role lookup) |
-| [`carbone-render-client.json`](carbone-render-client.json) | `carbone-<INSTANCE_NAME>` | the shared platform realm | the export module (token for the oauth2-proxy in front of Carbone) |
+| File in the image | Client | Goes into | Used by | Source |
+|---|---|---|---|---|
+| `aam-backend-client.json` | `aam-backend` | the instance realm | aam-services (Keycloak admin access) and replication-backend (user and role lookup) | this folder |
+| `carbone-render-client.json` | `carbone-<INSTANCE_NAME>` | the shared platform realm | the export module (token for the oauth2-proxy in front of Carbone) | [`export/keycloak/`](../src/main/kotlin/com/aamdigital/aambackendservice/export/keycloak/) |
 
 Both are confidential service-account clients without interactive login flows. Each file is a Keycloak realm
 representation holding the `clients` entry and the `users` entry of its service account. The user is part of
 the file because Keycloak's partial import, unlike the admin API, does not create it for a client with service
 accounts enabled.
 
+A definition that only one feature module needs lives in the `keycloak` folder of that module, like the render
+client in the export module, and is documented with it, see
+[OAuth Proxy & Keycloak Client](../../../docs/modules/export.md#oauth-proxy--keycloak-client). This folder holds
+what several modules or other services share. The Dockerfile copies all of them into the same folder of the
+image.
+
 ## Variables
 
 Everything that differs per deployment is a placeholder in keycloak-config-cli's variable syntax,
-`$(env:NAME)`. The names are a contract with the deployments that fill them in.
+`$(env:NAME)`. The names are a contract with the deployments that fill them in. Those of
+`aam-backend-client.json`:
 
-| Variable | File | Value |
-|---|---|---|
-| `AAM_BACKEND_REALM` | `aam-backend-client.json` | Name of the instance realm, the backend's `KEYCLOAK_REALM`. |
-| `AAM_BACKEND_CLIENT_SECRET` | `aam-backend-client.json` | Secret of the client, the backend's `KEYCLOAK_CLIENTSECRET` and replication-backend's `KEYCLOAK_ADMIN_CLIENT_SECRET`. |
-| `CARBONE_REALM` | `carbone-render-client.json` | Name of the shared platform realm. |
-| `INSTANCE_NAME` | `carbone-render-client.json` | Name of the instance; the client id becomes `carbone-<INSTANCE_NAME>`, the backend's `aam-render-api-client-configuration.auth-config.client-id`. |
-| `CARBONE_CLIENT_SECRET` | `carbone-render-client.json` | Secret of the client, the backend's `aam-render-api-client-configuration.auth-config.client-secret`. |
-| `OAUTH2_PROXY_CLIENT_ID` | `carbone-render-client.json` | Client id of the oauth2-proxy in front of Carbone. The audience mapper puts it into the access tokens of the render client, which the proxy requires. |
+| Variable | Value |
+|---|---|
+| `AAM_BACKEND_REALM` | Name of the instance realm, the backend's `KEYCLOAK_REALM`. |
+| `AAM_BACKEND_CLIENT_SECRET` | Secret of the client, the backend's `KEYCLOAK_CLIENTSECRET` and replication-backend's `KEYCLOAK_ADMIN_CLIENT_SECRET`. |
+
+The variables of a definition that lives in a module are documented with that module.
 
 The files never contain a secret. Substitution is textual, so use secrets that need no escaping in a JSON
 string, for example `openssl rand -hex 32`.
@@ -116,14 +121,17 @@ perl -pe 's/\$\(env:(\w+)\)/$ENV{$1} \/\/ die "undefined variable $1\n"/ge' aam-
 An existing client is left as it is with `SKIP`. `OVERWRITE` recreates the client under a new internal id, so a
 deployment that has to change an existing client needs its own repair path.
 
-### Carbone render client
+### Other definitions
 
-Import `carbone-render-client.json` the same way, with its own variables. The audience mapper only adds the
-oauth2-proxy to the `aud` claim of the tokens if a client with the id `OAUTH2_PROXY_CLIENT_ID` exists in the
-same realm, so create that client first.
+Import the definitions of the modules the same way, with the variables that are documented with the module. For
+the Carbone render client of the export module, see
+[OAuth Proxy & Keycloak Client](../../../docs/modules/export.md#oauth-proxy--keycloak-client), which also says what
+has to exist in the realm first.
 
 ## Changing the files
 
-The path `/opt/app/keycloak/` and the file and variable names above are a public contract: changing one is a
-breaking change for the deployments and goes into the release notes. A release that needs another permission
-for `aam-backend` adds the role to `aam-backend-client.json` and says so in the release notes.
+The path `/opt/app/keycloak/` and the file and variable names are a public contract: changing one is a breaking
+change for the deployments and goes into the release notes. Code that needs another permission for `aam-backend`
+(a new Keycloak Admin API call) adds the role to `aam-backend-client.json` and to the role table above, covers the
+call in `KeycloakClientDefinitionsIntegrationTest`, which imports the definition itself, and says so in the release
+notes.

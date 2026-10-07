@@ -81,19 +81,6 @@ Please refer to the respective READMEs in the "API Modules" list above for instr
 To run the system locally for development, refer to the [docs/developer/README.md](docs/developer/README.md) and sample docker files there.
 These allow you to run required additional services like databases and Keycloak on your machine.
 
-## Keycloak clients
-
-The Keycloak clients that this backend depends on are defined in importable files. They ship in the Docker image
-under `/opt/app/keycloak/`, so that a deployment reads the definitions that match exactly the version it runs:
-
-- `aam-backend-client.json`: the `aam-backend` client for Keycloak admin access (also used by replication-backend),
-  with its `realm-management` roles
-- `carbone-render-client.json`: the client of the export module for the oauth2-proxy in front of Carbone
-
-Deployments import these instead of keeping their own copy of the settings. The
-[README of the definitions](application/aam-backend-service/keycloak/README.md) lists the variables that a
-deployment fills in and how to import the files.
-
 ---
 
 # Development
