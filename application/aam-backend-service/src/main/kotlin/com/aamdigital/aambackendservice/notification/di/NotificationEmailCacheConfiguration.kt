@@ -1,6 +1,6 @@
 package com.aamdigital.aambackendservice.notification.di
 
-import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationEmailEnabled
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationEmailConfigured
 import com.github.benmanes.caffeine.cache.Caffeine
 import org.springframework.cache.CacheManager
 import org.springframework.cache.annotation.EnableCaching
@@ -11,7 +11,7 @@ import java.time.Duration
 
 @Configuration
 @EnableCaching
-@ConditionalOnNotificationEmailEnabled
+@ConditionalOnNotificationEmailConfigured
 class NotificationEmailCacheConfiguration {
     @Bean("notificationEmailCacheManager")
     fun notificationEmailCacheManager(): CacheManager {

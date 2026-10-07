@@ -16,6 +16,21 @@ _for details about setup & usage of this module [see README in docs folder](../.
 6. `NotificationOutboxDrainJob` drains the outbox on a short interval; `NotificationOutboxHandler` passes each entry to `CreateNotificationUseCase`, which passes the event on to the applicable `CreateNotificationHandler`.
 7. `CreateNotificationHandler` implementations (for push, in-app, email) send the actual notification to the user.
 
+## Email channel
+
+There is no feature flag for email: the channel exists when the configuration allows it.
+`@ConditionalOnNotificationEmailConfigured` is the single source of truth, and gates the email handler,
+its recipient lookup, the mail sender, the cache and the properties, as well as the `notification.email`
+entry of `/actuator/features`. It matches when the notification API is enabled and `spring.mail.host`,
+`notification.email.from` and `keycloak.server-url` all have a non-blank value
+(`NotificationEmailPrerequisites`). A blank value counts as not set because the deployment template
+ships these keys empty, which a plain `@ConditionalOnProperty` would treat as set.
+
+Email is an optional channel, so missing settings never fail startup.
+`NotificationEmailStartupDiagnostics` logs which setting is missing (at `ERROR` only when an SMTP host is
+set, since then the operator meant to send). `ApplyNotificationRulesUseCase` only emits the email channel
+when a registered handler can deliver it, so the rules follow the same condition.
+
 ## Rule conditions
 
 A rule's `conditions` are a query in MongoDB syntax, the format the frontend's conditions editor
