@@ -78,28 +78,11 @@ The Keycloak Client used by our backend to authenticate against this lives in a 
 and can be reused across different systems.
 
 Its definition ships with the backend, in
-[`carbone-render-client.json`](../../application/aam-backend-service/src/main/kotlin/com/aamdigital/aambackendservice/export/keycloak/carbone-render-client.json)
-(in the Docker image at `/opt/app/keycloak/carbone-render-client.json`, next to the other Keycloak client
-definitions). It creates the client `carbone-<instance>` with the Mapper that the proxy requires, which adds the
-proxy's own Keycloak client to the audience of the access tokens.
-
-Import it into the centralized realm as described in the
-[README of the Keycloak client definitions](../../application/aam-backend-service/keycloak/README.md#importing),
-with these variables:
-
-| Variable | Value |
-|---|---|
-| `CARBONE_REALM` | Name of the centralized (platform) realm. |
-| `INSTANCE_NAME` | Name of the instance. The client id becomes `carbone-<INSTANCE_NAME>`, the `client-id` below. |
-| `CARBONE_CLIENT_SECRET` | Secret of the client, the `client-secret` below. |
-| `OAUTH2_PROXY_CLIENT_ID` | Client id of the oauth2-proxy in front of Carbone. The Mapper puts it into the access tokens of the render client, which the proxy requires. |
-
-- Every instance imports its own render client into the same realm. With keycloak-config-cli this needs
-  `IMPORT_MANAGED_CLIENT=no-delete`, otherwise each import deletes the render clients of the other instances.
-- The Mapper only adds the proxy to the access tokens if a client with the id `OAUTH2_PROXY_CLIENT_ID` exists in
-  that realm, so create that client first.
-
-Then configure the backend with the id and the secret of the client
+[`carbone-render-client.json`](../../application/aam-backend-service/keycloak/carbone-render-client.json)
+(in the Docker image at `/opt/app/keycloak/`). It creates the client `carbone-<instance>` with the Mapper that
+the proxy requires, which adds the proxy's own Keycloak client to the audience of the access tokens.
+The [README of the definitions](../../application/aam-backend-service/keycloak/README.md) lists the variables
+to fill in and how to import the file. Then configure the backend with the id and the secret of the client
 (`aam-render-api-client-configuration.auth-config.client-id` and `.client-secret`, see above).
 
 If you set the client up by hand instead, make sure it is set up with the following Mapper:

@@ -43,7 +43,7 @@ object TestContainers {
             KeycloakClientDefinitions.import(
                 keycloak = admin,
                 realm = KEYCLOAK_REALM,
-                definition = KeycloakClientDefinitions.AAM_BACKEND_CLIENT,
+                fileName = KeycloakClientDefinitions.AAM_BACKEND_CLIENT,
                 variables =
                     mapOf(
                         "AAM_BACKEND_REALM" to KEYCLOAK_REALM,

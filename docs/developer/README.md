@@ -413,7 +413,7 @@ doesn't activate), so just flipping the feature flag crashes the service on star
    `aam-backend-pdf-client`, client authentication on, service account roles enabled, standard flow and
    direct access grants off — no realm-management roles needed here) and copy its secret from the
    **Credentials** tab. This stack has no oauth2-proxy in front of Carbone, so the client needs none of the
-   audience mapper that [`carbone-render-client.json`](../../application/aam-backend-service/src/main/kotlin/com/aamdigital/aambackendservice/export/keycloak/carbone-render-client.json)
+   audience mapper that [`carbone-render-client.json`](../../application/aam-backend-service/keycloak/carbone-render-client.json)
    defines for the hosted setup.
 2. Add to your `.env`:
    ```env
