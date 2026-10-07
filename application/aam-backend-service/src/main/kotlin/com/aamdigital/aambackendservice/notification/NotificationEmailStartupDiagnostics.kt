@@ -21,15 +21,21 @@ class NotificationEmailStartupDiagnostics(
 
     override fun run(args: ApplicationArguments) {
         logChannelState()
-        if (environment.containsProperty(REMOVED_FEATURE_FLAG)) {
-            logger.warn(
-                "The property {} (FEATURES_NOTIFICATIONAPI_EMAIL_ENABLED) is no longer read and has no effect. " +
-                    "Notification email is on whenever the settings {} are all set. " +
-                    "Remove the property from the configuration.",
-                REMOVED_FEATURE_FLAG,
-                NotificationEmailPrerequisites.REQUIRED
-            )
+        warnIfRemovedFeatureFlagIsSet()
+    }
+
+    private fun warnIfRemovedFeatureFlagIsSet() {
+        if (!environment.containsProperty(REMOVED_FEATURE_FLAG)) {
+            return
         }
+
+        logger.warn(
+            "The property {} (FEATURES_NOTIFICATIONAPI_EMAIL_ENABLED) is no longer read and has no effect. " +
+                "Notification email is on whenever the settings {} are all set. " +
+                "Remove the property from the configuration.",
+            REMOVED_FEATURE_FLAG,
+            NotificationEmailPrerequisites.REQUIRED
+        )
     }
 
     private fun logChannelState() {
