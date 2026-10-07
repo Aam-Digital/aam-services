@@ -125,7 +125,11 @@ class NotificationEmailStartupDiagnosticsTest {
         listOf("true", "false").forEach { flagValue ->
             // Given
             logAppender.list.clear()
-            val environment = fullyConfigured().withProperty(NotificationEmailPrerequisites.REMOVED_FEATURE_FLAG, flagValue)
+            val environment =
+                fullyConfigured().withProperty(
+                    NotificationEmailPrerequisites.REMOVED_FEATURE_FLAG,
+                    flagValue
+                )
 
             // When
             val events = runDiagnostics(environment)

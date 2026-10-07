@@ -35,21 +35,27 @@ class NotificationEmailStartupDiagnostics(
     private fun logChannelState() {
         val missing = NotificationEmailPrerequisites.missing(environment)
         when {
-            missing.isEmpty() ->
-                logger.info("Notification email is on: all of {} are configured.", NotificationEmailPrerequisites.REQUIRED)
+            missing.isEmpty() -> {
+                logger.info(
+                    "Notification email is on: all of {} are configured.",
+                    NotificationEmailPrerequisites.REQUIRED
+                )
+            }
 
-            SMTP_HOST in missing ->
+            SMTP_HOST in missing -> {
                 logger.info(
                     "Notification email is off: no SMTP host configured. To send notifications by email, set {}.",
                     NotificationEmailPrerequisites.REQUIRED
                 )
+            }
 
-            else ->
+            else -> {
                 logger.error(
                     "Notification email is off although an SMTP host is configured, " +
                         "because these required settings are missing: {}.",
                     missing
                 )
+            }
         }
     }
 }
