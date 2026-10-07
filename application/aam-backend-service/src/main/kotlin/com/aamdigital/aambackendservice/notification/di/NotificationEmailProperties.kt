@@ -1,10 +1,10 @@
 package com.aamdigital.aambackendservice.notification.di
 
-import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationEmailEnabled
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationEmailConfigured
 import org.springframework.boot.context.properties.ConfigurationProperties
 
 @ConfigurationProperties("notification.email")
-@ConditionalOnNotificationEmailEnabled
+@ConditionalOnNotificationEmailConfigured
 data class NotificationEmailProperties(
     /**
      * Sender email address for outgoing notification emails.

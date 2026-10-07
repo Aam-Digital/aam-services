@@ -1,6 +1,10 @@
 spring:
   application:
     name: aam-backend-service
+  mail:
+    # together with the sender address and the Keycloak server-url below, this activates the email
+    # channel; MailSenderService is mocked in CucumberIntegrationTest, so nothing connects to this host
+    host: smtp.localhost
   main:
     banner-mode: off
   jackson:
@@ -24,6 +28,11 @@ management:
     health:
       probes:
         enabled: true
+  health:
+    mail:
+      # spring.mail.host above is a placeholder that nothing connects to; Spring Boot's mail health check
+      # would try to and report /actuator/health as DOWN
+      enabled: false
   endpoints:
     web:
       exposure:
@@ -75,10 +84,9 @@ features:
     enabled: true
     # firebase mode activates the push beans + NotificationAdminController so the contract
     # e2e suite can exercise POST /v1/notification/message/device-test. Independent of the
-    # email flag below. Credential is generated at runtime by FirebaseTestCredentialInitializer.
+    # email channel (see `spring.mail` and `notification.email`). Credential is generated at
+    # runtime by FirebaseTestCredentialInitializer.
     mode: firebase
-    email:
-      enabled: true
   skill-api:
     mode: disabled
   # enables the third-party-authentication controller and use cases so the e2e suite can
@@ -86,6 +94,10 @@ features:
   # so the Keycloak admin client (see `keycloak` below) never creates users.
   third-party-authentication:
     enabled: true
+
+notification:
+  email:
+    from: notifications@aam.localhost
 
 crypto-configuration:
   secret: super-duper-secret

@@ -10,7 +10,7 @@ This module watches for database changes and creates notification events which c
 
 - **Push Notifications** through Firebase
 - **"In-App" Notifications** directly in the toolbar of our frontend UI
-- **Email Notifications** through SMTP (optional)
+- **Email Notifications** through SMTP (optional, active when the SMTP host, sender address and Keycloak access are configured, see [Setup](#setup))
 
 ### Dependencies
 
@@ -29,9 +29,15 @@ You can make a request to the API to check if a certain feature is currently ena
 
 // response:
 {
-  "notification": { "enabled": true }
+  "notification": {
+    "enabled": true,
+    "email": { "enabled": true }
+  }
 }
 ```
+
+`notification.email` is only reported when notification emails can actually be sent (see
+[Setup](#setup)), so the app can offer the email option only when it works.
 
 If the _aam-services backend_ is not deployed at all, such a request will usually return a HTTP 504 error.
 You should also account for that possibility.
@@ -55,9 +61,9 @@ The following environment variables are required:
 ```dotenv
 FEATURES_NOTIFICATIONAPI_ENABLED=true
 FEATURES_NOTIFICATIONAPI_MODE=firebase    # delivery mode for push notifications
-FEATURES_NOTIFICATIONAPI_EMAIL_ENABLED=false  # set true to enable email notifications
 
-# Required for email notifications (SMTP)
+# Email notifications (optional): setting SPRING_MAIL_HOST switches them on, there is no separate flag.
+# They are sent when the sender address, the SMTP host and the Keycloak access below are all set.
 # Sender address only; the display name and subject prefix are managed in the
 # templates/{locale}/notification/email-branding.properties template file.
 NOTIFICATION_EMAIL_FROM=notifications@your-instance.org
@@ -72,7 +78,7 @@ SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
 # Keep in sync with the site default language.
 NOTIFICATION_EMAIL_LOCALE=en
 
-# Required for email notifications (lookup recipient addresses in Keycloak)
+# Needed for email notifications (lookup recipient addresses in Keycloak)
 KEYCLOAK_SERVERURL=https://<your-keycloak-url>
 KEYCLOAK_REALM=<your-realm>
 KEYCLOAK_CLIENTID=<service-client-id>
@@ -92,10 +98,30 @@ Notification links are derived centrally from `APPLICATION_BASEURL`:
 Database change-detection is activated automatically when notification (or reporting) is enabled;
 no separate flag needs to be set.
 
+### Email notifications are derived from the configuration
+
+The email channel is on when the notification API is enabled and `SPRING_MAIL_HOST`,
+`NOTIFICATION_EMAIL_FROM` and `KEYCLOAK_SERVERURL` all have a non-blank value. An empty value, as in
+the deployment template (`SPRING_MAIL_HOST=`), counts as not set. Without them the service starts
+normally and only sends notifications through its other channels.
+
+`KEYCLOAK_SERVERURL` (with the realm and client settings next to it) is needed because a notification
+only identifies the recipient by user id. The email address itself is looked up in the user's Keycloak
+account when the email is created.
+
+On startup the service logs which state it is in. If an SMTP host is set but the sender address or the
+Keycloak access is missing, it logs an error naming the missing settings, so a half-finished
+configuration is not mistaken for a working one.
+
+The former flag `FEATURES_NOTIFICATIONAPI_EMAIL_ENABLED` is no longer read, whatever its value. If it
+is still set, the service logs a warning at startup; remove it. In particular, a deployment that
+has an SMTP server configured now sends notification emails even if the flag is `false`; to stop
+this, clear `SPRING_MAIL_HOST`.
+
 Notes:
 
 - Email notifications are only sent for users with `channels.email=true` in their `NotificationConfig:*` document.
-- If email is enabled but a user has no email address in Keycloak, that notification is skipped for email delivery.
+- If a user has no email address in Keycloak, that notification is skipped for email delivery.
 - Ensure the server firewall allows outgoing traffic for the SMTP port.
 
 ### Email delivery retries and failure handling

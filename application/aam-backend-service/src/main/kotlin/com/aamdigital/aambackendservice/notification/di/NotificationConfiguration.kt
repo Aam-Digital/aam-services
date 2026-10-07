@@ -9,8 +9,9 @@ import com.aamdigital.aambackendservice.common.outbox.Outbox
 import com.aamdigital.aambackendservice.common.outbox.OutboxRetryPolicy
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
-import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationEmailEnabled
+import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationEmailConfigured
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationFirebaseMode
+import com.aamdigital.aambackendservice.notification.NotificationEmailStartupDiagnostics
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.config.DefaultNotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
@@ -34,13 +35,11 @@ import com.aamdigital.aambackendservice.notification.repository.UserDeviceReposi
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.firebase.messaging.FirebaseMessaging
 import org.keycloak.admin.client.Keycloak
-import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationRunner
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.env.Environment
 import java.time.Duration
 
 @Configuration
@@ -50,34 +49,9 @@ class NotificationConfiguration {
         const val NOTIFICATION_OUTBOX_DATABASE = "notification-outbox"
     }
 
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     @Bean
-    fun notificationStartupDiagnostics(
-        @Value("\${features.notification-api.email.enabled:false}") emailEnabled: Boolean,
-        @Value("\${spring.mail.host:}") mailHost: String,
-        keycloakProvider: ObjectProvider<Keycloak>
-    ): ApplicationRunner =
-        ApplicationRunner {
-            val keycloakAvailable = keycloakProvider.ifAvailable != null
-            val mailHostConfigured = mailHost.isNotBlank()
-            if (emailEnabled && !keycloakAvailable) {
-                logger.error(
-                    "Notification email is ENABLED (features.notification-api.email.enabled=true) but Keycloak is " +
-                        "not configured (keycloak.server-url unset), so no email handler exists and email " +
-                        "notifications will be skipped. Set keycloak.server-url (+ realm/client-id/client-secret) " +
-                        "and spring.mail.host to enable them."
-                )
-            } else {
-                logger.info(
-                    "Notification startup diagnostics: emailFeatureEnabled={}, keycloakBeanAvailable={}, " +
-                        "mailHostConfigured={}",
-                    emailEnabled,
-                    keycloakAvailable,
-                    mailHostConfigured
-                )
-            }
-        }
+    fun notificationStartupDiagnostics(environment: Environment): ApplicationRunner =
+        NotificationEmailStartupDiagnostics(environment)
 
     @Bean
     fun notificationConfigCache(
@@ -99,8 +73,8 @@ class NotificationConfiguration {
     ): ApplyNotificationRulesUseCase {
         // Only emit a channel that a registered handler can deliver: an event without a handler turns
         // into an outbox entry that can never be delivered and is retried on every restart. Asking the
-        // handlers keeps this in step with their bean conditions (email feature flag plus Keycloak,
-        // firebase mode for push) instead of repeating those conditions here.
+        // handlers keeps this in step with their bean conditions (email configuration, firebase mode
+        // for push) instead of repeating those conditions here.
         fun handlerExistsFor(channel: NotificationChannelType) =
             createNotificationHandlers.any { handler -> handler.canHandle(channel) }
 
@@ -188,14 +162,13 @@ class NotificationConfiguration {
     fun appCreateNotificationHandler(couchDbClient: CouchDbClient): CreateNotificationHandler =
         AppCreateNotificationHandler(couchDbClient = couchDbClient)
 
-    // Gated on the `keycloak.server-url` property (the same condition that gates the Keycloak bean in
-    // KeycloakAdminConfiguration) rather than @ConditionalOnBean(Keycloak): the latter is order-sensitive
-    // on plain @Configuration classes and silently drops this bean when NotificationConfiguration happens
-    // to be processed before KeycloakAdminConfiguration — even when Keycloak is configured. See
-    // NotificationEmailHandlerWiringTest, which fails the "notification config first" case under @ConditionalOnBean.
+    // The email beans are gated on properties, including `keycloak.server-url`, the same condition that
+    // gates the Keycloak bean in KeycloakAdminConfiguration, rather than on @ConditionalOnBean(Keycloak):
+    // the latter is order-sensitive on plain @Configuration classes and silently drops these beans when
+    // NotificationConfiguration happens to be processed before KeycloakAdminConfiguration, even when
+    // Keycloak is configured. NotificationEmailHandlerWiringTest covers both orders.
     @Bean("keycloak-user-email-provider")
-    @ConditionalOnNotificationEmailEnabled
-    @ConditionalOnProperty(prefix = "keycloak", name = ["server-url"])
+    @ConditionalOnNotificationEmailConfigured
     fun keycloakUserEmailProvider(
         keycloak: Keycloak,
         aamKeycloakConfig: AamKeycloakConfig
@@ -206,8 +179,7 @@ class NotificationConfiguration {
         )
 
     @Bean("email-create-notification-handler")
-    @ConditionalOnNotificationEmailEnabled
-    @ConditionalOnProperty(prefix = "keycloak", name = ["server-url"])
+    @ConditionalOnNotificationEmailConfigured
     fun emailCreateNotificationHandler(
         mailSenderService: MailSenderService,
         userEmailProvider: UserEmailProvider,
