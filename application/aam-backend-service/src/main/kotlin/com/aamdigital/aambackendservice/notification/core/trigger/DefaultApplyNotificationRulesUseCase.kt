@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.notification.core.trigger
 
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
 import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
+import com.aamdigital.aambackendservice.common.condition.InvalidDocumentConditionsException
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
@@ -44,10 +45,7 @@ class DefaultApplyNotificationRulesUseCase(
             prefilterRules(notificationConfigurations, changedEntity, changeType)
                 .filter { (notificationConfig, rule) ->
                     logger.trace("{} -> {}", notificationConfig.userIdentifier, rule)
-                    documentConditionEngine.matchesAll(
-                        conditions = rule.conditions,
-                        document = request.documentChangeEvent.currentVersion
-                    )
+                    matchesConditions(rule, request.documentChangeEvent)
                 }
 
         if (matchedRules.isEmpty()) {
@@ -118,6 +116,29 @@ class DefaultApplyNotificationRulesUseCase(
             notificationConfig.rules
                 .filter { it.enabled && it.entityType == changedEntity && it.changeType == changeType }
                 .map { rule -> Pair(notificationConfig, rule) }
+        }
+
+    /**
+     * A rule whose conditions turn out to be invalid does not match, so that it cannot keep the
+     * other rules from being applied to this change.
+     */
+    private fun matchesConditions(
+        rule: NotificationRuleCacheEntry,
+        documentChangeEvent: DocumentChangeEvent
+    ): Boolean =
+        try {
+            documentConditionEngine.matches(
+                conditions = rule.conditions,
+                document = documentChangeEvent.currentVersion
+            )
+        } catch (ex: InvalidDocumentConditionsException) {
+            logger.warn(
+                "Skipping notification rule with invalid conditions: rule={}, entityId={}",
+                rule.externalIdentifier,
+                documentChangeEvent.documentId,
+                ex
+            )
+            false
         }
 
     private fun publishNotificationEventForUser(

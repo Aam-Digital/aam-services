@@ -28,6 +28,8 @@ jacoco = "0.8.15"
 # whole line and matching the server version is not possible.
 keycloakAdminClient = "26.0.12"
 firebaseAdmin = "9.11.0"
+# Evaluates MongoDB-style query conditions (e.g. notification rules) in memory.
+mongoJavaServer = "1.47.0"
 
 # --- test ---
 cucumber = "8.0.4"
@@ -46,6 +48,7 @@ mime4jCore = "0.8.15"
 [libraries]
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloakAdminClient" }
 firebase-admin = { module = "com.google.firebase:firebase-admin", version.ref = "firebaseAdmin" }
+mongo-java-server-core = { module = "de.bwaldvogel:mongo-java-server-core", version.ref = "mongoJavaServer" }
 
 cucumber-java = { module = "io.cucumber:cucumber-java", version.ref = "cucumber" }
 cucumber-junit = { module = "io.cucumber:cucumber-junit", version.ref = "cucumber" }

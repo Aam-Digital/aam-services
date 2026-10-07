@@ -16,6 +16,24 @@ _for details about setup & usage of this module [see README in docs folder](../.
 6. `NotificationOutboxDrainJob` drains the outbox on a short interval; `NotificationOutboxHandler` passes each entry to `CreateNotificationUseCase`, which passes the event on to the applicable `CreateNotificationHandler`.
 7. `CreateNotificationHandler` implementations (for push, in-app, email) send the actual notification to the user.
 
+## Rule conditions
+
+A rule's `conditions` are a query in MongoDB syntax, the format the frontend's conditions editor
+stores and evaluates them in (e.g. `{"$or": [{"name": {"$not": {"$eq": "Bert"}}}]}`).
+They are evaluated with MongoDB's semantics by
+[`common/condition/DocumentConditionEngine`](../common/condition/DocumentConditionEngine.kt),
+which delegates to the query matcher of [mongo-java-server](https://github.com/bwaldvogel/mongo-java-server)
+instead of implementing the operators itself.
+
+- The whole condition tree of a rule is matched at once, so a document matching several `$or`
+  branches still triggers one notification per rule.
+- A rule with invalid conditions (e.g. an unknown operator) is skipped and logged as a warning,
+  without affecting the user's other rules.
+- Values are compared strictly by type, as in MongoDB: `{"age": {"$gte": "18"}}` (a string) does
+  not match a numeric `age`.
+- The legacy array format `{"$elemMatch": "value"}` (or a list of values), which MongoDB rejects,
+  is read as `{"$elemMatch": {"$eq": "value"}}` (or `$in`), as the frontend does.
+
 ## Delivery guarantees
 
 Notification ids are derived from the document change that caused them

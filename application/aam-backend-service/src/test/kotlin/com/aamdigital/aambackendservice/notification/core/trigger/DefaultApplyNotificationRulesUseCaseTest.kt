@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.notification.core.trigger
 
 import com.aamdigital.aambackendservice.common.changes.DocumentChangeEvent
-import com.aamdigital.aambackendservice.common.condition.DocumentCondition
+import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
@@ -12,6 +12,7 @@ import com.aamdigital.aambackendservice.notification.core.config.NotificationRul
 import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -167,9 +168,14 @@ class DefaultApplyNotificationRulesUseCaseTest {
             "updatedPurged" to documentUpdateWithPurgedPreviousEvent
         )
 
+    private val documentConditionEngine = DocumentConditionEngine()
+    private val objectMapper = ObjectMapper()
+
+    private fun conditions(json: String = "{}") = documentConditionEngine.parse(objectMapper.readTree(json))
+
     private fun generateNotificationConfig(
         changeType: String,
-        conditions: List<DocumentCondition> = emptyList(),
+        conditions: String = "{}",
         entityType: String = "Child",
         enabled: Boolean = true
     ): NotificationConfigCacheEntry =
@@ -185,7 +191,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                         notificationType = NotificationType.ENTITY_CHANGE,
                         entityType = entityType,
                         changeType = changeType,
-                        conditions = conditions,
+                        conditions = conditions(conditions),
                         enabled = enabled
                     )
                 )
@@ -300,7 +306,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
     @ParameterizedTest
     @CsvSource(
         "created,0",
-        "updated,7",
+        "updated,8",
         "deleted,0",
         "other,0"
     )
@@ -314,170 +320,82 @@ class DefaultApplyNotificationRulesUseCaseTest {
                 // condition $eq matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "name",
-                                operator = "\$eq",
-                                value = "Bert"
-                            )
-                        )
+                    conditions = "{\"name\": {\"\$eq\": \"Bert\"}}"
                 ),
                 // condition $eq not matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "name",
-                                operator = "\$eq",
-                                value = "Clark"
-                            )
-                        )
+                    conditions = "{\"name\": {\"\$eq\": \"Clark\"}}"
                 ),
-                // condition $nq matching:
+                // condition $ne matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "name",
-                                operator = "\$nq",
-                                value = "XYZ"
-                            )
-                        )
+                    conditions = "{\"name\": {\"\$ne\": \"XYZ\"}}"
                 ),
-                // condition $nq not matching:
+                // condition $ne not matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "name",
-                                operator = "\$nq",
-                                value = "Bert"
-                            )
-                        )
+                    conditions = "{\"name\": {\"\$ne\": \"Bert\"}}"
                 ),
                 // condition $elemMatch matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "categories",
-                                operator = "\$elemMatch",
-                                value = "X"
-                            )
-                        )
+                    conditions = "{\"categories\": {\"\$elemMatch\": {\"\$in\": [\"X\"]}}}"
                 ),
                 // condition $elemMatch not matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "categories",
-                                operator = "\$elemMatch",
-                                value = "ABC"
-                            )
-                        )
+                    conditions = "{\"categories\": {\"\$elemMatch\": {\"\$in\": [\"ABC\"]}}}"
                 ),
                 // condition $gt matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "age",
-                                operator = "\$gt",
-                                value = "19"
-                            )
-                        )
+                    conditions = "{\"age\": {\"\$gt\": 17}}"
                 ),
                 // condition $gt not matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "age",
-                                operator = "\$gt",
-                                value = "18"
-                            )
-                        )
+                    conditions = "{\"age\": {\"\$gt\": 18}}"
                 ),
                 // condition $gte matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "age",
-                                operator = "\$gte",
-                                value = "18"
-                            )
-                        )
+                    conditions = "{\"age\": {\"\$gte\": 18}}"
                 ),
                 // condition $gte not matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "age",
-                                operator = "\$gte",
-                                value = "17"
-                            )
-                        )
+                    conditions = "{\"age\": {\"\$gte\": 19}}"
                 ),
                 // condition $lt matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "age",
-                                operator = "\$lt",
-                                value = "17"
-                            )
-                        )
+                    conditions = "{\"age\": {\"\$lt\": 19}}"
                 ),
                 // condition $lt not matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "age",
-                                operator = "\$lt",
-                                value = "18"
-                            )
-                        )
+                    conditions = "{\"age\": {\"\$lt\": 18}}"
                 ),
                 // condition $lte matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "age",
-                                operator = "\$lte",
-                                value = "18"
-                            )
-                        )
+                    conditions = "{\"age\": {\"\$lte\": 18}}"
                 ),
                 // condition $lte not matching:
                 generateNotificationConfig(
                     changeType = "updated",
-                    conditions =
-                        listOf(
-                            DocumentCondition(
-                                field = "age",
-                                operator = "\$lte",
-                                value = "19"
-                            )
-                        )
+                    conditions = "{\"age\": {\"\$lte\": 17}}"
+                ),
+                // condition $not matching:
+                generateNotificationConfig(
+                    changeType = "updated",
+                    conditions = "{\"name\": {\"\$not\": {\"\$eq\": \"Clark\"}}}"
+                ),
+                // condition $not not matching:
+                generateNotificationConfig(
+                    changeType = "updated",
+                    conditions = "{\"name\": {\"\$not\": {\"\$eq\": \"Bert\"}}}"
                 )
             )
         )
@@ -493,6 +411,33 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // then
         assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
         assertEquals(notificationsSendCount, (result as UseCaseOutcome.Success).data.notificationsSendCount)
+    }
+
+    @Test
+    fun `should skip a rule whose conditions turn out to be invalid and still apply the others`() {
+        // given the unknown operator is only reached for a document named "Bert"
+        whenever(notificationConfigCache.findAll()).thenReturn(
+            listOf(
+                generateNotificationConfig(
+                    changeType = "updated",
+                    conditions = "{\"\$and\": [{\"name\": \"Bert\"}, {\"age\": {\"\$unknown\": 1}}]}"
+                ),
+                generateNotificationConfig(
+                    changeType = "updated",
+                    conditions = "{\"name\": \"Bert\"}"
+                )
+            )
+        )
+
+        // when
+        val result =
+            service.run(
+                ApplyNotificationRulesRequest(documentChangeEvent = documentUpdateEvent)
+            )
+
+        // then
+        assertThat(result).isInstanceOf(UseCaseOutcome.Success::class.java)
+        assertEquals(1, (result as UseCaseOutcome.Success).data.notificationsSendCount)
     }
 
     @ParameterizedTest
@@ -540,7 +485,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                             notificationType = NotificationType.ENTITY_CHANGE,
                             entityType = "Child",
                             changeType = "created",
-                            conditions = emptyList(),
+                            conditions = conditions(),
                             enabled = true
                         )
                     )
@@ -629,7 +574,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                                 notificationType = NotificationType.ENTITY_CHANGE,
                                 entityType = "Child",
                                 changeType = "created",
-                                conditions = emptyList(),
+                                conditions = conditions(),
                                 enabled = true
                             )
                         )
@@ -679,7 +624,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                                 notificationType = NotificationType.ENTITY_CHANGE,
                                 entityType = "Child",
                                 changeType = "created",
-                                conditions = emptyList(),
+                                conditions = conditions(),
                                 enabled = true
                             )
                         )
@@ -724,7 +669,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                                 notificationType = NotificationType.ENTITY_CHANGE,
                                 entityType = "Child",
                                 changeType = "created",
-                                conditions = emptyList(),
+                                conditions = conditions(),
                                 enabled = true
                             )
                         )
@@ -828,7 +773,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                                 notificationType = NotificationType.ENTITY_CHANGE,
                                 entityType = "Child",
                                 changeType = "created",
-                                conditions = emptyList(),
+                                conditions = conditions(),
                                 enabled = true
                             )
                         )
@@ -889,7 +834,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
                                 notificationType = NotificationType.ENTITY_CHANGE,
                                 entityType = "Child",
                                 changeType = "created",
-                                conditions = emptyList(),
+                                conditions = conditions(),
                                 enabled = true
                             )
                         )

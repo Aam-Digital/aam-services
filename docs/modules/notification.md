@@ -40,6 +40,12 @@ You should also account for that possibility.
 
 ![notifications.drawio.png](../assets/notifications.drawio.png)
 
+Users configure their notification rules in the frontend. A rule's conditions follow MongoDB query
+syntax and semantics, including negations (`$not`, `$nor`, `$ne`, `$nin`), `$in`, `$elemMatch`,
+comparisons, `$exists`, `$regex` and dotted paths into nested fields.
+Note that values are compared strictly by type: a number stored as a string in a condition
+(e.g. `{"age": {"$gte": "18"}}`) does not match a numeric field.
+
 ---
 
 ## Setup

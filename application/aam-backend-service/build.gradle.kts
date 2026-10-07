@@ -78,6 +78,12 @@ dependencies {
 
     implementation(libs.firebase.admin)
 
+    // Only its query matcher is used, to evaluate MongoDB-style conditions in memory. Netty is
+    // needed for the MongoDB wire protocol server, which is never started here.
+    implementation(libs.mongo.java.server.core) {
+        exclude(group = "io.netty")
+    }
+
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 
     testImplementation(libs.cucumber.java)
