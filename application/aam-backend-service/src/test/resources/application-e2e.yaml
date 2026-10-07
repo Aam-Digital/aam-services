@@ -93,12 +93,12 @@ crypto-configuration:
 database-change-detection:
   fixed-delay: 1000
 
-# the Keycloak admin client ensures the API client scopes on startup;
-# server-url is overridden with the Keycloak test container (see TestContainers)
+# the Keycloak admin client ensures the API client scopes on startup. The aam-backend client is imported into
+# the Keycloak test container from the definition that ships with the application (keycloak/aam-backend-client.json),
+# and server-url and client-secret are overridden to match it (see TestContainers)
 keycloak:
   realm: dummy-realm
   client-id: aam-backend
-  client-secret: 1234
   server-url: https://keycloak.localhost
 
 sentry:

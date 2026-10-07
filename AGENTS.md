@@ -46,6 +46,7 @@ aam-services/
 │   ├── aam-backend-service/          # Main Spring Boot application
 │   │   ├── build.gradle.kts
 │   │   ├── Dockerfile
+│   │   ├── keycloak/                 # Importable Keycloak client definitions, shipped in the image
 │   │   └── src/
 │   │       ├── main/kotlin/com/aamdigital/aambackendservice/
 │   │       │   ├── common/           # Shared infrastructure and domain services
@@ -511,6 +512,18 @@ e2e gates rely on it.
   `templates/aam-backend-service/application.template.env`. Deployments copy the template once, when the backend
   is enabled, so a key added to it later never reaches existing instances. The template only lists
   instance-specific values, secrets and feature toggles.
+
+### Keycloak Client Definitions
+
+The Keycloak clients that the code depends on are defined in `application/aam-backend-service/keycloak/`, which the
+Docker image ships at `/opt/app/keycloak/`; deployments import these files instead of keeping their own copy
+(see the README there).
+
+- Code that needs another `realm-management` role for `aam-backend` (a new Keycloak Admin API call) adds the role to
+  `aam-backend-client.json` and to the role table in the README, and covers the call in
+  `KeycloakClientDefinitionsIntegrationTest`, which runs against the definition and not against a copy of it.
+- The path `/opt/app/keycloak/` and the file and variable names are a contract with the deployments: changing one is
+  a breaking change and goes into the release notes. Never put a secret into the files, use a variable.
 
 ---
 

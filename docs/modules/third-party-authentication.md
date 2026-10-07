@@ -61,15 +61,15 @@ APPLICATION_BASEURL=dev.aam-digital.net # the base domain of the Aam Digital app
 Note that you need a Keycloak Client that our Backend can use to authenticate itself against the Keycloak server.
 This should be different from the Keycloak Client shared with an external system, which this uses to authenticate itself against our API.
 
-If the `aam-backend` Keycloak Client does not exist in your realm yet, create it:
-- Go to the Keycloak Admin Console and create a new Client
-   - enable "Client authentication"
-   - check only "Service Accounts roles" for Authentication flow
-- After creating the client, open its details and go to the "Service accounts roles" tab
-   - Add "realm-admin" role to the client, to allow the backend to create users in Keycloak
-     (this includes `manage-clients`, which the backend needs to create the `third_party_authentication`
-     client scope, see below)
-- Add "roles" as a "Client Scope" for the client, so that the roles are included in the JWT token.
+If the `aam-backend` Keycloak Client does not exist in your realm yet, import its definition
+[`aam-backend-client.json`](../../application/aam-backend-service/keycloak/aam-backend-client.json),
+which ships with the backend (in the Docker image at `/opt/app/keycloak/`; see the
+[README of the definitions](../../application/aam-backend-service/keycloak/README.md) for the variables to fill in
+and how to import it). It creates the client with "Client authentication" and only "Service Accounts roles" enabled,
+the "roles" client scope (so that the roles are included in the JWT token), and grants its service account the
+`realm-management` roles
+- `manage-users` and `view-users`, to create users in Keycloak and to find them by email, and
+- `manage-clients`, which the backend needs to create the `third_party_authentication` client scope, see below.
 
 ### Keycloak configuration
 You need to configure your Keycloak Realm to support the third-party-api.
@@ -96,7 +96,8 @@ with `403`.
 #### Keycloak client scope setup
 On every startup, the backend makes sure the `third_party_authentication` client scope exists in the realm.
 For that, the `aam-backend` service account needs the `realm-management` role `manage-clients`
-(included in `realm-admin`), and the `KEYCLOAK_*` variables have to be set.
+(granted by the [client definition](../../application/aam-backend-service/keycloak/aam-backend-client.json)
+mentioned above), and the `KEYCLOAK_*` variables have to be set.
 If the scope cannot be created, the backend logs a warning and starts anyway; create it by hand then.
 
 The backend never assigns the scope to a client. Assign it as a **Default** client scope of the external

@@ -1,0 +1,38 @@
+{
+  "realm": "$(env:AAM_BACKEND_REALM)",
+  "clients": [
+    {
+      "clientId": "aam-backend",
+      "name": "Aam Digital backend",
+      "description": "Keycloak admin access of aam-services and replication-backend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "$(env:AAM_BACKEND_CLIENT_SECRET)",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "roles"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-aam-backend",
+      "enabled": true,
+      "serviceAccountClientId": "aam-backend",
+      "clientRoles": {
+        "realm-management": [
+          "manage-clients",
+          "manage-users",
+          "view-users"
+        ]
+      }
+    }
+  ]
+}

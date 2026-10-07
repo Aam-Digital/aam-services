@@ -1,0 +1,41 @@
+{
+  "realm": "$(env:CARBONE_REALM)",
+  "clients": [
+    {
+      "clientId": "carbone-$(env:INSTANCE_NAME)",
+      "name": "Carbone render client",
+      "description": "Lets aam-services render documents with Carbone behind oauth2-proxy",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "$(env:CARBONE_CLIENT_SECRET)",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "audience-$(env:OAUTH2_PROXY_CLIENT_ID)",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "$(env:OAUTH2_PROXY_CLIENT_ID)",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-carbone-$(env:INSTANCE_NAME)",
+      "enabled": true,
+      "serviceAccountClientId": "carbone-$(env:INSTANCE_NAME)"
+    }
+  ]
+}

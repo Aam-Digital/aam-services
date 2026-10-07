@@ -12,12 +12,52 @@ import org.testcontainers.utility.DockerImageName
 
 @Testcontainers
 object TestContainers {
+    /** The realm of the Keycloak container, imported from `dummy-realm-realm.json`. */
+    const val KEYCLOAK_REALM = "dummy-realm"
+
+    /**
+     * Secret that the `aam-backend` client is imported with, which the backend under test uses as
+     * `keycloak.client-secret`.
+     */
+    const val AAM_BACKEND_CLIENT_SECRET = "1234"
+
     private var network: Network = Network.newNetwork()
+    private var keycloakReady = false
+
+    /**
+     * Starts the Keycloak container and imports the `aam-backend` client into its realm from the definition that
+     * ships with the application (`keycloak/aam-backend-client.json`), the way a deployment imports it.
+     * The realm file leaves that client out on purpose: a role the backend needs but the definition lacks fails
+     * the tests here instead of a deployment.
+     *
+     * Safe to call repeatedly; only the first call does anything.
+     */
+    @Synchronized
+    fun startKeycloak() {
+        if (keycloakReady) {
+            return
+        }
+
+        CONTAINER_KEYCLOAK.start()
+        CONTAINER_KEYCLOAK.keycloakAdminClient.use { admin ->
+            KeycloakClientDefinitions.import(
+                keycloak = admin,
+                realm = KEYCLOAK_REALM,
+                fileName = KeycloakClientDefinitions.AAM_BACKEND_CLIENT,
+                variables =
+                    mapOf(
+                        "AAM_BACKEND_REALM" to KEYCLOAK_REALM,
+                        "AAM_BACKEND_CLIENT_SECRET" to AAM_BACKEND_CLIENT_SECRET
+                    )
+            )
+        }
+        keycloakReady = true
+    }
 
     @DynamicPropertySource
     @JvmStatic
     fun init(registry: DynamicPropertyRegistry) {
-        CONTAINER_KEYCLOAK.start()
+        startKeycloak()
         CONTAINER_COUCHDB.start()
         CONTAINER_SQS.start()
         CONTAINER_PDF.start()
@@ -35,6 +75,11 @@ object TestContainers {
             "keycloak.server-url"
         ) {
             "http://localhost:${CONTAINER_KEYCLOAK.getMappedPort(8080)}"
+        }
+        registry.add(
+            "keycloak.client-secret"
+        ) {
+            AAM_BACKEND_CLIENT_SECRET
         }
         registry.add(
             "couch-db-client-configuration.base-path"

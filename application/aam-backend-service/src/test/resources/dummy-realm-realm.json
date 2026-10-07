@@ -507,21 +507,6 @@
       "groups": []
     },
     {
-      "username": "service-account-aam-backend",
-      "enabled": true,
-      "serviceAccountClientId": "aam-backend",
-      "realmRoles": [
-        "default-roles-dummy-realm"
-      ],
-      "clientRoles": {
-        "realm-management": [
-          "manage-clients",
-          "view-users",
-          "manage-realm"
-        ]
-      }
-    },
-    {
       "username": "service-account-no-scope-client",
       "enabled": true,
       "serviceAccountClientId": "no-scope-client",
@@ -883,27 +868,6 @@
         "reporting_read",
         "reporting_write"
       ]
-    },
-    {
-      "clientId": "aam-backend",
-      "name": "",
-      "description": "The backend's own client for the Keycloak Admin API (keycloak.client-id)",
-      "enabled": true,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "1234",
-      "bearerOnly": false,
-      "consentRequired": false,
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": true,
-      "publicClient": false,
-      "protocol": "openid-connect",
-      "fullScopeAllowed": true,
-      "defaultClientScopes": [
-        "roles"
-      ],
-      "optionalClientScopes": []
     },
     {
       "clientId": "no-scope-client",
