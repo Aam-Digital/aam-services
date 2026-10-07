@@ -398,10 +398,11 @@ Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific 
 Note that `FEATURES_NOTIFICATIONAPI_ENABLED=true` in `.env.example` only enables the module — it
 stays non-functional until you supply real Firebase credentials for
 `NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64`, which ships as a placeholder. The
-service reports what it actually resolved on startup:
+service reports on startup whether notification email is on and, if not, why (email needs an SMTP
+host, a sender address and the Keycloak access, see [notification.md](/docs/modules/notification.md)):
 
 ```
-Notification startup diagnostics: emailFeatureEnabled=false, keycloakBeanAvailable=false, mailHostConfigured=false
+Notification email is off: no SMTP host configured. To send notifications by email, set [spring.mail.host, notification.email.from, keycloak.server-url].
 ```
 
 Similarly, PDF reports (`FEATURES_EXPORTAPI_ENABLED`) need `aam-render-api-client-configuration`
