@@ -42,9 +42,12 @@ import ch.qos.logback.classic.Logger as LogbackLogger
  * Whatever the settings are, the context has to start, because email is an optional channel.
  */
 class NotificationEmailHandlerWiringTest {
-    /** Picks up [NotificationEmailProperties] the way the application's `@ConfigurationPropertiesScan` does. */
+    /**
+     * Picks up [NotificationEmailProperties] and [AamKeycloakConfig] the way the application's
+     * `@ConfigurationPropertiesScan` does, including their own bean conditions.
+     */
     @Configuration
-    @ConfigurationPropertiesScan(basePackageClasses = [NotificationEmailProperties::class])
+    @ConfigurationPropertiesScan(basePackageClasses = [NotificationEmailProperties::class, AamKeycloakConfig::class])
     class PropertiesScanConfiguration
 
     private val runner =
@@ -59,7 +62,19 @@ class NotificationEmailHandlerWiringTest {
             "features.notification-api.enabled=true",
             "spring.mail.host=smtp.example.org",
             "notification.email.from=notifications@example.org",
-            "keycloak.server-url=https://keycloak.example.org"
+            "keycloak.server-url=https://keycloak.example.org",
+            "keycloak.realm=realm",
+            "keycloak.client-id=client",
+            "keycloak.client-secret=secret"
+        )
+
+    /** Keycloak settings the way the deployment template ships them: present, but empty. */
+    private val emptyKeycloakSettings =
+        arrayOf(
+            "keycloak.server-url=",
+            "keycloak.realm=",
+            "keycloak.client-id=",
+            "keycloak.client-secret="
         )
 
     /** The configuration classes the email channel lives in, plus what they get from the rest of the application. */
@@ -74,10 +89,6 @@ class NotificationEmailHandlerWiringTest {
             .withBean(ObjectMapper::class.java, { ObjectMapper() })
             .withBean(PermissionCheckClient::class.java, { PermissionCheckClient() })
             .withBean(ApplicationConfig::class.java, { ApplicationConfig("aam.example.org") })
-            .withBean(
-                AamKeycloakConfig::class.java,
-                { AamKeycloakConfig("https://keycloak.example.org", "realm", "client", "secret") }
-            )
             // what Spring Boot's mail auto-configuration provides once spring.mail.host is set
             .withBean(JavaMailSender::class.java, { mock<JavaMailSender>() })
 
@@ -135,7 +146,10 @@ class NotificationEmailHandlerWiringTest {
                         "FEATURES_NOTIFICATIONAPI_ENABLED=true",
                         "SPRING_MAIL_HOST=smtp.example.org",
                         "NOTIFICATION_EMAIL_FROM=notifications@example.org",
-                        "KEYCLOAK_SERVERURL=https://keycloak.example.org"
+                        "KEYCLOAK_SERVERURL=https://keycloak.example.org",
+                        "KEYCLOAK_REALM=realm",
+                        "KEYCLOAK_CLIENTID=client",
+                        "KEYCLOAK_CLIENTSECRET=secret"
                     ).applyTo(context.environment, TestPropertyValues.Type.SYSTEM_ENVIRONMENT)
                 ConfigurationPropertySources.attach(context.environment)
             }.run { it.assertEmailChannelIsOn() }
@@ -153,7 +167,10 @@ class NotificationEmailHandlerWiringTest {
             .withPropertyValues(
                 "features.notification-api.enabled=true",
                 "notification.email.from=notifications@example.org",
-                "keycloak.server-url=https://keycloak.example.org"
+                "keycloak.server-url=https://keycloak.example.org",
+                "keycloak.realm=realm",
+                "keycloak.client-id=client",
+                "keycloak.client-secret=secret"
             ).run { it.assertEmailChannelIsOff() }
     }
 
@@ -163,8 +180,19 @@ class NotificationEmailHandlerWiringTest {
     }
 
     @Test
-    fun `should start without the email channel when Keycloak is not configured`() {
-        runner.withSettings("keycloak.server-url=").run { it.assertEmailChannelIsOff() }
+    fun `should start without the email channel when the Keycloak settings are empty`() {
+        // KEYCLOAK_SERVERURL= and the like are what the deployment template ships
+        runner.withSettings(*emptyKeycloakSettings).run { it.assertEmailChannelIsOff() }
+    }
+
+    @Test
+    fun `should start without the email channel when there are no Keycloak settings at all`() {
+        runner
+            .withPropertyValues(
+                "features.notification-api.enabled=true",
+                "spring.mail.host=smtp.example.org",
+                "notification.email.from=notifications@example.org"
+            ).run { it.assertEmailChannelIsOff() }
     }
 
     @Test
