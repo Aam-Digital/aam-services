@@ -186,5 +186,20 @@ class KeycloakConfigCliImportTest {
         assertThat(realm.clients().findAll().map { it.clientId })
             .contains("carbone-first", "carbone-second")
         assertThat(realm.toRepresentation().attributes.keys).noneMatch { it.startsWith(REMOTE_STATE_PREFIX) }
+
+        // and the first client still has the secret and the single audience mapper of its own import
+        val firstId =
+            realm
+                .clients()
+                .findByClientId("carbone-first")
+                .single()
+                .id
+        val first = realm.clients().get(firstId)
+        assertThat(first.secret.value).isEqualTo("secret-of-first")
+        assertThat(
+            first.protocolMappers.mappers
+                .filter { it.protocolMapper == "oidc-audience-mapper" }
+                .map { it.config["included.client.audience"] }
+        ).containsExactly("oauth2-proxy")
     }
 }

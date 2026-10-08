@@ -49,8 +49,12 @@ The service account holds these `realm-management` roles:
 ## Getting the files
 
 ```shell
-docker run --rm --entrypoint cat ghcr.io/aam-digital/aam-services:<version> /opt/app/keycloak/aam-backend-client.json
+id=$(docker create ghcr.io/aam-digital/aam-services:<version>)
+docker cp "$id:/opt/app/keycloak/." ./keycloak-definitions/
+docker rm "$id"
 ```
+
+This runs nothing from the image, so it does not depend on which tools the image contains.
 
 To use them elsewhere, copy `/opt/app/keycloak/` out of the image, e.g. with an init container into a volume
 shared with the import job. The files are readable by any user. For a local development stack, see
@@ -72,16 +76,17 @@ docker run --rm -v "$PWD:/definitions:ro" \
   -e IMPORT_REMOTE_STATE_ENABLED=false \
   -e IMPORT_CACHE_ENABLED=false \
   -e AAM_BACKEND_REALM=<realm> -e AAM_BACKEND_CLIENT_SECRET=<secret> \
-  adorsys/keycloak-config-cli:latest-26
+  adorsys/keycloak-config-cli:6.5.1-26
 ```
 
 - `IMPORT_VARSUBSTITUTION_ENABLED=true` is required; a variable that is not set then fails the import.
 - **`IMPORT_MANAGED_CLIENT=no-delete` is required.** By default, clients that an earlier import of the realm
   created and the current files do not declare are deleted, e.g. `aam-backend` by any other import, or the
   render clients of other instances in the shared realm.
-- **`IMPORT_REMOTE_STATE_ENABLED=false`**: otherwise each import stores the clients it declared in a realm
-  attribute, and any other import of that realm in default managed mode deletes the rest, e.g. all `carbone-*`
-  clients but the last imported.
+- **`IMPORT_REMOTE_STATE_ENABLED=false` is required.** Otherwise each import stores the clients it declared in a
+  realm attribute, and the next import of that realm in default managed mode deletes those it does not declare
+  itself, e.g. `aam-backend` when the deployment's own keycloak-config-cli job for the realm's shared configuration
+  runs next, or all `carbone-*` clients but the last imported in the shared realm.
 - `IMPORT_CACHE_ENABLED=false`: otherwise an import is skipped when its file, after substitution, is unchanged
   since the last import into the realm, so a client deleted by hand is not recreated.
 - **Check that the realm exists first** (`GET /admin/realms/<realm>` returns 200): keycloak-config-cli creates a
