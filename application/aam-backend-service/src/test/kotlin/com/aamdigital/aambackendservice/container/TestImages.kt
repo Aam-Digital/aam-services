@@ -21,6 +21,11 @@ object TestImages {
     // renovate: datasource=docker depName=carbone/carbone-ee
     const val CARBONE = "4.23.4"
 
+    // The tag is the keycloak-config-cli version followed by the Keycloak major it was built for.
+    // Only the tool's behaviour matters here, so any Keycloak major that this tag supports is fine.
+    // renovate: datasource=docker depName=adorsys/keycloak-config-cli
+    const val KEYCLOAK_CONFIG_CLI = "6.5.1-26"
+
     // Built from our own repository and always tracked at head; nothing to pin.
     const val SQS = "latest"
 }

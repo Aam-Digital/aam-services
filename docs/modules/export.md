@@ -74,7 +74,16 @@ For local development with `docs/developer/docker-compose.yml`, this repository 
 
 ### OAuth Proxy & Keycloak Client
 In our standard hosted setup, the carbone.io server is protected by an OAUTH proxy.
-The Keycloak Client used by our backend to authenticate against this can be reused across different systems.
-When initially setting up this infrastructure in a centralized realm (for us "aam-digital"),
-make sure the client is set up with the following Mapper:
+The Keycloak Client used by our backend to authenticate against this lives in a centralized realm
+and can be reused across different systems.
+
+Its definition ships with the backend, in
+[`carbone-render-client.json`](../../application/aam-backend-service/keycloak/carbone-render-client.json)
+(in the Docker image at `/opt/app/keycloak/`). It creates the client `carbone-<instance>` with the Mapper that
+the proxy requires, which adds the proxy's own Keycloak client to the audience of the access tokens.
+The [README of the definitions](../../application/aam-backend-service/keycloak/README.md) lists the variables
+to fill in and how to import the file. Then configure the backend with the id and the secret of the client
+(`aam-render-api-client-configuration.auth-config.client-id` and `.client-secret`, see above).
+
+If you set the client up by hand instead, make sure it is set up with the following Mapper:
 ![keycloak-client-mapper-oauth.png](../assets/export/keycloak-client-mapper-oauth.png)

@@ -90,6 +90,11 @@ NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64=<base-64-encoded-firebase
 APPLICATION_BASEURL=<your-instance>.aam-digital.com
 ```
 
+The Keycloak client for the lookup is the `aam-backend` client (`KEYCLOAK_CLIENTID`); its service account needs the
+`realm-management` role `view-users`. The definition of that client that ships with the backend
+([`aam-backend-client.json`](../../application/aam-backend-service/keycloak/aam-backend-client.json), see its
+[README](../../application/aam-backend-service/keycloak/README.md)) grants it.
+
 Notification links are derived centrally from `APPLICATION_BASEURL`:
 
 - Email "manage notification settings": `https://<base-url>/user-account?tabIndex=1`

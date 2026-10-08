@@ -229,28 +229,27 @@ docker compose restart keycloak
 The imported files only create the public `app` client used by the frontend. Both
 `replication-backend` and `aam-backend-service` additionally authenticate against the Keycloak
 Admin API as a confidential client named `aam-backend` (see
-`REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_ID` and the `keycloak.client-id` setting), which you
-have to create yourself:
+`REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_ID` and the `keycloak.client-id` setting). Its definition,
+with the `realm-management` roles and the `roles` client scope it needs, ships with `aam-backend-service` in
+[`aam-backend-client.json`](../../application/aam-backend-service/keycloak/aam-backend-client.json). Import it
+(the [README of the definitions](../../application/aam-backend-service/keycloak/README.md) lists the variables
+and the other ways to import it):
 
-- Create a client with client ID **`aam-backend`**.
-- Turn **Client authentication** on (confidential) and enable **Service accounts roles**.
-  Standard flow and direct access grants are not needed.
-- Under the client's **Client scopes** tab, add `roles` as a **Default** scope.
-- On its **Service accounts roles** tab, assign the `query-users`, `view-users`, `manage-users` and
-  `manage-clients` roles from the **realm-management** client.
-  (`manage-clients` lets `aam-backend-service` create the client scopes its API modules check,
-  like `reporting_read` or `third_party_authentication`, on startup. It only does this when its `KEYCLOAK_*`
-  settings point at this Keycloak and it trusts the Keycloak certificate; otherwise it logs a warning, and you
-  create these client scopes by hand and assign them as **Default** scopes to your API test clients.)
-- Copy the secret from the **Credentials** tab into `REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_SECRET`
-  in your `.env` (see Step 4).
+- Fill in the placeholders of the file, with a secret of your choice, from the root of this repository:
+  ```shell
+  export AAM_BACKEND_REALM=dummy-realm AAM_BACKEND_CLIENT_SECRET=<secret>
+  perl -pe 's/\$\(env:(\w+)\)/$ENV{$1} \/\/ die "undefined variable $1\n"/ge' \
+    application/aam-backend-service/keycloak/aam-backend-client.json > /tmp/aam-backend-client.import.json
+  ```
+- In the **dummy-realm**, open **Realm settings > Action > Partial import**, select `/tmp/aam-backend-client.import.json`,
+  choose the resources **Users** and **Clients**, and import it.
+- Copy the secret into `REPLICATION_BACKEND_KEYCLOAK_ADMIN_CLIENT_SECRET` in your `.env` (see Step 4).
 
-> `keycloak/client_config.json` from [ndb-setup](https://github.com/Aam-Digital/ndb-setup/tree/master/keycloak)
-> already includes this client — importing it via **Realm settings > Action > Partial import**
-> (see [ndb-setup#118](https://github.com/Aam-Digital/ndb-setup/pull/118)) creates it for you, but
-> you still need to do the `roles` scope and role-assignment steps above by hand afterward; only
-> `scripts/lib/keycloak.sh`'s `createKeycloakBackendClient()` (used for real instances) does both
-> automatically (except for the `manage-clients` role).
+`aam-backend-service` uses the `manage-clients` role of this client to create the client scopes its API modules
+check, like `reporting_read` or `third_party_authentication`, on startup. It only does this when its `KEYCLOAK_*`
+settings (with the same secret as `KEYCLOAK_CLIENTSECRET`) point at this Keycloak and it trusts the Keycloak
+certificate; otherwise it logs a warning, and you create these client scopes by hand and assign them as
+**Default** scopes to your API test clients.
 
 #### 2.4 Create a user
 
@@ -410,10 +409,12 @@ Similarly, PDF reports (`FEATURES_EXPORTAPI_ENABLED`) need `aam-render-api-clien
 set up — it ships with no defaults outside the `local-development` profile (which docker-compose
 doesn't activate), so just flipping the feature flag crashes the service on startup. To enable it:
 
-1. Create a confidential Keycloak client for Carbone auth in **dummy-realm** (same steps as
-   [2.3](#23-create-the-aam-backend-client), client ID e.g. `aam-backend-pdf-client`, client
-   authentication on, service account roles enabled — no realm-management roles needed here) and
-   copy its secret from the **Credentials** tab.
+1. Create a confidential Keycloak client for Carbone auth in **dummy-realm** (client ID e.g.
+   `aam-backend-pdf-client`, client authentication on, service account roles enabled, standard flow and
+   direct access grants off — no realm-management roles needed here) and copy its secret from the
+   **Credentials** tab. This stack has no oauth2-proxy in front of Carbone, so the client needs none of the
+   audience mapper that [`carbone-render-client.json`](../../application/aam-backend-service/keycloak/carbone-render-client.json)
+   defines for the hosted setup.
 2. Add to your `.env`:
    ```env
    FEATURES_EXPORTAPI_ENABLED=true

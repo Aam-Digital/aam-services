@@ -46,6 +46,7 @@ aam-services/
 │   ├── aam-backend-service/          # Main Spring Boot application
 │   │   ├── build.gradle.kts
 │   │   ├── Dockerfile
+│   │   ├── keycloak/                 # Importable Keycloak client definitions, shipped in the image
 │   │   └── src/
 │   │       ├── main/kotlin/com/aamdigital/aambackendservice/
 │   │       │   ├── common/           # Shared infrastructure and domain services
