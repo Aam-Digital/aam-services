@@ -7,6 +7,9 @@ on:
       - 'application/aam-backend-service/**'
   push:
     tags:
+      # Releases are tagged `aam-services/<version>` (matching the image name); the older
+      # `aam-backend-service/<version>` tags are kept so their images can still be rebuilt.
+      - 'aam-services/**'
       - 'aam-backend-service/**'
     branches:
       - main
@@ -87,7 +90,8 @@ jobs:
 
       - name: Extract tag (release)
         if: ${{ github.event.ref  != '' }}
-        run: echo "TAG=${GITHUB_REF#refs/tags/aam-backend-service/}" >> $GITHUB_ENV
+        # Strips the `aam-services/` (or older `aam-backend-service/`) tag prefix.
+        run: echo "TAG=${GITHUB_REF#refs/tags/*/}" >> $GITHUB_ENV
 
       - name: Extract tag (pull request)
         if: ${{ github.event.ref  == '' }}
@@ -98,8 +102,8 @@ jobs:
         # tagged with a version. Tag pushes get the released version; everything else (main,
         # PRs) gets the commit SHA, since TAG above is not unique per build in those cases.
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/aam-backend-service/* ]]; then
-            echo "APPLICATION_VERSION=${GITHUB_REF#refs/tags/aam-backend-service/}" >> $GITHUB_ENV
+          if [[ "$GITHUB_REF" == refs/tags/aam-services/* || "$GITHUB_REF" == refs/tags/aam-backend-service/* ]]; then
+            echo "APPLICATION_VERSION=${GITHUB_REF#refs/tags/*/}" >> $GITHUB_ENV
           else
             echo "APPLICATION_VERSION=${{ github.sha }}" >> $GITHUB_ENV
           fi
@@ -201,7 +205,8 @@ jobs:
 
       - name: Extract tag (release)
         if: ${{ github.event.ref  != '' }}
-        run: echo "TAG=${GITHUB_REF#refs/tags/aam-backend-service/}" >> $GITHUB_ENV
+        # Strips the `aam-services/` (or older `aam-backend-service/`) tag prefix.
+        run: echo "TAG=${GITHUB_REF#refs/tags/*/}" >> $GITHUB_ENV
 
       - name: Extract tag (pull request)
         if: ${{ github.event.ref  == '' }}
@@ -272,10 +277,10 @@ jobs:
 
       - name: Set current tag and version
         run: |
-          # Releases are tagged `aam-backend-service/<version>`; the `v*` match finds the
-          # older `aam-backend-service/v<version>` tags until the first release without it.
-          CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'aam-backend-service/[0-9]*' --match 'aam-backend-service/v*')
-          CURRENT_VERSION=${CURRENT_TAG#aam-backend-service/}
+          # Releases are tagged `aam-services/<version>`; the `aam-backend-service/` matches
+          # find the older tags (some with a `v` prefix) until the first release with the new name.
+          CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'aam-services/[0-9]*' --match 'aam-backend-service/[0-9]*' --match 'aam-backend-service/v*')
+          CURRENT_VERSION=${CURRENT_TAG#*/}
           CURRENT_VERSION=${CURRENT_VERSION#v}
           echo "CURRENT_TAG=$CURRENT_TAG" >> "$GITHUB_ENV"
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> "$GITHUB_ENV"
@@ -307,7 +312,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          TAG_NAME=aam-backend-service/$NEXT_VERSION
+          TAG_NAME=aam-services/$NEXT_VERSION
           gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
