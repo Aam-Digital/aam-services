@@ -9,7 +9,7 @@
 
 [versions]
 # --- build tooling ---
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 springBoot = "4.1.1"
 springDependencyManagement = "1.1.7"
 sentryPlugin = "6.23.0"
