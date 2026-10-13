@@ -39,6 +39,7 @@ class ThirdPartyAuthenticationControllerTest {
 
     private lateinit var logger: Logger
     private lateinit var logAppender: ListAppender<ILoggingEvent>
+    private var previousLevel: Level? = null
 
     companion object {
         private const val SESSION_ID = "session-1"
@@ -57,12 +58,16 @@ class ThirdPartyAuthenticationControllerTest {
 
         logger = LoggerFactory.getLogger(ThirdPartyAuthenticationController::class.java) as Logger
         logAppender = ListAppender<ILoggingEvent>().apply { start() }
+        // as application.yaml sets it, which an earlier Spring test in the same JVM may or may not have applied
+        previousLevel = logger.level
+        logger.level = Level.INFO
         logger.addAppender(logAppender)
     }
 
     @AfterEach
     fun tearDown() {
         logger.detachAppender(logAppender)
+        logger.level = previousLevel
     }
 
     private fun <D : UseCaseData> failure(cause: Throwable) =
