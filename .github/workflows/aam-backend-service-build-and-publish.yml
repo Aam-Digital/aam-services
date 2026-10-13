@@ -155,8 +155,11 @@ jobs:
     # re-triggers this workflow (to build the version-tagged image in the build job above)
     # but must not re-run this job.
     if: ${{ github.ref == 'refs/heads/main' }} # release
+    # `build` too: PR images are linux/amd64 only, so the main build is the first arm64 build of a change.
+    # A release whose tag-push image build would fail on arm64 must not be created.
     needs:
       - test
+      - build
     uses: ./.github/workflows/_module-release.yml
     permissions:
       contents: read
