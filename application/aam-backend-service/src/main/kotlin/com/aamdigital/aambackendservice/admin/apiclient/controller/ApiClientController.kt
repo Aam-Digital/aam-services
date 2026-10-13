@@ -80,6 +80,9 @@ data class ApiClientCredentialsDto(
 /**
  * Self-service management of the API clients (Keycloak clients) that external systems use to access the API,
  * for the administrators of the app who also manage its user accounts.
+ *
+ * Every change (and every failed attempt) is logged with the user who made it, as the audit trail of who gave which
+ * external system access: an API client with the `third_party_authentication` scope can sign in as any user.
  */
 @RestController
 @RequestMapping("/v1/admin/api-client")
@@ -109,7 +112,7 @@ class ApiClientController(
         @RequestBody request: CreateApiClientRequestDto,
         authentication: JwtAuthenticationToken
     ): ResponseEntity<Any> =
-        handleErrors("create") {
+        handleErrors("create", authentication) {
             val credentials =
                 apiClientAdministration.createApiClient(
                     name = request.name,
@@ -117,47 +120,78 @@ class ApiClientController(
                     createdBy = authentication.userLabel(),
                     clientId = request.clientId?.takeIf { it.isNotBlank() }
                 )
+            logger.info(
+                "[audit] User '{}' ({}) created API client '{}' ('{}') with the client scopes {}",
+                authentication.userLabel(),
+                authentication.token.subject,
+                credentials.clientId,
+                request.name.trim(),
+                request.scopes.sorted()
+            )
             ResponseEntity.status(HttpStatus.CREATED).body(credentials.toDto())
         }
 
     @PostMapping("/{clientId}/secret")
     fun regenerateSecret(
-        @PathVariable clientId: String
+        @PathVariable clientId: String,
+        authentication: JwtAuthenticationToken
     ): ResponseEntity<Any> =
-        handleErrors("regenerate the secret of") {
-            ResponseEntity.ok(apiClientAdministration.regenerateSecret(clientId).toDto())
+        handleErrors("regenerate the secret of", authentication) {
+            val credentials = apiClientAdministration.regenerateSecret(clientId)
+            logger.info(
+                "[audit] User '{}' ({}) regenerated the secret of API client '{}'",
+                authentication.userLabel(),
+                authentication.token.subject,
+                clientId
+            )
+            ResponseEntity.ok(credentials.toDto())
         }
 
     @DeleteMapping("/{clientId}")
     fun deleteApiClient(
-        @PathVariable clientId: String
+        @PathVariable clientId: String,
+        authentication: JwtAuthenticationToken
     ): ResponseEntity<Any> =
-        handleErrors("delete") {
+        handleErrors("delete", authentication) {
             apiClientAdministration.deleteApiClient(clientId)
+            logger.info(
+                "[audit] User '{}' ({}) deleted API client '{}'",
+                authentication.userLabel(),
+                authentication.token.subject,
+                clientId
+            )
             ResponseEntity.noContent().build()
         }
 
     private fun handleErrors(
         action: String,
+        authentication: JwtAuthenticationToken?,
         block: () -> ResponseEntity<Any>
     ): ResponseEntity<Any> =
         try {
             block()
         } catch (ex: AamException) {
-            errorResponse(action, ex.code, ex.localizedMessage, ex)
+            errorResponse(action, authentication, ex.code, ex.localizedMessage, ex)
         }
+
+    private fun handleErrors(
+        action: String,
+        block: () -> ResponseEntity<Any>
+    ): ResponseEntity<Any> = handleErrors(action, null, block)
 
     private fun errorResponse(
         action: String,
+        authentication: JwtAuthenticationToken?,
         errorCode: AamErrorCode,
         errorMessage: String,
         cause: Throwable?
     ): ResponseEntity<Any> {
         val status = statusOf(errorCode)
+        val user = authentication?.let { "User '${it.userLabel()}' (${it.token.subject})" } ?: "A user"
         if (status.is5xxServerError) {
-            logger.warn("Could not {} API client: [{}] {}", action, errorCode, errorMessage, cause)
+            logger.warn("[audit] {} could not {} API client: [{}] {}", user, action, errorCode, errorMessage, cause)
         } else {
-            logger.info("Could not {} API client: [{}] {}", action, errorCode, errorMessage)
+            logger.info("[audit] {} could not {} API client: [{}] {}", user, action, errorCode, errorMessage)
         }
         return ResponseEntity.status(status).body(HttpErrorDto(errorCode.toString(), errorMessage))
     }

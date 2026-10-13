@@ -106,6 +106,9 @@ class KeycloakApiClientAdministrationIntegrationTest {
             .doesNotContain("reporting_write")
         // e.g. the webhooks of the reporting API are owned by the subject of the token
         assertThat(claims.get("sub")?.textValue()).isNotBlank()
+        // and no realm role (like the realm's default roles of the service account) that a role-based check accepts
+        assertThat(claims.path("realm_access").path("roles").map { it.textValue() }).isEmpty()
+        assertThat(claims.path("resource_access").properties()).isEmpty()
     }
 
     @Test
