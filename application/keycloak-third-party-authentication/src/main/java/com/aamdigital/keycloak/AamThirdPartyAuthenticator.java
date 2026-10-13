@@ -22,6 +22,12 @@ public class AamThirdPartyAuthenticator implements Authenticator {
 
     private static final String QUERY_PARAM_IDP_HINT = "kc_idp_hint";
 
+    /**
+     * Prefix of the login hint that carries a third-party session ("tpa_session:sessionId:sessionToken").
+     * Any other hint (e.g. the alias of an identity provider) is left to the following steps of the login flow.
+     */
+    private static final String TPA_SESSION_HINT_PREFIX = "tpa_session:";
+
     private static final TypeReference<HashMap<String, String>> typeRef = new TypeReference<>() {
     };
 
@@ -54,7 +60,7 @@ public class AamThirdPartyAuthenticator implements Authenticator {
     public void authenticate(AuthenticationFlowContext ctx) {
         var tpaSession = ctx.getHttpRequest().getUri().getQueryParameters().getFirst(QUERY_PARAM_IDP_HINT);
 
-        if (tpaSession == null) {
+        if (tpaSession == null || !tpaSession.startsWith(TPA_SESSION_HINT_PREFIX)) {
             var forceExternalLogin = ctx.getAuthenticatorConfig()
                     .getConfig()
                     .get(AamThirdPartyAuthenticatorFactory.ONLY_EXTERNAL_LOGIN);
