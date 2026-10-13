@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.apiclient.domain
+package com.aamdigital.aambackendservice.admin.apiclient.domain
 
 /**
  * A Keycloak client that an external system uses to access the API with the client credentials flow,

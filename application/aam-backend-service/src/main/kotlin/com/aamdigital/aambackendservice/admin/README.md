@@ -1,7 +1,11 @@
-# API Client Module (implementation)
-_for details about setup & usage of this module [see README in docs folder](../../../../../../../../../docs/modules/api-client.md)_
+# Admin Module (implementation)
+_for details about setup & usage of this module [see README in docs folder](../../../../../../../../docs/modules/admin.md)_
 
-## Use Case / Flow
+The module is always enabled (`AdminFeatureInfoEndpoint`). Every endpoint requires `RequiresAdminAccess`.
+Parts that depend on other systems live in their own sub-package and report their status as a sub-feature,
+like `apiclient` (`admin.api-client`, only active with Keycloak admin access: `ConditionalOnKeycloakAdminAccess`).
+
+## API clients (`apiclient`)
 Administrators of the app create, list, delete and regenerate the secret of Keycloak clients for external systems
 (`ApiClientController`). The backend does this with its own Keycloak admin access (`manage-clients`),
 so the users of the app need no Keycloak admin role for it.
@@ -14,9 +18,9 @@ so the users of the app need no Keycloak admin role for it.
   feature modules (`ClientScopeRequest` beans).
 
 ## Access Control
-`RequiresApiClientAdministrationAccess`: the `FRONTEND_CLIENT` authority (token issued to the app's Keycloak client)
+`RequiresAdminAccess`: the `FRONTEND_CLIENT` authority (token issued to the app's Keycloak client)
 and the realm roles `account_manager` and `admin_app`. `FRONTEND_CLIENT` is required, so that an API client whose
-service account happens to have these roles cannot create further API clients.
+service account happens to have these roles cannot administer the system (e.g. create further API clients).
 
 ## Testing
 `KeycloakApiClientAdministrationIntegrationTest` runs against a real Keycloak, signed in with the `aam-backend`

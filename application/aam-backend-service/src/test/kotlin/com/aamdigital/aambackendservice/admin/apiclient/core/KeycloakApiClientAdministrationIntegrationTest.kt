@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.apiclient.core
+package com.aamdigital.aambackendservice.admin.apiclient.core
 
 import com.aamdigital.aambackendservice.common.AuthTestingService
 import com.aamdigital.aambackendservice.common.error.NotFoundException

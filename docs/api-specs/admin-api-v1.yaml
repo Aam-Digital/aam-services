@@ -1,16 +1,19 @@
 openapi: 3.0.3
 info:
-  title: Aam Digital - API Client API
+  title: Aam Digital - Admin API
   description: |-
-    Self-service management of the API clients that external systems use to access the APIs of an
-    Aam Digital system (e.g. the Reporting API).
-    An API client is a Keycloak client using the OAuth2 client credentials flow.
+    Administration of an Aam Digital system by its administrators.
+
+    API clients: self-service management of the credentials that external systems use to access the APIs of an
+    Aam Digital system (e.g. the Reporting API). An API client is a Keycloak client using the OAuth2 client
+    credentials flow. These endpoints are only available if the backend has admin access to Keycloak
+    (`admin.api-client` in `/actuator/features`).
 
     Only users of the Aam Digital app with both the `account_manager` and the `admin_app` role can use these endpoints,
     API clients themselves cannot. Only API clients created through this API are listed, changed or deleted.
   version: 1.0.0
 servers:
-  - url: https://{customerId}.aam-digital.net/api/v1/api-client
+  - url: https://{customerId}.aam-digital.net/api/v1/admin
     description: Developer Instance for testing
     variables:
       customerId:
@@ -22,7 +25,7 @@ tags:
 security:
   - appUser: [ ]
 paths:
-  /:
+  /api-client:
     get:
       summary: List the API clients
       tags:
@@ -66,7 +69,7 @@ paths:
         400:
           description: |-
             The request is invalid: `INVALID_NAME`, `NO_SCOPE` or `UNKNOWN_SCOPE`
-            (a client scope that is not offered by `GET /scope`)
+            (a client scope that is not offered by `GET /api-client/scope`)
           content:
             application/json:
               schema:
@@ -84,7 +87,7 @@ paths:
         500:
           $ref: '#/components/responses/KeycloakError'
 
-  /scope:
+  /api-client/scope:
     get:
       summary: List the client scopes that API clients can be given
       description: |-
@@ -105,7 +108,7 @@ paths:
         403:
           $ref: '#/components/responses/Forbidden'
 
-  /{clientId}/secret:
+  /api-client/{clientId}/secret:
     post:
       summary: Regenerate the secret of an API client
       description: The previous secret stops working immediately.
@@ -129,7 +132,7 @@ paths:
         500:
           $ref: '#/components/responses/KeycloakError'
 
-  /{clientId}:
+  /api-client/{clientId}:
     delete:
       summary: Delete an API client
       description: The external system cannot get access tokens with this client anymore.
@@ -209,7 +212,7 @@ components:
           example: TolaData
         scopes:
           type: array
-          description: The client scopes (of `GET /scope`) the API client has
+          description: The client scopes (of `GET /api-client/scope`) the API client has
           items:
             type: string
           example: [ reporting_read, reporting_write ]

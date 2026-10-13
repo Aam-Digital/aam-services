@@ -1,7 +1,7 @@
-package com.aamdigital.aambackendservice.apiclient.core
+package com.aamdigital.aambackendservice.admin.apiclient.core
 
-import com.aamdigital.aambackendservice.apiclient.domain.ApiClient
-import com.aamdigital.aambackendservice.apiclient.domain.ApiClientCredentials
+import com.aamdigital.aambackendservice.admin.apiclient.domain.ApiClient
+import com.aamdigital.aambackendservice.admin.apiclient.domain.ApiClientCredentials
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.keycloak.core.ClientScopeRequest

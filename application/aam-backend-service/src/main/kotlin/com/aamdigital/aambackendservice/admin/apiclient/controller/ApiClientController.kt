@@ -1,19 +1,19 @@
-package com.aamdigital.aambackendservice.apiclient.controller
+package com.aamdigital.aambackendservice.admin.apiclient.controller
 
-import com.aamdigital.aambackendservice.apiclient.ConditionalOnApiClientEnabled
-import com.aamdigital.aambackendservice.apiclient.RequiresApiClientAdministrationAccess
-import com.aamdigital.aambackendservice.apiclient.core.ApiClientAdministration
-import com.aamdigital.aambackendservice.apiclient.core.ApiClientAdministrationError
-import com.aamdigital.aambackendservice.apiclient.core.CreateApiClientError
-import com.aamdigital.aambackendservice.apiclient.core.CreateApiClientRequest
-import com.aamdigital.aambackendservice.apiclient.core.CreateApiClientUseCase
-import com.aamdigital.aambackendservice.apiclient.domain.ApiClient
-import com.aamdigital.aambackendservice.apiclient.domain.ApiClientCredentials
+import com.aamdigital.aambackendservice.admin.RequiresAdminAccess
+import com.aamdigital.aambackendservice.admin.apiclient.core.ApiClientAdministration
+import com.aamdigital.aambackendservice.admin.apiclient.core.ApiClientAdministrationError
+import com.aamdigital.aambackendservice.admin.apiclient.core.CreateApiClientError
+import com.aamdigital.aambackendservice.admin.apiclient.core.CreateApiClientRequest
+import com.aamdigital.aambackendservice.admin.apiclient.core.CreateApiClientUseCase
+import com.aamdigital.aambackendservice.admin.apiclient.domain.ApiClient
+import com.aamdigital.aambackendservice.admin.apiclient.domain.ApiClientCredentials
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.keycloak.core.ClientScopeRequest
+import com.aamdigital.aambackendservice.common.keycloak.di.ConditionalOnKeycloakAdminAccess
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -26,11 +26,27 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
+/**
+ * A client scope that API clients can be given (response of `GET /v1/admin/api-client/scope`).
+ *
+ * @property name of the client scope, as it appears in the `scope` claim of the API client's access tokens
+ * @property description of the access the scope grants
+ */
 data class ApiClientScopeDto(
     val name: String,
     val description: String
 )
 
+/**
+ * An API client, i.e. a Keycloak client of an external system (response of `GET /v1/admin/api-client`).
+ * Its secret is never part of it.
+ *
+ * @property clientId the id the external system authenticates with
+ * @property name label given when creating it, e.g. the name of the external system
+ * @property scopes the client scopes (of [ApiClientScopeDto]) the API client has
+ * @property createdBy the user who created it (email, if their token has one)
+ * @property createdAt ISO-8601 timestamp of the creation
+ */
 data class ApiClientDto(
     val clientId: String,
     val name: String,
@@ -39,11 +55,24 @@ data class ApiClientDto(
     val createdAt: String?
 )
 
+/**
+ * Request body of `POST /v1/admin/api-client`.
+ *
+ * @property name label of the API client, e.g. the name of the external system (1 to 100 characters)
+ * @property scopes client scopes (of [ApiClientScopeDto]) to give the API client; at least one
+ */
 data class CreateApiClientRequestDto(
     val name: String,
     val scopes: List<String>
 )
 
+/**
+ * The credentials of an API client, for the external system to request access tokens with the client credentials
+ * flow. Only returned when the API client is created or its secret is regenerated.
+ *
+ * @property clientId the id the external system authenticates with
+ * @property clientSecret the secret the external system authenticates with
+ */
 data class ApiClientCredentialsDto(
     val clientId: String,
     val clientSecret: String
@@ -54,9 +83,9 @@ data class ApiClientCredentialsDto(
  * for the administrators of the app who also manage its user accounts.
  */
 @RestController
-@RequestMapping("/v1/api-client")
-@ConditionalOnApiClientEnabled
-@RequiresApiClientAdministrationAccess
+@RequestMapping("/v1/admin/api-client")
+@ConditionalOnKeycloakAdminAccess
+@RequiresAdminAccess
 class ApiClientController(
     private val apiClientAdministration: ApiClientAdministration,
     private val createApiClientUseCase: CreateApiClientUseCase,

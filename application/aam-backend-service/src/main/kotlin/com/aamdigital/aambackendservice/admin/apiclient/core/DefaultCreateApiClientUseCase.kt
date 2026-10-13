@@ -1,6 +1,6 @@
-package com.aamdigital.aambackendservice.apiclient.core
+package com.aamdigital.aambackendservice.admin.apiclient.core
 
-import com.aamdigital.aambackendservice.apiclient.core.ApiClientAdministration.Companion.CLIENT_ID_PREFIX
+import com.aamdigital.aambackendservice.admin.apiclient.core.ApiClientAdministration.Companion.CLIENT_ID_PREFIX
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.keycloak.core.ClientScopeRequest
 import java.security.SecureRandom

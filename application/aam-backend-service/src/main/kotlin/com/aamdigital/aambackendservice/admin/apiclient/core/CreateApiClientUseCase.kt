@@ -1,6 +1,6 @@
-package com.aamdigital.aambackendservice.apiclient.core
+package com.aamdigital.aambackendservice.admin.apiclient.core
 
-import com.aamdigital.aambackendservice.apiclient.domain.ApiClientCredentials
+import com.aamdigital.aambackendservice.admin.apiclient.domain.ApiClientCredentials
 import com.aamdigital.aambackendservice.common.domain.DomainUseCase
 import com.aamdigital.aambackendservice.common.domain.UseCaseData
 import com.aamdigital.aambackendservice.common.domain.UseCaseRequest
