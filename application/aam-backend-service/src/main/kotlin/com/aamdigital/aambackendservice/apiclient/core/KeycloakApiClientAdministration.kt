@@ -64,7 +64,7 @@ class KeycloakApiClientAdministration(
             val clientResource = realmResource.clients().get(createClient(newApiClient))
 
             try {
-                scopeIds.forEach { clientResource.addDefaultClientScope(it) }
+                assignDefaultClientScopes(clientResource, scopeIds)
                 ApiClientCredentials(clientId = newApiClient.clientId, clientSecret = clientResource.secret.value)
             } catch (ex: Exception) {
                 // nobody got the credentials of the client, so it must not stay behind half set up
@@ -112,6 +112,20 @@ class KeycloakApiClientAdministration(
                 }
             }
         }
+
+    /**
+     * A new client gets the realm's "default optional" client scopes as Optional scopes. A client can request
+     * those in its token requests, which could give it access it was not meant to have (e.g. `reporting_write`
+     * to a client that should only read), so all of them are removed.
+     * This is also needed because Keycloak ignores adding a Default scope that the client has as Optional scope.
+     */
+    private fun assignDefaultClientScopes(
+        clientResource: ClientResource,
+        scopeIds: List<String>
+    ) {
+        clientResource.optionalClientScopes.forEach { clientResource.removeOptionalClientScope(it.id) }
+        scopeIds.forEach { clientResource.addDefaultClientScope(it) }
+    }
 
     private fun findClientScopeIds(names: Set<String>): List<String> {
         val clientScopes = realmResource.clientScopes().findAll().associateBy { it.name }

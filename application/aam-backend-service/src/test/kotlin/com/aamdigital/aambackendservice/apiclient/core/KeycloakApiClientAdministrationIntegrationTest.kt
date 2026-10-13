@@ -94,6 +94,23 @@ class KeycloakApiClientAdministrationIntegrationTest {
     }
 
     @Test
+    fun `should create an API client that cannot request any other client scope`() {
+        // Given client scopes that the realm gives every new client as Optional scopes (like reporting_write in
+        // the test realm), which a client can request explicitly
+        val realm = admin().realm(REALM)
+        assertThat(realm.defaultOptionalClientScopes.map { it.name }).contains("reporting_write")
+
+        // When
+        val credentials = create("api-test-optional", setOf("reporting_read"))
+
+        // Then
+        val client = realm.clients().findByClientId(credentials.clientId).single()
+        val clientResource = realm.clients().get(client.id)
+        assertThat(clientResource.defaultClientScopes.map { it.name }).contains("reporting_read")
+        assertThat(clientResource.optionalClientScopes).isEmpty()
+    }
+
+    @Test
     fun `should create an API client that can only use the client credentials flow`() {
         // When
         val credentials = create("api-test-flows")

@@ -37,7 +37,8 @@ data class ContractModule(
                 "export",
                 "notification",
                 "skill",
-                "third-party-authentication"
+                "third-party-authentication",
+                "api-client"
             ).map(::ContractModule)
 
         /** The module owning a request path (by `/v1/<name>` prefix), or null. */
