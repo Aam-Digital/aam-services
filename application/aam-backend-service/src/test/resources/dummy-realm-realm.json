@@ -957,10 +957,25 @@
       "protocol": "openid-connect",
       "fullScopeAllowed": true,
       "defaultClientScopes": [
-        "email",
-        "roles"
+        "email"
       ],
-      "optionalClientScopes": []
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "_couchdb\\.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     },
     {
       "id": "200aaec6-03bc-4af2-ab2d-c8536812049c",

@@ -30,6 +30,25 @@ class AamAuthenticationConverterTest {
     }
 
     @Test
+    fun `should map the realm roles in the tokens of the frontend app to ROLE authorities`() {
+        // Given a token of the app's Keycloak client, which maps the realm roles to a claim for CouchDB
+        val token =
+            jwt(
+                "azp" to "app",
+                "_couchdb.roles" to listOf("user_app", "account_manager"),
+                "realm_access" to mapOf("roles" to listOf("user_app"))
+            )
+
+        // When
+        val authorities = authoritiesOf(token)
+
+        // Then
+        assertThat(authorities)
+            .containsOnlyOnce("ROLE_user_app")
+            .contains("ROLE_account_manager")
+    }
+
+    @Test
     fun `should map client scopes to SCOPE authorities`() {
         // Given
         val token = jwt("scope" to "profile reporting_read third_party_authentication", "azp" to "tola-data")
