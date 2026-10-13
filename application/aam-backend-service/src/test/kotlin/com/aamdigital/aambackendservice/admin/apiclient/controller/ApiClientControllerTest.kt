@@ -41,19 +41,22 @@ class ApiClientControllerTest {
                 .build()
         )
 
-    private lateinit var logger: Logger
-    private lateinit var logAppender: ListAppender<ILoggingEvent>
+    private val auditLogger = LoggerFactory.getLogger(ApiClientController::class.java) as Logger
+    private val logAppender = ListAppender<ILoggingEvent>().apply { start() }
+    private var previousLevel: Level? = null
 
     @BeforeEach
     fun setUp() {
-        logger = LoggerFactory.getLogger(ApiClientController::class.java) as Logger
-        logAppender = ListAppender<ILoggingEvent>().apply { start() }
-        logger.addAppender(logAppender)
+        // as application.yaml sets it, which an earlier Spring test in the same JVM may or may not have applied
+        previousLevel = auditLogger.level
+        auditLogger.level = Level.INFO
+        auditLogger.addAppender(logAppender)
     }
 
     @AfterEach
     fun tearDown() {
-        logger.detachAppender(logAppender)
+        auditLogger.detachAppender(logAppender)
+        auditLogger.level = previousLevel
     }
 
     private fun auditLog(): ILoggingEvent = logAppender.list.single { it.formattedMessage.startsWith("[audit]") }

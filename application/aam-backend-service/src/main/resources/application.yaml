@@ -88,7 +88,7 @@ sqs-client-configuration:
 
 logging:
   level:
-    com.aamdigital.aambackendservice: warn
+    com.aamdigital.aambackendservice: info
   logback:
     rollingpolicy:
       max-file-size: 50MB
