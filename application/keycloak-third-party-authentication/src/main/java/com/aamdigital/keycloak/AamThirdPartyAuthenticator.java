@@ -15,6 +15,7 @@ import org.keycloak.models.UserModel;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public class AamThirdPartyAuthenticator implements Authenticator {
@@ -31,6 +32,26 @@ public class AamThirdPartyAuthenticator implements Authenticator {
 
     private static final TypeReference<HashMap<String, String>> typeRef = new TypeReference<>() {
     };
+
+    /**
+     * The settings of the step. Empty if the step has not been configured (yet), so that it then does not sign in
+     * anyone instead of failing every login of the realm.
+     */
+    private static Map<String, String> configOf(AuthenticationFlowContext ctx) {
+        var config = ctx.getAuthenticatorConfig();
+        if (config == null || config.getConfig() == null) {
+            return Map.of();
+        }
+        return config.getConfig();
+    }
+
+    /**
+     * The session id of a "tpa_session:sessionId:sessionToken" hint, for logging without the secret session token.
+     */
+    private static String sessionIdOf(String tpaSession) {
+        var sessionCredentials = tpaSession.split(":");
+        return sessionCredentials.length == 3 ? sessionCredentials[1] : "(invalid)";
+    }
 
     private static HttpGet checkCredentialsRequest(String apiBaseUrl, String tpaSession) {
         var sessionCredentials = tpaSession.split(":");
@@ -62,9 +83,7 @@ public class AamThirdPartyAuthenticator implements Authenticator {
         var tpaSession = ctx.getHttpRequest().getUri().getQueryParameters().getFirst(QUERY_PARAM_IDP_HINT);
 
         if (tpaSession == null || !tpaSession.startsWith(TPA_SESSION_HINT_PREFIX)) {
-            var forceExternalLogin = ctx.getAuthenticatorConfig()
-                    .getConfig()
-                    .get(AamThirdPartyAuthenticatorFactory.ONLY_EXTERNAL_LOGIN);
+            var forceExternalLogin = configOf(ctx).get(AamThirdPartyAuthenticatorFactory.ONLY_EXTERNAL_LOGIN);
             if (forceExternalLogin != null && forceExternalLogin.equals("true")) {
                 // no session found but forcing external login -> redirect
                 failAuthentication(ctx, AuthenticationFlowError.CREDENTIAL_SETUP_REQUIRED);
@@ -75,7 +94,7 @@ public class AamThirdPartyAuthenticator implements Authenticator {
             }
         }
 
-        log.info("[Aam SSO] authenticate with session: " + tpaSession);
+        log.info("[Aam SSO] authenticate with session: " + sessionIdOf(tpaSession));
 
         var userId = getSessionUser(ctx, tpaSession);
         log.info("[Aam SSO] validated userId: " + userId);
@@ -104,9 +123,7 @@ public class AamThirdPartyAuthenticator implements Authenticator {
     }
 
     private void failAuthentication(AuthenticationFlowContext ctx, AuthenticationFlowError error) {
-        var externalLoginUrl = ctx.getAuthenticatorConfig().getConfig().get(
-            AamThirdPartyAuthenticatorFactory.THIRD_PARTY_EXTERNAL_LOGIN_URL
-        );
+        var externalLoginUrl = configOf(ctx).get(AamThirdPartyAuthenticatorFactory.THIRD_PARTY_EXTERNAL_LOGIN_URL);
 
         ctx.failureChallenge(
             error,
@@ -119,16 +136,16 @@ public class AamThirdPartyAuthenticator implements Authenticator {
 
     private String getSessionUser(AuthenticationFlowContext ctx, String tpaSession) {
         try {
-            var apiBaseUrl = ctx.getAuthenticatorConfig().getConfig().get(
-                AamThirdPartyAuthenticatorFactory.THIRD_PARTY_API_BASE_URL
-            );
+            var apiBaseUrl = configOf(ctx).get(AamThirdPartyAuthenticatorFactory.THIRD_PARTY_API_BASE_URL);
 
             if (apiBaseUrl == null) {
+                log.warning("[Aam SSO] the authenticator has no API base URL configured");
                 return null;
             }
 
             var httpGet = checkCredentialsRequest(apiBaseUrl, tpaSession);
-            log.info("[Aam SSO] checking credentials at " + httpGet);
+            // not the request itself: its URL contains the secret session token
+            log.info("[Aam SSO] checking session " + sessionIdOf(tpaSession) + " at " + apiBaseUrl);
 
             HttpClient httpClient = ctx.getSession().getProvider(HttpClientProvider.class).getHttpClient();
             var response = httpClient.execute(httpGet);

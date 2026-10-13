@@ -145,8 +145,7 @@ class KeycloakClientDefinitionsIntegrationTest {
         val originalLoginFlow = useCopiedLoginFlow()
 
         try {
-            // When the backend starts, and starts again under another URL
-            ThirdPartyAuthenticatorActivation(backend(), REALM, "https://previous.example/api").activate()
+            // When the backend starts
             ThirdPartyAuthenticatorActivation(backend(), REALM, "https://aam.example/api").activate()
 
             // Then the flow has the step once, directly after the cookie step, switched on and configured
@@ -164,8 +163,40 @@ class KeycloakClientDefinitionsIntegrationTest {
     }
 
     @Test
-    fun `should leave only one third-party authenticator in the login flow`() {
-        // Given a login flow that got the step twice, e.g. from two instances starting at the same time
+    fun `should leave a third-party authenticator that is already in the login flow as it is`() {
+        // Given the step, which an administrator switched off after the backend added it
+        val flows = admin().realm(REALM).flows()
+        val originalLoginFlow = useCopiedLoginFlow()
+
+        try {
+            ThirdPartyAuthenticatorActivation(backend(), REALM, "https://previous.example/api").activate()
+            val step =
+                flows.getExecutions(LOGIN_FLOW).single {
+                    it.providerId == ThirdPartyAuthenticatorActivation.PROVIDER_ID
+                }
+            step.requirement = "DISABLED"
+            flows.updateExecutions(LOGIN_FLOW, step)
+
+            // When the backend starts again, under another URL
+            ThirdPartyAuthenticatorActivation(backend(), REALM, "https://aam.example/api").activate()
+
+            // Then
+            val stepAfter =
+                flows.getExecutions(LOGIN_FLOW).single {
+                    it.providerId == ThirdPartyAuthenticatorActivation.PROVIDER_ID
+                }
+            assertThat(stepAfter.requirement).isEqualTo("DISABLED")
+            assertThat(flows.getAuthenticatorConfig(stepAfter.authenticationConfig).config)
+                .containsEntry(ThirdPartyAuthenticatorActivation.API_BASE_URL_PROPERTY, "https://previous.example/api")
+        } finally {
+            restoreLoginFlow(originalLoginFlow)
+        }
+    }
+
+    @Test
+    fun `should finish setting up a third-party authenticator that was added but not configured`() {
+        // Given a login flow that got the step twice, but neither got configured, e.g. from two instances starting at
+        // the same time and losing the connection to Keycloak
         val flows = admin().realm(REALM).flows()
         val originalLoginFlow = useCopiedLoginFlow()
         repeat(2) { flows.addExecution(LOGIN_FLOW, mapOf("provider" to ThirdPartyAuthenticatorActivation.PROVIDER_ID)) }
@@ -175,11 +206,14 @@ class KeycloakClientDefinitionsIntegrationTest {
             ThirdPartyAuthenticatorActivation(backend(), REALM, "https://aam.example/api").activate()
 
             // Then
-            assertThat(
-                flows.getExecutions(LOGIN_FLOW).filter {
-                    it.providerId == ThirdPartyAuthenticatorActivation.PROVIDER_ID
-                }
-            ).hasSize(1)
+            val topLevel = flows.getExecutions(LOGIN_FLOW).filter { it.level == 0 }
+            assertThat(topLevel.map { it.providerId }.take(2))
+                .containsExactly("auth-cookie", ThirdPartyAuthenticatorActivation.PROVIDER_ID)
+            val steps = topLevel.filter { it.providerId == ThirdPartyAuthenticatorActivation.PROVIDER_ID }
+            assertThat(steps).hasSize(1)
+            assertThat(steps.single().requirement).isEqualTo("ALTERNATIVE")
+            assertThat(flows.getAuthenticatorConfig(steps.single().authenticationConfig).config)
+                .containsEntry(ThirdPartyAuthenticatorActivation.API_BASE_URL_PROPERTY, "https://aam.example/api")
         } finally {
             restoreLoginFlow(originalLoginFlow)
         }

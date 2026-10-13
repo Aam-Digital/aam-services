@@ -77,16 +77,29 @@ The realm's login flow (the flow bound as "Browser flow", e.g. `Email 2FA` from 
 step `Aam Digital - Third Party Authenticator` (provider `third-party-authenticator`, part of the keycloak-aam image),
 directly after the `Cookie` step, as `Alternative` and configured with the API base URL of this backend.
 
-When this module is enabled, the backend does this on every startup: it adds the step if missing, configures it
-(`<application.base-url>/api`) and switches it on. It never removes or reorders other steps. For that, the
-`aam-backend` service account needs the `realm-management` role `manage-realm` (granted by the
+When this module is enabled, the backend does this on startup if the flow does not have the step yet: it adds the
+step, configures it (`<application.base-url>/api`) and switches it on. It never removes or reorders other steps.
+A step that is already in the flow is left as it is, so changes made in the Keycloak admin console stay
+(e.g. switching it off, or another API base URL); the backend only logs a warning if it is switched off or has no
+API base URL.
+For that, the `aam-backend` service account needs the `realm-management` role `manage-realm` (granted by the
 [client definition](../../application/aam-backend-service/keycloak/aam-backend-client.json)).
 A realm that logs in with Keycloak's built-in `browser` flow (which cannot be changed), a missing permission or
 any other failure is logged as a warning, and the backend starts anyway.
-Disabling the module does not remove the step again. Normal logins are not affected by that (the step lets them
-continue, see below); only a login link with a `tpa_session:…` hint then ends on an error page. If the step is
-configured for "only external login", switch the step off (or that option) in the Keycloak admin console when
-disabling the module: otherwise every login is sent to the external system, which can no longer create sessions.
+While Keycloak cannot be reached (e.g. it starts after the backend), the backend tries again in the background for
+about 15 minutes.
+
+#### Disabling the module
+Disabling the module does not remove the step from the login flow. Normal logins are not affected by that (the step
+lets them continue, see below); only a login link with a `tpa_session:…` hint then ends on an error page. If the step
+is configured for "only external login", every login is sent to the external system, which can no longer create
+sessions, so remove the step (or switch it off) when disabling the module. To remove it:
+1. `Authentication` → open the flow marked as used by "Browser flow" (e.g. `Email 2FA`).
+2. On the step `Aam Digital - Third Party Authenticator`, open the menu (⋮) and choose `Delete`.
+   This also deletes its configuration (`aam-third-party-authentication`).
+
+Only switching it off (`Requirement` → `Disabled`) is enough as well, and the backend leaves it switched off if the
+module is enabled again later.
 
 The step only acts on a login with a `tpa_session:…` hint (as the Aam Digital app sends it for a session created
 through this API); any other login continues with the next step as usual, unless the step is configured for
