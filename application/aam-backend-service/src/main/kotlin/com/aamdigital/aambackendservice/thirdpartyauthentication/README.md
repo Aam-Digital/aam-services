@@ -17,9 +17,10 @@ Assigning it to an API client is up to the Keycloak administrator, or to an admi
 
 
 ## Keycloak login flow
-On startup, `ThirdPartyAuthenticatorActivation` switches on the third-party authenticator in the realm's login flow
-and points it to this backend's API (`<application.base-url>/api`). The deployment adds the step (disabled), the
-backend never adds or moves it. This needs the `realm-management` role `manage-realm`.
+On startup, `ThirdPartyAuthenticatorActivation` adds the third-party authenticator to the realm's login flow (directly
+after the cookie step), points it to this backend's API (`<application.base-url>/api`) and switches it on. The login
+flow itself comes from the deployment; other steps are never removed or reordered, and Keycloak's built-in flow is
+left alone (only a warning). This needs the `realm-management` role `manage-realm`.
 
 ## Development Setup
 Use the developer setup [docs/developer](../../../../../../../../../docs/developer/README.md) to run required DB and Keycloak instances.

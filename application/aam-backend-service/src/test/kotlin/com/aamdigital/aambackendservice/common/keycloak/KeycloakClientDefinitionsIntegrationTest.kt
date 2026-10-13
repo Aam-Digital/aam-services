@@ -138,37 +138,56 @@ class KeycloakClientDefinitionsIntegrationTest {
     }
 
     @Test
-    fun `should let the backend switch on and configure the third-party authenticator in the login flow`() {
-        // Given a login flow with the third-party authenticator, disabled, as the deployment sets it up
+    fun `should let the backend add the third-party authenticator to the login flow and switch it on`() {
+        // Given a realm logging in with its own flow (as the deployment sets it up) without the step
         val realm = admin().realm(REALM)
         val flows = realm.flows()
-        val originalLoginFlow = realm.toRepresentation().browserFlow
-        flows.copy(originalLoginFlow, mapOf("newName" to LOGIN_FLOW)).close()
-        flows.addExecution(LOGIN_FLOW, mapOf("provider" to ThirdPartyAuthenticatorActivation.PROVIDER_ID))
-        realm.update(RealmRepresentation().apply { browserFlow = LOGIN_FLOW })
+        val originalLoginFlow = useCopiedLoginFlow()
 
         try {
             // When the backend starts, and starts again under another URL
             ThirdPartyAuthenticatorActivation(backend(), REALM, "https://previous.example/api").activate()
             ThirdPartyAuthenticatorActivation(backend(), REALM, "https://aam.example/api").activate()
 
-            // Then
-            val step =
-                flows.getExecutions(LOGIN_FLOW).single {
-                    it.providerId == ThirdPartyAuthenticatorActivation.PROVIDER_ID
-                }
-            assertThat(step.requirement).isEqualTo("ALTERNATIVE")
-            assertThat(flows.getAuthenticatorConfig(step.authenticationConfig).config)
+            // Then the flow has the step once, directly after the cookie step, switched on and configured
+            val topLevel = flows.getExecutions(LOGIN_FLOW).filter { it.level == 0 }
+            assertThat(topLevel.map { it.providerId }.take(2))
+                .containsExactly("auth-cookie", ThirdPartyAuthenticatorActivation.PROVIDER_ID)
+            val steps = topLevel.filter { it.providerId == ThirdPartyAuthenticatorActivation.PROVIDER_ID }
+            assertThat(steps).hasSize(1)
+            assertThat(steps.single().requirement).isEqualTo("ALTERNATIVE")
+            assertThat(flows.getAuthenticatorConfig(steps.single().authenticationConfig).config)
                 .containsEntry(ThirdPartyAuthenticatorActivation.API_BASE_URL_PROPERTY, "https://aam.example/api")
         } finally {
-            realm.update(RealmRepresentation().apply { browserFlow = originalLoginFlow })
-            flows.flows.filter { it.alias == LOGIN_FLOW }.forEach { flows.deleteFlow(it.id) }
+            restoreLoginFlow(originalLoginFlow)
         }
     }
 
     @Test
-    fun `should leave a login flow without the third-party authenticator unchanged`() {
-        // Given
+    fun `should leave only one third-party authenticator in the login flow`() {
+        // Given a login flow that got the step twice, e.g. from two instances starting at the same time
+        val flows = admin().realm(REALM).flows()
+        val originalLoginFlow = useCopiedLoginFlow()
+        repeat(2) { flows.addExecution(LOGIN_FLOW, mapOf("provider" to ThirdPartyAuthenticatorActivation.PROVIDER_ID)) }
+
+        try {
+            // When
+            ThirdPartyAuthenticatorActivation(backend(), REALM, "https://aam.example/api").activate()
+
+            // Then
+            assertThat(
+                flows.getExecutions(LOGIN_FLOW).filter {
+                    it.providerId == ThirdPartyAuthenticatorActivation.PROVIDER_ID
+                }
+            ).hasSize(1)
+        } finally {
+            restoreLoginFlow(originalLoginFlow)
+        }
+    }
+
+    @Test
+    fun `should leave the built-in login flow of Keycloak unchanged`() {
+        // Given the test realm, which logs in with Keycloak's built-in "browser" flow
         val realm = admin().realm(REALM)
         val loginFlow = realm.toRepresentation().browserFlow
         val stepsBefore = realm.flows().getExecutions(loginFlow).map { it.providerId to it.requirement }
@@ -177,8 +196,25 @@ class KeycloakClientDefinitionsIntegrationTest {
         ThirdPartyAuthenticatorActivation(backend(), REALM, "https://aam.example/api").activate()
 
         // Then
+        assertThat(realm.toRepresentation().browserFlow).isEqualTo(loginFlow)
         assertThat(realm.flows().getExecutions(loginFlow).map { it.providerId to it.requirement })
             .isEqualTo(stepsBefore)
+    }
+
+    /** Lets the realm log in with a copy of its current login flow ([LOGIN_FLOW]); returns the current one. */
+    private fun useCopiedLoginFlow(): String {
+        val realm = admin().realm(REALM)
+        val originalLoginFlow = realm.toRepresentation().browserFlow
+        realm.flows().copy(originalLoginFlow, mapOf("newName" to LOGIN_FLOW)).close()
+        realm.update(RealmRepresentation().apply { browserFlow = LOGIN_FLOW })
+        return originalLoginFlow
+    }
+
+    private fun restoreLoginFlow(originalLoginFlow: String) {
+        val realm = admin().realm(REALM)
+        realm.update(RealmRepresentation().apply { browserFlow = originalLoginFlow })
+        val flows = realm.flows()
+        flows.flows.filter { it.alias == LOGIN_FLOW }.forEach { flows.deleteFlow(it.id) }
     }
 
     @Test

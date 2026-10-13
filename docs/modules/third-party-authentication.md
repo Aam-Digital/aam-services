@@ -73,35 +73,23 @@ in the Aam Digital app ("API Access" in the admin section, see the [Admin module
 The backend creates the client scope on startup (with the `realm-management` role `manage-clients`).
 
 #### Login flow: the third-party authenticator
-The realm's login flow (the flow bound as "Browser flow") needs the step `Aam Digital - Third Party Authenticator`
-(provider `third-party-authenticator`, part of the keycloak-aam image) directly after the `Cookie` step.
+The realm's login flow (the flow bound as "Browser flow", e.g. `Email 2FA` from ndb-setup's realm template) needs the
+step `Aam Digital - Third Party Authenticator` (provider `third-party-authenticator`, part of the keycloak-aam image),
+directly after the `Cookie` step, as `Alternative` and configured with the API base URL of this backend.
 
-- **The deployment adds the step, disabled.** ndb-setup's realm template has it in the `Email 2FA` login flow
-  ([realm_config.json](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/realm_config.json#L161-L167)),
-  and its realm setup adds it to existing realms.
-- **The backend switches it on.** When this module is enabled, the backend sets the step to `Alternative` on every
-  startup and points it to its API (`<application.base-url>/api`). For that, the `aam-backend` service account
-  needs the `realm-management` role `manage-realm` (granted by the
-  [client definition](../../application/aam-backend-service/keycloak/aam-backend-client.json)).
-  If the step is missing or Keycloak denies the change, the backend logs a warning and starts anyway.
-  Disabling the module does not switch the step off again.
+When this module is enabled, the backend does this on every startup: it adds the step if missing, configures it
+(`<application.base-url>/api`) and switches it on. It never removes or reorders other steps. For that, the
+`aam-backend` service account needs the `realm-management` role `manage-realm` (granted by the
+[client definition](../../application/aam-backend-service/keycloak/aam-backend-client.json)).
+A realm that logs in with Keycloak's built-in `browser` flow (which cannot be changed), a missing permission or
+any other failure is logged as a warning, and the backend starts anyway.
+Disabling the module does not remove the step again.
 
 The step only acts on a login with a `tpa_session:…` hint (as the Aam Digital app sends it for a session created
 through this API); any other login continues with the next step as usual, unless the step is configured for
 "only external login", which rejects every other login.
 A login through this step skips the rest of the flow, including the realm's email 2FA: the realm trusts the external
 system that created the session to have authenticated the user.
-
-Without the deployment's setup, add the step by hand in the Keycloak admin console:
-1. Open the flow bound as "Browser flow" in the realm's `Authentication` settings (for realms from the current
-   ndb-setup template: `Email 2FA`). Do **not** bind a copy of the default `browser` flow instead: that would
-   drop the email 2FA of the realm.
-2. `Add step` → `Aam Digital - Third Party Authenticator`, and move it directly after `Cookie`.
-![dev-3.png](../assets/third-party-authentication/dev-3.png)
-3. Set the requirement to `Alternative` and configure it (settings icon): any **Alias**, and the **API-Base Url**
-   of the aam-services backend, e.g. `https://my-realm.aam.digital.app/api` (without API version or endpoint).
-   The backend does both on its next start, if it has the `manage-realm` role.
-![dev-4.png](../assets/third-party-authentication/dev-4.png)
 
 
 ### Aam Digital app & permissions setup

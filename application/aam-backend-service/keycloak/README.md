@@ -39,7 +39,7 @@ The service account holds these `realm-management` roles:
 | Role | Needed for |
 |---|---|
 | `manage-clients` | Creating the client scopes the API modules check (`reporting_read`, `reporting_write`, `third_party_authentication`) on startup and making the reporting scopes Default for API clients. |
-| `manage-realm` | Switching on and configuring the third-party authenticator in the realm's login flow on startup (third-party-authentication). |
+| `manage-realm` | Adding, configuring and switching on the third-party authenticator in the realm's login flow on startup (third-party-authentication). |
 | `manage-users` | Creating the Keycloak user of an external system on its first login (third-party-authentication). |
 | `view-users` | Looking up users by id (notification recipients) and by email (third-party-authentication); replication-backend reads users and their realm roles. |
 
