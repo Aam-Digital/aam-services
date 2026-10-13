@@ -26,6 +26,11 @@ object TestImages {
     // renovate: datasource=docker depName=adorsys/keycloak-config-cli
     const val KEYCLOAK_CONFIG_CLI = "6.5.1-26"
 
+    // Our Keycloak image: upstream Keycloak plus the providers the realms use (e.g. the third-party authenticator),
+    // the same as the dev stack (docs/developer/docker-compose.yml) and the deployments run.
+    // renovate: datasource=docker depName=ghcr.io/aam-digital/keycloak-aam
+    const val KEYCLOAK = "26.7.1-0"
+
     // Built from our own repository and always tracked at head; nothing to pin.
     const val SQS = "latest"
 }

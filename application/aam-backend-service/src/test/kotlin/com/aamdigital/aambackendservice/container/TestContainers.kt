@@ -107,8 +107,10 @@ object TestContainers {
     @Container
     @JvmStatic
     val CONTAINER_KEYCLOAK: KeycloakContainer =
-        KeycloakContainer()
+        KeycloakContainer("ghcr.io/aam-digital/keycloak-aam:${TestImages.KEYCLOAK}")
 //        .withEnv("JAVA_TOOL_OPTIONS", "-XX:UseSVE=0") # bug on M4 chips with Sequoia 15.2: https://github.com/corretto/corretto-21/issues/85
+            // the image is built for PostgreSQL; the dev mode database is enough for the tests
+            .withEnv("KC_DB", "dev-file")
             .withRealmImportFile("/dummy-realm-realm.json")
             .withAdminUsername("admin")
             .withAdminPassword("docker")

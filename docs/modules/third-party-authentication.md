@@ -72,25 +72,40 @@ in the Aam Digital app ("API Access" in the admin section, see the [Admin module
 `POST /v1/third-party-authentication/session` rejects tokens without this scope with `403`.
 The backend creates the client scope on startup (with the `realm-management` role `manage-clients`).
 
-#### Create an Authentication Flow
-1. Go to the `Authentication` settings in your Realm and copy the default `browser` flow and name it `browser-sso`.
-![dev-2.png](../assets/third-party-authentication/dev-2.png)
-2. Click on `Add step` and select `Aam Digital - Third Party Authenticator`. It will be placed at the end of the list.
-![dev-3.png](../assets/third-party-authentication/dev-3.png)
-3. Now move the `Aam Digital - Third Party Authenticator` block between `Cookie` and `Kerberos`.
-4. Set the `Requirement` to `Alternative`
-5. Click on the settings icon on the right to configure:
-   - **Alias** to any name of the API / system
-   - **API-Base Url** to the API module URL of the aam-services backend, e.g. `https://my-realm.aam.digital.app/api` (don't add API version or exact endpoints)
-![dev-4.png](../assets/third-party-authentication/dev-4.png)
+#### Login flow: the third-party authenticator
+The realm's login flow (the flow bound as "Browser flow", e.g. `Email 2FA` from ndb-setup's realm template) needs the
+step `Aam Digital - Third Party Authenticator` (provider `third-party-authenticator`, part of the keycloak-aam image),
+directly after the `Cookie` step, as `Alternative` and configured with the API base URL of this backend.
 
-Enable this flow:
-- Click the three dots to the right of the new "browser-sso" flow in the "Authentication" list and select "Bind flow" -> "Browser flow"
-- OR: Switch to: `Clients` -> `app` -> `Advanced` and scroll down to `Authentication flow overrides`.
-   - Select the `browser-sso` flow here:
-   ![dev-5.png](../assets/third-party-authentication/dev-5.png)
+When this module is enabled, the backend does this on startup if the flow does not have the step yet: it adds the
+step, configures it (`<application.base-url>/api`) and switches it on. It never removes or reorders other steps.
+A step that is already in the flow is left as it is, so changes made in the Keycloak admin console stay
+(e.g. switching it off, or another API base URL); the backend only logs a warning if it is switched off or has no
+API base URL.
+For that, the `aam-backend` service account needs the `realm-management` role `manage-realm` (granted by the
+[client definition](../../application/aam-backend-service/keycloak/aam-backend-client.json)).
+A realm that logs in with Keycloak's built-in `browser` flow (which cannot be changed), a missing permission or
+any other failure is logged as a warning, and the backend starts anyway.
+While Keycloak cannot be reached (e.g. it starts after the backend), the backend tries again in the background for
+about 15 minutes.
 
-Done. The Third-Party-Authentication from an external system should now be usable.
+#### Disabling the module
+Disabling the module does not remove the step from the login flow. Normal logins are not affected by that (the step
+lets them continue, see below); only a login link with a `tpa_session:…` hint then ends on an error page. If the step
+is configured for "only external login", every login is sent to the external system, which can no longer create
+sessions, so remove the step (or switch it off) when disabling the module. To remove it:
+1. `Authentication` → open the flow marked as used by "Browser flow" (e.g. `Email 2FA`).
+2. On the step `Aam Digital - Third Party Authenticator`, open the menu (⋮) and choose `Delete`.
+   This also deletes its configuration (`aam-third-party-authentication`).
+
+Only switching it off (`Requirement` → `Disabled`) is enough as well, and the backend leaves it switched off if the
+module is enabled again later.
+
+The step only acts on a login with a `tpa_session:…` hint (as the Aam Digital app sends it for a session created
+through this API); any other login continues with the next step as usual, unless the step is configured for
+"only external login", which rejects every other login.
+A login through this step skips the rest of the flow, including the realm's email 2FA: the realm trusts the external
+system that created the session to have authenticated the user.
 
 
 ### Aam Digital app & permissions setup
