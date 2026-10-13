@@ -92,6 +92,8 @@ class ThirdPartyAuthenticatorActivation(
             flows.addExecution(loginFlow, mapOf("provider" to PROVIDER_ID))
             logger.info("Added the third-party authenticator to the login flow '{}' of realm '{}'", loginFlow, realm)
         }
+        // Keycloak allows the same step more than once in a flow: two instances starting at the same time could
+        // both have added it. Keep the first one and remove any further copy.
         findSteps(flows, loginFlow).drop(1).forEach { flows.removeExecution(it.id) }
 
         val topLevel = flows.getExecutions(loginFlow).filter { it.level == 0 }
