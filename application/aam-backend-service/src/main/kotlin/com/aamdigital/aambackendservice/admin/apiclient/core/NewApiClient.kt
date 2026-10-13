@@ -8,6 +8,9 @@ import java.util.Random
 /** Longest name of an API client. */
 const val MAX_API_CLIENT_NAME_LENGTH = 100
 
+/** A client id chosen by the user: the prefix, then letters, digits, ".", "_" or "-" (64 characters at most). */
+private val CLIENT_ID_PATTERN = Regex("^${Regex.escape(CLIENT_ID_PREFIX)}[A-Za-z0-9][A-Za-z0-9._-]{0,59}$")
+
 private const val MAX_SLUG_LENGTH = 30
 private const val SUFFIX_LENGTH = 6
 private const val SUFFIX_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -30,11 +33,13 @@ internal data class NewApiClient(
 /**
  * Checks the request to create an API client.
  *
+ * @param clientId the client id chosen by the user, or null to generate one ([clientIdFor])
  * @param offeredScopes the client scopes that API clients can be given
  * @throws InvalidArgumentException with an [ApiClientAdministrationError] code if the request is invalid
  */
 internal fun validateNewApiClient(
     name: String,
+    clientId: String?,
     scopes: Set<String>,
     offeredScopes: Set<String>
 ) {
@@ -44,6 +49,12 @@ internal fun validateNewApiClient(
             name.isBlank() || name.length > MAX_API_CLIENT_NAME_LENGTH -> {
                 ApiClientAdministrationError.INVALID_NAME to
                     "The name of an API client must have 1 to $MAX_API_CLIENT_NAME_LENGTH characters"
+            }
+
+            clientId != null && !CLIENT_ID_PATTERN.matches(clientId) -> {
+                ApiClientAdministrationError.INVALID_CLIENT_ID to
+                    "The client id of an API client must start with '$CLIENT_ID_PREFIX', followed by letters, " +
+                    "digits, '.', '_' or '-' (64 characters at most)"
             }
 
             scopes.isEmpty() -> {

@@ -56,10 +56,13 @@ data class ApiClientDto(
  *
  * @property name label of the API client, e.g. the name of the external system (1 to 100 characters)
  * @property scopes client scopes (of [ApiClientScopeDto]) to give the API client; at least one
+ * @property clientId the client id for the external system to authenticate with: `api-` followed by letters, digits,
+ *  `.`, `_` or `-` (64 characters at most); if not given, one is generated from the name with a random suffix
  */
 data class CreateApiClientRequestDto(
     val name: String,
-    val scopes: List<String>
+    val scopes: List<String>,
+    val clientId: String? = null
 )
 
 /**
@@ -111,7 +114,8 @@ class ApiClientController(
                 apiClientAdministration.createApiClient(
                     name = request.name,
                     scopes = request.scopes.toSet(),
-                    createdBy = authentication.userLabel()
+                    createdBy = authentication.userLabel(),
+                    clientId = request.clientId?.takeIf { it.isNotBlank() }
                 )
             ResponseEntity.status(HttpStatus.CREATED).body(credentials.toDto())
         }
@@ -161,6 +165,7 @@ class ApiClientController(
     private fun statusOf(errorCode: AamErrorCode): HttpStatus =
         when (errorCode) {
             ApiClientAdministrationError.INVALID_NAME,
+            ApiClientAdministrationError.INVALID_CLIENT_ID,
             ApiClientAdministrationError.NO_SCOPE,
             ApiClientAdministrationError.UNKNOWN_SCOPE -> HttpStatus.BAD_REQUEST
 

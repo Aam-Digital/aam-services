@@ -68,7 +68,7 @@ paths:
                 $ref: '#/components/schemas/ApiClientCredentials'
         400:
           description: |-
-            The request is invalid: `INVALID_NAME`, `NO_SCOPE` or `UNKNOWN_SCOPE`
+            The request is invalid: `INVALID_NAME`, `INVALID_CLIENT_ID`, `NO_SCOPE` or `UNKNOWN_SCOPE`
             (a client scope that is not offered by `GET /api-client/scope`)
           content:
             application/json:
@@ -79,7 +79,7 @@ paths:
         403:
           $ref: '#/components/responses/Forbidden'
         409:
-          description: A client with the generated client id exists already (`API_CLIENT_ALREADY_EXISTS`)
+          description: A client with the chosen client id exists already (`API_CLIENT_ALREADY_EXISTS`)
           content:
             application/json:
               schema:
@@ -253,6 +253,14 @@ components:
           items:
             type: string
           example: [ reporting_read, reporting_write ]
+        clientId:
+          type: string
+          nullable: true
+          pattern: '^api-[A-Za-z0-9][A-Za-z0-9._-]{0,59}$'
+          description: |-
+            The client id the external system authenticates with. If not given, it is generated from the name
+            with a random suffix (e.g. `api-toladata-x7k2pq`).
+          example: api-toladata
     ApiClientCredentials:
       type: object
       required:

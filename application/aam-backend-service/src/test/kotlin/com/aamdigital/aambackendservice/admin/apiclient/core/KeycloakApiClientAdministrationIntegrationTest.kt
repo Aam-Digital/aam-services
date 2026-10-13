@@ -19,6 +19,7 @@ import org.keycloak.representations.idm.ClientRepresentation
 import org.springframework.boot.restclient.RestTemplateBuilder
 import org.springframework.web.client.HttpClientErrorException
 import java.util.Base64
+import java.util.Random
 
 /**
  * Proves against a real Keycloak that the backend, signed in with the `aam-backend` client as imported from
@@ -27,6 +28,7 @@ import java.util.Base64
 class KeycloakApiClientAdministrationIntegrationTest {
     companion object {
         private const val REALM = TestContainers.KEYCLOAK_REALM
+        private const val SUFFIX_LENGTH = 6
 
         @BeforeAll
         @JvmStatic
@@ -37,6 +39,7 @@ class KeycloakApiClientAdministrationIntegrationTest {
 
     private val openedClients = mutableListOf<Keycloak>()
     private val createdClientIds = mutableListOf<String>()
+    private lateinit var backend: Keycloak
     private lateinit var administration: KeycloakApiClientAdministration
 
     private val keycloakUrl get() = TestContainers.CONTAINER_KEYCLOAK.authServerUrl.trimEnd('/')
@@ -45,7 +48,7 @@ class KeycloakApiClientAdministrationIntegrationTest {
 
     @BeforeEach
     fun setUp() {
-        val backend =
+        backend =
             KeycloakAdminConfiguration()
                 .keycloak(
                     AamKeycloakConfig(
@@ -211,6 +214,63 @@ class KeycloakApiClientAdministrationIntegrationTest {
                 .isInstanceOf(NotFoundException::class.java)
             assertThat(clients.findByClientId(clientId)).hasSize(1)
         }
+    }
+
+    @Test
+    fun `should create an API client with the client id the user chose`() {
+        // When
+        val credentials =
+            administration
+                .createApiClient("Chosen", setOf("reporting_read"), "manager@example.com", "api-test-chosen")
+                .also { createdClientIds += it.clientId }
+
+        // Then
+        assertThat(credentials.clientId).isEqualTo("api-test-chosen")
+        assertThat(administration.findApiClients().map { it.clientId }).contains("api-test-chosen")
+    }
+
+    @Test
+    fun `should report a client id the user chose that exists already`() {
+        // Given
+        administration
+            .createApiClient("Chosen", setOf("reporting_read"), "manager@example.com", "api-test-taken")
+            .also { createdClientIds += it.clientId }
+
+        // Then
+        assertThatThrownBy {
+            administration.createApiClient("Other", setOf("reporting_read"), "manager@example.com", "api-test-taken")
+        }.extracting("code").isEqualTo(ApiClientAdministrationError.API_CLIENT_ALREADY_EXISTS)
+    }
+
+    @Test
+    fun `should try another client id if the generated one exists already`() {
+        // Given an API client with the client id that is generated first
+        // (a random source that gives "aaaaaa" as first suffix and "bbbbbb" as second one)
+        val suffixes = ArrayDeque(List(SUFFIX_LENGTH) { 0 } + List(SUFFIX_LENGTH) { 1 })
+        val random =
+            object : Random() {
+                override fun nextInt(bound: Int) = suffixes.removeFirstOrNull() ?: 2
+            }
+        val administrationWithCollision =
+            KeycloakApiClientAdministration(
+                keycloak = backend,
+                realm = REALM,
+                backendClientId = "aam-backend",
+                offeredScopes = setOf("reporting_read"),
+                random = random
+            )
+        administration
+            .createApiClient("Collision", setOf("reporting_read"), null, "api-collision-aaaaaa")
+            .also { createdClientIds += it.clientId }
+
+        // When
+        val credentials =
+            administrationWithCollision
+                .createApiClient("Collision", setOf("reporting_read"), null)
+                .also { createdClientIds += it.clientId }
+
+        // Then
+        assertThat(credentials.clientId).isEqualTo("api-collision-bbbbbb")
     }
 
     @Test

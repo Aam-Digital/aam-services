@@ -23,7 +23,7 @@ An API client is a Keycloak client of the realm that
 - is confidential and can only use the OAuth2 client credentials flow (no browser login, no redirect URIs),
 - has exactly the selected client scopes, as "Default" scopes and without any "Optional" scopes, so that it cannot
   request any other access (the scopes offered are those of the enabled feature modules),
-- has the client id `api-<name>-<random suffix>`.
+- has the client id chosen when creating it, which has to start with `api-`, or else `api-<name>-<random suffix>`.
 
 Its secret is only shown when the client is created or its secret is regenerated.
 Only clients created this way (client attribute `aam.api-client.managed` and the client id prefix `api-`) are listed,

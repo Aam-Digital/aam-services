@@ -6,6 +6,7 @@ import com.aamdigital.aambackendservice.common.error.AamErrorCode
 
 enum class ApiClientAdministrationError : AamErrorCode {
     INVALID_NAME,
+    INVALID_CLIENT_ID,
     NO_SCOPE,
     UNKNOWN_SCOPE,
     API_CLIENT_NOT_FOUND,
@@ -36,12 +37,15 @@ interface ApiClientAdministration {
      * @param name label of the API client, e.g. the name of the external system
      * @param scopes client scopes to give the API client; only those offered to API clients
      * @param createdBy the user creating the API client
+     * @param clientId the client id chosen by the user (starting with [CLIENT_ID_PREFIX]); if null, one is generated
+     *  from the name
      * @return the credentials, which are not stored anywhere else and cannot be read again through this interface
      */
     fun createApiClient(
         name: String,
         scopes: Set<String>,
-        createdBy: String?
+        createdBy: String?,
+        clientId: String? = null
     ): ApiClientCredentials
 
     /**

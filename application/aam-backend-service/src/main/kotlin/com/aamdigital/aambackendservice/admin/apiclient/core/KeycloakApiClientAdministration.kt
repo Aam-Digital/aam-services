@@ -42,6 +42,7 @@ class KeycloakApiClientAdministration(
         const val CREATED_BY_ATTRIBUTE = "aam.api-client.created-by"
         const val CREATED_AT_ATTRIBUTE = "aam.api-client.created-at"
         private const val DESCRIPTION = "API access of an external system, managed in the Aam Digital app"
+        private const val GENERATED_CLIENT_ID_ATTEMPTS = 3
         private const val HTTP_CREATED = 201
         private const val HTTP_CONFLICT = 409
         private const val HTTP_FORBIDDEN = 403
@@ -63,10 +64,26 @@ class KeycloakApiClientAdministration(
     override fun createApiClient(
         name: String,
         scopes: Set<String>,
-        createdBy: String?
+        createdBy: String?,
+        clientId: String?
     ): ApiClientCredentials {
         val trimmedName = name.trim()
-        validateNewApiClient(trimmedName, scopes, offeredScopes)
+        validateNewApiClient(trimmedName, clientId, scopes, offeredScopes)
+        if (clientId != null) {
+            // the user chose it, so a client with that id already existing is an error to report
+            return createApiClient(NewApiClient(clientId, trimmedName, scopes, createdBy))
+        }
+
+        // a generated id that happens to exist already is nothing the user can do anything about: try another one
+        repeat(GENERATED_CLIENT_ID_ATTEMPTS - 1) {
+            try {
+                return createApiClient(NewApiClient(clientIdFor(trimmedName, random), trimmedName, scopes, createdBy))
+            } catch (ex: InvalidArgumentException) {
+                if (ex.code != ApiClientAdministrationError.API_CLIENT_ALREADY_EXISTS) {
+                    throw ex
+                }
+            }
+        }
         return createApiClient(NewApiClient(clientIdFor(trimmedName, random), trimmedName, scopes, createdBy))
     }
 

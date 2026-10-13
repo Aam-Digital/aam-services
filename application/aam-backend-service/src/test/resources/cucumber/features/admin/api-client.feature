@@ -59,6 +59,17 @@ Feature: Self-service API clients, managed by the administrators of the app
         Then the client receives status code of 404
         Then the client receives value API_CLIENT_NOT_FOUND for property errorCode
 
+    Scenario: An administrator who manages accounts creates an API client with a chosen client id, once
+        Given signed in as user account-admin with password account-admin-password through client app in realm dummy-realm
+        When the client calls POST /v1/admin/api-client with body CreateApiClientRequest_chosenId
+        Then the client receives status code of 201
+        Then the client receives value api-cucumber-chosen for property clientId
+        When the client calls POST /v1/admin/api-client with body CreateApiClientRequest_chosenId
+        Then the client receives status code of 409
+        Then the client receives value API_CLIENT_ALREADY_EXISTS for property errorCode
+        When the client calls DELETE /v1/admin/api-client/api-cucumber-chosen
+        Then the client receives status code of 204
+
     Scenario: An administrator who manages accounts cannot change or delete clients of the realm that are not API clients
         Given signed in as user account-admin with password account-admin-password through client app in realm dummy-realm
         When the client calls DELETE /v1/admin/api-client/app

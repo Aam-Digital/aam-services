@@ -43,7 +43,8 @@ class NewApiClientTest {
     @Test
     fun `should accept a name and client scopes offered to API clients`() {
         assertThatNoException().isThrownBy {
-            validateNewApiClient("TolaData", setOf("reporting_read", "third_party_authentication"), offeredScopes)
+            validateNewApiClient("TolaData", null, setOf("reporting_read", "third_party_authentication"), offeredScopes)
+            validateNewApiClient("TolaData", "api-tola_data.v2", setOf("reporting_read"), offeredScopes)
         }
     }
 
@@ -63,16 +64,45 @@ class NewApiClientTest {
         val requestedScopes = scopes.split(",").filter { it.isNotBlank() }.toSet()
 
         // Then
-        assertThatThrownBy { validateNewApiClient(name, requestedScopes, offeredScopes) }
+        assertThatThrownBy { validateNewApiClient(name, null, requestedScopes, offeredScopes) }
             .isInstanceOf(InvalidArgumentException::class.java)
             .extracting("code")
             .isEqualTo(expectedError)
     }
 
+    @ParameterizedTest
+    @CsvSource(
+        // other clients of the realm must not be chosen
+        "app",
+        "tola-data",
+        // only after the prefix
+        "api-",
+        "api--x",
+        "'api-with space'",
+        "api-ümlaut"
+    )
+    fun `should reject a client id that is not an API client's`(clientId: String) {
+        assertThatThrownBy { validateNewApiClient("TolaData", clientId, setOf("reporting_read"), offeredScopes) }
+            .extracting("code")
+            .isEqualTo(ApiClientAdministrationError.INVALID_CLIENT_ID)
+    }
+
+    @Test
+    fun `should reject a client id that is too long`() {
+        assertThatThrownBy {
+            validateNewApiClient("TolaData", "api-" + "x".repeat(61), setOf("reporting_read"), offeredScopes)
+        }.extracting("code").isEqualTo(ApiClientAdministrationError.INVALID_CLIENT_ID)
+    }
+
     @Test
     fun `should reject a name that is too long`() {
         assertThatThrownBy {
-            validateNewApiClient("x".repeat(MAX_API_CLIENT_NAME_LENGTH + 1), setOf("reporting_read"), offeredScopes)
+            validateNewApiClient(
+                "x".repeat(MAX_API_CLIENT_NAME_LENGTH + 1),
+                null,
+                setOf("reporting_read"),
+                offeredScopes
+            )
         }.extracting("code").isEqualTo(ApiClientAdministrationError.INVALID_NAME)
     }
 }
