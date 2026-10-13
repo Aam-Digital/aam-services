@@ -16,6 +16,11 @@ The module registers a `ClientScopeRequest` (common `keycloak` package), so the 
 Assigning it to an API client is up to the Keycloak administrator, or to an administrator of the app through the `admin` module ("API Access").
 
 
+## Keycloak login flow
+On startup, `ThirdPartyAuthenticatorActivation` switches on the third-party authenticator in the realm's login flow
+and points it to this backend's API (`<application.base-url>/api`). The deployment adds the step (disabled), the
+backend never adds or moves it. This needs the `realm-management` role `manage-realm`.
+
 ## Development Setup
 Use the developer setup [docs/developer](../../../../../../../../../docs/developer/README.md) to run required DB and Keycloak instances.
 

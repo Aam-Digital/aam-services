@@ -122,7 +122,7 @@ class KeycloakClientDefinitionFilesTest {
         assertThat(serviceAccount.clientRoles).containsOnlyKeys("realm-management")
         assertThat(serviceAccount.clientRoles["realm-management"])
             .describedAs("every deployment gets a role that is added here: update the README and the release notes")
-            .containsExactlyInAnyOrder("manage-clients", "manage-users", "view-users")
+            .containsExactlyInAnyOrder("manage-clients", "manage-realm", "manage-users", "view-users")
     }
 
     @Test

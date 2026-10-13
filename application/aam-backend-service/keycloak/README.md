@@ -39,12 +39,13 @@ The service account holds these `realm-management` roles:
 | Role | Needed for |
 |---|---|
 | `manage-clients` | Creating the client scopes the API modules check (`reporting_read`, `reporting_write`, `third_party_authentication`) on startup and making the reporting scopes Default for API clients. |
+| `manage-realm` | Switching on and configuring the third-party authenticator in the realm's login flow on startup (third-party-authentication). |
 | `manage-users` | Creating the Keycloak user of an external system on its first login (third-party-authentication). |
 | `view-users` | Looking up users by id (notification recipients) and by email (third-party-authentication); replication-backend reads users and their realm roles. |
 
 `manage-users` also allows reading users, but `view-users` stays because it is the documented role for reads.
-`manage-realm` (granted by older deployment scripts) is used by no call and `query-users` is part of
-`view-users`, so importing the file removes both from a service account that still has them.
+`query-users` (granted by older deployment scripts) is part of `view-users`, so importing the file removes it from a
+service account that still has it.
 
 ## Getting the files
 

@@ -143,7 +143,7 @@ class KeycloakConfigCliImportTest {
                 .id
         ).isEqualTo(backendId)
         assertThat(realmManagementRolesOf(realm, serviceAccountId))
-            .containsExactlyInAnyOrder("manage-clients", "manage-users", "view-users")
+            .containsExactlyInAnyOrder("manage-clients", "manage-realm", "manage-users", "view-users")
         assertThat(defaultScopesOf(realm, backendId))
             .describedAs("the scopes of the realm are gone, only the scope that Keycloak gives service accounts stays")
             .contains("roles")

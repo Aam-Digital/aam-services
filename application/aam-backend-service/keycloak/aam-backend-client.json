@@ -29,6 +29,7 @@
       "clientRoles": {
         "realm-management": [
           "manage-clients",
+          "manage-realm",
           "manage-users",
           "view-users"
         ]
