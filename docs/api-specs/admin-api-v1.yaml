@@ -1,0 +1,281 @@
+openapi: 3.0.3
+info:
+  title: Aam Digital - Admin API
+  description: |-
+    Administration of an Aam Digital system by its administrators.
+
+    API clients: self-service management of the credentials that external systems use to access the APIs of an
+    Aam Digital system (e.g. the Reporting API). An API client is a Keycloak client using the OAuth2 client
+    credentials flow. These endpoints are only available if the backend has admin access to Keycloak
+    (`admin.api-client` in `/actuator/features`).
+
+    Only users of the Aam Digital app with both the `account_manager` and the `admin_app` role can use these endpoints,
+    API clients themselves cannot. Only API clients created through this API are listed, changed or deleted.
+  version: 1.0.0
+servers:
+  - url: https://{customerId}.aam-digital.net/api/v1/admin
+    description: Developer Instance for testing
+    variables:
+      customerId:
+        default: dev
+        description: Customer ID assigned by the service provider
+tags:
+  - name: api-client
+    description: Create and manage the API clients of external systems.
+security:
+  - appUser: [ ]
+paths:
+  /api-client:
+    get:
+      summary: List the API clients
+      tags:
+        - api-client
+      responses:
+        200:
+          description: The API clients that were created through this API
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiClient'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        500:
+          $ref: '#/components/responses/KeycloakError'
+    post:
+      summary: Create an API client
+      description: |-
+        Creates a confidential Keycloak client that can only use the client credentials flow,
+        with the given client scopes as "Default" client scopes.
+        The client secret is only returned in this response (and when it is regenerated).
+      tags:
+        - api-client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiClientRequest'
+      responses:
+        201:
+          description: The API client was created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiClientCredentials'
+        400:
+          description: |-
+            The request is invalid: `INVALID_NAME`, `INVALID_CLIENT_ID`, `NO_SCOPE` or `UNKNOWN_SCOPE`
+            (a client scope that is not offered by `GET /api-client/scope`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          description: A client with the chosen client id exists already (`API_CLIENT_ALREADY_EXISTS`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          $ref: '#/components/responses/KeycloakError'
+
+  /api-client/scope:
+    get:
+      summary: List the client scopes that API clients can be given
+      description: |-
+        The client scopes of the API modules enabled in this system.
+      tags:
+        - api-client
+      responses:
+        200:
+          description: The client scopes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiClientScope'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+  /api-client/{clientId}/secret:
+    post:
+      summary: Regenerate the secret of an API client
+      description: The previous secret stops working immediately.
+      tags:
+        - api-client
+      parameters:
+        - $ref: '#/components/parameters/clientId'
+      responses:
+        200:
+          description: The new credentials of the API client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiClientCredentials'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/KeycloakError'
+
+  /api-client/{clientId}:
+    delete:
+      summary: Delete an API client
+      description: The external system cannot get access tokens with this client anymore.
+      tags:
+        - api-client
+      parameters:
+        - $ref: '#/components/parameters/clientId'
+      responses:
+        204:
+          description: The API client was deleted
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/KeycloakError'
+
+components:
+  securitySchemes:
+    appUser:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |-
+        Access token of a user signed in to the Aam Digital app (issued to the app's Keycloak client)
+        with the `account_manager` and `admin_app` realm roles.
+  parameters:
+    clientId:
+      in: path
+      name: clientId
+      description: The client id of the API client
+      schema:
+        type: string
+      required: true
+  responses:
+    Unauthorized:
+      description: No valid access token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: The access token is not one of a user of the app with the `account_manager` and `admin_app` roles
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: There is no API client with this client id (`API_CLIENT_NOT_FOUND`)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    KeycloakError:
+      description: |-
+        Keycloak could not be reached (`KEYCLOAK_REQUEST_FAILED`), the backend lacks the permission to manage
+        clients (`MISSING_KEYCLOAK_PERMISSION`), or a client scope does not exist in Keycloak (`CLIENT_SCOPE_NOT_FOUND`)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    ApiClient:
+      type: object
+      required:
+        - clientId
+        - name
+        - scopes
+      properties:
+        clientId:
+          type: string
+          example: api-toladata-x7k2pq
+        name:
+          type: string
+          example: TolaData
+        scopes:
+          type: array
+          description: The client scopes (of `GET /api-client/scope`) the API client has
+          items:
+            type: string
+          example: [ reporting_read, reporting_write ]
+        createdBy:
+          type: string
+          nullable: true
+          description: The user who created the API client
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+    ApiClientScope:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+          example: reporting_read
+        description:
+          type: string
+    CreateApiClientRequest:
+      type: object
+      required:
+        - name
+        - scopes
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: A label for the API client, e.g. the name of the external system
+          example: TolaData
+        scopes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          example: [ reporting_read, reporting_write ]
+        clientId:
+          type: string
+          nullable: true
+          pattern: '^api-[A-Za-z0-9][A-Za-z0-9._-]{0,59}$'
+          description: |-
+            The client id the external system authenticates with. If not given, it is generated from the name
+            with a random suffix (e.g. `api-toladata-x7k2pq`).
+          example: api-toladata
+    ApiClientCredentials:
+      type: object
+      required:
+        - clientId
+        - clientSecret
+      properties:
+        clientId:
+          type: string
+        clientSecret:
+          type: string
+    Error:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          description: Machine-readable error code (business code or HTTP status string).
+        errorMessage:
+          type: string

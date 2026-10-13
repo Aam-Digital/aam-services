@@ -94,6 +94,14 @@
         "attributes": {}
       },
       {
+        "name": "account_manager",
+        "description": "Manages the user accounts and API clients of the system",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "70730a8c-c613-4e01-b472-a293b9686749",
+        "attributes": {}
+      },
+      {
         "id": "d9e751f6-42c2-499a-abc0-3827b52e3506",
         "name": "offline_access",
         "description": "${role_offline-access}",
@@ -501,7 +509,8 @@
       "realmRoles": [
         "default-roles-dummy-realm",
         "user_app",
-        "admin_app"
+        "admin_app",
+        "account_manager"
       ],
       "notBefore": 0,
       "groups": []
@@ -534,6 +543,70 @@
       "realmRoles": [
         "default-roles-dummy-realm",
         "user_app"
+      ]
+    },
+    {
+      "username": "account-manager",
+      "enabled": true,
+      "email": "account-manager@example.com",
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "account-manager",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "account-manager-password",
+          "temporary": false
+        }
+      ],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-dummy-realm",
+        "user_app",
+        "account_manager"
+      ]
+    },
+    {
+      "username": "app-admin",
+      "enabled": true,
+      "email": "app-admin@example.com",
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "app-admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "app-admin-password",
+          "temporary": false
+        }
+      ],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-dummy-realm",
+        "user_app",
+        "admin_app"
+      ]
+    },
+    {
+      "username": "account-admin",
+      "enabled": true,
+      "email": "account-admin@example.com",
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "account-admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "account-admin-password",
+          "temporary": false
+        }
+      ],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-dummy-realm",
+        "user_app",
+        "account_manager",
+        "admin_app"
       ]
     }
   ],
@@ -907,7 +980,23 @@
       "defaultClientScopes": [
         "email"
       ],
-      "optionalClientScopes": []
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "_couchdb\\.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     },
     {
       "id": "200aaec6-03bc-4af2-ab2d-c8536812049c",

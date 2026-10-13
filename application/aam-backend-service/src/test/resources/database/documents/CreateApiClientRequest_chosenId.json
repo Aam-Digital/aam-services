@@ -1,0 +1,5 @@
+{
+  "name": "Integration with a chosen client id",
+  "scopes": ["reporting_read"],
+  "clientId": "api-cucumber-chosen"
+}

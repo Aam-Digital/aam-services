@@ -159,40 +159,18 @@ You should also account for that possibility.
 
 ### Initial setup of an API integration
 
-1. Create a Keycloak "Client" (--> admin has
-   to [create new client grant in Keycloak](https://www.keycloak.org/docs/latest/server_admin/#_oidc_clients))
-    1. check "Client authentication" toggle
-    2. for "Authentication flow" only "Service accounts roles" needs to be checked
-    3. in the Client section, edit the newly created client and add the `reporting_read` and `reporting_write` client scopes
-       in the "Client scopes" tab with Assigned type **Default**
-       (the backend creates these client scopes on startup, see [Keycloak client scopes](#keycloak-client-scopes) below)
-    4. from the "Credentials" tab of the client you can now copy the secret:
-       ![Keycloak Client Setup](../assets/keycloak-client-setup.png)
-2. For integration with TolaData:
-    - In TolaData, navigate to Data Tables or User Profile and add Aam Digital credentials
-    - Get the client_id and client_secret (from the "Credentials" tab of the client created in Keycloak)
-    - also
-      see [Support Guide: Integration with TolaData](https://chatwoot.help/hc/aam-digital/articles/1726341005-integration-with-tola_data)
-      for details of the required URLs
+The external system needs an API client with the client scope `reporting_read` (and `reporting_write` to trigger
+report calculations or manage webhooks). Administrators create it in the Aam Digital app ("API Access" in the admin
+section, see the [Admin module](admin.md)), which shows the credentials and URLs to pass on.
+For TolaData, see [Support Guide: Integration with TolaData](https://chatwoot.help/hc/aam-digital/articles/1726341005-integration-with-tola_data).
 
 ### Keycloak client scopes
 
-The reporting endpoints check the `reporting_read` and `reporting_write` client scopes of the access token
-(see [API access to reports](#api-access-to-reports)).
-If the backend has admin access to Keycloak (`KEYCLOAK_*` environment variables, see
-[third-party-authentication setup](third-party-authentication.md#setup)), it runs these steps on every startup:
-
-- create the `reporting_read` and `reporting_write` client scopes in the realm, if they don't exist yet
-  (with "Include in token scope" enabled; they are not assigned to any client automatically)
-- for API clients (clients with service accounts) that have one of these scopes only as "Optional" client scope,
-  change it to a "Default" client scope, so that existing integrations that don't request the scopes keep working
-
-For this, the service account of the backend's own Keycloak client (`KEYCLOAK_CLIENTID`, usually `aam-backend`) needs
-the `realm-management` role `manage-clients`. The definition of that client that ships with the backend
-([`aam-backend-client.json`](../../application/aam-backend-service/keycloak/aam-backend-client.json), see its
-[README](../../application/aam-backend-service/keycloak/README.md)) grants it.
-If Keycloak admin access is not configured or permissions are missing, the backend logs a warning and starts anyway;
-then create and assign the client scopes manually in the Keycloak admin console.
+On every startup, the backend creates the `reporting_read` and `reporting_write` client scopes in the realm if they
+don't exist yet, and makes them "Default" scopes of API clients that have them only as "Optional" scope (integrations
+set up before the scopes were enforced). This needs Keycloak admin access (`KEYCLOAK_*`) with the `realm-management`
+role `manage-clients`, which the [`aam-backend` client definition](../../application/aam-backend-service/keycloak/README.md)
+grants; otherwise the backend logs a warning and starts anyway.
 
 > **Upgrade prerequisite:** before upgrading an existing instance to the version that enforces these scopes,
 > give the `aam-backend` service account the `manage-clients` role (or `realm-admin`) and make sure the

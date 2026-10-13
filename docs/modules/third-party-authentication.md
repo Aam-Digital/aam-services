@@ -58,50 +58,19 @@ KEYCLOAK_SERVERURL=https://keycloak.aam-digital.net
 APPLICATION_BASEURL=dev.aam-digital.net # the base domain of the Aam Digital application to build redirect URLs
 ```
 
-Note that you need a Keycloak Client that our Backend can use to authenticate itself against the Keycloak server.
-This should be different from the Keycloak Client shared with an external system, which this uses to authenticate itself against our API.
-
-If the `aam-backend` Keycloak Client does not exist in your realm yet, import its definition
-[`aam-backend-client.json`](../../application/aam-backend-service/keycloak/aam-backend-client.json),
-which ships with the backend (in the Docker image at `/opt/app/keycloak/`; see the
-[README of the definitions](../../application/aam-backend-service/keycloak/README.md) for the variables to fill in
-and how to import it). It creates the client with "Client authentication" and only "Service Accounts roles" enabled,
-the "roles" client scope (so that the roles are included in the JWT token), and grants its service account the
-`realm-management` roles
-- `manage-users` and `view-users`, to create users in Keycloak and to find them by email, and
-- `manage-clients`, which the backend needs to create the `third_party_authentication` client scope, see below.
+The backend uses its own Keycloak client (`aam-backend`) for admin access, which is different from the API client
+of the external system. Import its definition, which ships with the backend
+(see the [README of the definitions](../../application/aam-backend-service/keycloak/README.md)).
 
 ### Keycloak configuration
-You need to configure your Keycloak Realm to support the third-party-api.
-Check out the provider: [application/keycloak-third-party-authentication](../application/keycloak-third-party-authentication/)_
+The Keycloak provider is [application/keycloak-third-party-authentication](../application/keycloak-third-party-authentication/),
+included in the keycloak-aam image.
 
-#### Enable the third-party-authentication provider in Keycloak
-The custom Keycloak Provider is already enabled in the default aam-keycloak image.
-
-You should create a Keycloak Client in the Realm for our Backend API to access and administer Keycloak users.
-This is different from the Client shared with the external system!
-
-#### Set up Keycloak Client for external system
-1. Create a Keycloak Client in the realm to be used by the external system to authenticate itself against our API.
-   - enable "Client authentication" and check only "Service accounts roles" for Authentication flow
-   - _if there already is a client for API integration with the "reporting" module, this can also be reused_
-2. In the "Client scopes" tab of the client, add the client scope `third_party_authentication`
-   with Assigned type **Default** (not "Optional"), so that it is included in the client's access tokens.
-   - The backend creates this client scope on startup (see below).
-     If it is missing, create it manually under "Client scopes" (protocol OpenID Connect, "Include in token scope" on).
-
-`POST /v1/third-party-authentication/session` rejects tokens without the `third_party_authentication` scope
-with `403`.
-
-#### Keycloak client scope setup
-On every startup, the backend makes sure the `third_party_authentication` client scope exists in the realm.
-For that, the `aam-backend` service account needs the `realm-management` role `manage-clients`
-(granted by the [client definition](../../application/aam-backend-service/keycloak/aam-backend-client.json)
-mentioned above), and the `KEYCLOAK_*` variables have to be set.
-If the scope cannot be created, the backend logs a warning and starts anyway; create it by hand then.
-
-The backend never assigns the scope to a client. Assign it as a **Default** client scope of the external
-system's client as described above, otherwise that client is rejected with `403`.
+#### API client of the external system
+The external system needs an API client with the client scope `third_party_authentication`; administrators create it
+in the Aam Digital app ("API Access" in the admin section, see the [Admin module](admin.md)).
+`POST /v1/third-party-authentication/session` rejects tokens without this scope with `403`.
+The backend creates the client scope on startup (with the `realm-management` role `manage-clients`).
 
 #### Create an Authentication Flow
 1. Go to the `Authentication` settings in your Realm and copy the default `browser` flow and name it `browser-sso`.

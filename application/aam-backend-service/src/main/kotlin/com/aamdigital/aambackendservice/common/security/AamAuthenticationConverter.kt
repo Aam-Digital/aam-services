@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component
  * Authorities derived from an access token, to be checked with `@PreAuthorize`.
  */
 object AamAuthorities {
-    /** Prefix of authorities for the realm roles in the `realm_access.roles` claim. */
+    /** Prefix of authorities for the realm roles in the `realm_access.roles` (or [COUCHDB_ROLES_CLAIM]) claim. */
     const val ROLE_PREFIX = "ROLE_"
 
     /** Prefix of authorities for the client scopes in the `scope` claim. */
@@ -25,11 +25,17 @@ object AamAuthorities {
      * i.e. to users working in the app rather than to an external API client.
      */
     const val FRONTEND_CLIENT = "FRONTEND_CLIENT"
+
+    /**
+     * Claim that the Keycloak client of the frontend app maps the realm roles to, for CouchDB's JWT authentication.
+     * Its tokens usually have no `realm_access` claim.
+     */
+    const val COUCHDB_ROLES_CLAIM = "_couchdb.roles"
 }
 
 /**
  * Maps a validated JWT to the [AamAuthorities] available for authorization checks:
- * - `ROLE_<role>` for every realm role in `realm_access.roles`
+ * - `ROLE_<role>` for every realm role in `realm_access.roles` or [AamAuthorities.COUCHDB_ROLES_CLAIM]
  * - `SCOPE_<scope>` for every client scope in the `scope` claim
  * - [AamAuthorities.FRONTEND_CLIENT] if the token was issued to the frontend client
  */
@@ -47,23 +53,21 @@ class AamAuthenticationConverter(
         )
 
     private fun getRealmRoleAuthorities(jwt: Jwt): Collection<GrantedAuthority> {
-        val realmAccessClaim = jwt.getClaimAsMap("realm_access") ?: return emptyList()
+        val realmAccessRoles = stringsOf(jwt.getClaimAsMap("realm_access")?.get("roles"))
+        val couchDbRoles = stringsOf(jwt.claims[AamAuthorities.COUCHDB_ROLES_CLAIM])
 
-        val roles: List<String> =
-            if (realmAccessClaim.containsKey("roles")) {
-                when (val rolesClaim = realmAccessClaim["roles"]) {
-                    is List<*> -> rolesClaim.filterIsInstance<String>()
-                    else -> emptyList()
-                }
-            } else {
-                emptyList()
-            }
-
-        return roles
+        return (realmAccessRoles + couchDbRoles)
+            .distinct()
             .map {
                 SimpleGrantedAuthority("${AamAuthorities.ROLE_PREFIX}$it")
             }
     }
+
+    private fun stringsOf(claim: Any?): List<String> =
+        when (claim) {
+            is List<*> -> claim.filterIsInstance<String>()
+            else -> emptyList()
+        }
 
     private fun getScopeAuthorities(jwt: Jwt): Collection<GrantedAuthority> = scopeAuthoritiesConverter.convert(jwt)
 

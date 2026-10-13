@@ -10,6 +10,7 @@ import com.aamdigital.aambackendservice.common.domain.DomainUseCase
 import com.aamdigital.aambackendservice.common.domain.UseCaseData
 import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
+import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCaseData
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.VerifySessionUseCase
 import org.assertj.core.api.Assertions.assertThat
@@ -27,6 +28,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import java.security.Principal
+import java.time.OffsetDateTime
 
 class ThirdPartyAuthenticationControllerTest {
     private val createSessionUseCase = mock<CreateSessionUseCase>()
@@ -37,6 +39,7 @@ class ThirdPartyAuthenticationControllerTest {
 
     private lateinit var logger: Logger
     private lateinit var logAppender: ListAppender<ILoggingEvent>
+    private var previousLevel: Level? = null
 
     companion object {
         private const val SESSION_ID = "session-1"
@@ -55,12 +58,16 @@ class ThirdPartyAuthenticationControllerTest {
 
         logger = LoggerFactory.getLogger(ThirdPartyAuthenticationController::class.java) as Logger
         logAppender = ListAppender<ILoggingEvent>().apply { start() }
+        // as application.yaml sets it, which an earlier Spring test in the same JVM may or may not have applied
+        previousLevel = logger.level
+        logger.level = Level.INFO
         logger.addAppender(logAppender)
     }
 
     @AfterEach
     fun tearDown() {
         logger.detachAppender(logAppender)
+        logger.level = previousLevel
     }
 
     private fun <D : UseCaseData> failure(cause: Throwable) =
@@ -74,6 +81,43 @@ class ThirdPartyAuthenticationControllerTest {
         val warnings = logAppender.list.filter { it.level == Level.WARN }
         assertThat(warnings).hasSize(1)
         return warnings.single()
+    }
+
+    @Test
+    fun `should log which API client created a session for which user, without the session token`() {
+        // Given
+        whenever(createSessionUseCase.run(any())).thenReturn(
+            UseCaseOutcome.Success(
+                CreateSessionUseCaseData(
+                    sessionId = SESSION_ID,
+                    sessionToken = SESSION_TOKEN,
+                    entryPointUrl = "https://app.example.org/login",
+                    validUntil = OffsetDateTime.now()
+                )
+            )
+        )
+        val apiClient =
+            JwtAuthenticationToken(
+                Jwt
+                    .withTokenValue("token")
+                    .header("alg", "none")
+                    .subject("service-account")
+                    .claim("azp", "api-crm-x7k2p9")
+                    .build()
+            )
+
+        // When
+        controller.startSession(
+            UserSessionRequest(userId = "user-1", firstName = "Ada", lastName = "Lovelace", email = "ada@example.org"),
+            apiClient
+        )
+
+        // Then
+        val audit = logAppender.list.single { it.formattedMessage.startsWith("[audit]") }
+        assertThat(audit.level).isEqualTo(Level.INFO)
+        assertThat(audit.formattedMessage)
+            .contains("api-crm-x7k2p9", SESSION_ID, "user-1", "ada@example.org")
+            .doesNotContain(SESSION_TOKEN)
     }
 
     @Test
