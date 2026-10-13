@@ -83,7 +83,10 @@ When this module is enabled, the backend does this on every startup: it adds the
 [client definition](../../application/aam-backend-service/keycloak/aam-backend-client.json)).
 A realm that logs in with Keycloak's built-in `browser` flow (which cannot be changed), a missing permission or
 any other failure is logged as a warning, and the backend starts anyway.
-Disabling the module does not remove the step again.
+Disabling the module does not remove the step again. Normal logins are not affected by that (the step lets them
+continue, see below); only a login link with a `tpa_session:…` hint then ends on an error page. If the step is
+configured for "only external login", switch the step off (or that option) in the Keycloak admin console when
+disabling the module: otherwise every login is sent to the external system, which can no longer create sessions.
 
 The step only acts on a login with a `tpa_session:…` hint (as the Aam Digital app sends it for a session created
 through this API); any other login continues with the next step as usual, unless the step is configured for
