@@ -14,7 +14,6 @@ import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
 import com.aamdigital.aambackendservice.common.keycloak.core.ClientScopeRequest
-import com.aamdigital.aambackendservice.common.security.AamAuthorities
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -29,9 +28,7 @@ import org.springframework.web.bind.annotation.RestController
 
 data class ApiClientScopeDto(
     val name: String,
-    val description: String,
-    /** whether the requesting user may give this scope to an API client */
-    val grantable: Boolean
+    val description: String
 )
 
 data class ApiClientDto(
@@ -69,18 +66,10 @@ class ApiClientController(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @GetMapping("/scope")
-    fun fetchScopes(authentication: JwtAuthenticationToken): ResponseEntity<List<ApiClientScopeDto>> {
-        val realmRoles = authentication.realmRoles()
-        return ResponseEntity.ok(
-            clientScopeRequests.map {
-                ApiClientScopeDto(
-                    name = it.name,
-                    description = it.description,
-                    grantable = it.isGrantableBy(realmRoles)
-                )
-            }
+    fun fetchScopes(): ResponseEntity<List<ApiClientScopeDto>> =
+        ResponseEntity.ok(
+            clientScopeRequests.map { ApiClientScopeDto(name = it.name, description = it.description) }
         )
-    }
 
     @GetMapping
     fun fetchApiClients(): ResponseEntity<Any> =
@@ -98,7 +87,6 @@ class ApiClientController(
                 CreateApiClientRequest(
                     name = request.name,
                     scopes = request.scopes.toSet(),
-                    userRealmRoles = authentication.realmRoles(),
                     createdBy = authentication.userLabel()
                 )
             )
@@ -162,21 +150,12 @@ class ApiClientController(
             CreateApiClientError.NO_SCOPE,
             CreateApiClientError.UNKNOWN_SCOPE -> HttpStatus.BAD_REQUEST
 
-            CreateApiClientError.SCOPE_NOT_PERMITTED -> HttpStatus.FORBIDDEN
-
             ApiClientAdministrationError.API_CLIENT_NOT_FOUND -> HttpStatus.NOT_FOUND
 
             ApiClientAdministrationError.API_CLIENT_ALREADY_EXISTS -> HttpStatus.CONFLICT
 
             else -> HttpStatus.INTERNAL_SERVER_ERROR
         }
-
-    private fun JwtAuthenticationToken.realmRoles(): Set<String> =
-        authorities
-            .mapNotNull { it.authority }
-            .filter { it.startsWith(AamAuthorities.ROLE_PREFIX) }
-            .map { it.removePrefix(AamAuthorities.ROLE_PREFIX) }
-            .toSet()
 
     /** How the user is shown as the creator of an API client: by email, if the token has one */
     private fun JwtAuthenticationToken.userLabel(): String? =

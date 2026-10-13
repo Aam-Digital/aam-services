@@ -74,13 +74,7 @@ paths:
         401:
           $ref: '#/components/responses/Unauthorized'
         403:
-          description: |-
-            The user is not allowed to manage API clients, or `SCOPE_NOT_PERMITTED`:
-            giving one of the client scopes requires a role the user does not have (see `grantable` of `GET /scope`)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Forbidden'
         409:
           description: A client with the generated client id exists already (`API_CLIENT_ALREADY_EXISTS`)
           content:
@@ -95,7 +89,6 @@ paths:
       summary: List the client scopes that API clients can be given
       description: |-
         The client scopes of the API modules enabled in this system.
-        Some of them can only be given by users with an additional role, see `grantable`.
       tags:
         - api-client
       responses:
@@ -233,16 +226,12 @@ components:
       required:
         - name
         - description
-        - grantable
       properties:
         name:
           type: string
           example: reporting_read
         description:
           type: string
-        grantable:
-          type: boolean
-          description: Whether the requesting user can give this client scope to an API client
     CreateApiClientRequest:
       type: object
       required:

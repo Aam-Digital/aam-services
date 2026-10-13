@@ -40,23 +40,17 @@ class DefaultCreateApiClientUseCaseTest {
                 clientScopeRequests =
                     listOf(
                         ClientScopeRequest(name = "reporting_read", description = "read reports"),
-                        ClientScopeRequest(
-                            name = "third_party_authentication",
-                            description = "sign in users",
-                            grantRequiresRole = "admin_app"
-                        )
+                        ClientScopeRequest(name = "third_party_authentication", description = "sign in users")
                     )
             )
     }
 
     private fun request(
         name: String = "TolaData Integration",
-        scopes: Set<String> = setOf("reporting_read"),
-        userRealmRoles: Set<String> = setOf("account_manager")
+        scopes: Set<String> = setOf("reporting_read")
     ) = CreateApiClientRequest(
         name = name,
         scopes = scopes,
-        userRealmRoles = userRealmRoles,
         createdBy = "manager@example.com"
     )
 
@@ -141,37 +135,14 @@ class DefaultCreateApiClientUseCaseTest {
     }
 
     @Test
-    fun `should reject a client scope that requires a role the user does not have`() {
+    fun `should create an API client with all the selected client scopes`() {
         // When
-        val outcome =
-            useCase.run(
-                request(
-                    scopes = setOf("reporting_read", "third_party_authentication"),
-                    userRealmRoles = setOf("account_manager")
-                )
-            )
-
-        // Then
-        assertThat((outcome as UseCaseOutcome.Failure).errorCode)
-            .isEqualTo(CreateApiClientError.SCOPE_NOT_PERMITTED)
-        assertThat(outcome.errorMessage).contains("third_party_authentication").contains("admin_app")
-        assertThat(administration.created).isEmpty()
-    }
-
-    @Test
-    fun `should give a client scope that requires a role to a user with that role`() {
-        // When
-        val outcome =
-            useCase.run(
-                request(
-                    scopes = setOf("third_party_authentication"),
-                    userRealmRoles = setOf("account_manager", "admin_app")
-                )
-            )
+        val outcome = useCase.run(request(scopes = setOf("reporting_read", "third_party_authentication")))
 
         // Then
         assertThat(outcome).isInstanceOf(UseCaseOutcome.Success::class.java)
-        assertThat(administration.created.single().scopes).containsExactly("third_party_authentication")
+        assertThat(administration.created.single().scopes)
+            .containsExactlyInAnyOrder("reporting_read", "third_party_authentication")
     }
 
     @Test

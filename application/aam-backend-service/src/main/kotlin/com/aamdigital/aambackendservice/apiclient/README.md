@@ -10,17 +10,13 @@ so the users of the app need no Keycloak admin role for it.
   any client without the `aam.api-client.managed` attribute and the `api-` client id prefix is treated as if it
   did not exist, because `manage-clients` would allow changing every client of the realm (including `app` and
   `aam-backend`).
-- `DefaultCreateApiClientUseCase` validates the request and decides which client scopes the user may give:
-  those of the enabled feature modules (`ClientScopeRequest` beans), each restricted to users with its
-  `grantRequiresRole`, if set.
+- `DefaultCreateApiClientUseCase` validates the request. The client scopes offered are those of the enabled
+  feature modules (`ClientScopeRequest` beans).
 
 ## Access Control
 `RequiresApiClientAdministrationAccess`: the `FRONTEND_CLIENT` authority (token issued to the app's Keycloak client)
 and the realm roles `account_manager` and `admin_app`. `FRONTEND_CLIENT` is required, so that an API client whose
 service account happens to have these roles cannot create further API clients.
-
-A `ClientScopeRequest` can additionally require a role to give its scope (`grantRequiresRole`, `admin_app` for
-`third_party_authentication`). With `admin_app` required for the whole module, this is currently always fulfilled.
 
 ## Testing
 `KeycloakApiClientAdministrationIntegrationTest` runs against a real Keycloak, signed in with the `aam-backend`

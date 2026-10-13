@@ -7,8 +7,7 @@ import java.security.SecureRandom
 import java.text.Normalizer
 
 /**
- * Offers the client scopes of the enabled feature modules ([ClientScopeRequest]s), each to the users who have the
- * role it requires ([ClientScopeRequest.grantRequiresRole]).
+ * Offers the client scopes of the enabled feature modules ([ClientScopeRequest]s).
  *
  * The client id is derived from the name, with a random suffix so that it is unique and cannot be guessed
  * from the name.
@@ -27,7 +26,7 @@ class DefaultCreateApiClientUseCase(
         private val NON_ALPHANUMERIC = Regex("[^a-z0-9]+")
     }
 
-    private val offeredScopes = clientScopeRequests.associateBy { it.name }
+    private val offeredScopes = clientScopeRequests.map { it.name }.toSet()
 
     override fun apply(request: CreateApiClientRequest): UseCaseOutcome<CreateApiClientData> {
         val name = request.name.trim()
@@ -53,8 +52,6 @@ class DefaultCreateApiClientUseCase(
         request: CreateApiClientRequest
     ): UseCaseOutcome.Failure<CreateApiClientData>? {
         val unknownScopes = request.scopes.filterNot { it in offeredScopes }
-        val notPermittedScopes =
-            request.scopes.mapNotNull { offeredScopes[it] }.filterNot { it.isGrantableBy(request.userRealmRoles) }
 
         return when {
             name.isEmpty() || name.length > MAX_NAME_LENGTH -> {
@@ -75,16 +72,6 @@ class DefaultCreateApiClientUseCase(
                 UseCaseOutcome.Failure(
                     errorCode = CreateApiClientError.UNKNOWN_SCOPE,
                     errorMessage = "These client scopes cannot be given to an API client: $unknownScopes"
-                )
-            }
-
-            notPermittedScopes.isNotEmpty() -> {
-                UseCaseOutcome.Failure(
-                    errorCode = CreateApiClientError.SCOPE_NOT_PERMITTED,
-                    errorMessage =
-                        notPermittedScopes.joinToString("; ") {
-                            "Giving the client scope '${it.name}' requires the role '${it.grantRequiresRole}'"
-                        }
                 )
             }
 

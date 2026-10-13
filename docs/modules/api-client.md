@@ -22,8 +22,7 @@ Its secret is only returned when the client is created or its secret is regenera
 
 - Only users of the frontend app (tokens issued to the `app` Keycloak client) with both realm roles `account_manager`
   and `admin_app` can use the endpoints. API clients never can, whatever roles their service account has.
-  Both roles are required because an API client can be given the `third_party_authentication` client scope,
-  with which it can sign in to the app as any user.
+  Both roles are required for every client scope, because API clients can get far-reaching access to the system.
 - The client scopes offered are those of the enabled feature modules (their `ClientScopeRequest`s), see `GET /scope`.
 - Only clients created through this module (marked with the client attribute `aam.api-client.managed`
   and the client id prefix `api-`) are listed, changed or deleted.
