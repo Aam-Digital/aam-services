@@ -1,0 +1,146 @@
+# Creates the next release of one module of this monorepo, e.g. `aam-backend-service/2.3.0`.
+#
+# Called by the module's build-and-publish workflow on pushes to main. The next version is calculated with
+# conventional_commits_next_version from the commits since the module's last release that touch
+# `application/<module>`. Without such commits, or if they do not call for a new version (e.g. only `chore`),
+# nothing is released.
+#
+# The release is created with the `token` PAT: a tag created with the GITHUB_TOKEN would not trigger the tag-push
+# run of the module's workflow, which builds the release image.
+name: module-release
+
+on:
+  workflow_call:
+    inputs:
+      module:
+        type: string
+        required: true
+        description: >-
+          Module name: the folder under `application/` and the tag prefix of its releases
+          (`<module>/<version>`), e.g. `aam-backend-service`.
+      version-prefix:
+        type: string
+        required: false
+        default: ""
+        description: >-
+          Prefix of the version in the release tag. `v` for modules whose consumers expect `<module>/v<version>`.
+          Existing tags are found with or without `v` either way.
+      asset-artifact:
+        type: string
+        required: false
+        default: ""
+        description: Name of a workflow artifact of this run whose files are attached to the release
+    secrets:
+      token:
+        required: true
+        description: PAT that can create tags and releases (not the GITHUB_TOKEN, see above)
+    outputs:
+      version:
+        description: The released version (without prefix), empty if nothing was released
+        value: ${{ jobs.release.outputs.version }}
+
+jobs:
+  # The job id is part of the check name (`<caller job> / release`).
+  release:
+    runs-on: ubuntu-latest
+    # Serializes releases of a module across overlapping main-branch pushes (e.g. several PRs merged within
+    # minutes of each other). Without this, two runs can both read the same last-released tag before either
+    # creates the next one and race to create the same release.
+    concurrency:
+      group: module-release-${{ inputs.module }}
+      cancel-in-progress: false
+    permissions:
+      contents: read # everything that writes uses the `token` PAT
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    defaults:
+      run:
+        working-directory: application/${{ inputs.module }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Download release assets
+        if: inputs.asset-artifact != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.asset-artifact }}
+          path: ${{ runner.temp }}/release-assets
+
+      - name: Install Rust toolchain
+        run: rustup update --no-self-update
+
+      # Keep this on one line: Renovate's custom regex manager (renovate.json) updates the version here.
+      - name: Install conventional_commits_next_version
+        run: cargo install conventional_commits_next_version --version ^7.0.0
+
+      - name: Calculate next version
+        id: next
+        env:
+          MODULE: ${{ inputs.module }}
+        run: |
+          # Release tags are `<module>/<version>` or `<module>/v<version>`.
+          if ! current_tag=$(git describe --abbrev=0 --tags --match "$MODULE/[0-9]*" --match "$MODULE/v[0-9]*"); then
+            echo "::error::No release tag of $MODULE found"
+            exit 1
+          fi
+          current_version=${current_tag#"$MODULE/"}
+          current_version=${current_version#v}
+          from_commit=$(git rev-list -n 1 "$current_tag")
+          echo "Last release: $current_tag ($from_commit)"
+
+          # conventional_commits_next_version (>= 7.1) fails if no commit in the range touches the module,
+          # so keep the current version (= no release) in that case.
+          if [ -z "$(git rev-list --first-parent --max-count=1 "$from_commit"..HEAD -- ":(top)application/$MODULE")" ]; then
+            echo "No commits that touch application/$MODULE since $current_tag"
+            next_version=$current_version
+          else
+            next_version=$(conventional_commits_next_version \
+              --calculation-mode "Batch" \
+              --from-version "$current_version" \
+              --monorepo "application/$MODULE" \
+              "$from_commit")
+          fi
+          echo "Next version: $next_version"
+          {
+            echo "current-tag=$current_tag"
+            echo "current-version=$current_version"
+            echo "next-version=$next_version"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        id: release
+        if: steps.next.outputs.next-version != steps.next.outputs.current-version
+        env:
+          GH_TOKEN: ${{ secrets.token }}
+          MODULE: ${{ inputs.module }}
+          VERSION_PREFIX: ${{ inputs.version-prefix }}
+          CURRENT_TAG: ${{ steps.next.outputs.current-tag }}
+          NEXT_VERSION: ${{ steps.next.outputs.next-version }}
+          ASSET_DIR: ${{ inputs.asset-artifact != '' && format('{0}/release-assets', runner.temp) || '' }}
+        run: |
+          if ! [[ "$NEXT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Unexpected next version '$NEXT_VERSION'"
+            exit 1
+          fi
+          tag="$MODULE/$VERSION_PREFIX$NEXT_VERSION"
+          assets=()
+          if [ -n "$ASSET_DIR" ]; then
+            mapfile -t assets < <(find "$ASSET_DIR" -maxdepth 1 -type f | sort)
+            if [ "${#assets[@]}" -eq 0 ]; then
+              echo "::error::No release assets found in the artifact"
+              exit 1
+            fi
+          fi
+          # With assets, gh creates a draft, uploads them and only then publishes the release (and its tag).
+          gh release create "$tag" "${assets[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$tag" \
+            --generate-notes \
+            --notes-start-tag "$CURRENT_TAG"
+          echo "version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
