@@ -76,8 +76,9 @@ The backend creates the client scope on startup (with the `realm-management` rol
 The realm's login flow (the flow bound as "Browser flow") needs the step `Aam Digital - Third Party Authenticator`
 (provider `third-party-authenticator`, part of the keycloak-aam image) directly after the `Cookie` step.
 
-- **The deployment adds the step, disabled.** ndb-setup's realm template has it in the `Email 2FA` login flow,
-  and `create-keycloak-realm.sh` adds it to existing realms.
+- **The deployment adds the step, disabled.** ndb-setup's realm template has it in the `Email 2FA` login flow
+  ([realm_config.json](https://github.com/Aam-Digital/ndb-setup/blob/master/keycloak/realm_config.json#L161-L167)),
+  and its realm setup adds it to existing realms.
 - **The backend switches it on.** When this module is enabled, the backend sets the step to `Alternative` on every
   startup and points it to its API (`<application.base-url>/api`). For that, the `aam-backend` service account
   needs the `realm-management` role `manage-realm` (granted by the

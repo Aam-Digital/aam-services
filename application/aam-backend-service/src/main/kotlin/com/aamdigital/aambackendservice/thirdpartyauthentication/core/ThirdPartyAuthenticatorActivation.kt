@@ -48,7 +48,7 @@ class ThirdPartyAuthenticatorActivation(
                 logger.warn(
                     "The login flow '{}' of Keycloak realm '{}' has no third-party authenticator, so users of " +
                         "external systems cannot be signed in. Add it with the deployment's realm setup " +
-                        "(ndb-setup: create-keycloak-realm.sh).",
+                        "(ndb-setup).",
                     loginFlow,
                     realm
                 )
