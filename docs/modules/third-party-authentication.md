@@ -82,6 +82,10 @@ You should create a Keycloak Client in the Realm for our Backend API to access a
 This is different from the Client shared with the external system!
 
 #### Set up Keycloak Client for external system
+Users with the roles `account_manager` and `admin_app` can create this client themselves in the Aam Digital app
+("API Access" in the admin section, see [API Client module](api-client.md)), which does the steps below.
+Otherwise:
+
 1. Create a Keycloak Client in the realm to be used by the external system to authenticate itself against our API.
    - enable "Client authentication" and check only "Service accounts roles" for Authentication flow
    - _if there already is a client for API integration with the "reporting" module, this can also be reused_

@@ -14,6 +14,7 @@ A modularize Spring Boot application that contains API modules for [Aam Digital'
 - **[Skill](./docs/modules/skill.md)**: Integration with external system (SkillLab) to link and pull data into Aam Digital.
 - **[Notification](./docs/modules/notification.md)**: Push Notification system, triggering events based on custom rules for each user.
 - **[Third-Party-Authentication](./docs/modules/third-party-authentication.md)**: "Single-Sign-On" integration with other platforms.
+- **[API Client](./docs/modules/api-client.md)**: Self-service API access: account managers create the credentials of external systems for the other modules' APIs.
 
 _Modules have to be enabled via a feature flag in the environment config and
 may need additional environment variables as described in their module docs._
@@ -31,7 +32,8 @@ You can make a request to the API to check if a certain feature is currently ena
   "notification": { "enabled": true },
   "export": { "enabled": true },
   "skill": { "enabled": true },
-  "third-party-authentication": { "enabled": true }
+  "third-party-authentication": { "enabled": true },
+  "api-client": { "enabled": true }
 }
 ```
 

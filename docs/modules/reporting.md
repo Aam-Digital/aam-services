@@ -159,6 +159,9 @@ You should also account for that possibility.
 
 ### Initial setup of an API integration
 
+Account managers can create the credentials themselves in the Aam Digital app ("API Access" in the admin section,
+see [API Client module](api-client.md)), which does step 1 below. Otherwise:
+
 1. Create a Keycloak "Client" (--> admin has
    to [create new client grant in Keycloak](https://www.keycloak.org/docs/latest/server_admin/#_oidc_clients))
     1. check "Client authentication" toggle
