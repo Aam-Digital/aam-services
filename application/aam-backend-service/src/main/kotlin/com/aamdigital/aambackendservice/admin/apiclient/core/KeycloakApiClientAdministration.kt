@@ -122,7 +122,13 @@ class KeycloakApiClientAdministration(
         realmResource.clients().create(newApiClient.toRepresentation()).use { response ->
             when (response.status) {
                 HTTP_CREATED -> {
-                    CreatedResponseUtil.getCreatedId(response)
+                    try {
+                        CreatedResponseUtil.getCreatedId(response)
+                    } catch (ex: Exception) {
+                        // the client exists, but without its id nothing can be set up: nobody gets its credentials
+                        removeAfterFailure(newApiClient.clientId, ex)
+                        throw ex
+                    }
                 }
 
                 HTTP_CONFLICT -> {
@@ -183,9 +189,23 @@ class KeycloakApiClientAdministration(
         clientResource: ClientResource,
         clientId: String,
         cause: Exception
+    ) = removeAfterFailure(clientId, cause) { clientResource.remove() }
+
+    /** For a client created without knowing its id. */
+    private fun removeAfterFailure(
+        clientId: String,
+        cause: Exception
+    ) = removeAfterFailure(clientId, cause) {
+        realmResource.clients().findByClientId(clientId).forEach { realmResource.clients().get(it.id).remove() }
+    }
+
+    private fun removeAfterFailure(
+        clientId: String,
+        cause: Exception,
+        remove: () -> Unit
     ) {
         try {
-            clientResource.remove()
+            remove()
         } catch (ex: Exception) {
             cause.addSuppressed(ex)
             logger.error(
@@ -210,6 +230,10 @@ class KeycloakApiClientAdministration(
             it.isStandardFlowEnabled = false
             it.isImplicitFlowEnabled = false
             it.isDirectAccessGrantsEnabled = false
+            // Keycloak gives the service account the realm's default roles (and whatever a deployment adds to them).
+            // The API checks client scopes, not roles, for API clients: keep all roles out of their access tokens,
+            // so that no role-based check (e.g. of the skill module) ever lets an API client in.
+            it.isFullScopeAllowed = false
             it.redirectUris = emptyList()
             it.webOrigins = emptyList()
             it.attributes =

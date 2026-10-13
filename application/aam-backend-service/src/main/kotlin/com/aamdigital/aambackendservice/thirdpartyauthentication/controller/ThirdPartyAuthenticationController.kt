@@ -17,6 +17,7 @@ import jakarta.validation.constraints.Email
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -67,7 +68,8 @@ class ThirdPartyAuthenticationController(
     @PostMapping("/session")
     @PreAuthorize("hasAuthority('${AamAuthorities.SCOPE_PREFIX}${ThirdPartyAuthenticationScopes.SESSION_PROVIDER}')")
     fun startSession(
-        @RequestBody userSessionRequest: UserSessionRequest
+        @RequestBody userSessionRequest: UserSessionRequest,
+        principal: Principal? = null
     ): ResponseEntity<Any> {
         val response =
             createSessionUseCase.run(
@@ -86,7 +88,14 @@ class ThirdPartyAuthenticationController(
                 val entryPointUrl =
                     "${applicationConfig.normalizedBaseUrl}/login?tpa_session=${response.data.sessionId}:${response.data.sessionToken}"
 
-                logger.trace("[POST /session]: Created session for ${userSessionRequest.email}")
+                // audit trail: a session signs in as that user without any further check
+                logger.info(
+                    "[audit] API client '{}' created a session {} for user '{}' ({})",
+                    apiClientOf(principal),
+                    response.data.sessionId,
+                    userSessionRequest.userId,
+                    userSessionRequest.email
+                )
                 ResponseEntity.ok(
                     UserSessionDto(
                         sessionId = response.data.sessionId,
@@ -194,4 +203,8 @@ class ThirdPartyAuthenticationController(
             }
         }
     }
+
+    /** The client id of the API client that made the request (the `azp` claim of its access token). */
+    private fun apiClientOf(principal: Principal?): String? =
+        (principal as? JwtAuthenticationToken)?.token?.getClaimAsString("azp") ?: principal?.name
 }

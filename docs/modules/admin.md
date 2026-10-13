@@ -23,9 +23,17 @@ An API client is a Keycloak client of the realm that
 - is confidential and can only use the OAuth2 client credentials flow (no browser login, no redirect URIs),
 - has exactly the selected client scopes, as "Default" scopes and without any "Optional" scopes, so that it cannot
   request any other access (the scopes offered are those of the enabled feature modules),
-- has the client id chosen when creating it, which has to start with `api-`, or else `api-<name>-<random suffix>`.
+- has the client id chosen when creating it, which has to start with `api-`, or else `api-<name>-<random suffix>`,
+- gets no roles in its access tokens ("Full scope allowed" off), so its access is decided by its client scopes only,
+  never by the realm roles that Keycloak gives its service account (e.g. the realm's default roles).
 
 Its secret is only shown when the client is created or its secret is regenerated.
+
+**Audit trail:** creating an API client, regenerating its secret and deleting it (and every failed attempt) is logged
+at `INFO` with the user who did it (email and Keycloak user id), as lines starting with `[audit]`.
+Third-party-authentication also logs every session it creates with the API client and the user it is for: an API
+client with the `third_party_authentication` scope can sign in as any user of the realm, so give it only to systems
+that are trusted to do so.
 Only clients created this way (client attribute `aam.api-client.managed` and the client id prefix `api-`) are listed,
 changed or deleted; other clients of the realm are never affected.
 
