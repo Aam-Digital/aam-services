@@ -16,8 +16,10 @@ import org.keycloak.admin.client.Keycloak
 import org.keycloak.admin.client.resource.ClientResource
 import org.keycloak.representations.idm.ClientRepresentation
 import org.slf4j.LoggerFactory
+import java.security.SecureRandom
 import java.time.Clock
 import java.time.Instant
+import java.util.Random
 
 /**
  * [ApiClientAdministration] through the Keycloak Admin REST API.
@@ -30,7 +32,10 @@ class KeycloakApiClientAdministration(
     private val keycloak: Keycloak,
     private val realm: String,
     private val backendClientId: String,
-    private val clock: Clock = Clock.systemUTC()
+    /** the client scopes that API clients can be given (those of the enabled feature modules) */
+    private val offeredScopes: Set<String>,
+    private val clock: Clock = Clock.systemUTC(),
+    private val random: Random = SecureRandom()
 ) : ApiClientAdministration {
     companion object {
         const val MANAGED_ATTRIBUTE = "aam.api-client.managed"
@@ -55,7 +60,17 @@ class KeycloakApiClientAdministration(
                 .map { it.toApiClient() }
         }
 
-    override fun createApiClient(newApiClient: NewApiClient): ApiClientCredentials =
+    override fun createApiClient(
+        name: String,
+        scopes: Set<String>,
+        createdBy: String?
+    ): ApiClientCredentials {
+        val trimmedName = name.trim()
+        validateNewApiClient(trimmedName, scopes, offeredScopes)
+        return createApiClient(NewApiClient(clientIdFor(trimmedName, random), trimmedName, scopes, createdBy))
+    }
+
+    private fun createApiClient(newApiClient: NewApiClient): ApiClientCredentials =
         call("create API client '${newApiClient.clientId}'") {
             require(newApiClient.clientId.startsWith(CLIENT_ID_PREFIX)) {
                 "The client id of an API client has to start with '$CLIENT_ID_PREFIX'"

@@ -55,7 +55,20 @@ class KeycloakApiClientAdministrationIntegrationTest {
                         clientSecret = TestContainers.AAM_BACKEND_CLIENT_SECRET
                     )
                 ).also { openedClients += it }
-        administration = KeycloakApiClientAdministration(backend, REALM, "aam-backend")
+        administration =
+            KeycloakApiClientAdministration(
+                keycloak = backend,
+                realm = REALM,
+                backendClientId = "aam-backend",
+                // no_such_scope is offered, but does not exist in the realm
+                offeredScopes =
+                    setOf(
+                        "reporting_read",
+                        "reporting_write",
+                        "third_party_authentication",
+                        "no_such_scope"
+                    )
+            )
     }
 
     @AfterEach
@@ -71,17 +84,16 @@ class KeycloakApiClientAdministrationIntegrationTest {
     private fun admin(): Keycloak = TestContainers.CONTAINER_KEYCLOAK.keycloakAdminClient.also { openedClients += it }
 
     private fun create(
-        clientId: String,
+        name: String,
         scopes: Set<String> = setOf("reporting_read")
     ) = administration
-        .createApiClient(
-            NewApiClient(clientId = clientId, name = "Test system", scopes = scopes, createdBy = "manager@example.com")
-        ).also { createdClientIds += clientId }
+        .createApiClient(name = name, scopes = scopes, createdBy = "manager@example.com")
+        .also { createdClientIds += it.clientId }
 
     @Test
     fun `should create an API client whose access tokens carry its client scopes`() {
         // When
-        val credentials = create("api-test-tokens", setOf("reporting_read", "third_party_authentication"))
+        val credentials = create("test tokens", setOf("reporting_read", "third_party_authentication"))
 
         // Then the external system can get tokens with the client credentials flow
         val token = authTestingService.fetchToken(credentials.clientId, credentials.clientSecret, REALM)
@@ -101,7 +113,7 @@ class KeycloakApiClientAdministrationIntegrationTest {
         assertThat(realm.defaultOptionalClientScopes.map { it.name }).contains("reporting_write")
 
         // When
-        val credentials = create("api-test-optional", setOf("reporting_read"))
+        val credentials = create("test optional", setOf("reporting_read"))
 
         // Then
         val client = realm.clients().findByClientId(credentials.clientId).single()
@@ -113,7 +125,7 @@ class KeycloakApiClientAdministrationIntegrationTest {
     @Test
     fun `should create an API client that can only use the client credentials flow`() {
         // When
-        val credentials = create("api-test-flows")
+        val credentials = create("test flows")
 
         // Then
         val client =
@@ -133,12 +145,13 @@ class KeycloakApiClientAdministrationIntegrationTest {
     @Test
     fun `should list the API clients with their client scopes and creator`() {
         // Given
-        create("api-test-list", setOf("reporting_read", "reporting_write"))
+        val created = create("Test system", setOf("reporting_read", "reporting_write"))
 
         // When
-        val apiClient = administration.findApiClients().single { it.clientId == "api-test-list" }
+        val apiClient = administration.findApiClients().single { it.clientId == created.clientId }
 
         // Then
+        assertThat(apiClient.clientId).startsWith("api-test-system-")
         assertThat(apiClient.name).isEqualTo("Test system")
         assertThat(apiClient.scopes).contains("reporting_read", "reporting_write")
         assertThat(apiClient.createdBy).isEqualTo("manager@example.com")
@@ -148,7 +161,7 @@ class KeycloakApiClientAdministrationIntegrationTest {
     @Test
     fun `should replace the secret of an API client, so that the previous one stops working`() {
         // Given
-        val previous = create("api-test-secret")
+        val previous = create("test secret")
 
         // When
         val regenerated = administration.regenerateSecret(previous.clientId)
@@ -163,14 +176,14 @@ class KeycloakApiClientAdministrationIntegrationTest {
     @Test
     fun `should delete an API client`() {
         // Given
-        create("api-test-delete")
+        val created = create("test delete")
 
         // When
-        administration.deleteApiClient("api-test-delete")
+        administration.deleteApiClient(created.clientId)
 
         // Then
-        assertThat(admin().realm(REALM).clients().findByClientId("api-test-delete")).isEmpty()
-        assertThat(administration.findApiClients().map { it.clientId }).doesNotContain("api-test-delete")
+        assertThat(admin().realm(REALM).clients().findByClientId(created.clientId)).isEmpty()
+        assertThat(administration.findApiClients().map { it.clientId }).doesNotContain(created.clientId)
     }
 
     @Test
@@ -203,13 +216,20 @@ class KeycloakApiClientAdministrationIntegrationTest {
     @Test
     fun `should not leave a client behind if a client scope does not exist`() {
         // When
-        assertThatThrownBy { create("api-test-missing-scope", setOf("reporting_read", "no_such_scope")) }
+        assertThatThrownBy { create("test missing scope", setOf("reporting_read", "no_such_scope")) }
             .isInstanceOf(NotFoundException::class.java)
             .extracting("code")
             .isEqualTo(ApiClientAdministrationError.CLIENT_SCOPE_NOT_FOUND)
 
         // Then
-        assertThat(admin().realm(REALM).clients().findByClientId("api-test-missing-scope")).isEmpty()
+        assertThat(administration.findApiClients().map { it.name }).doesNotContain("test missing scope")
+        assertThat(
+            admin()
+                .realm(REALM)
+                .clients()
+                .findAll()
+                .map { it.name }
+        ).doesNotContain("test missing scope")
     }
 
     private fun claimsOf(accessToken: String?): JsonNode {

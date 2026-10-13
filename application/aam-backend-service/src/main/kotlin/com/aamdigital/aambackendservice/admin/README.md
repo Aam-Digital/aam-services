@@ -14,7 +14,7 @@ so the users of the app need no Keycloak admin role for it.
   any client without the `aam.api-client.managed` attribute and the `api-` client id prefix is treated as if it
   did not exist, because `manage-clients` would allow changing every client of the realm (including `app` and
   `aam-backend`).
-- `DefaultCreateApiClientUseCase` validates the request. The client scopes offered are those of the enabled
+- Creating one validates the request (`NewApiClient.kt`): the client scopes offered are those of the enabled
   feature modules (`ClientScopeRequest` beans).
 
 ## Access Control

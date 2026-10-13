@@ -5,25 +5,15 @@ import com.aamdigital.aambackendservice.admin.apiclient.domain.ApiClientCredenti
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 
 enum class ApiClientAdministrationError : AamErrorCode {
+    INVALID_NAME,
+    NO_SCOPE,
+    UNKNOWN_SCOPE,
     API_CLIENT_NOT_FOUND,
     API_CLIENT_ALREADY_EXISTS,
     CLIENT_SCOPE_NOT_FOUND,
     MISSING_KEYCLOAK_PERMISSION,
     KEYCLOAK_REQUEST_FAILED
 }
-
-/**
- * An [ApiClient] to be created.
- *
- * @property clientId has to start with [ApiClientAdministration.CLIENT_ID_PREFIX]
- * @property scopes client scopes to assign as Default scopes; they have to exist in the realm
- */
-data class NewApiClient(
-    val clientId: String,
-    val name: String,
-    val scopes: Set<String>,
-    val createdBy: String?
-)
 
 /**
  * The administration of [ApiClient]s in the Keycloak realm.
@@ -43,9 +33,16 @@ interface ApiClientAdministration {
     /**
      * Creates a confidential client that can only use the client credentials flow.
      *
+     * @param name label of the API client, e.g. the name of the external system
+     * @param scopes client scopes to give the API client; only those offered to API clients
+     * @param createdBy the user creating the API client
      * @return the credentials, which are not stored anywhere else and cannot be read again through this interface
      */
-    fun createApiClient(newApiClient: NewApiClient): ApiClientCredentials
+    fun createApiClient(
+        name: String,
+        scopes: Set<String>,
+        createdBy: String?
+    ): ApiClientCredentials
 
     /**
      * Replaces the secret of the client, so that the previous one stops working immediately.

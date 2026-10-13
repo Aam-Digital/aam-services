@@ -3,12 +3,8 @@ package com.aamdigital.aambackendservice.admin.apiclient.controller
 import com.aamdigital.aambackendservice.admin.RequiresAdminAccess
 import com.aamdigital.aambackendservice.admin.apiclient.core.ApiClientAdministration
 import com.aamdigital.aambackendservice.admin.apiclient.core.ApiClientAdministrationError
-import com.aamdigital.aambackendservice.admin.apiclient.core.CreateApiClientError
-import com.aamdigital.aambackendservice.admin.apiclient.core.CreateApiClientRequest
-import com.aamdigital.aambackendservice.admin.apiclient.core.CreateApiClientUseCase
 import com.aamdigital.aambackendservice.admin.apiclient.domain.ApiClient
 import com.aamdigital.aambackendservice.admin.apiclient.domain.ApiClientCredentials
-import com.aamdigital.aambackendservice.common.domain.UseCaseOutcome
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.AamException
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
@@ -88,7 +84,6 @@ data class ApiClientCredentialsDto(
 @RequiresAdminAccess
 class ApiClientController(
     private val apiClientAdministration: ApiClientAdministration,
-    private val createApiClientUseCase: CreateApiClientUseCase,
     /** the client scopes of the enabled feature modules, which are the ones offered to API clients */
     private val clientScopeRequests: List<ClientScopeRequest> = emptyList()
 ) {
@@ -110,26 +105,16 @@ class ApiClientController(
     fun createApiClient(
         @RequestBody request: CreateApiClientRequestDto,
         authentication: JwtAuthenticationToken
-    ): ResponseEntity<Any> {
-        val outcome =
-            createApiClientUseCase.run(
-                CreateApiClientRequest(
+    ): ResponseEntity<Any> =
+        handleErrors("create") {
+            val credentials =
+                apiClientAdministration.createApiClient(
                     name = request.name,
                     scopes = request.scopes.toSet(),
                     createdBy = authentication.userLabel()
                 )
-            )
-
-        return when (outcome) {
-            is UseCaseOutcome.Success -> {
-                ResponseEntity.status(HttpStatus.CREATED).body(outcome.data.credentials.toDto())
-            }
-
-            is UseCaseOutcome.Failure -> {
-                errorResponse("create", outcome.errorCode, outcome.errorMessage, outcome.cause)
-            }
+            ResponseEntity.status(HttpStatus.CREATED).body(credentials.toDto())
         }
-    }
 
     @PostMapping("/{clientId}/secret")
     fun regenerateSecret(
@@ -175,9 +160,9 @@ class ApiClientController(
 
     private fun statusOf(errorCode: AamErrorCode): HttpStatus =
         when (errorCode) {
-            CreateApiClientError.INVALID_NAME,
-            CreateApiClientError.NO_SCOPE,
-            CreateApiClientError.UNKNOWN_SCOPE -> HttpStatus.BAD_REQUEST
+            ApiClientAdministrationError.INVALID_NAME,
+            ApiClientAdministrationError.NO_SCOPE,
+            ApiClientAdministrationError.UNKNOWN_SCOPE -> HttpStatus.BAD_REQUEST
 
             ApiClientAdministrationError.API_CLIENT_NOT_FOUND -> HttpStatus.NOT_FOUND
 
