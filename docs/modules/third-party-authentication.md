@@ -87,7 +87,10 @@ The realm's login flow (the flow bound as "Browser flow") needs the step `Aam Di
   Disabling the module does not switch the step off again.
 
 The step only acts on a login with a `tpa_session:…` hint (as the Aam Digital app sends it for a session created
-through this API); any other login continues with the next step as usual.
+through this API); any other login continues with the next step as usual, unless the step is configured for
+"only external login", which rejects every other login.
+A login through this step skips the rest of the flow, including the realm's email 2FA: the realm trusts the external
+system that created the session to have authenticated the user.
 
 Without the deployment's setup, add the step by hand in the Keycloak admin console:
 1. Open the flow bound as "Browser flow" in the realm's `Authentication` settings (for realms from the current

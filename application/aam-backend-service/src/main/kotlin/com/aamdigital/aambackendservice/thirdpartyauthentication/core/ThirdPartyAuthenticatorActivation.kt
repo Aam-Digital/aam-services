@@ -55,8 +55,9 @@ class ThirdPartyAuthenticatorActivation(
                 return
             }
 
-            enable(flows, loginFlow, step)
+            // configured first: if that fails, the step stays disabled instead of pointing to a wrong API
             configure(flows, step)
+            enable(flows, loginFlow, step)
         } catch (ex: ForbiddenException) {
             logger.warn(
                 "Keycloak denied to set up the third-party authenticator in realm '{}'. Assign the " +

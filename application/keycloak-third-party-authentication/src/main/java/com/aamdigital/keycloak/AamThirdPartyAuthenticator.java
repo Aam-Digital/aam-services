@@ -24,7 +24,8 @@ public class AamThirdPartyAuthenticator implements Authenticator {
 
     /**
      * Prefix of the login hint that carries a third-party session ("tpa_session:sessionId:sessionToken").
-     * Any other hint (e.g. the alias of an identity provider) is left to the following steps of the login flow.
+     * Any other hint (e.g. the alias of an identity provider) is left to the following steps of the login flow,
+     * unless the authenticator is configured for "only external login", which rejects every other login.
      */
     private static final String TPA_SESSION_HINT_PREFIX = "tpa_session:";
 
