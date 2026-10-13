@@ -1,11 +1,11 @@
 # Aam Digital - API Clients (self-service API access)
 
-Lets the account managers of an Aam Digital system create the credentials ("API clients") that external systems
+Lets the administrators of an Aam Digital system create the credentials ("API clients") that external systems
 use to access the APIs of this backend (e.g. the [Reporting API](reporting.md#api-access-to-reports) or
 [Third-Party-Authentication](third-party-authentication.md)), without access to the Keycloak admin console.
 
 In the Aam Digital app, this is the "API Access" page in the admin section (User Management),
-available to users with the `account_manager` role.
+available to users with both the `account_manager` and the `admin_app` role.
 
 An API client is a Keycloak client of the realm that:
 
@@ -20,11 +20,11 @@ Its secret is only returned when the client is created or its secret is regenera
 
 ## Access control
 
-- Only users of the frontend app (tokens issued to the `app` Keycloak client) with the realm role `account_manager`
-  can use the endpoints. API clients never can, whatever roles their service account has.
+- Only users of the frontend app (tokens issued to the `app` Keycloak client) with both realm roles `account_manager`
+  and `admin_app` can use the endpoints. API clients never can, whatever roles their service account has.
+  Both roles are required because an API client can be given the `third_party_authentication` client scope,
+  with which it can sign in to the app as any user.
 - The client scopes offered are those of the enabled feature modules (their `ClientScopeRequest`s), see `GET /scope`.
-- Giving the `third_party_authentication` client scope additionally requires the realm role `admin_app`,
-  because a client with this scope can sign in to the app as any user.
 - Only clients created through this module (marked with the client attribute `aam.api-client.managed`
   and the client id prefix `api-`) are listed, changed or deleted.
   Clients set up in the Keycloak admin console are not affected, even if asked for by their client id.

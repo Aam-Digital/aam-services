@@ -6,7 +6,7 @@ info:
     Aam Digital system (e.g. the Reporting API).
     An API client is a Keycloak client using the OAuth2 client credentials flow.
 
-    Only users of the Aam Digital app with the `account_manager` role can use these endpoints,
+    Only users of the Aam Digital app with both the `account_manager` and the `admin_app` role can use these endpoints,
     API clients themselves cannot. Only API clients created through this API are listed, changed or deleted.
   version: 1.0.0
 servers:
@@ -164,7 +164,7 @@ components:
       bearerFormat: JWT
       description: |-
         Access token of a user signed in to the Aam Digital app (issued to the app's Keycloak client)
-        with the `account_manager` realm role.
+        with the `account_manager` and `admin_app` realm roles.
   parameters:
     clientId:
       in: path
@@ -181,7 +181,7 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     Forbidden:
-      description: The access token is not one of a user of the app with the `account_manager` role
+      description: The access token is not one of a user of the app with the `account_manager` and `admin_app` roles
       content:
         application/json:
           schema:

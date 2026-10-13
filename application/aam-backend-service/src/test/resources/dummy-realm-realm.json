@@ -567,6 +567,27 @@
       ]
     },
     {
+      "username": "app-admin",
+      "enabled": true,
+      "email": "app-admin@example.com",
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "app-admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "app-admin-password",
+          "temporary": false
+        }
+      ],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-dummy-realm",
+        "user_app",
+        "admin_app"
+      ]
+    },
+    {
       "username": "account-admin",
       "enabled": true,
       "email": "account-admin@example.com",

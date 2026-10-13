@@ -54,7 +54,7 @@ data class ApiClientCredentialsDto(
 
 /**
  * Self-service management of the API clients (Keycloak clients) that external systems use to access the API,
- * for the account managers of the app.
+ * for the administrators of the app who also manage its user accounts.
  */
 @RestController
 @RequestMapping("/v1/api-client")

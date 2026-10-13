@@ -2,7 +2,7 @@
 _for details about setup & usage of this module [see README in docs folder](../../../../../../../../../docs/modules/api-client.md)_
 
 ## Use Case / Flow
-Account managers of the app create, list, delete and regenerate the secret of Keycloak clients for external systems
+Administrators of the app create, list, delete and regenerate the secret of Keycloak clients for external systems
 (`ApiClientController`). The backend does this with its own Keycloak admin access (`manage-clients`),
 so the users of the app need no Keycloak admin role for it.
 
@@ -16,8 +16,11 @@ so the users of the app need no Keycloak admin role for it.
 
 ## Access Control
 `RequiresApiClientAdministrationAccess`: the `FRONTEND_CLIENT` authority (token issued to the app's Keycloak client)
-and the realm role `account_manager`. Both are required, so that an API client whose service account happens to
-have that role cannot create further API clients.
+and the realm roles `account_manager` and `admin_app`. `FRONTEND_CLIENT` is required, so that an API client whose
+service account happens to have these roles cannot create further API clients.
+
+A `ClientScopeRequest` can additionally require a role to give its scope (`grantRequiresRole`, `admin_app` for
+`third_party_authentication`). With `admin_app` required for the whole module, this is currently always fulfilled.
 
 ## Testing
 `KeycloakApiClientAdministrationIntegrationTest` runs against a real Keycloak, signed in with the `aam-backend`
