@@ -52,6 +52,9 @@ management:
 features:
   reporting:
     enabled: true
+  # self-service API clients in the app; only active if the Keycloak admin access (keycloak.*) is configured
+  api-client:
+    enabled: true
   export-api:
     enabled: false
   skill-api:

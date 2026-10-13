@@ -1,0 +1,4 @@
+{
+  "name": "Single sign-on integration",
+  "scopes": ["reporting_read", "third_party_authentication"]
+}

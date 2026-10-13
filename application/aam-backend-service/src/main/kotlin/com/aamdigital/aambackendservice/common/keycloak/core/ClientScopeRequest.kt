@@ -11,9 +11,14 @@ package com.aamdigital.aambackendservice.common.keycloak.core
  * @property description shown in the Keycloak admin console
  * @property promoteOptionalToDefault make the scope a Default scope of every API client (service account)
  *  that only has it as an Optional scope, so that it is included in tokens without explicitly requesting it
+ * @property grantRequiresRole realm role that a user of the app needs, in addition to the role to manage API clients,
+ *  to create an API client with this scope in the app; null if managing API clients is enough
  */
 data class ClientScopeRequest(
     val name: String,
     val description: String,
-    val promoteOptionalToDefault: Boolean = false
-)
+    val promoteOptionalToDefault: Boolean = false,
+    val grantRequiresRole: String? = null
+) {
+    fun isGrantableBy(realmRoles: Set<String>): Boolean = grantRequiresRole == null || grantRequiresRole in realmRoles
+}

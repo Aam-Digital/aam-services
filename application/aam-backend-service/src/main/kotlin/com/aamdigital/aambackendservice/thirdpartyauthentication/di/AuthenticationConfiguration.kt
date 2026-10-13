@@ -2,6 +2,7 @@ package com.aamdigital.aambackendservice.thirdpartyauthentication.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.keycloak.core.ClientScopeRequest
+import com.aamdigital.aambackendservice.common.security.AamRealmRoles
 import com.aamdigital.aambackendservice.thirdpartyauthentication.ConditionalOnThirdPartyAuthenticationEnabled
 import com.aamdigital.aambackendservice.thirdpartyauthentication.CreateSessionUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.SessionRedirectUseCase
@@ -33,7 +34,9 @@ class AuthenticationConfiguration {
     fun thirdPartyAuthenticationClientScopeRequest(): ClientScopeRequest =
         ClientScopeRequest(
             name = ThirdPartyAuthenticationScopes.SESSION_PROVIDER,
-            description = "Access to create user sessions through the third-party-authentication API"
+            description = "Access to create user sessions through the third-party-authentication API",
+            // a client with this scope can sign in as any user, admins included
+            grantRequiresRole = AamRealmRoles.ADMIN
         )
 
     @Bean

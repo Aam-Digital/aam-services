@@ -1,0 +1,4 @@
+{
+  "name": "Reporting integration",
+  "scopes": ["reporting_read", "reporting_write"]
+}

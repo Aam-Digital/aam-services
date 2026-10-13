@@ -1,0 +1,202 @@
+package com.aamdigital.aambackendservice.apiclient.core
+
+import com.aamdigital.aambackendservice.common.AuthTestingService
+import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
+import com.aamdigital.aambackendservice.common.keycloak.di.KeycloakAdminConfiguration
+import com.aamdigital.aambackendservice.container.TestContainers
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.keycloak.admin.client.CreatedResponseUtil
+import org.keycloak.admin.client.Keycloak
+import org.keycloak.representations.idm.ClientRepresentation
+import org.springframework.boot.restclient.RestTemplateBuilder
+import org.springframework.web.client.HttpClientErrorException
+import java.util.Base64
+
+/**
+ * Proves against a real Keycloak that the backend, signed in with the `aam-backend` client as imported from
+ * `aam-backend-client.json`, can manage API clients, and that it leaves every other client of the realm alone.
+ */
+class KeycloakApiClientAdministrationIntegrationTest {
+    companion object {
+        private const val REALM = TestContainers.KEYCLOAK_REALM
+
+        @BeforeAll
+        @JvmStatic
+        fun startKeycloak() {
+            TestContainers.startKeycloak()
+        }
+    }
+
+    private val openedClients = mutableListOf<Keycloak>()
+    private val createdClientIds = mutableListOf<String>()
+    private lateinit var administration: KeycloakApiClientAdministration
+
+    private val keycloakUrl get() = TestContainers.CONTAINER_KEYCLOAK.authServerUrl.trimEnd('/')
+
+    private val authTestingService get() = AuthTestingService(RestTemplateBuilder().rootUri(keycloakUrl).build())
+
+    @BeforeEach
+    fun setUp() {
+        val backend =
+            KeycloakAdminConfiguration()
+                .keycloak(
+                    AamKeycloakConfig(
+                        serverUrl = keycloakUrl,
+                        realm = REALM,
+                        clientId = "aam-backend",
+                        clientSecret = TestContainers.AAM_BACKEND_CLIENT_SECRET
+                    )
+                ).also { openedClients += it }
+        administration = KeycloakApiClientAdministration(backend, REALM, "aam-backend")
+    }
+
+    @AfterEach
+    fun cleanUp() {
+        val clients = admin().realm(REALM).clients()
+        createdClientIds.forEach { clientId ->
+            clients.findByClientId(clientId).forEach { clients.get(it.id).remove() }
+        }
+        openedClients.forEach { it.close() }
+    }
+
+    /** Keycloak as the administrator of the realm sees it. */
+    private fun admin(): Keycloak = TestContainers.CONTAINER_KEYCLOAK.keycloakAdminClient.also { openedClients += it }
+
+    private fun create(
+        clientId: String,
+        scopes: Set<String> = setOf("reporting_read")
+    ) = administration
+        .createApiClient(
+            NewApiClient(clientId = clientId, name = "Test system", scopes = scopes, createdBy = "manager@example.com")
+        ).also { createdClientIds += clientId }
+
+    @Test
+    fun `should create an API client whose access tokens carry its client scopes`() {
+        // When
+        val credentials = create("api-test-tokens", setOf("reporting_read", "third_party_authentication"))
+
+        // Then the external system can get tokens with the client credentials flow
+        val token = authTestingService.fetchToken(credentials.clientId, credentials.clientSecret, REALM)
+        val claims = claimsOf(token)
+        assertThat(claims.get("scope").textValue().split(" "))
+            .contains("reporting_read", "third_party_authentication")
+            .doesNotContain("reporting_write")
+        // e.g. the webhooks of the reporting API are owned by the subject of the token
+        assertThat(claims.get("sub")?.textValue()).isNotBlank()
+    }
+
+    @Test
+    fun `should create an API client that can only use the client credentials flow`() {
+        // When
+        val credentials = create("api-test-flows")
+
+        // Then
+        val client =
+            admin()
+                .realm(REALM)
+                .clients()
+                .findByClientId(credentials.clientId)
+                .single()
+        assertThat(client.isPublicClient).isFalse()
+        assertThat(client.isServiceAccountsEnabled).isTrue()
+        assertThat(client.isStandardFlowEnabled).isFalse()
+        assertThat(client.isImplicitFlowEnabled).isFalse()
+        assertThat(client.isDirectAccessGrantsEnabled).isFalse()
+        assertThat(client.redirectUris).isEmpty()
+    }
+
+    @Test
+    fun `should list the API clients with their client scopes and creator`() {
+        // Given
+        create("api-test-list", setOf("reporting_read", "reporting_write"))
+
+        // When
+        val apiClient = administration.findApiClients().single { it.clientId == "api-test-list" }
+
+        // Then
+        assertThat(apiClient.name).isEqualTo("Test system")
+        assertThat(apiClient.scopes).contains("reporting_read", "reporting_write")
+        assertThat(apiClient.createdBy).isEqualTo("manager@example.com")
+        assertThat(apiClient.createdAt).isNotBlank()
+    }
+
+    @Test
+    fun `should replace the secret of an API client, so that the previous one stops working`() {
+        // Given
+        val previous = create("api-test-secret")
+
+        // When
+        val regenerated = administration.regenerateSecret(previous.clientId)
+
+        // Then
+        assertThat(regenerated.clientSecret).isNotEqualTo(previous.clientSecret)
+        assertThat(authTestingService.fetchToken(regenerated.clientId, regenerated.clientSecret, REALM)).isNotBlank()
+        assertThatThrownBy { authTestingService.fetchToken(previous.clientId, previous.clientSecret, REALM) }
+            .isInstanceOf(HttpClientErrorException::class.java)
+    }
+
+    @Test
+    fun `should delete an API client`() {
+        // Given
+        create("api-test-delete")
+
+        // When
+        administration.deleteApiClient("api-test-delete")
+
+        // Then
+        assertThat(admin().realm(REALM).clients().findByClientId("api-test-delete")).isEmpty()
+        assertThat(administration.findApiClients().map { it.clientId }).doesNotContain("api-test-delete")
+    }
+
+    @Test
+    fun `should neither list nor change nor delete any other client of the realm`() {
+        // Given a client that looks like an API client, but was set up in the Keycloak admin console
+        val clients = admin().realm(REALM).clients()
+        val manualClient =
+            ClientRepresentation().apply {
+                clientId = "api-test-manual"
+                isServiceAccountsEnabled = true
+                isPublicClient = false
+            }
+        clients.create(manualClient).use { CreatedResponseUtil.getCreatedId(it) }
+        createdClientIds += "api-test-manual"
+
+        // Then
+        assertThat(administration.findApiClients().map { it.clientId })
+            .doesNotContain("api-test-manual", "app", "aam-backend", "dummy-client")
+        listOf("app", "aam-backend", "api-test-manual").forEach { clientId ->
+            assertThatThrownBy { administration.deleteApiClient(clientId) }
+                .isInstanceOf(NotFoundException::class.java)
+                .extracting("code")
+                .isEqualTo(ApiClientAdministrationError.API_CLIENT_NOT_FOUND)
+            assertThatThrownBy { administration.regenerateSecret(clientId) }
+                .isInstanceOf(NotFoundException::class.java)
+            assertThat(clients.findByClientId(clientId)).hasSize(1)
+        }
+    }
+
+    @Test
+    fun `should not leave a client behind if a client scope does not exist`() {
+        // When
+        assertThatThrownBy { create("api-test-missing-scope", setOf("reporting_read", "no_such_scope")) }
+            .isInstanceOf(NotFoundException::class.java)
+            .extracting("code")
+            .isEqualTo(ApiClientAdministrationError.CLIENT_SCOPE_NOT_FOUND)
+
+        // Then
+        assertThat(admin().realm(REALM).clients().findByClientId("api-test-missing-scope")).isEmpty()
+    }
+
+    private fun claimsOf(accessToken: String?): JsonNode {
+        val payload = checkNotNull(accessToken).split(".")[1]
+        return jacksonObjectMapper().readTree(Base64.getUrlDecoder().decode(payload))
+    }
+}
