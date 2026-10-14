@@ -132,6 +132,13 @@ jobs:
     permissions:
       contents: read
       packages: write
+    secrets:
+      # SENTRY_UPLOAD_SOURCES below lets the Gradle build inside the image upload this build's source bundle, so
+      # Sentry can show our source code next to the stack trace frames (see the Dockerfile). Not for pull requests:
+      # those images are never deployed, and forks cannot read the secret anyway. Keep this condition in sync with
+      # SENTRY_UPLOAD_SOURCES: a build that is told to upload but gets no token fails on purpose, rather than
+      # quietly skipping the upload.
+      BUILD_SECRETS: ${{ github.event_name != 'pull_request' && format('sentry_auth_token={0}', secrets.SENTRY_TOKEN) || '' }}
     with:
       images: ghcr.io/aam-digital/aam-services
       context: application/aam-backend-service
@@ -141,11 +148,9 @@ jobs:
       platforms: ${{ needs.image-config.outputs.platforms }}
       # arm64 compiles the service on a native runner instead of under QEMU
       native-runners: true
-      # TODO: upload the Sentry source bundles again (SENTRY_UPLOAD_SOURCES=true for all but PR builds) once the
-      # shared workflow can pass the `sentry_auth_token` build secret; see the Dockerfile.
       build-args: |
         APPLICATION_VERSION=${{ needs.image-config.outputs.application-version }}
-        SENTRY_UPLOAD_SOURCES=false
+        SENTRY_UPLOAD_SOURCES=${{ github.event_name != 'pull_request' }}
       # PRs from forks cannot push; only check that the image builds
       push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
