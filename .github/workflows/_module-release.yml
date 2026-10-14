@@ -39,6 +39,8 @@ on:
         description: The released version (without prefix), empty if nothing was released
         value: ${{ jobs.release.outputs.version }}
 
+permissions: {}
+
 jobs:
   # The job id is part of the check name (`<caller job> / release`).
   release:
