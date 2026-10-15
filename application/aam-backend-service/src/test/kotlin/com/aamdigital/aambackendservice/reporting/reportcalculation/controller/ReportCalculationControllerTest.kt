@@ -3,8 +3,10 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.controller
 import com.aamdigital.aambackendservice.common.couchdb.dto.AttachmentMetaData
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.FileStorage
+import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
+import com.aamdigital.aambackendservice.reporting.report.core.ReportStorageErrorCode
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculation
 import com.aamdigital.aambackendservice.reporting.reportcalculation.ReportCalculationStatus
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.CreateReportCalculationUseCase
@@ -17,11 +19,13 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -242,6 +246,30 @@ class ReportCalculationControllerTest {
         // Then
         assertThat(response.status).isEqualTo(200)
         assertThat(response.contentAsString).isEqualTo(DATA)
+    }
+
+    @Test
+    fun `answers 400 with the validation message when the report config is invalid`() {
+        // Given
+        whenever(reportStorage.fetchReport(DomainReference(id = "ReportConfig:1")))
+            .thenThrow(
+                InvalidArgumentException(
+                    message = "Invalid ReportConfig 'ReportConfig:1': reportDefinition[1] needs a query",
+                    code = ReportStorageErrorCode.INVALID_REPORT_CONFIG
+                )
+            )
+
+        // When
+        val response =
+            mockMvc
+                .perform(post("/v1/reporting/report-calculation/report/ReportConfig:1"))
+                .andReturn()
+                .response
+
+        // Then
+        assertThat(response.status).isEqualTo(400)
+        assertThat(response.contentAsString).contains("BAD_REQUEST", "reportDefinition[1]")
+        verifyNoInteractions(createReportCalculationUseCase)
     }
 
     @Test

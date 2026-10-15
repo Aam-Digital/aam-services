@@ -7,6 +7,7 @@ import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.reporting.report.ReportItem
+import com.aamdigital.aambackendservice.reporting.report.core.ReportStorageErrorCode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.assertj.core.api.Assertions.assertThat
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.never
@@ -332,6 +334,159 @@ class DefaultReportStorageTest {
         // untouched fields survive the write-back
         assertThat(writtenDoc.get("_rev").textValue()).isEqualTo("1-abc")
         assertThat(writtenDoc.get("title").textValue()).isEqualTo("Rename")
+    }
+
+    // --- Invalid reportDefinition entries ---
+
+    @Test
+    fun `should reject an entry with an empty query as invalid input naming its position`() {
+        // given
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:invalid",
+              "_rev": "2-def",
+              "title": "Invalid",
+              "mode": "sql",
+              "reportDefinition": [
+                { "query": "SELECT name FROM Child" },
+                { "query": "" }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        // when
+        val ex =
+            assertThrows<InvalidArgumentException> {
+                storage.fetchReport(DomainReference("ReportConfig:invalid"))
+            }
+
+        // then
+        assertThat(ex.code).isEqualTo(ReportStorageErrorCode.INVALID_REPORT_CONFIG)
+        assertThat(ex.message).contains("ReportConfig:invalid", "reportDefinition[1]")
+    }
+
+    @Test
+    fun `should reject an invalid entry nested in a group naming its position`() {
+        // given
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:invalid",
+              "_rev": "2-def",
+              "title": "Invalid",
+              "mode": "sql",
+              "reportDefinition": [
+                {
+                  "groupTitle": "Children",
+                  "items": [
+                    { "query": "SELECT name FROM Child" },
+                    { "groupTitle": "Empty group", "items": [] }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        // when
+        val ex =
+            assertThrows<InvalidArgumentException> {
+                storage.fetchReport(DomainReference("ReportConfig:invalid"))
+            }
+
+        // then
+        assertThat(ex.message).contains("reportDefinition[0].items[1]")
+    }
+
+    @Test
+    fun `should reject a group without title`() {
+        // given
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:invalid",
+              "_rev": "2-def",
+              "title": "Invalid",
+              "mode": "sql",
+              "reportDefinition": [
+                { "items": [ { "query": "SELECT name FROM Child" } ] }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        // when/then
+        assertThrows<InvalidArgumentException> {
+            storage.fetchReport(DomainReference("ReportConfig:invalid"))
+        }
+    }
+
+    // --- Fetching all reports ---
+
+    @Test
+    fun `should skip an invalid config when fetching all reports and return the valid ones`() {
+        // given
+        whenever(
+            couchDbClient.findDatabaseDocumentsByPrefix(
+                database = any(),
+                prefix = any(),
+                selector = any(),
+                limit = anyOrNull(),
+                kClass = eq(ObjectNode::class)
+            )
+        ).thenReturn(
+            listOf(
+                parseDoc(
+                    """
+                    {
+                      "_id": "ReportConfig:valid",
+                      "_rev": "2-def",
+                      "title": "Valid",
+                      "mode": "sql",
+                      "reportDefinition": [ { "query": "SELECT name FROM Child" } ]
+                    }
+                    """.trimIndent()
+                ),
+                parseDoc(
+                    """
+                    {
+                      "_id": "ReportConfig:invalid",
+                      "_rev": "2-def",
+                      "title": "Invalid",
+                      "mode": "sql",
+                      "reportDefinition": [ { "query": "" } ]
+                    }
+                    """.trimIndent()
+                )
+            )
+        )
+
+        // when
+        val reports = storage.fetchAllReports("sql")
+
+        // then
+        assertThat(reports.map { it.id }).containsExactly("ReportConfig:valid")
+    }
+
+    @Test
+    fun `should propagate storage failures when fetching all reports`() {
+        // given
+        whenever(
+            couchDbClient.findDatabaseDocumentsByPrefix(
+                database = any(),
+                prefix = any(),
+                selector = any(),
+                limit = anyOrNull(),
+                kClass = eq(ObjectNode::class)
+            )
+        ).thenAnswer { throw ExternalSystemException(message = "CouchDB down", code = TestErrorCode.TEST_EXCEPTION) }
+
+        // when/then
+        assertThrows<ExternalSystemException> {
+            storage.fetchAllReports("sql")
+        }
     }
 
     // --- Non-SQL report ---

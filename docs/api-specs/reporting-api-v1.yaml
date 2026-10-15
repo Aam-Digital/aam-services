@@ -208,6 +208,13 @@ paths:
                 properties:
                   id:
                     type: string
+        400:
+          description: If the report is not an SQL report or its configuration is invalid
+            (e.g. a reportDefinition entry without a query). errorMessage names the invalid entry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         403:
           description: The access token lacks the client scope required for this endpoint
           content:

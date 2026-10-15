@@ -3,7 +3,6 @@ package com.aamdigital.aambackendservice.reporting.report.storage
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
-import com.aamdigital.aambackendservice.common.error.InternalServerException
 import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.reporting.report.Report
@@ -14,6 +13,7 @@ import com.aamdigital.aambackendservice.reporting.reportcalculation.storage.Defa
 import com.fasterxml.jackson.core.JacksonException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import org.slf4j.LoggerFactory
 import org.springframework.util.LinkedMultiValueMap
 import java.io.InterruptedIOException
 
@@ -28,6 +28,7 @@ class DefaultReportStorage(
     private val couchDbClient: CouchDbClient,
     private val objectMapper: ObjectMapper
 ) : ReportStorage {
+    private val logger = LoggerFactory.getLogger(javaClass)
     private val legacyMigration = ReportConfigLegacyMigration(couchDbClient)
     private val columnRenameMigration = ReportColumnRenameMigration(couchDbClient)
 
@@ -44,13 +45,20 @@ class DefaultReportStorage(
                 kClass = ObjectNode::class
             )
 
-        return sqlReports.map { columnRenameMigration.migrate(normalizeRawDocToReport(it)) }
+        // one invalid config must not hide the valid ones, e.g. from change detection
+        return sqlReports.mapNotNull { doc ->
+            try {
+                columnRenameMigration.migrate(normalizeRawDocToReport(doc))
+            } catch (ex: InvalidArgumentException) {
+                logger.warn("Skipping invalid report config {}: {}", doc.get("_id")?.textValue(), ex.message)
+                null
+            }
+        }
     }
 
     @Throws(
         InvalidArgumentException::class,
         ExternalSystemException::class,
-        InternalServerException::class,
         NotFoundException::class
     )
     override fun fetchReport(reportRef: DomainReference): Report {
@@ -110,12 +118,23 @@ class DefaultReportStorage(
         return Report(
             id = entity.id,
             title = entity.title,
-            items = entity.reportDefinition.map { asReportItem(it) },
+            items =
+                entity.reportDefinition.mapIndexed { index, dto ->
+                    asReportItem(entity.id, dto, "reportDefinition[$index]")
+                },
             transformations = entity.transformations ?: emptyMap()
         )
     }
 
-    private fun asReportItem(dto: ReportDefinitionDto): ReportItem {
+    /**
+     * @param position where [dto] sits in the config, e.g. `reportDefinition[1].items[0]`,
+     *     so the error message tells the admin which entry to fix
+     */
+    private fun asReportItem(
+        reportId: String,
+        dto: ReportDefinitionDto,
+        position: String
+    ): ReportItem {
         if (!dto.query.isNullOrEmpty()) {
             return ReportItem.ReportQuery(sql = dto.query)
         }
@@ -123,12 +142,17 @@ class DefaultReportStorage(
         if (!dto.items.isNullOrEmpty() && !dto.groupTitle.isNullOrEmpty()) {
             return ReportItem.ReportGroup(
                 title = dto.groupTitle,
-                items = dto.items.map { asReportItem(it) }
+                items =
+                    dto.items.mapIndexed { index, item ->
+                        asReportItem(reportId, item, "$position.items[$index]")
+                    }
             )
         }
 
-        throw InternalServerException(
-            message = "Invalid ReportConfig. Could not parse ReportItem",
+        throw InvalidArgumentException(
+            message =
+                "Invalid ReportConfig '$reportId': $position needs either a non-empty \"query\" " +
+                    "or a \"groupTitle\" with non-empty \"items\"",
             code = ReportStorageErrorCode.INVALID_REPORT_CONFIG
         )
     }
