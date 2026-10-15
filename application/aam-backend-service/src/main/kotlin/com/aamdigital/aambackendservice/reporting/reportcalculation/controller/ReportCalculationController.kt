@@ -3,6 +3,7 @@ package com.aamdigital.aambackendservice.reporting.reportcalculation.controller
 import com.aamdigital.aambackendservice.common.domain.DomainReference
 import com.aamdigital.aambackendservice.common.domain.FileStorage
 import com.aamdigital.aambackendservice.common.error.HttpErrorDto
+import com.aamdigital.aambackendservice.common.error.InvalidArgumentException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.export.controller.TemplateExportControllerResponse
 import com.aamdigital.aambackendservice.reporting.ConditionalOnReportingEnabled
@@ -74,6 +75,17 @@ class ReportCalculationController(
                         HttpErrorDto(
                             errorCode = "NOT_FOUND",
                             errorMessage = "Could not find report with id $reportId"
+                        )
+                    )
+            } catch (ex: InvalidArgumentException) {
+                // an admin's config mistake, not a bug: answered here so it does not reach Sentry
+                logger.info("[POST /report/{}]: Rejected invalid report config: {}", reportId, ex.message)
+                return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(
+                        HttpErrorDto(
+                            errorCode = "BAD_REQUEST",
+                            errorMessage = ex.localizedMessage
                         )
                     )
             }
