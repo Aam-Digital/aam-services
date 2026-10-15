@@ -11,6 +11,7 @@ import com.aamdigital.aambackendservice.reporting.report.core.ReportStorage
 import com.aamdigital.aambackendservice.reporting.report.core.ReportStorageErrorCode
 import com.aamdigital.aambackendservice.reporting.reportcalculation.storage.DefaultReportCalculationStorage.DefaultReportCalculationStorageError
 import com.fasterxml.jackson.core.JacksonException
+import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
@@ -108,8 +109,11 @@ class DefaultReportStorage(
             try {
                 objectMapper.treeToValue(doc, ReportConfigEntity::class.java)
             } catch (ex: JacksonException) {
+                val path = (ex as? JsonMappingException)?.pathReference
                 throw InvalidArgumentException(
-                    message = "Could not parse Report to Entity",
+                    message =
+                        "Could not parse ReportConfig '${doc.get("_id")?.textValue()}'" +
+                            (path?.let { " at $it" } ?: ""),
                     code = ReportStorageErrorCode.PARSING_ERROR,
                     cause = ex
                 )
@@ -132,9 +136,16 @@ class DefaultReportStorage(
      */
     private fun asReportItem(
         reportId: String,
-        dto: ReportDefinitionDto,
+        dto: ReportDefinitionDto?,
         position: String
     ): ReportItem {
+        if (dto == null) {
+            throw InvalidArgumentException(
+                message = "Invalid ReportConfig '$reportId': $position must not be null",
+                code = ReportStorageErrorCode.INVALID_REPORT_CONFIG
+            )
+        }
+
         if (!dto.query.isNullOrEmpty()) {
             return ReportItem.ReportQuery(sql = dto.query)
         }

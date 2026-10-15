@@ -22,7 +22,8 @@ data class ReportConfigEntity(
     val title: String,
     val mode: String,
     val transformations: Map<String, List<String>>? = null,
-    val reportDefinition: List<ReportDefinitionDto> = emptyList()
+    // nullable elements: without StrictNullChecks, Jackson 2 lets a JSON null into the list anyway
+    val reportDefinition: List<ReportDefinitionDto?> = emptyList()
 )
 
 /**
@@ -32,5 +33,5 @@ data class ReportConfigEntity(
 data class ReportDefinitionDto(
     val query: String?,
     val groupTitle: String?,
-    val items: List<ReportDefinitionDto>?
+    val items: List<ReportDefinitionDto?>?
 )

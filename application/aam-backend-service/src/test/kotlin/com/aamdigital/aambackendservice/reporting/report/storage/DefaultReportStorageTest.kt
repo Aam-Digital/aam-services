@@ -423,6 +423,59 @@ class DefaultReportStorageTest {
         }
     }
 
+    @Test
+    fun `should reject a null entry nested in a group naming its position`() {
+        // given
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:invalid",
+              "_rev": "2-def",
+              "title": "Invalid",
+              "mode": "sql",
+              "reportDefinition": [
+                { "groupTitle": "Children", "items": [ null ] }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        // when
+        val ex =
+            assertThrows<InvalidArgumentException> {
+                storage.fetchReport(DomainReference("ReportConfig:invalid"))
+            }
+
+        // then
+        assertThat(ex.message).contains("reportDefinition[0].items[0]")
+    }
+
+    @Test
+    fun `should name the report and field when an entry has the wrong type`() {
+        // given
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:invalid",
+              "_rev": "2-def",
+              "title": "Invalid",
+              "mode": "sql",
+              "reportDefinition": [ { "query": { "sql": "SELECT 1" } } ]
+            }
+            """.trimIndent()
+        )
+
+        // when
+        val ex =
+            assertThrows<InvalidArgumentException> {
+                storage.fetchReport(DomainReference("ReportConfig:invalid"))
+            }
+
+        // then
+        assertThat(ex.code).isEqualTo(ReportStorageErrorCode.PARSING_ERROR)
+        assertThat(ex.message).contains("ReportConfig:invalid", "reportDefinition", "query")
+    }
+
     // --- Fetching all reports ---
 
     @Test
@@ -457,6 +510,17 @@ class DefaultReportStorageTest {
                       "title": "Invalid",
                       "mode": "sql",
                       "reportDefinition": [ { "query": "" } ]
+                    }
+                    """.trimIndent()
+                ),
+                parseDoc(
+                    """
+                    {
+                      "_id": "ReportConfig:null-entry",
+                      "_rev": "2-def",
+                      "title": "Null entry",
+                      "mode": "sql",
+                      "reportDefinition": [ null ]
                     }
                     """.trimIndent()
                 )
