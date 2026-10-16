@@ -7,8 +7,8 @@ on:
 permissions: {}
 
 jobs:
-  # Deletes the `pr-<n>` image of the PR (built by aam-backend-service-build-and-publish.yml). The images of
-  # earlier pushes to the PR are already deleted by the build when it replaces them.
+  # Deletes the `pr-<n>` image of the PR (built by aam-backend-service-build-and-publish.yml), then the untagged
+  # images older than 2 days: those of earlier PR pushes, previous `main` images and native-runner intermediates.
   # Check name: `cleanup-image / cleanup`
   cleanup-image:
     # PRs from forks have no image (and their token cannot delete packages)
