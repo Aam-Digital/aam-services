@@ -68,11 +68,23 @@ jobs:
           # (com/aamdigital/...), so prefix them to make them repo-relative.
           add-prefix: application/aam-backend-service/src/main/kotlin
 
+  # Version of the edge build of a push to main (see Aam-Digital/.github): `X.Y.Z-edge.N`, the last
+  # `aam-backend-service/X.Y.Z` release with the patch number bumped, plus the commits since. No tag, no GitHub release.
+  # Runs for every trigger (it is cheap), so that the jobs below never depend on a skipped job; only main uses it.
+  edge-version:
+    uses: Aam-Digital/.github/.github/workflows/edge-version.yml@feat/reusable-workflows # TODO switch to @v1
+    permissions:
+      contents: read
+    with:
+      tag-prefix: aam-backend-service/
+
   # Tags and build settings of the image, by trigger:
   # - release tag `aam-backend-service/<version>` (created by the `publish` job): `<version>`, `stable`, `latest`
-  # - push to main: `main`
+  # - push to main (edge build): `X.Y.Z-edge.N`, plus `edge` and `main` (until nothing follows `main` any more) if it is
+  #   still the newest main commit
   # - pull request: `pr-<n>`, linux/amd64 only
   image-config:
+    needs: edge-version
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.config.outputs.version }}
@@ -85,13 +97,15 @@ jobs:
         id: config
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          EDGE_VERSION: ${{ needs.edge-version.outputs.version }}
+          EDGE_IS_HEAD: ${{ needs.edge-version.outputs.is-head }}
         run: |
           version=""
           stable=false
           tags=""
           platforms=linux/amd64,linux/arm64
           # Baked into the image as sentry.release (see application.yaml) so error events are tagged with a
-          # version: the released version for release tags, else the commit SHA (unique per build).
+          # version: the released or edge version, else (PRs) the commit SHA (unique per build).
           application_version=$GITHUB_SHA
           case "$GITHUB_REF" in
             refs/tags/aam-backend-service/*)
@@ -102,8 +116,11 @@ jobs:
               stable=true
               application_version=$version
               ;;
-            refs/heads/*)
-              tags=${GITHUB_REF#refs/heads/}
+            refs/heads/main)
+              version=$EDGE_VERSION
+              application_version=$EDGE_VERSION
+              # an older run that finishes late must not move the moving tags back
+              [ "$EDGE_IS_HEAD" != "true" ] || tags=edge,main
               ;;
             *)
               if [ -z "$PR_NUMBER" ]; then
@@ -128,6 +145,11 @@ jobs:
   # `build / merge`
   build:
     needs: image-config
+    # On main, a newer push cancels an older edge build, so that `edge` never moves back. Other builds get a group of
+    # their own (no cancelling).
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'edge-build' || format('build-{0}', github.run_id) }}
+      cancel-in-progress: true
     uses: Aam-Digital/.github/.github/workflows/docker-image.yml@feat/reusable-workflows # TODO switch to @v1
     permissions:
       contents: read
@@ -153,6 +175,19 @@ jobs:
         SENTRY_UPLOAD_SOURCES=${{ github.event_name != 'pull_request' }}
       # PRs from forks cannot push; only check that the image builds
       push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+  # After a full release, the edge images (`*-edge.*`) of the finished cycle are no longer needed. The images `edge`,
+  # `main`, `stable` and `latest` point to are kept.
+  prune-edge-images:
+    if: startsWith(github.ref, 'refs/tags/aam-backend-service/')
+    needs: build
+    uses: Aam-Digital/.github/.github/workflows/image-prune.yml@feat/reusable-workflows # TODO switch to @v1
+    permissions:
+      packages: write
+    with:
+      packages: aam-services
+      tag-patterns: "*-edge.*"
+      exclude-tags: edge,main,stable,latest
 
   publish:
     name: Publish aam-backend-service Release
