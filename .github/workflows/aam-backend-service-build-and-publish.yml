@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/aam-backend-service-build-and-publish.yml'
+      - '.github/workflows/_module-release.yml'
       - 'application/aam-backend-service/**'
   push:
     tags:
@@ -12,9 +13,8 @@ on:
       - main
     paths:
       - '.github/workflows/aam-backend-service-build-and-publish.yml'
+      - '.github/workflows/_module-release.yml'
       - 'application/aam-backend-service/**'
-env:
-  REGISTRY_IMAGE: ghcr.io/aam-digital/aam-services
 
 permissions:
   contents: read
@@ -68,254 +68,142 @@ jobs:
           # (com/aamdigital/...), so prefix them to make them repo-relative.
           add-prefix: application/aam-backend-service/src/main/kotlin
 
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: linux/amd64
-            os: ubuntu-latest
-          - platform: linux/arm64
-            os: ubuntu-24.04-arm
-    runs-on: ${{ matrix.os }}
+  # Version of the edge build of a push to main (see Aam-Digital/.github): `X.Y.Z-edge.N`, the last
+  # `aam-backend-service/X.Y.Z` release with the patch number bumped, plus the commits since. No tag, no GitHub release.
+  # Runs for every trigger (it is cheap), so that the jobs below never depend on a skipped job; only main uses it.
+  edge-version:
+    uses: Aam-Digital/.github/.github/workflows/edge-version.yml@feat/reusable-workflows # TODO switch to @v1
     permissions:
       contents: read
-      packages: write
-    steps:
-      - name: Checkout repository files
-        uses: actions/checkout@v7
+    with:
+      tag-prefix: aam-backend-service/
 
-      - name: Extract tag (release)
-        if: ${{ github.event.ref  != '' }}
-        run: echo "TAG=${GITHUB_REF#refs/tags/aam-backend-service/}" >> $GITHUB_ENV
-
-      - name: Extract tag (pull request)
-        if: ${{ github.event.ref  == '' }}
-        run: echo "TAG=pr-${{ github.event.number }}" >> $GITHUB_ENV
-
-      - name: Determine application version
-        # Baked into the image as sentry.release (see application.yaml) so error events are
-        # tagged with a version. Tag pushes get the released version; everything else (main,
-        # PRs) gets the commit SHA, since TAG above is not unique per build in those cases.
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/aam-backend-service/* ]]; then
-            echo "APPLICATION_VERSION=${GITHUB_REF#refs/tags/aam-backend-service/}" >> $GITHUB_ENV
-          else
-            echo "APPLICATION_VERSION=${{ github.sha }}" >> $GITHUB_ENV
-          fi
-
-      - name: Prepare Platform
-        run: |
-          platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          tags: |
-            type=ref,enable=true,event=pr
-            type=ref,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=branch
-            # {{version}} rather than {{raw}}: plain versions (e.g. `1.22.14`) like those of
-            # ndb-core, also for a rebuild of an older `v`-prefixed tag.
-            type=semver,enable=true,pattern={{version}},priority=600,value=${{ env.TAG }},event=tag
-            # Moving tag for the latest release, like ndb-core's; `latest` is added
-            # automatically for semver tags.
-            type=raw,value=stable,enable=${{ startsWith(github.ref, 'refs/tags/') }}
-          images: ${{ env.REGISTRY_IMAGE }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create export directories
-        run: |
-          mkdir -p ./tmp/build/${{ env.PLATFORM_PAIR }}
-          mkdir -p ./tmp/digests
-
-      - name: Build Image and push by digest
-        id: build
-        uses: docker/build-push-action@v7
-        with:
-          platforms: ${{ matrix.platform }}
-          context: ./application/aam-backend-service
-          provenance: false
-          labels: ${{ steps.meta.outputs.labels }}
-          # SENTRY_UPLOAD_SOURCES lets the Gradle build inside the image upload this build's
-          # source bundle, so Sentry can show our source code next to the stack trace frames
-          # (see Dockerfile). Off for pull requests: those images are never deployed, and forks
-          # cannot read the secret anyway.
-          build-args: |
-            APPLICATION_VERSION=${{ env.APPLICATION_VERSION }}
-            SENTRY_UPLOAD_SOURCES=${{ github.event_name != 'pull_request' }}
-          # Empty input rather than an empty value: `sentry_auth_token=` alone makes the action
-          # warn that it is not a valid secret. Keep this condition in sync with the one on
-          # SENTRY_UPLOAD_SOURCES above: a build that is told to upload but gets no token fails
-          # on purpose, rather than quietly skipping the upload.
-          secrets: ${{ github.event_name != 'pull_request' && format('sentry_auth_token={0}', secrets.SENTRY_TOKEN) || '' }}
-          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,url=${{ runner.env.ACTIONS_CACHE_URL }},token=${{ runner.env.ACTIONS_RUNTIME_TOKEN }}
-          cache-to: type=gha,mode=min,url=${{ runner.env.ACTIONS_CACHE_URL }},token=${{ runner.env.ACTIONS_RUNTIME_TOKEN }}
-        env:
-          SOURCE_DATE_EPOCH: 0
-
-      - name: Export digest
-        run: |
-          digest="${{ steps.build.outputs.digest }}"
-          touch "./tmp/digests/${digest#sha256:}"
-
-      - name: Upload digest
-        uses: actions/upload-artifact@v7
-        with:
-          name: digests-${{ env.PLATFORM_PAIR }}
-          path: ./tmp/digests/*
-          if-no-files-found: error
-          retention-days: 1
-
-  merge:
+  # Tags and build settings of the image, by trigger:
+  # - release tag `aam-backend-service/<version>` (created by the `publish` job): `<version>`, `stable`, `latest`
+  # - push to main (edge build): `X.Y.Z-edge.N`, plus `edge` and `main` (until nothing follows `main` any more) if it is
+  #   still the newest main commit
+  # - pull request: `pr-<n>`, linux/amd64 only
+  image-config:
+    needs: edge-version
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.config.outputs.version }}
+      stable: ${{ steps.config.outputs.stable }}
+      tags: ${{ steps.config.outputs.tags }}
+      platforms: ${{ steps.config.outputs.platforms }}
+      application-version: ${{ steps.config.outputs.application-version }}
+    steps:
+      - name: Determine image tags and platforms
+        id: config
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EDGE_VERSION: ${{ needs.edge-version.outputs.version }}
+          EDGE_IS_HEAD: ${{ needs.edge-version.outputs.is-head }}
+        run: |
+          version=""
+          stable=false
+          tags=""
+          platforms=linux/amd64,linux/arm64
+          # Baked into the image as sentry.release (see application.yaml) so error events are tagged with a
+          # version: the released or edge version, else (PRs) the commit SHA (unique per build).
+          application_version=$GITHUB_SHA
+          case "$GITHUB_REF" in
+            refs/tags/aam-backend-service/*)
+              # `{{version}}`-style plain versions (e.g. `1.22.14`) like those of ndb-core, also for a rebuild
+              # of an older `v`-prefixed tag
+              version=${GITHUB_REF#refs/tags/aam-backend-service/}
+              version=${version#v}
+              stable=true
+              application_version=$version
+              ;;
+            refs/heads/main)
+              version=$EDGE_VERSION
+              application_version=$EDGE_VERSION
+              # an older run that finishes late must not move the moving tags back
+              [ "$EDGE_IS_HEAD" != "true" ] || tags=edge,main
+              ;;
+            *)
+              if [ -z "$PR_NUMBER" ]; then
+                echo "::error::Unexpected trigger $GITHUB_EVENT_NAME on $GITHUB_REF"
+                exit 1
+              fi
+              tags=pr-$PR_NUMBER
+              # PR builds stay basic; release and main images are built for both platforms.
+              platforms=linux/amd64
+              ;;
+          esac
+          {
+            echo "version=$version"
+            echo "stable=$stable"
+            echo "tags=$tags"
+            echo "platforms=$platforms"
+            echo "application-version=$application_version"
+          } >> "$GITHUB_OUTPUT"
+          echo "version=$version stable=$stable tags=$tags platforms=$platforms application-version=$application_version"
+
+  # Check names: `build / build-native (linux/amd64)`, `build / build-native (linux/arm64)` (not on PRs),
+  # `build / merge`
+  build:
+    needs: image-config
+    # On main, a newer push cancels an older edge build, so that `edge` never moves back. Other builds get a group of
+    # their own (no cancelling).
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'edge-build' || format('build-{0}', github.run_id) }}
+      cancel-in-progress: true
+    uses: Aam-Digital/.github/.github/workflows/docker-image.yml@feat/reusable-workflows # TODO switch to @v1
     permissions:
       contents: read
       packages: write
-    needs:
-      - build
-    steps:
-      - name: Download digests
-        uses: actions/download-artifact@v8
-        with:
-          path: ./tmp/digests
-          pattern: digests-*
-          merge-multiple: true
+    secrets:
+      # SENTRY_UPLOAD_SOURCES below lets the Gradle build inside the image upload this build's source bundle, so
+      # Sentry can show our source code next to the stack trace frames (see the Dockerfile). Not for pull requests:
+      # those images are never deployed, and forks cannot read the secret anyway. Keep this condition in sync with
+      # SENTRY_UPLOAD_SOURCES: a build that is told to upload but gets no token fails on purpose, rather than
+      # quietly skipping the upload.
+      BUILD_SECRETS: ${{ github.event_name != 'pull_request' && format('sentry_auth_token={0}', secrets.SENTRY_TOKEN) || '' }}
+    with:
+      images: ghcr.io/aam-digital/aam-services
+      context: application/aam-backend-service
+      version: ${{ needs.image-config.outputs.version }}
+      stable: ${{ needs.image-config.outputs.stable == 'true' }}
+      tags: ${{ needs.image-config.outputs.tags }}
+      platforms: ${{ needs.image-config.outputs.platforms }}
+      # arm64 compiles the service on a native runner instead of under QEMU
+      native-runners: true
+      build-args: |
+        APPLICATION_VERSION=${{ needs.image-config.outputs.application-version }}
+        SENTRY_UPLOAD_SOURCES=${{ github.event_name != 'pull_request' }}
+      # PRs from forks cannot push; only check that the image builds
+      push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Extract tag (release)
-        if: ${{ github.event.ref  != '' }}
-        run: echo "TAG=${GITHUB_REF#refs/tags/aam-backend-service/}" >> $GITHUB_ENV
-
-      - name: Extract tag (pull request)
-        if: ${{ github.event.ref  == '' }}
-        run: echo "TAG=pr-${{ github.event.number }}" >> $GITHUB_ENV
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          tags: |
-            type=ref,enable=true,event=pr
-            type=ref,enable=true,pattern={{raw}},priority=600,value=${{ env.TAG }},event=branch
-            # {{version}} rather than {{raw}}: plain versions (e.g. `1.22.14`) like those of
-            # ndb-core, also for a rebuild of an older `v`-prefixed tag.
-            type=semver,enable=true,pattern={{version}},priority=600,value=${{ env.TAG }},event=tag
-            # Moving tag for the latest release, like ndb-core's; `latest` is added
-            # automatically for semver tags.
-            type=raw,value=stable,enable=${{ startsWith(github.ref, 'refs/tags/') }}
-          images: ${{ env.REGISTRY_IMAGE }}
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create manifest list and push
-        working-directory: ./tmp/digests
-        run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+  # After a full release, the edge images (`*-edge.*`) of the finished cycle are no longer needed. The images `edge`,
+  # `main`, `stable` and `latest` point to are kept.
+  prune-edge-images:
+    if: startsWith(github.ref, 'refs/tags/aam-backend-service/')
+    needs: build
+    uses: Aam-Digital/.github/.github/workflows/image-prune.yml@feat/reusable-workflows # TODO switch to @v1
+    permissions:
+      packages: write
+    with:
+      packages: aam-services
+      tag-patterns: "*-edge.*"
+      exclude-tags: edge,main,stable,latest
 
   publish:
     name: Publish aam-backend-service Release
-    runs-on: ubuntu-latest
     # Only main pushes compute and create the next release; the tag push this job creates
-    # re-triggers this workflow (to build the version-tagged image in the build/merge jobs
-    # above) but must not re-run this job, or it wastes the concurrency slot below re-doing
-    # a no-op release computation.
+    # re-triggers this workflow (to build the version-tagged image in the build job above)
+    # but must not re-run this job.
     if: ${{ github.ref == 'refs/heads/main' }} # release
+    # `build` too: PR images are linux/amd64 only, so the main build is the first arm64 build of a change.
+    # A release whose tag-push image build would fail on arm64 must not be created.
     needs:
       - test
-    # Serializes releases across overlapping main-branch pushes (e.g. several PRs merged
-    # within minutes of each other). Without this, two runs can both read the same
-    # last-released tag before either creates the next one and race to create the same
-    # release, so the second's `gh api` call 422s on "already_exists".
-    concurrency:
-      group: aam-backend-service-publish
-      cancel-in-progress: false
+      - build
+    uses: ./.github/workflows/_module-release.yml
     permissions:
-      contents: write # to be able to publish a GitHub release
-    defaults:
-      run:
-        working-directory: application/aam-backend-service
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Install Rust toolchain
-        run: rustup update --no-self-update
-
-      - name: Install conventional_commits_next_version
-        run: cargo install conventional_commits_next_version --version ^7.0.0
-
-      - name: Set current tag and version
-        run: |
-          # Releases are tagged `aam-backend-service/<version>`; the `v*` match finds the
-          # older `aam-backend-service/v<version>` tags until the first release without it.
-          CURRENT_TAG=$(git describe --abbrev=0 --tags --match 'aam-backend-service/[0-9]*' --match 'aam-backend-service/v*')
-          CURRENT_VERSION=${CURRENT_TAG#aam-backend-service/}
-          CURRENT_VERSION=${CURRENT_VERSION#v}
-          echo "CURRENT_TAG=$CURRENT_TAG" >> "$GITHUB_ENV"
-          echo "CURRENT_VERSION=$CURRENT_VERSION" >> "$GITHUB_ENV"
-
-      - name: Set from commit hash
-        run: |
-          FROM_COMMIT_HASH=$(git rev-list -n 1 "$CURRENT_TAG")
-          echo "FROM_COMMIT_HASH=$FROM_COMMIT_HASH" >> "$GITHUB_ENV"
-
-      - name: Calculate next version
-        env:
-          MODULE_PATH: application/aam-backend-service
-        run: |
-          # conventional_commits_next_version (>= 7.1) fails if no commit in the range touches
-          # MODULE_PATH, so keep the current version (= no release) in that case.
-          if [ -z "$(git rev-list --first-parent --max-count=1 "$FROM_COMMIT_HASH"..HEAD -- ":(top)$MODULE_PATH")" ]; then
-            NEXT_VERSION=$CURRENT_VERSION
-          else
-            NEXT_VERSION=$(conventional_commits_next_version \
-              --calculation-mode "Batch" \
-              --from-version "$CURRENT_VERSION" \
-              --monorepo "$MODULE_PATH" \
-              "$FROM_COMMIT_HASH")
-          fi
-          echo "NEXT_VERSION=$NEXT_VERSION" >> "$GITHUB_ENV"
-
-      - name: Create Release
-        if: env.CURRENT_VERSION != env.NEXT_VERSION
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          TAG_NAME=aam-backend-service/$NEXT_VERSION
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/Aam-Digital/aam-services/releases \
-            -f "tag_name=$TAG_NAME" \
-            -f "target_commitish=$GITHUB_SHA" \
-            -f "name=$TAG_NAME" \
-            -F "draft=false" \
-            -F "prerelease=false" \
-            -F "generate_release_notes=true"
+      contents: read
+    with:
+      module: aam-backend-service
+    secrets:
+      token: ${{ secrets.GH_TOKEN }}

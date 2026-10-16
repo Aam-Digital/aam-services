@@ -1,0 +1,22 @@
+name: PR closed
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  # Deletes the `pr-<n>` image of the PR (built by aam-backend-service-build-and-publish.yml), then the untagged
+  # images older than 2 days: those of earlier PR pushes, previous `main` images and native-runner intermediates.
+  # Check name: `cleanup-image / cleanup`
+  cleanup-image:
+    # PRs from forks have no image (and their token cannot delete packages)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    uses: Aam-Digital/.github/.github/workflows/pr-image-cleanup.yml@feat/reusable-workflows # TODO switch to @v1
+    permissions:
+      actions: write
+      packages: write
+    with:
+      packages: aam-services
+      build-workflows: aam-backend-service-build-and-publish.yml
