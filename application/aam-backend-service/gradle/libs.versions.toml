@@ -12,7 +12,7 @@
 kotlin = "2.4.21"
 springBoot = "4.1.1"
 springDependencyManagement = "1.1.7"
-sentryPlugin = "6.23.0"
+sentryPlugin = "6.24.0"
 ktlintPlugin = "14.2.0"
 # ktlint and jacoco are tool versions consumed by the ktlint {} and jacoco {} blocks.
 # Leaving them unset is not an option: Gradle 9.6.1 defaults to JaCoCo 0.8.14 and the
