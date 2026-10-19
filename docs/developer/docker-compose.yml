@@ -41,7 +41,7 @@ services:
   # ***************************************************************
 
   db-couch:
-    image: couchdb:3.5.2
+    image: couchdb:3.5.3
     networks:
       - aam-digital
     volumes:
