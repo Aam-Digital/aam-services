@@ -141,8 +141,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "version=$version stable=$stable tags=$tags platforms=$platforms application-version=$application_version"
 
-  # Check names: `build / build-native (linux/amd64)`, `build / build-native (linux/arm64)` (not on PRs),
-  # `build / merge`
+  # Check names: `build / build (linux/amd64)`, `build / build (linux/arm64)` (not on PRs), `build / merge`
   build:
     needs: image-config
     # On main, a newer push cancels an older edge build, so that `edge` never moves back. Other builds get a group of
@@ -168,8 +167,6 @@ jobs:
       stable: ${{ needs.image-config.outputs.stable == 'true' }}
       tags: ${{ needs.image-config.outputs.tags }}
       platforms: ${{ needs.image-config.outputs.platforms }}
-      # arm64 compiles the service on a native runner instead of under QEMU
-      native-runners: true
       build-args: |
         APPLICATION_VERSION=${{ needs.image-config.outputs.application-version }}
         SENTRY_UPLOAD_SOURCES=${{ github.event_name != 'pull_request' }}
@@ -181,13 +178,13 @@ jobs:
   prune-edge-images:
     if: startsWith(github.ref, 'refs/tags/aam-backend-service/')
     needs: build
-    uses: Aam-Digital/.github/.github/workflows/image-prune.yml@feat/reusable-workflows # TODO switch to @v1
+    uses: Aam-Digital/.github/.github/workflows/image-cleanup.yml@feat/reusable-workflows # TODO switch to @v1
     permissions:
+      actions: write
       packages: write
     with:
       packages: aam-services
-      tag-patterns: "*-edge.*"
-      exclude-tags: edge,main,stable,latest
+      tags: "*-edge.*"
 
   publish:
     name: Publish aam-backend-service Release
