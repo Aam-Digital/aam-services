@@ -72,7 +72,7 @@ jobs:
   # `aam-backend-service/X.Y.Z` release with the patch number bumped, plus the commits since. No tag, no GitHub release.
   # Runs for every trigger (it is cheap), so that the jobs below never depend on a skipped job; only main uses it.
   edge-version:
-    uses: Aam-Digital/.github/.github/workflows/edge-version.yml@feat/reusable-workflows # TODO switch to @v1
+    uses: Aam-Digital/.github/.github/workflows/edge-version.yml@v1
     permissions:
       contents: read
     with:
@@ -149,7 +149,7 @@ jobs:
     concurrency:
       group: ${{ github.ref == 'refs/heads/main' && 'edge-build' || format('build-{0}', github.run_id) }}
       cancel-in-progress: true
-    uses: Aam-Digital/.github/.github/workflows/docker-image.yml@feat/reusable-workflows # TODO switch to @v1
+    uses: Aam-Digital/.github/.github/workflows/docker-image.yml@v1
     permissions:
       contents: read
       packages: write
@@ -178,7 +178,7 @@ jobs:
   prune-edge-images:
     if: startsWith(github.ref, 'refs/tags/aam-backend-service/')
     needs: build
-    uses: Aam-Digital/.github/.github/workflows/image-cleanup.yml@feat/reusable-workflows # TODO switch to @v1
+    uses: Aam-Digital/.github/.github/workflows/image-cleanup.yml@v1
     permissions:
       actions: write
       packages: write
