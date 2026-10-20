@@ -1,0 +1,16 @@
+name: actionlint
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  # Check name: `actionlint / actionlint`
+  actionlint:
+    uses: Aam-Digital/.github/.github/workflows/actionlint.yml@v1
+    permissions:
+      contents: read
