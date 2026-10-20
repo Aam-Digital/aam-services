@@ -197,8 +197,10 @@ An issue that is planned for implementation has two parts with two different rea
   questions), self-contained for the developer or agent implementing it, and edited in place when
   decisions change.
 
-Write both following the templates in `.github/ISSUE_TEMPLATE/` (feature request, bug report,
-technical task); the guidelines for the plan comment are a hidden comment at the end of each
+Write both following the organisation's issue templates (feature request, bug report, technical
+task in `.github/ISSUE_TEMPLATE/` of
+[Aam-Digital/.github](https://github.com/Aam-Digital/.github/tree/main/.github/ISSUE_TEMPLATE));
+the guidelines for the plan comment are a hidden comment at the end of the feature request
 template.
 
 ### Refactoring & Legacy Code
