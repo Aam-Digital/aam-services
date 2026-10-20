@@ -673,6 +673,9 @@ components:
           type: string
         name:
           type: string
+          description: |
+            The title of the ReportConfig. If the title is configured in several languages, this is
+            its "en-US" text, else the first English one (e.g. "en"), else the first text of any language.
           example: report_all_course_members
         schema:
           type: object

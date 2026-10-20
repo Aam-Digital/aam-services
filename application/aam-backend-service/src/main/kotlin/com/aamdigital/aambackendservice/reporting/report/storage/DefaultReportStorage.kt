@@ -121,7 +121,7 @@ class DefaultReportStorage(
 
         return Report(
             id = entity.id,
-            title = entity.title,
+            title = resolveReportTitle(entity.title),
             items =
                 entity.reportDefinition.mapIndexed { index, dto ->
                     asReportItem(entity.id, dto, "reportDefinition[$index]")
