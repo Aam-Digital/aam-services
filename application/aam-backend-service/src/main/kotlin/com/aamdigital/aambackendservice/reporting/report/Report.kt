@@ -4,7 +4,8 @@ package com.aamdigital.aambackendservice.reporting.report
  * Represents a SQL based Report definition
  *
  * @param id unique identifier
- * @param title human-readable title of the Report
+ * @param title human-readable title of the Report; for a ReportConfig title configured in
+ *     several languages, the one text the backend shows (see `resolveReportTitle`)
  * @param items list of ReportItems - can include nested ReportItems
  * @param transformations list of data transformations, applied to passed arguments
  *

@@ -252,6 +252,64 @@ class DefaultReportStorageTest {
         assertThat(report.transformations).containsKey("startDate")
     }
 
+    // --- Multi-lingual title ---
+
+    @Test
+    fun `should resolve a multi-lingual title of a canonical doc without triggering write-back`() {
+        // given
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:translated",
+              "_rev": "2-def",
+              "title": { "de": "Basis-Bericht", "en-US": "Basic Report" },
+              "mode": "sql",
+              "reportDefinition": [ { "query": "SELECT name FROM Child" } ]
+            }
+            """.trimIndent()
+        )
+
+        // when
+        val report = storage.fetchReport(DomainReference("ReportConfig:translated"))
+
+        // then
+        assertThat(report.title).isEqualTo("Basic Report")
+        verify(couchDbClient, never()).putDatabaseDocument(any(), any(), any())
+    }
+
+    @Test
+    fun `should keep all translations of a legacy doc title when writing the migrated doc back`() {
+        // given
+        val title = """{ "de": "Basis-Bericht", "en-US": "Basic Report" }"""
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:legacy",
+              "_rev": "1-abc",
+              "title": $title,
+              "mode": "sql",
+              "neededArgs": [],
+              "aggregationDefinition": "SELECT name FROM foo"
+            }
+            """.trimIndent()
+        )
+        stubWriteBack()
+
+        // when
+        val report = storage.fetchReport(DomainReference("ReportConfig:legacy"))
+
+        // then
+        assertThat(report.title).isEqualTo("Basic Report")
+        val bodyCaptor = argumentCaptor<Any>()
+        verify(couchDbClient).putDatabaseDocument(
+            database = eq("app"),
+            documentId = eq("ReportConfig:legacy"),
+            body = bodyCaptor.capture()
+        )
+        val writtenDoc = objectMapper.valueToTree<ObjectNode>(bodyCaptor.firstValue)
+        assertThat(writtenDoc.get("title")).isEqualTo(objectMapper.readTree(title))
+    }
+
     // --- Canonical doc with extra fields (e.g. previously migrated with legacyOriginal or version field) ---
 
     @Test
@@ -532,6 +590,48 @@ class DefaultReportStorageTest {
 
         // then
         assertThat(reports.map { it.id }).containsExactly("ReportConfig:valid")
+    }
+
+    @Test
+    fun `should return a report with a multi-lingual title among plain ones when fetching all reports`() {
+        // given
+        whenever(
+            couchDbClient.findDatabaseDocumentsByPrefix(
+                database = any(),
+                prefix = any(),
+                selector = any(),
+                limit = anyOrNull(),
+                kClass = eq(ObjectNode::class)
+            )
+        ).thenReturn(
+            listOf(
+                "ReportConfig:plain-1" to "\"Plain\"",
+                "ReportConfig:translated" to """{ "de": "Bericht", "en": "Report" }""",
+                "ReportConfig:plain-2" to "\"Plain\""
+            ).map { (id, title) ->
+                parseDoc(
+                    """
+                    {
+                      "_id": "$id",
+                      "_rev": "2-def",
+                      "title": $title,
+                      "mode": "sql",
+                      "reportDefinition": [ { "query": "SELECT name FROM Child" } ]
+                    }
+                    """.trimIndent()
+                )
+            }
+        )
+
+        // when
+        val reports = storage.fetchAllReports("sql")
+
+        // then
+        assertThat(reports.map { it.id to it.title }).containsExactly(
+            "ReportConfig:plain-1" to "Plain",
+            "ReportConfig:translated" to "Report",
+            "ReportConfig:plain-2" to "Plain"
+        )
     }
 
     @Test

@@ -31,7 +31,7 @@ class ReportConfigLegacyMigration(
 
     fun normalizeLegacyDoc(doc: ObjectNode): Report {
         val id = doc.get("_id").textValue()
-        val title = doc.get("title")?.textValue() ?: ""
+        val title = resolveReportTitle(doc.get("title"))
         val rawSql = doc.get("aggregationDefinition").textValue() ?: ""
         val neededArgs = doc.get("neededArgs")?.map { it.textValue() } ?: emptyList()
 
@@ -106,7 +106,8 @@ class ReportConfigLegacyMigration(
             )
         return mapOf(
             "_id" to report.id,
-            "title" to report.title,
+            // the original node, so a title configured in several languages keeps all of them
+            "title" to (legacyDoc.get("title")?.takeUnless { it.isNull } ?: report.title),
             "mode" to (legacyDoc.get("mode")?.textValue() ?: "sql"),
             "transformations" to report.transformations,
             "reportDefinition" to report.items.map { reportItemToMap(it) },
