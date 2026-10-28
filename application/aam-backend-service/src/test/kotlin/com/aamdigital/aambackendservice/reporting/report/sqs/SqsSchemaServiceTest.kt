@@ -4,6 +4,7 @@ import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.dto.DocSuccess
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.rest.ObjectMapperConfiguration
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -71,7 +72,6 @@ class SqsSchemaServiceTest {
             mapOf(
                 "entity:Child" to
                     AppConfigEntry(
-                        label = "Child",
                         attributes = mapOf("name" to AppConfigAttribute(dataType = "string"))
                     )
             )
@@ -113,7 +113,6 @@ class SqsSchemaServiceTest {
             mapOf(
                 "entity:ConfigurableEnum" to
                     AppConfigEntry(
-                        label = "ConfigurableEnum",
                         attributes = mapOf("values" to AppConfigAttribute(dataType = ""))
                     )
             )
@@ -129,5 +128,78 @@ class SqsSchemaServiceTest {
                 .getValue("ConfigurableEnum")
                 .fields
         assertThat(enumFields.keys).containsExactlyInAnyOrder("_id", "values")
+    }
+
+    @Test
+    fun `should add SiteSettings table with default language for the enum option view`() {
+        // given
+        stubConfig(emptyMap())
+
+        // when
+        service.updateSchema()
+
+        // then
+        val siteSettingsFields =
+            capturePublishedSchema()
+                .sql.tables
+                .getValue("SiteSettings")
+                .fields
+        assertThat(siteSettingsFields.keys).containsExactlyInAnyOrder("_id", "defaultLanguage")
+    }
+
+    @Test
+    fun `should keep fields of a manually configured SiteSettings entity`() {
+        // given
+        stubConfig(
+            mapOf(
+                "entity:SiteSettings" to
+                    AppConfigEntry(
+                        attributes = mapOf("siteName" to AppConfigAttribute(dataType = "string"))
+                    )
+            )
+        )
+
+        // when
+        service.updateSchema()
+
+        // then
+        val siteSettingsFields =
+            capturePublishedSchema()
+                .sql.tables
+                .getValue("SiteSettings")
+                .fields
+        assertThat(siteSettingsFields).containsKeys("siteName", "defaultLanguage", "_created_at")
+    }
+
+    @Test
+    fun `should parse config with translated labels of multi-lingual systems`() {
+        // given
+        val json =
+            """
+            {
+              "_id": "Config:CONFIG_ENTITY",
+              "_rev": "1-abc",
+              "data": {
+                "entity:Action": {
+                  "label": { "en": "Action", "de": "Aktion" },
+                  "attributes": {
+                    "title": { "dataType": "string", "label": { "en": "Title", "de": "Titel" } }
+                  }
+                }
+              }
+            }
+            """.trimIndent()
+
+        // when
+        val config = ObjectMapperConfiguration().objectMapper().readValue(json, AppConfigFile::class.java)
+
+        // then
+        assertThat(
+            config.data
+                ?.getValue("entity:Action")
+                ?.attributes
+                ?.getValue("title")
+                ?.dataType
+        ).isEqualTo("string")
     }
 }

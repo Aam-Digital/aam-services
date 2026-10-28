@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.reporting.report.storage
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.domain.TranslatableText
 import com.aamdigital.aambackendservice.reporting.report.Report
 import com.aamdigital.aambackendservice.reporting.report.ReportItem
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -31,7 +32,7 @@ class ReportConfigLegacyMigration(
 
     fun normalizeLegacyDoc(doc: ObjectNode): Report {
         val id = doc.get("_id").textValue()
-        val title = doc.get("title")?.textValue() ?: ""
+        val title = TranslatableText.resolve(doc.get("title")) ?: ""
         val rawSql = doc.get("aggregationDefinition").textValue() ?: ""
         val neededArgs = doc.get("neededArgs")?.map { it.textValue() } ?: emptyList()
 
@@ -106,7 +107,8 @@ class ReportConfigLegacyMigration(
             )
         return mapOf(
             "_id" to report.id,
-            "title" to report.title,
+            // original value, to keep all translations of a multi-lingual title
+            "title" to (legacyDoc.get("title") ?: report.title),
             "mode" to (legacyDoc.get("mode")?.textValue() ?: "sql"),
             "transformations" to report.transformations,
             "reportDefinition" to report.items.map { reportItemToMap(it) },
