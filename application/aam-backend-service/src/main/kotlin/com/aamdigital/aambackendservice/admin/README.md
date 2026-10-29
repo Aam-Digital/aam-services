@@ -6,8 +6,8 @@ Parts that depend on other systems live in their own sub-package and report thei
 like `apiclient` (`admin.api-client`, only active with Keycloak admin access: `ConditionalOnKeycloakAdminAccess`).
 
 ## API clients (`apiclient`)
-Administrators of the app create, list and delete Keycloak clients for external systems, and change their client
-scopes or regenerate their secret (`ApiClientController`). The backend does this with its own Keycloak admin access (`manage-clients`),
+Administrators of the app manage Keycloak clients for external systems (`ApiClientController`).
+The backend does this with its own Keycloak admin access (`manage-clients`),
 so the users of the app need no Keycloak admin role for it.
 
 - `KeycloakApiClientAdministration` talks to the Keycloak Admin REST API. It is the security boundary:
