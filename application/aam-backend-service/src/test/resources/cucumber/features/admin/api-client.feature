@@ -76,11 +76,27 @@ Feature: Self-service API clients, managed by the administrators of the app
         Then the client receives status code of 404
         When the client calls POST /v1/admin/api-client/aam-backend/secret without body
         Then the client receives status code of 404
+        When the client calls PUT /v1/admin/api-client/app/scope with body UpdateApiClientScopesRequest_read
+        Then the client receives status code of 404
 
     Scenario: An administrator who manages accounts can give the third_party_authentication client scope
         Given signed in as user account-admin with password account-admin-password through client app in realm dummy-realm
         When the client calls POST /v1/admin/api-client with body CreateApiClientRequest_sso
         Then the client receives status code of 201
         Given the client stores the clientId from latest response
+        When the client calls DELETE /v1/admin/api-client/ with stored id
+        Then the client receives status code of 204
+
+    Scenario: An administrator who manages accounts changes the client scopes of an API client
+        Given signed in as user account-admin with password account-admin-password through client app in realm dummy-realm
+        When the client calls POST /v1/admin/api-client with body CreateApiClientRequest_reporting
+        Then the client receives status code of 201
+        Given the client stores the clientId from latest response
+        When the client calls PUT /v1/admin/api-client/ with stored id and suffix /scope and body UpdateApiClientScopesRequest_read
+        Then the client receives status code of 200
+        Then the client receives a non-empty value for property clientId
+        When the client calls PUT /v1/admin/api-client/ with stored id and suffix /scope and body UpdateApiClientScopesRequest_unknown
+        Then the client receives status code of 400
+        Then the client receives value UNKNOWN_SCOPE for property errorCode
         When the client calls DELETE /v1/admin/api-client/ with stored id
         Then the client receives status code of 204
