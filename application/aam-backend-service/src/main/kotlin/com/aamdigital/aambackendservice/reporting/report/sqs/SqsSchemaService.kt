@@ -15,8 +15,12 @@ data class AppConfigAttribute(
     val dataType: String
 )
 
+/**
+ * Only the parts of an `entity:` config needed for the SQS schema.
+ * Other properties (e.g. `label`, which can be a plain string or an object of translations
+ * in multi-lingual systems) are deliberately not mapped, so their format cannot break parsing.
+ */
 data class AppConfigEntry(
-    val label: String?,
     val attributes: Map<String, AppConfigAttribute>?
 )
 
@@ -159,6 +163,7 @@ class SqsSchemaService(
                 // hard-wired last, so it wins over a manually configured entity:ConfigurableEnum
                 // (the old workaround that required adding this entity to the config document)
                 .plus(Pair(ConfigurableEnumSchema.TABLE, ConfigurableEnumSchema.FIELDS))
+                .let { it.plus(siteSettingsTable(it[ConfigurableEnumSchema.SITE_SETTINGS_TABLE])) }
 
         return SqsSchema(
             sql =
@@ -175,6 +180,16 @@ class SqsSchemaService(
                 )
         )
     }
+
+    /**
+     * SiteSettings fields required by the ConfigurableEnumOption view,
+     * keeping any other fields of a manually configured entity:SiteSettings.
+     */
+    private fun siteSettingsTable(configured: TableFields?): Pair<String, TableFields> =
+        Pair(
+            ConfigurableEnumSchema.SITE_SETTINGS_TABLE,
+            TableFields(configured?.fields.orEmpty().plus(ConfigurableEnumSchema.SITE_SETTINGS_FIELDS))
+        )
 
     private fun mapConfigDataTypeToSqsDataType(dataType: String): String =
         when (dataType) {
