@@ -53,5 +53,17 @@ interface ApiClientAdministration {
      */
     fun regenerateSecret(clientId: String): ApiClientCredentials
 
+    /**
+     * Replaces the client scopes of the client, i.e. the access it has. Access tokens issued before keep their
+     * client scopes until they expire.
+     *
+     * @param scopes client scopes to give the API client; only those offered to API clients
+     * @return the API client with its new client scopes
+     */
+    fun updateScopes(
+        clientId: String,
+        scopes: Set<String>
+    ): ApiClient
+
     fun deleteApiClient(clientId: String)
 }

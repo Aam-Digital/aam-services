@@ -28,8 +28,10 @@ An API client is a Keycloak client of the realm that
   never by the realm roles that Keycloak gives its service account (e.g. the realm's default roles).
 
 Its secret is only shown when the client is created or its secret is regenerated.
+Its client scopes can be changed later; access tokens issued before keep their previous client scopes until they
+expire.
 
-**Audit trail:** creating an API client, regenerating its secret and deleting it (and every failed attempt) is logged
+**Audit trail:** creating an API client, changing its client scopes, regenerating its secret and deleting it (and every failed attempt) is logged
 at `INFO` with the user who did it (email and Keycloak user id), as lines starting with `[audit]`.
 Third-party-authentication also logs every session it creates with the API client and the user it is for: an API
 client with the `third_party_authentication` scope can sign in as any user of the realm, so give it only to systems
