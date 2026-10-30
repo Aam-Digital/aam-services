@@ -1,11 +1,15 @@
 package com.aamdigital.aambackendservice.reporting.report.sqs
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
 import com.aamdigital.aambackendservice.common.couchdb.dto.DocSuccess
 import com.aamdigital.aambackendservice.common.domain.TestErrorCode
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.rest.ObjectMapperConfiguration
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -15,8 +19,13 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.reset
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 private const val SCHEMA_DOC_ID = "_design/sqlite:config"
 
@@ -34,14 +43,7 @@ class SqsSchemaServiceTest {
     }
 
     private fun stubConfig(data: Map<String, AppConfigEntry>) {
-        whenever(
-            couchDbClient.getDatabaseDocument(
-                database = eq("app"),
-                documentId = eq("Config:CONFIG_ENTITY"),
-                queryParams = any(),
-                kClass = eq(AppConfigFile::class)
-            )
-        ).thenReturn(AppConfigFile(id = "Config:CONFIG_ENTITY", rev = "1-abc", data = data))
+        stubConfigDocument(data)
         whenever(
             couchDbClient.getDatabaseDocument(
                 database = eq("app"),
@@ -53,6 +55,35 @@ class SqsSchemaServiceTest {
         whenever(
             couchDbClient.putDatabaseDocument(any(), any(), any())
         ).thenReturn(DocSuccess(ok = true, id = SCHEMA_DOC_ID, rev = "1-new"))
+    }
+
+    private fun stubConfigDocument(data: Map<String, AppConfigEntry>) {
+        whenever(
+            couchDbClient.getDatabaseDocument(
+                database = eq("app"),
+                documentId = eq("Config:CONFIG_ENTITY"),
+                queryParams = any(),
+                kClass = eq(AppConfigFile::class)
+            )
+        ).thenReturn(AppConfigFile(id = "Config:CONFIG_ENTITY", rev = "1-abc", data = data))
+    }
+
+    /** Backs the schema document by [stored], so reads see what was written before. */
+    private fun stubSchemaDocument(
+        stored: AtomicReference<SqsSchema?>,
+        onRead: () -> Unit = {}
+    ) {
+        whenever(
+            couchDbClient.getDatabaseDocument(
+                database = eq("app"),
+                documentId = eq(SCHEMA_DOC_ID),
+                queryParams = any(),
+                kClass = eq(SqsSchema::class)
+            )
+        ).thenAnswer {
+            onRead()
+            stored.get() ?: throw NotFoundException(message = "not found", code = TestErrorCode.TEST_EXCEPTION)
+        }
     }
 
     private fun capturePublishedSchema(): SqsSchema {
@@ -201,5 +232,73 @@ class SqsSchemaServiceTest {
                 ?.getValue("title")
                 ?.dataType
         ).isEqualTo("string")
+    }
+
+    @Test
+    fun `should write a changed schema only once when calculations update it concurrently`() {
+        // given: both calls read the schema before either writes it, unless the reads are serialised
+        stubConfigDocument(emptyMap())
+        val stored = AtomicReference<SqsSchema?>()
+        val bothRead = CyclicBarrier(2)
+        stubSchemaDocument(stored) {
+            runCatching { bothRead.await(500, TimeUnit.MILLISECONDS) }
+        }
+        whenever(couchDbClient.putDatabaseDocument(any(), any(), any())).thenAnswer {
+            stored.set(it.getArgument(2))
+            DocSuccess(ok = true, id = SCHEMA_DOC_ID, rev = "1-new")
+        }
+        val executor = Executors.newFixedThreadPool(2)
+
+        // when
+        try {
+            val calls = List(2) { executor.submit { service.updateSchema() } }
+            calls.forEach { it.get(5, TimeUnit.SECONDS) }
+        } finally {
+            executor.shutdownNow()
+        }
+
+        // then
+        verify(couchDbClient, times(1)).putDatabaseDocument(any(), any(), any())
+    }
+
+    @Test
+    fun `should accept a conflict when the same schema was written concurrently`() {
+        // given
+        stubConfigDocument(emptyMap())
+        val stored = AtomicReference<SqsSchema?>()
+        stubSchemaDocument(stored)
+        whenever(couchDbClient.putDatabaseDocument(any(), any(), any())).thenAnswer {
+            stored.set(it.getArgument(2))
+            throw ExternalSystemException(message = "conflict", code = DefaultCouchDbClientErrorCode.CONFLICT)
+        }
+
+        // when / then
+        assertThatCode { service.updateSchema() }.doesNotThrowAnyException()
+    }
+
+    @Test
+    fun `should rethrow a conflict when a different schema was written concurrently`() {
+        // given
+        stubConfigDocument(emptyMap())
+        val stored = AtomicReference<SqsSchema?>()
+        stubSchemaDocument(stored)
+        whenever(couchDbClient.putDatabaseDocument(any(), any(), any())).thenAnswer {
+            stored.set(
+                SqsSchema(
+                    sql =
+                        SqlObject(
+                            tables = emptyMap(),
+                            indexes = null,
+                            options = SqlOptions(TableName(field = "_id", separator = ":"))
+                        )
+                )
+            )
+            throw ExternalSystemException(message = "conflict", code = DefaultCouchDbClientErrorCode.CONFLICT)
+        }
+
+        // when / then
+        assertThatThrownBy { service.updateSchema() }
+            .isInstanceOf(ExternalSystemException::class.java)
+            .hasFieldOrPropertyWithValue("code", DefaultCouchDbClientErrorCode.CONFLICT)
     }
 }

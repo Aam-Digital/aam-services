@@ -1,10 +1,12 @@
 package com.aamdigital.aambackendservice.reporting.report.sqs
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
+import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
 import com.aamdigital.aambackendservice.common.domain.EntityAttribute
 import com.aamdigital.aambackendservice.common.domain.EntityAttributeType
 import com.aamdigital.aambackendservice.common.domain.EntityConfig
 import com.aamdigital.aambackendservice.common.domain.EntityType
+import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.slf4j.LoggerFactory
@@ -85,6 +87,14 @@ class SqsSchemaService(
 
     fun getSchemaPath(): String = "/$TARGET_DATABASE/$SCHEMA_PATH"
 
+    /**
+     * Writes the SQS schema derived from the current entity config, unless it is already up to date.
+     *
+     * Report calculations run concurrently and each calls this before its queries. Synchronized, so
+     * that after a config change only the first of them writes the schema and the others find it up
+     * to date, instead of overwriting the revision the first one just wrote (a 409 conflict).
+     */
+    @Synchronized
     fun updateSchema() {
         val config =
             couchDbClient.getDatabaseDocument(
@@ -109,12 +119,7 @@ class SqsSchemaService(
 
         val currentSqsSchema =
             try {
-                couchDbClient.getDatabaseDocument(
-                    database = TARGET_DATABASE,
-                    documentId = SCHEMA_PATH,
-                    queryParams = LinkedMultiValueMap(),
-                    kClass = SqsSchema::class
-                )
+                fetchCurrentSchema()
             } catch (ex: Exception) {
                 logger.warn("[SqsSchemaService] No current SQS Schema found. Creating it.", ex)
                 null
@@ -126,12 +131,30 @@ class SqsSchemaService(
             return
         }
 
-        couchDbClient.putDatabaseDocument(
+        try {
+            couchDbClient.putDatabaseDocument(
+                database = TARGET_DATABASE,
+                documentId = SCHEMA_PATH,
+                body = newSqsSchema
+            )
+        } catch (ex: ExternalSystemException) {
+            // another writer (e.g. a second instance of this service) got there first;
+            // fine as long as it wrote the same schema
+            if (ex.code != DefaultCouchDbClientErrorCode.CONFLICT ||
+                fetchCurrentSchema().configVersion != newSqsSchema.configVersion
+            ) {
+                throw ex
+            }
+        }
+    }
+
+    private fun fetchCurrentSchema(): SqsSchema =
+        couchDbClient.getDatabaseDocument(
             database = TARGET_DATABASE,
             documentId = SCHEMA_PATH,
-            body = newSqsSchema
+            queryParams = LinkedMultiValueMap(),
+            kClass = SqsSchema::class
         )
-    }
 
     private fun mapToSqsSchema(entityConfig: EntityConfig): SqsSchema {
         val tables =
