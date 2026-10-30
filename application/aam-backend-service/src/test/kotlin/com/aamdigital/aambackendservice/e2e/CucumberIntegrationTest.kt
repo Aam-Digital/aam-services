@@ -244,6 +244,29 @@ class CucumberIntegrationTest(
         exchange("$prefix$storedId$suffix", HttpMethod.POST)
     }
 
+    @When("the client calls PUT {} with stored id and suffix {} and body {}")
+    @Throws(Throwable::class)
+    fun `the client issues PUT endpoint with stored id, suffix and body`(
+        prefix: String,
+        suffix: String,
+        body: String
+    ) {
+        exchange(
+            "$prefix$storedId$suffix",
+            HttpMethod.PUT,
+            File("src/test/resources/database/documents/$body.json").readText()
+        )
+    }
+
+    @When("the client calls PUT {} with body {}")
+    @Throws(Throwable::class)
+    fun `the client issues PUT endpoint with body`(
+        endpoint: String,
+        body: String
+    ) {
+        exchange(endpoint, HttpMethod.PUT, File("src/test/resources/database/documents/$body.json").readText())
+    }
+
     @When("the client calls DELETE {} with stored id")
     @Throws(Throwable::class)
     fun `the client issues DELETE endpoint with stored id`(endpoint: String) {
