@@ -11,6 +11,7 @@ import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
 import com.aamdigital.aambackendservice.common.keycloak.di.KeycloakAdminConfiguration
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
+import com.aamdigital.aambackendservice.common.placeholder.di.PlaceholderConfiguration
 import com.aamdigital.aambackendservice.notification.NotificationEmailFeatureInfoEndpoint
 import com.aamdigital.aambackendservice.notification.NotificationEmailStartupDiagnostics
 import com.aamdigital.aambackendservice.notification.NotificationFeatureInfoEndpoint
@@ -84,6 +85,7 @@ class NotificationEmailHandlerWiringTest {
                 PropertiesScanConfiguration::class.java,
                 MailConfiguration::class.java,
                 NotificationEmailCacheConfiguration::class.java,
+                PlaceholderConfiguration::class.java,
                 *configurations
             ).withBean(CouchDbClient::class.java, { mock<CouchDbClient>() })
             .withBean(ObjectMapper::class.java, { ObjectMapper() })
