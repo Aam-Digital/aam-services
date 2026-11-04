@@ -52,7 +52,7 @@ class PlaceholderResolver(
     ): JsonNode =
         when {
             isPlaceholder(node) -> {
-                values[node.textValue()]?.deepCopy() ?: throw UnresolvedPlaceholderException(node.textValue())
+                values[node.textValue()]?.deepCopy<JsonNode>() ?: throw UnresolvedPlaceholderException(node.textValue())
             }
 
             node.isObject -> {

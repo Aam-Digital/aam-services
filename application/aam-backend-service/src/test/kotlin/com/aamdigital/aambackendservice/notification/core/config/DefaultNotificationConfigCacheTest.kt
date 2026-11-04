@@ -436,8 +436,8 @@ class DefaultNotificationConfigCacheTest {
             )
 
         // when
-        val withPlaceholder = cache.findAll().single().rules.single().externalIdentifier
-        val resolvedByFrontend = otherCache.findAll().single().rules.single().externalIdentifier
+        val withPlaceholder = cache.singleRule().externalIdentifier
+        val resolvedByFrontend = otherCache.singleRule().externalIdentifier
 
         // then
         assertThat(withPlaceholder).isEqualTo(resolvedByFrontend)
@@ -532,21 +532,27 @@ class DefaultNotificationConfigCacheTest {
         val engine = DocumentConditionEngine()
         val bobsDocument = mapOf("assignedTo" to "User:bob")
 
-        val before = cacheWithTtl.findAll().single().rules.single()
+        val before = cacheWithTtl.singleRule()
         assertThat(engine.matches(before.conditions, bobsDocument)).isFalse
 
         // when the account is linked to a different entity, and the ttl passes
         placeholderValueProvider.values = mapOf(Placeholders.CURRENT_USER to "User:bob")
         clock.now = clock.now.plus(Duration.ofHours(23))
-        val withinTtl = cacheWithTtl.findAll().single().rules.single()
+        val withinTtl = cacheWithTtl.singleRule()
         clock.now = clock.now.plus(Duration.ofHours(1))
-        val afterTtl = cacheWithTtl.findAll().single().rules.single()
+        val afterTtl = cacheWithTtl.singleRule()
 
         // then
         assertThat(engine.matches(withinTtl.conditions, bobsDocument)).isFalse
         assertThat(engine.matches(afterTtl.conditions, bobsDocument)).isTrue
         verify(couchDbClient, times(2)).getDatabaseDocumentsByPrefix(any(), any(), eq(ObjectNode::class))
     }
+
+    private fun DefaultNotificationConfigCache.singleRule(): NotificationRuleCacheEntry =
+        findAll()
+            .single()
+            .rules
+            .single()
 
     private fun givenConfigDocs(vararg docsPerLoad: ObjectNode) {
         val loads = docsPerLoad.map { listOf(it) }

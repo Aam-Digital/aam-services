@@ -15,12 +15,20 @@ class PlaceholderConfigurationTest {
         ApplicationContextRunner()
             .withUserConfiguration(PlaceholderConfiguration::class.java)
 
+    private val keycloakConfig =
+        AamKeycloakConfig(
+            serverUrl = "https://keycloak.example.org",
+            realm = "realm",
+            clientId = "client",
+            clientSecret = "secret"
+        )
+
     @Test
     fun `should look up placeholder values in Keycloak when admin access is configured`() {
         runner
             .withPropertyValues("keycloak.server-url=https://keycloak.example.org")
             .withBean(Keycloak::class.java, { mock<Keycloak>() })
-            .withBean(AamKeycloakConfig::class.java, { AamKeycloakConfig("https://keycloak.example.org", "r", "c", "s") })
+            .withBean(AamKeycloakConfig::class.java, { keycloakConfig })
             .run { context ->
                 assertThat(context).hasNotFailed()
                 assertThat(context)
