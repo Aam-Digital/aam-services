@@ -10,16 +10,16 @@
 [versions]
 # --- build tooling ---
 kotlin = "2.4.21"
-springBoot = "4.1.1"
+springBoot = "4.1.2"
 springDependencyManagement = "1.1.7"
-sentryPlugin = "6.24.0"
+sentryPlugin = "6.25.0"
 ktlintPlugin = "14.2.0"
 # ktlint and jacoco are tool versions consumed by the ktlint {} and jacoco {} blocks.
 # Leaving them unset is not an option: Gradle 9.6.1 defaults to JaCoCo 0.8.14 and the
 # ktlint plugin 14.2.0 defaults to ktlint 1.5.0, both older than what we run.
 # Qlty pins the same ktlint version in /.qlty/qlty.toml; change both together.
 ktlint = "1.8.0"
-jacoco = "0.8.15"
+jacoco = "0.8.16"
 
 # --- runtime ---
 # keycloak-admin-client follows its own release train, which stops at 26.0.x and does not
@@ -36,7 +36,7 @@ cucumber = "8.0.4"
 mockitoKotlin = "6.4.0"
 junitJsonParams = "5.10.2-r0"
 parsson = "1.1.9"
-okhttp = "5.5.0"
+okhttp = "5.5.1"
 # Supplies its own default Keycloak image, which is what the e2e suite runs against.
 testcontainersKeycloak = "4.4.0"
 swaggerRequestValidator = "3.0.0"
