@@ -2,8 +2,8 @@ package com.aamdigital.aambackendservice.notification.di
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
-import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.common.outbox.Outbox
 import com.aamdigital.aambackendservice.common.outbox.OutboxRetryPolicy
