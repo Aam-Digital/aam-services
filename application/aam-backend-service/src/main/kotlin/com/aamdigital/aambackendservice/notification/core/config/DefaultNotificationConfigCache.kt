@@ -34,7 +34,12 @@ import java.util.UUID
  * [com.aamdigital.aambackendservice.common.placeholder.core.Placeholders]) are resolved once, when
  * the config is loaded into the cache, with values from [placeholderValueProvider]. Those values
  * (e.g. the entity linked to a user account) can change without the config document changing, so the
- * whole cache is loaded again once it is older than [ttl].
+ * whole cache is loaded again once it is older than [ttl]. If that reload fails (e.g. Keycloak is
+ * unreachable), the previous copy is used and the reload is tried again after
+ * [RELOAD_RETRY_INTERVAL], so that an outage does not stop all notifications.
+ *
+ * Disabled rules are left out: they never trigger a notification, so their placeholders are not
+ * looked up either.
  *
  * @param ttl how long the loaded configs are used before they are loaded again; `null` keeps them
  *     until the service restarts (they are still refreshed on every config document change)
@@ -50,6 +55,9 @@ class DefaultNotificationConfigCache(
     companion object {
         private const val DATABASE = "app"
         private const val DOCUMENT_PREFIX = "NotificationConfig"
+
+        /** How long the previous copy is used after a failed reload before trying again. */
+        val RELOAD_RETRY_INTERVAL: Duration = Duration.ofMinutes(5)
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -57,7 +65,7 @@ class DefaultNotificationConfigCache(
     private val placeholderResolver = PlaceholderResolver(objectMapper)
 
     /** Cache entries by user identifier. */
-    private val configs = LazySnapshot(ttl, clock) { loadConfigs() }
+    private val configs = LazySnapshot(ttl, clock, RELOAD_RETRY_INTERVAL) { loadConfigs() }
 
     override fun findAll(): List<NotificationConfigCacheEntry> = configs.get().values.toList()
 
@@ -169,9 +177,11 @@ class DefaultNotificationConfigCache(
         notificationConfig: NotificationConfigDto,
         userIdentifier: String
     ): List<NotificationRuleCacheEntry> {
-        val placeholderValues = lookupPlaceholderValues(notificationConfig, userIdentifier)
+        // keep the index of each rule in the document, as the rule identifier is derived from it
+        val enabledRules = notificationConfig.notificationRules.withIndex().filter { (_, rule) -> rule.enabled }
+        val placeholderValues = lookupPlaceholderValues(enabledRules.map { it.value }, userIdentifier)
 
-        return notificationConfig.notificationRules.withIndex().flatMap { (ruleIndex, rule) ->
+        return enabledRules.flatMap { (ruleIndex, rule) ->
             val conditions =
                 parseConditions(notificationConfig.id, ruleIndex, rule.conditions, placeholderValues)
                     ?: return@flatMap emptyList()
@@ -200,13 +210,13 @@ class DefaultNotificationConfigCache(
         }
     }
 
-    /** Looks up the values of all placeholders the config's rules use, at most once per config. */
+    /** Looks up the values of all placeholders the [rules] use, at most once per config. */
     private fun lookupPlaceholderValues(
-        notificationConfig: NotificationConfigDto,
+        rules: List<NotificationRuleDto>,
         userIdentifier: String
     ): Map<String, Any> {
         val usedPlaceholders =
-            notificationConfig.notificationRules
+            rules
                 .flatMap { rule -> placeholderResolver.findPlaceholders(rule.conditions) }
                 .toSet()
         if (usedPlaceholders.isEmpty()) {

@@ -63,8 +63,10 @@ rule owner's account, read from the Keycloak user attribute `exact_username` by
   is loaded again once a day (`notification.config-cache.ttl-millis`, default `86400000`).
 - A rule using a placeholder that has no value for its user (no linked entity, or Keycloak admin access
   not configured) is skipped and logged as a warning, without affecting the user's other rules.
-- If Keycloak cannot be reached, loading the cache fails and is retried with the next change, rather
-  than silently dropping the rules; refreshing a single config keeps its previously cached version.
+- If Keycloak cannot be reached, the first load of the cache fails and is retried with the next change,
+  rather than silently dropping the rules. A later (daily) reload that fails keeps using the previous
+  copy and is tried again after 5 minutes, and refreshing a single config keeps its cached version.
+- Disabled rules are not cached, so their placeholders are not looked up.
 
 ## Delivery guarantees
 

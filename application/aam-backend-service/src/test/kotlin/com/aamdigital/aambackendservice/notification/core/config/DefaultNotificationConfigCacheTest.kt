@@ -548,6 +548,55 @@ class DefaultNotificationConfigCacheTest {
         verify(couchDbClient, times(2)).getDatabaseDocumentsByPrefix(any(), any(), eq(ObjectNode::class))
     }
 
+    @Test
+    fun `should keep using the previous configs when a reload after the ttl fails`() {
+        // given
+        val clock = MutableClock(Instant.parse("2026-01-01T00:00:00Z"))
+        val cacheWithTtl =
+            DefaultNotificationConfigCache(
+                couchDbClient = couchDbClient,
+                objectMapper = objectMapper,
+                placeholderValueProvider = placeholderValueProvider,
+                ttl = Duration.ofDays(1),
+                clock = clock
+            )
+        placeholderValueProvider.values = mapOf(Placeholders.CURRENT_USER to "User:alice")
+        givenConfigDocs(configDocWithConditions("""{"assignedTo": "${'$'}current_user"}"""))
+        val loaded = cacheWithTtl.findAll()
+
+        // when the cache expires while Keycloak is unreachable
+        placeholderValueProvider.failure = PlaceholderValueLookupException("keycloak unreachable")
+        clock.now = clock.now.plus(Duration.ofDays(1))
+
+        // then notifications keep working with the previous configs
+        assertThat(cacheWithTtl.findAll()).isEqualTo(loaded)
+
+        // and the reload is tried again later
+        placeholderValueProvider.failure = null
+        placeholderValueProvider.values = mapOf(Placeholders.CURRENT_USER to "User:bob")
+        clock.now = clock.now.plus(DefaultNotificationConfigCache.RELOAD_RETRY_INTERVAL)
+        val reloaded = cacheWithTtl.singleRule()
+        assertThat(DocumentConditionEngine().matches(reloaded.conditions, mapOf("assignedTo" to "User:bob"))).isTrue
+    }
+
+    @Test
+    fun `should leave out disabled rules without looking up their placeholders`() {
+        // given
+        givenConfigDocs(
+            configDocWithRules(
+                rule("Disabled rule about me", """{"assignedTo": "${'$'}current_user"}""", enabled = false),
+                rule("Enabled rule", """{"name": "Bert"}""")
+            )
+        )
+
+        // when
+        val entries = cache.findAll()
+
+        // then
+        assertThat(entries.single().rules.map { it.label }).containsExactly("Enabled rule")
+        assertThat(placeholderValueProvider.lookups).isEmpty()
+    }
+
     private fun DefaultNotificationConfigCache.singleRule(): NotificationRuleCacheEntry =
         findAll()
             .single()
@@ -567,7 +616,8 @@ class DefaultNotificationConfigCacheTest {
 
     private fun rule(
         label: String,
-        conditions: String
+        conditions: String,
+        enabled: Boolean = true
     ): String =
         """
         {
@@ -576,7 +626,7 @@ class DefaultNotificationConfigCacheTest {
             "entityType": "Todo",
             "changeType": ["created"],
             "conditions": $conditions,
-            "enabled": true
+            "enabled": $enabled
         }
         """.trimIndent()
 
