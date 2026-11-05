@@ -15,8 +15,6 @@ class PlaceholderConfiguration {
      * which configuration classes are processed (as `@ConditionalOnBean` would).
      */
     @Bean
-    fun placeholderValueProvider(
-        userProfileProvider: ObjectProvider<UserProfileProvider>
-    ): PlaceholderValueProvider =
+    fun placeholderValueProvider(userProfileProvider: ObjectProvider<UserProfileProvider>): PlaceholderValueProvider =
         UserPlaceholderValueProvider(userProfileProvider.getIfAvailable())
 }
