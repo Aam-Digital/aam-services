@@ -395,9 +395,12 @@ Only the proxied hostname can reach the backend services and Keycloak.
 
 Refer to the Module READMEs at [docs/modules](/docs/modules) to set up specific modules like Notification:
 
-Note that `FEATURES_NOTIFICATIONAPI_ENABLED=true` in `.env.example` only enables the module — it
-stays non-functional until you supply real Firebase credentials for
-`NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64`, which ships as a placeholder. The
+Note that `FEATURES_NOTIFICATIONAPI_ENABLED=true` in `.env.example` only enables the module — push
+notifications stay off until you supply real Firebase credentials for
+`NOTIFICATIONFIREBASECONFIGURATION_CREDENTIALFILEBASE64` (which ships as a placeholder) **and** set
+`FEATURES_NOTIFICATIONAPI_MODE=firebase` (commented out in `.env.example`). Set both together: without
+the mode, devices still register but no push is sent and `POST /v1/notification/message/device-test`
+returns 404; with the mode but the placeholder credential, the service fails to start. The
 service reports on startup whether notification email is on and, if not, why (email needs an SMTP
 host, a sender address and the Keycloak access, see [notification.md](/docs/modules/notification.md)):
 
