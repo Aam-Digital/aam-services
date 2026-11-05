@@ -1,18 +1,36 @@
 package com.aamdigital.aambackendservice.common.placeholder.core
 
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfile
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileLookupException
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 class PlaceholderResolverTest {
+    /** User profiles as Keycloak would have them, recording which lookups were made. */
+    private class FakeUserProfileProvider(
+        private val linkedEntityId: String? = "User:alice",
+        private val failure: RuntimeException? = null
+    ) : UserProfileProvider {
+        val lookups = mutableListOf<String>()
+
+        override fun getUserProfile(userIdentifier: String): UserProfile {
+            lookups.add(userIdentifier)
+            failure?.let { throw it }
+            return UserProfile(userIdentifier, email = null, linkedEntityId = linkedEntityId)
+        }
+    }
+
     private val objectMapper = jacksonObjectMapper()
-    private val resolver = PlaceholderResolver(objectMapper)
+    private val userProfiles = FakeUserProfileProvider()
+    private val resolver = PlaceholderResolver(userProfiles, objectMapper)
 
     private fun json(value: String) = objectMapper.readTree(value)
 
     @Test
-    fun `should replace placeholder values in nested objects and arrays`() {
+    fun `should replace the current user placeholder in nested objects and arrays`() {
         // given
         val node =
             json(
@@ -27,7 +45,7 @@ class PlaceholderResolverTest {
             )
 
         // when
-        val resolved = resolver.resolve(node, mapOf(Placeholders.CURRENT_USER to "User:alice"))
+        val resolved = resolver.resolve(node, "user-1")
 
         // then
         assertThat(resolved).isEqualTo(
@@ -42,6 +60,7 @@ class PlaceholderResolverTest {
                 """.trimIndent()
             )
         )
+        assertThat(userProfiles.lookups).containsExactly("user-1")
     }
 
     @Test
@@ -60,7 +79,7 @@ class PlaceholderResolverTest {
             )
 
         // when
-        val resolved = resolver.resolve(node, mapOf(Placeholders.CURRENT_USER to "User:alice"))
+        val resolved = resolver.resolve(node, "user-1")
 
         // then
         assertThat(resolved).isEqualTo(node)
@@ -72,41 +91,52 @@ class PlaceholderResolverTest {
         val node = json("""{"assignedTo": "${'$'}current_user"}""")
 
         // when
-        resolver.resolve(node, mapOf(Placeholders.CURRENT_USER to "User:alice"))
+        resolver.resolve(node, "user-1")
 
         // then
         assertThat(node).isEqualTo(json("""{"assignedTo": "${'$'}current_user"}"""))
     }
 
     @Test
-    fun `should fail instead of using null for a placeholder without a value`() {
+    fun `should not look up the user for a tree without placeholders`() {
         // given
-        val node = json("""{"assignedTo": "${'$'}current_user"}""")
+        val node = json("""{"name": {"${'$'}eq": "Bert"}}""")
+
+        // when
+        val resolved = resolver.resolve(node, "user-1")
+
+        // then
+        assertThat(resolved).isEqualTo(node)
+        assertThat(userProfiles.lookups).isEmpty()
+    }
+
+    @Test
+    fun `should fail instead of using null when no entity is linked to the account`() {
+        // given
+        val resolverWithoutEntity = PlaceholderResolver(FakeUserProfileProvider(linkedEntityId = null))
 
         // when / then
-        assertThatThrownBy { resolver.resolve(node, emptyMap()) }
+        assertThatThrownBy { resolverWithoutEntity.resolve(json("""{"a": "${'$'}current_user"}"""), "user-1") }
             .isInstanceOfSatisfying(UnresolvedPlaceholderException::class.java) { ex ->
                 assertThat(ex.placeholder).isEqualTo(Placeholders.CURRENT_USER)
             }
     }
 
     @Test
-    fun `should not need values for a tree without placeholders`() {
-        // given
-        val node = json("""{"name": {"${'$'}eq": "Bert"}}""")
-
-        // when
-        val resolved = resolver.resolve(node, emptyMap())
-
-        // then
-        assertThat(resolved).isEqualTo(node)
+    fun `should have no values without a user profile provider`() {
+        assertThatThrownBy { PlaceholderResolver(null).resolve(json("""{"a": "${'$'}current_user"}"""), "user-1") }
+            .isInstanceOf(UnresolvedPlaceholderException::class.java)
     }
 
     @Test
-    fun `should find the placeholders used in a tree`() {
-        assertThat(resolver.findPlaceholders(json("""{"a": [{"b": "${'$'}current_user"}], "c": "x"}""")))
-            .containsExactly(Placeholders.CURRENT_USER)
-        assertThat(resolver.findPlaceholders(json("""{"${'$'}current_user": "x"}"""))).isEmpty()
-        assertThat(resolver.findPlaceholders(null)).isEmpty()
+    fun `should fail when the profile cannot be looked up for now, so the lookup can be retried`() {
+        // given
+        val failingResolver =
+            PlaceholderResolver(FakeUserProfileProvider(failure = UserProfileLookupException("keycloak unreachable")))
+
+        // when / then
+        assertThatThrownBy { failingResolver.resolve(json("""{"a": "${'$'}current_user"}"""), "user-1") }
+            .isInstanceOf(PlaceholderValueLookupException::class.java)
+            .hasCauseInstanceOf(UserProfileLookupException::class.java)
     }
 }

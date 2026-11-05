@@ -4,9 +4,12 @@ import com.aamdigital.aambackendservice.common.keycloak.core.UserProfile
 import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
 import com.aamdigital.aambackendservice.common.keycloak.di.KeycloakAdminConfiguration
-import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueProvider
+import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolver
 import com.aamdigital.aambackendservice.common.placeholder.core.Placeholders
+import com.aamdigital.aambackendservice.common.placeholder.core.UnresolvedPlaceholderException
+import com.fasterxml.jackson.databind.node.TextNode
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 
@@ -29,8 +32,8 @@ class PlaceholderConfigurationTest {
                 UserProfile(userIdentifier, email = null, linkedEntityId = "User:alice")
         }
 
-    private fun PlaceholderValueProvider.currentUserOf(userIdentifier: String) =
-        getValues(userIdentifier, setOf(Placeholders.CURRENT_USER))
+    private fun PlaceholderResolver.currentUserOf(userIdentifier: String) =
+        resolve(TextNode(Placeholders.CURRENT_USER), userIdentifier)
 
     @Test
     fun `should resolve placeholders from the user profile when there is a user profile provider`() {
@@ -38,8 +41,8 @@ class PlaceholderConfigurationTest {
             .withBean(UserProfileProvider::class.java, { userProfileProvider })
             .run { context ->
                 assertThat(context).hasNotFailed()
-                assertThat(context.getBean(PlaceholderValueProvider::class.java).currentUserOf("user-1"))
-                    .isEqualTo(mapOf(Placeholders.CURRENT_USER to "User:alice"))
+                assertThat(context.getBean(PlaceholderResolver::class.java).currentUserOf("user-1"))
+                    .isEqualTo(TextNode("User:alice"))
             }
     }
 
@@ -47,11 +50,12 @@ class PlaceholderConfigurationTest {
     fun `should have no placeholder values without a user profile provider`() {
         runner.run { context ->
             assertThat(context).hasNotFailed()
-            assertThat(context.getBean(PlaceholderValueProvider::class.java).currentUserOf("user-1")).isEmpty()
+            assertThatThrownBy { context.getBean(PlaceholderResolver::class.java).currentUserOf("user-1") }
+                .isInstanceOf(UnresolvedPlaceholderException::class.java)
         }
     }
 
-    // The user profile provider is looked up when the placeholder value provider is created, not by a
+    // The user profile provider is looked up when the placeholder resolver is created, not by a
     // bean condition, which would depend on which configuration class is processed first.
     @Test
     fun `should provide the Keycloak user profile provider with Keycloak admin access, whatever the order`() {
@@ -69,7 +73,7 @@ class PlaceholderConfigurationTest {
                 .run { context ->
                     assertThat(context).hasNotFailed()
                     assertThat(context).hasSingleBean(UserProfileProvider::class.java)
-                    assertThat(context).hasSingleBean(PlaceholderValueProvider::class.java)
+                    assertThat(context).hasSingleBean(PlaceholderResolver::class.java)
                 }
         }
     }

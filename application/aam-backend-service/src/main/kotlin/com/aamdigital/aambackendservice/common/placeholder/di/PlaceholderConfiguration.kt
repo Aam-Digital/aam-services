@@ -1,7 +1,7 @@
 package com.aamdigital.aambackendservice.common.placeholder.di
 
 import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
-import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueProvider
+import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolver
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -14,6 +14,6 @@ class PlaceholderConfiguration {
      * which configuration classes are processed (as `@ConditionalOnBean` would).
      */
     @Bean
-    fun placeholderValueProvider(userProfileProvider: ObjectProvider<UserProfileProvider>): PlaceholderValueProvider =
-        PlaceholderValueProvider(userProfileProvider.getIfAvailable())
+    fun placeholderResolver(userProfileProvider: ObjectProvider<UserProfileProvider>): PlaceholderResolver =
+        PlaceholderResolver(userProfileProvider.getIfAvailable())
 }

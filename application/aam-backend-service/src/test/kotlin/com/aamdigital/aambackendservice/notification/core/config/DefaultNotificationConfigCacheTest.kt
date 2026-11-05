@@ -8,8 +8,8 @@ import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.keycloak.core.UserProfile
 import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileLookupException
 import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
+import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolver
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueLookupException
-import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueProvider
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -37,7 +37,7 @@ class DefaultNotificationConfigCacheTest {
 
     private val objectMapper = jacksonObjectMapper()
     private val userProfiles = FakeUserProfileProvider()
-    private val placeholderValueProvider = PlaceholderValueProvider(userProfiles)
+    private val placeholderResolver = PlaceholderResolver(userProfiles)
     private lateinit var cache: DefaultNotificationConfigCache
 
     /** User profiles as Keycloak would have them, recording which lookups were made. */
@@ -70,7 +70,7 @@ class DefaultNotificationConfigCacheTest {
             DefaultNotificationConfigCache(
                 couchDbClient = couchDbClient,
                 objectMapper = objectMapper,
-                placeholderValueProvider = placeholderValueProvider
+                placeholderResolver = placeholderResolver
             )
     }
 
@@ -432,7 +432,7 @@ class DefaultNotificationConfigCacheTest {
             DefaultNotificationConfigCache(
                 couchDbClient = couchDbClient,
                 objectMapper = objectMapper,
-                placeholderValueProvider = placeholderValueProvider
+                placeholderResolver = placeholderResolver
             )
 
         // when
@@ -523,7 +523,7 @@ class DefaultNotificationConfigCacheTest {
             DefaultNotificationConfigCache(
                 couchDbClient = couchDbClient,
                 objectMapper = objectMapper,
-                placeholderValueProvider = placeholderValueProvider,
+                placeholderResolver = placeholderResolver,
                 ttl = Duration.ofDays(1),
                 clock = clock
             )
@@ -556,7 +556,7 @@ class DefaultNotificationConfigCacheTest {
             DefaultNotificationConfigCache(
                 couchDbClient = couchDbClient,
                 objectMapper = objectMapper,
-                placeholderValueProvider = placeholderValueProvider,
+                placeholderResolver = placeholderResolver,
                 ttl = Duration.ofDays(1),
                 clock = clock
             )

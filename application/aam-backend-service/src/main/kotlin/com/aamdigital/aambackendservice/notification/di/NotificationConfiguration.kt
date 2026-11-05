@@ -8,7 +8,7 @@ import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.common.outbox.Outbox
 import com.aamdigital.aambackendservice.common.outbox.OutboxRetryPolicy
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
-import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueProvider
+import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolver
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationEmailConfigured
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationFirebaseMode
@@ -55,14 +55,14 @@ class NotificationConfiguration {
     fun notificationConfigCache(
         couchDbClient: CouchDbClient,
         objectMapper: ObjectMapper,
-        placeholderValueProvider: PlaceholderValueProvider,
+        placeholderResolver: PlaceholderResolver,
         // reloading resolves placeholders again, e.g. after the entity linked to a user account changed
         @Value("\${notification.config-cache.ttl-millis:86400000}") ttlMillis: Long
     ): NotificationConfigCache =
         DefaultNotificationConfigCache(
             couchDbClient = couchDbClient,
             objectMapper = objectMapper,
-            placeholderValueProvider = placeholderValueProvider,
+            placeholderResolver = placeholderResolver,
             ttl = Duration.ofMillis(ttlMillis)
         )
 

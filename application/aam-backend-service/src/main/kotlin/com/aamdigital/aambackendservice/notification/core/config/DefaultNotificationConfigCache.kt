@@ -9,9 +9,7 @@ import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolver
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueLookupException
-import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueProvider
 import com.aamdigital.aambackendservice.common.placeholder.core.UnresolvedPlaceholderException
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
@@ -31,7 +29,7 @@ import java.util.UUID
  *
  * Placeholders in a rule's conditions (e.g. `$current_user`, see
  * [com.aamdigital.aambackendservice.common.placeholder.core.Placeholders]) are resolved once, when
- * the config is loaded into the cache, with values from [placeholderValueProvider]. Those values
+ * the config is loaded into the cache, by [placeholderResolver]. Their values
  * (e.g. the entity linked to a user account) can change without the config document changing, so the
  * whole cache is loaded again once it is older than [ttl]. If that reload fails (e.g. Keycloak is
  * unreachable), the previous copy is used and the reload is tried again after
@@ -46,7 +44,7 @@ import java.util.UUID
 class DefaultNotificationConfigCache(
     private val couchDbClient: CouchDbClient,
     private val objectMapper: ObjectMapper,
-    private val placeholderValueProvider: PlaceholderValueProvider = PlaceholderValueProvider(null),
+    private val placeholderResolver: PlaceholderResolver = PlaceholderResolver(null),
     ttl: Duration? = null,
     clock: Clock = Clock.systemUTC(),
     private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
@@ -60,8 +58,6 @@ class DefaultNotificationConfigCache(
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
-
-    private val placeholderResolver = PlaceholderResolver(objectMapper)
 
     /** Cache entries by user identifier. */
     private val configs = LazySnapshot(ttl, clock, RELOAD_RETRY_INTERVAL) { loadConfigs() }
@@ -175,90 +171,60 @@ class DefaultNotificationConfigCache(
     private fun mapToNotificationRules(
         notificationConfig: NotificationConfigDto,
         userIdentifier: String
-    ): List<NotificationRuleCacheEntry> {
-        // keep the index of each rule in the document, as the rule identifier is derived from it
-        val enabledRules = notificationConfig.notificationRules.withIndex().filter { (_, rule) -> rule.enabled }
-        val placeholderValues = lookupPlaceholderValues(enabledRules.map { it.value }, userIdentifier)
+    ): List<NotificationRuleCacheEntry> =
+        notificationConfig.notificationRules
+            .withIndex()
+            .filter { (_, rule) -> rule.enabled }
+            .flatMap { (ruleIndex, rule) ->
+                val conditions =
+                    try {
+                        // the rule identifier is derived from the resolved conditions, so it is the same
+                        // whether the frontend or the backend resolved the placeholders
+                        documentConditionEngine.parse(placeholderResolver.resolve(rule.conditions, userIdentifier))
+                    } catch (ex: InvalidDocumentConditionsException) {
+                        // skip only this rule, so one broken rule does not disable the user's others
+                        logger.warn(
+                            "Skipping notification rule with invalid conditions: notificationConfigId={}, ruleIndex={}",
+                            notificationConfig.id,
+                            ruleIndex,
+                            ex
+                        )
+                        return@flatMap emptyList()
+                    } catch (
+                        @Suppress("SwallowedException") ex: UnresolvedPlaceholderException
+                    ) {
+                        logger.warn(
+                            "Skipping notification rule with a placeholder that has no value for this user: " +
+                                "notificationConfigId={}, ruleIndex={}, placeholder={}",
+                            notificationConfig.id,
+                            ruleIndex,
+                            ex.placeholder
+                        )
+                        return@flatMap emptyList()
+                    }
 
-        return enabledRules.flatMap { (ruleIndex, rule) ->
-            val conditions =
-                parseConditions(notificationConfig.id, ruleIndex, rule.conditions, placeholderValues)
-                    ?: return@flatMap emptyList()
+                rule.changeType.map { changeType ->
+                    val externalIdentifierInput =
+                        ExternalIdentifierInput(
+                            notificationConfigId = notificationConfig.id,
+                            ruleIndex = ruleIndex,
+                            label = rule.label,
+                            entityType = rule.entityType,
+                            changeType = changeType,
+                            conditions = conditions
+                        )
 
-            rule.changeType.map { changeType ->
-                val externalIdentifierInput =
-                    ExternalIdentifierInput(
-                        notificationConfigId = notificationConfig.id,
-                        ruleIndex = ruleIndex,
+                    NotificationRuleCacheEntry(
                         label = rule.label,
+                        externalIdentifier = buildExternalIdentifier(externalIdentifierInput),
+                        notificationType = rule.notificationType,
                         entityType = rule.entityType,
                         changeType = changeType,
-                        conditions = conditions
+                        conditions = conditions,
+                        enabled = rule.enabled
                     )
-
-                NotificationRuleCacheEntry(
-                    label = rule.label,
-                    externalIdentifier = buildExternalIdentifier(externalIdentifierInput),
-                    notificationType = rule.notificationType,
-                    entityType = rule.entityType,
-                    changeType = changeType,
-                    conditions = conditions,
-                    enabled = rule.enabled
-                )
+                }
             }
-        }
-    }
-
-    /** Looks up the values of all placeholders the [rules] use, at most once per config. */
-    private fun lookupPlaceholderValues(
-        rules: List<NotificationRuleDto>,
-        userIdentifier: String
-    ): Map<String, Any> {
-        val usedPlaceholders =
-            rules
-                .flatMap { rule -> placeholderResolver.findPlaceholders(rule.conditions) }
-                .toSet()
-        if (usedPlaceholders.isEmpty()) {
-            return emptyMap()
-        }
-        return placeholderValueProvider.getValues(userIdentifier, usedPlaceholders)
-    }
-
-    /**
-     * The rule's conditions with placeholders resolved, or `null` to skip only this rule, so that one
-     * broken rule does not disable the user's others.
-     *
-     * The rule identifier is derived from the resolved conditions, so it is the same whether the
-     * frontend or the backend resolved the placeholders.
-     */
-    private fun parseConditions(
-        notificationConfigId: String,
-        ruleIndex: Int,
-        conditions: JsonNode,
-        placeholderValues: Map<String, Any>
-    ): DocumentConditions? =
-        try {
-            documentConditionEngine.parse(placeholderResolver.resolve(conditions, placeholderValues))
-        } catch (
-            @Suppress("SwallowedException") ex: UnresolvedPlaceholderException
-        ) {
-            logger.warn(
-                "Skipping notification rule with a placeholder that has no value for this user: " +
-                    "notificationConfigId={}, ruleIndex={}, placeholder={}",
-                notificationConfigId,
-                ruleIndex,
-                ex.placeholder
-            )
-            null
-        } catch (ex: InvalidDocumentConditionsException) {
-            logger.warn(
-                "Skipping notification rule with invalid conditions: notificationConfigId={}, ruleIndex={}",
-                notificationConfigId,
-                ruleIndex,
-                ex
-            )
-            null
-        }
 
     private data class ExternalIdentifierInput(
         val notificationConfigId: String,
