@@ -7,9 +7,8 @@ import com.aamdigital.aambackendservice.common.condition.InvalidDocumentConditio
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolutionException
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolver
-import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueLookupException
-import com.aamdigital.aambackendservice.common.placeholder.core.UnresolvedPlaceholderException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.slf4j.LoggerFactory
@@ -31,9 +30,13 @@ import java.util.UUID
  * [com.aamdigital.aambackendservice.common.placeholder.core.Placeholders]) are resolved once, when
  * the config is loaded into the cache, by [placeholderResolver]. Their values
  * (e.g. the entity linked to a user account) can change without the config document changing, so the
- * whole cache is loaded again once it is older than [ttl]. If that reload fails (e.g. Keycloak is
+ * whole cache is loaded again once it is older than [ttl]. If that reload fails (e.g. CouchDB is
  * unreachable), the previous copy is used and the reload is tried again after
  * [RELOAD_RETRY_INTERVAL], so that an outage does not stop all notifications.
+ *
+ * A rule whose placeholders cannot be resolved (no entity linked to the account, or Keycloak is
+ * unreachable) is skipped with a warning, without affecting the user's other rules. It is picked up
+ * again with the next reload, or when the config document changes.
  *
  * Disabled rules are left out: they never trigger a notification, so their placeholders are not
  * looked up either.
@@ -99,16 +102,6 @@ class DefaultNotificationConfigCache(
         val entry =
             try {
                 toCacheEntry(notificationConfig)
-            } catch (ex: PlaceholderValueLookupException) {
-                // a temporary failure: keep the previous version rather than dropping the user's rules
-                logger.error(
-                    "Could not resolve placeholders during refresh, keeping the cached version: " +
-                        "notificationConfigId={}, userIdentifier={}",
-                    notificationConfigId,
-                    userIdentifier,
-                    ex
-                )
-                return
             } catch (ex: Exception) {
                 configs.update { it - userIdentifier }
                 logger.error(
@@ -138,9 +131,6 @@ class DefaultNotificationConfigCache(
         try {
             val dto = objectMapper.convertValue(doc, NotificationConfigDto::class.java)
             toCacheEntry(dto)
-        } catch (ex: PlaceholderValueLookupException) {
-            // a temporary failure: fail the whole load so it is retried, instead of dropping the config
-            throw ex
         } catch (ex: Exception) {
             logger.warn("Skipping invalid NotificationConfig document while loading the cache", ex)
             null
@@ -190,15 +180,14 @@ class DefaultNotificationConfigCache(
                             ex
                         )
                         return@flatMap emptyList()
-                    } catch (
-                        @Suppress("SwallowedException") ex: UnresolvedPlaceholderException
-                    ) {
+                    } catch (ex: PlaceholderResolutionException) {
+                        // e.g. no entity linked to the account, or Keycloak unreachable: skip only this rule
                         logger.warn(
-                            "Skipping notification rule with a placeholder that has no value for this user: " +
-                                "notificationConfigId={}, ruleIndex={}, placeholder={}",
+                            "Skipping notification rule whose placeholders cannot be resolved: " +
+                                "notificationConfigId={}, ruleIndex={}",
                             notificationConfig.id,
                             ruleIndex,
-                            ex.placeholder
+                            ex
                         )
                         return@flatMap emptyList()
                     }

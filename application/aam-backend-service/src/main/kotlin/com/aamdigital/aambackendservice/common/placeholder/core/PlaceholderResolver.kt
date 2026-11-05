@@ -8,19 +8,22 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import org.slf4j.LoggerFactory
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Thrown when a JSON tree uses a placeholder that has no value for the user. */
-class UnresolvedPlaceholderException(
-    val placeholder: String
-) : IllegalArgumentException("No value for placeholder $placeholder")
-
-/**
- * Thrown when placeholder values cannot be looked up for now (e.g. Keycloak is unreachable), so
- * the caller can try again later.
- */
-class PlaceholderValueLookupException(
+/** Thrown when the placeholders of a JSON tree cannot be resolved for a user. */
+open class PlaceholderResolutionException(
     message: String,
     cause: Throwable? = null
 ) : RuntimeException(message, cause)
+
+/** Thrown when a JSON tree uses a placeholder that has no value for the user. */
+class UnresolvedPlaceholderException(
+    val placeholder: String
+) : PlaceholderResolutionException("No value for placeholder $placeholder")
+
+/** Thrown when placeholder values cannot be looked up (e.g. Keycloak is unreachable). */
+class PlaceholderValueLookupException(
+    message: String,
+    cause: Throwable? = null
+) : PlaceholderResolutionException(message, cause)
 
 /**
  * Replaces [Placeholders] in any JSON tree (e.g. conditions or another configuration document)
@@ -52,7 +55,7 @@ class PlaceholderResolver(
      *
      * @throws UnresolvedPlaceholderException if [node] uses a placeholder that has no value for the
      *     user (e.g. no entity is linked to the account)
-     * @throws PlaceholderValueLookupException if the values cannot be looked up for now
+     * @throws PlaceholderValueLookupException if the values cannot be looked up (e.g. Keycloak is unreachable)
      */
     fun resolve(
         node: JsonNode,

@@ -129,7 +129,7 @@ class PlaceholderResolverTest {
     }
 
     @Test
-    fun `should fail when the profile cannot be looked up for now, so the lookup can be retried`() {
+    fun `should fail when the profile cannot be looked up, so the caller can skip what depends on it`() {
         // given
         val failingResolver =
             PlaceholderResolver(FakeUserProfileProvider(failure = UserProfileLookupException("keycloak unreachable")))
