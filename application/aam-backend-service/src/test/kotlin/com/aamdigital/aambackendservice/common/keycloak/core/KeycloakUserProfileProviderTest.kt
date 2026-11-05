@@ -1,4 +1,4 @@
-package com.aamdigital.aambackendservice.common.placeholder.core
+package com.aamdigital.aambackendservice.common.keycloak.core
 
 import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
 import jakarta.ws.rs.NotFoundException
@@ -16,11 +16,10 @@ import org.keycloak.representations.idm.UserRepresentation
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.eq
-import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 
 @ExtendWith(MockitoExtension::class)
-class KeycloakPlaceholderValueProviderTest {
+class KeycloakUserProfileProviderTest {
     @Mock
     lateinit var keycloak: Keycloak
 
@@ -33,14 +32,12 @@ class KeycloakPlaceholderValueProviderTest {
     @Mock
     lateinit var userResource: UserResource
 
-    private lateinit var provider: KeycloakPlaceholderValueProvider
-
-    private val placeholders = setOf(Placeholders.CURRENT_USER)
+    private lateinit var provider: KeycloakUserProfileProvider
 
     @BeforeEach
     fun setUp() {
         provider =
-            KeycloakPlaceholderValueProvider(
+            KeycloakUserProfileProvider(
                 keycloak = keycloak,
                 keycloakConfig =
                     AamKeycloakConfig(
@@ -50,32 +47,33 @@ class KeycloakPlaceholderValueProviderTest {
                         clientSecret = "secret"
                     )
             )
-    }
-
-    private fun givenUserResource() {
         whenever(keycloak.realm(eq("test-realm"))).thenReturn(realmResource)
         whenever(realmResource.users()).thenReturn(usersResource)
         whenever(usersResource.get(eq("user-1"))).thenReturn(userResource)
     }
 
     private fun givenUser(representation: UserRepresentation) {
-        givenUserResource()
         whenever(userResource.toRepresentation()).thenReturn(representation)
     }
 
     private fun userWithEntity(entityId: String) =
-        UserRepresentation().apply { attributes = mapOf("exact_username" to listOf(entityId)) }
+        UserRepresentation().apply {
+            email = "alice@example.org"
+            attributes = mapOf("exact_username" to listOf(entityId))
+        }
 
     @Test
-    fun `should resolve current user to the entity linked to the account`() {
+    fun `should return the profile with the entity linked to the account`() {
         // given
         givenUser(userWithEntity("Child:alice"))
 
         // when
-        val values = provider.getValues("user-1", placeholders)
+        val profile = provider.getUserProfile("user-1")
 
         // then
-        assertThat(values).isEqualTo(mapOf(Placeholders.CURRENT_USER to "Child:alice"))
+        assertThat(profile).isEqualTo(
+            UserProfile(userIdentifier = "user-1", email = "alice@example.org", linkedEntityId = "Child:alice")
+        )
     }
 
     @Test
@@ -84,56 +82,45 @@ class KeycloakPlaceholderValueProviderTest {
         givenUser(userWithEntity("alice"))
 
         // when
-        val values = provider.getValues("user-1", placeholders)
+        val profile = provider.getUserProfile("user-1")
 
         // then
-        assertThat(values).isEqualTo(mapOf(Placeholders.CURRENT_USER to "User:alice"))
+        assertThat(profile?.linkedEntityId).isEqualTo("User:alice")
     }
 
     @Test
-    fun `should have no value when no entity is linked to the account`() {
+    fun `should have no linked entity when none is linked to the account`() {
         // given
         givenUser(UserRepresentation())
 
         // when
-        val values = provider.getValues("user-1", placeholders)
+        val profile = provider.getUserProfile("user-1")
 
         // then
-        assertThat(values).isEmpty()
+        assertThat(profile).isNotNull
+        assertThat(profile?.linkedEntityId).isNull()
     }
 
     @Test
-    fun `should have no value when the user does not exist in Keycloak`() {
+    fun `should return no profile when the user does not exist in Keycloak`() {
         // given
-        givenUserResource()
         whenever(userResource.toRepresentation()).thenThrow(NotFoundException())
 
         // when
-        val values = provider.getValues("user-1", placeholders)
+        val profile = provider.getUserProfile("user-1")
 
         // then
-        assertThat(values).isEmpty()
+        assertThat(profile).isNull()
     }
 
     @Test
     fun `should fail when Keycloak cannot be reached, so the lookup can be retried`() {
         // given
-        givenUserResource()
         whenever(userResource.toRepresentation()).thenThrow(ProcessingException("connection refused"))
 
         // when / then
-        assertThatThrownBy { provider.getValues("user-1", placeholders) }
-            .isInstanceOf(PlaceholderValueLookupException::class.java)
+        assertThatThrownBy { provider.getUserProfile("user-1") }
+            .isInstanceOf(UserProfileLookupException::class.java)
             .hasCauseInstanceOf(ProcessingException::class.java)
-    }
-
-    @Test
-    fun `should not call Keycloak when no user placeholder is needed`() {
-        // when
-        val values = provider.getValues("user-1", emptySet())
-
-        // then
-        assertThat(values).isEmpty()
-        verifyNoInteractions(keycloak)
     }
 }

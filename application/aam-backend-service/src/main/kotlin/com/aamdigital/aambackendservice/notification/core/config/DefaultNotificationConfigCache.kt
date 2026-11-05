@@ -10,8 +10,8 @@ import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolver
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueLookupException
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueProvider
-import com.aamdigital.aambackendservice.common.placeholder.core.UnavailablePlaceholderValueProvider
 import com.aamdigital.aambackendservice.common.placeholder.core.UnresolvedPlaceholderException
+import com.aamdigital.aambackendservice.common.placeholder.core.UserPlaceholderValueProvider
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -47,7 +47,7 @@ import java.util.UUID
 class DefaultNotificationConfigCache(
     private val couchDbClient: CouchDbClient,
     private val objectMapper: ObjectMapper,
-    private val placeholderValueProvider: PlaceholderValueProvider = UnavailablePlaceholderValueProvider(),
+    private val placeholderValueProvider: PlaceholderValueProvider = UserPlaceholderValueProvider(null),
     ttl: Duration? = null,
     clock: Clock = Clock.systemUTC(),
     private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()

@@ -1,5 +1,7 @@
 package com.aamdigital.aambackendservice.common.keycloak.di
 
+import com.aamdigital.aambackendservice.common.keycloak.core.KeycloakUserProfileProvider
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import org.keycloak.OAuth2Constants
 import org.keycloak.admin.client.JacksonProvider
 import org.keycloak.admin.client.Keycloak
@@ -48,6 +50,17 @@ class KeycloakAdminConfiguration {
                     .readTimeout(READ_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)
                     .build()
             ).build()
+
+    @Bean
+    @ConditionalOnKeycloakAdminAccess
+    fun keycloakUserProfileProvider(
+        keycloak: Keycloak,
+        aamKeycloakConfig: AamKeycloakConfig
+    ): UserProfileProvider =
+        KeycloakUserProfileProvider(
+            keycloak = keycloak,
+            keycloakConfig = aamKeycloakConfig
+        )
 }
 
 /** Priority the Keycloak admin client registers its own [JacksonProvider] with. */
