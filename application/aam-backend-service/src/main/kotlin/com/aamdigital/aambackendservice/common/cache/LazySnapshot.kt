@@ -1,5 +1,6 @@
 package com.aamdigital.aambackendservice.common.cache
 
+import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -17,27 +18,52 @@ import java.time.Instant
  *
  * @param ttl how long a loaded copy may be served; `null` keeps it until [invalidate], and zero
  *     reloads on every read
+ * @param retryAfterFailedReload when set, a failed *reload* of an expired copy does not throw:
+ *     the expired copy is served for this long before the next attempt. A failed first load (or one
+ *     after [invalidate]) still throws, as there is nothing to serve.
  * @param load reads the current value
  */
 class LazySnapshot<T : Any>(
     private val ttl: Duration? = null,
     private val clock: Clock = Clock.systemUTC(),
+    private val retryAfterFailedReload: Duration? = null,
     private val load: () -> T
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
     private val lock = Any()
     private var value: T? = null
-    private var loadedAt: Instant = Instant.EPOCH
+
+    /** When the loaded copy has to be loaded again; `null` keeps it until [invalidate]. */
+    private var expiresAt: Instant? = null
 
     /** The loaded copy, loading it first if there is none or it has expired. */
-    fun get(): T =
+    fun get(): T {
         synchronized(lock) {
             val now = clock.instant()
-            value?.takeUnless { ttl != null && Duration.between(loadedAt, now) >= ttl }
-                ?: load().also { loaded ->
+            val current = value
+            if (current != null && expiresAt?.let { now < it } != false) {
+                return current
+            }
+
+            return try {
+                load().also { loaded ->
                     value = loaded
-                    loadedAt = now
+                    expiresAt = ttl?.let { now.plus(it) }
                 }
+            } catch (ex: Exception) {
+                if (current == null || retryAfterFailedReload == null) {
+                    throw ex
+                }
+                logger.warn(
+                    "Reloading failed, serving the previously loaded copy and trying again in {}",
+                    retryAfterFailedReload,
+                    ex
+                )
+                expiresAt = now.plus(retryAfterFailedReload)
+                current
+            }
         }
+    }
 
     /** Drops the loaded copy without any I/O, so the next [get] loads again. */
     fun invalidate() {

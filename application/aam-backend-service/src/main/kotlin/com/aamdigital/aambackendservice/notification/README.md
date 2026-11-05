@@ -49,6 +49,26 @@ instead of implementing the operators itself.
 - The legacy array format `{"$elemMatch": "value"}` (or a list of values), which MongoDB rejects,
   is read as `{"$elemMatch": {"$eq": "value"}}` (or `$in`), as the frontend does.
 
+### Placeholders
+
+Conditions can use `"$current_user"` as a value (e.g. `{"assignedTo": {"$elemMatch": "$current_user"}}`),
+the same placeholder the frontend uses for dynamic default values. It stands for the entity linked to the
+rule owner's account, read from the Keycloak user attribute `exact_username` by
+[`common/placeholder`](../common/placeholder/core/PlaceholderResolver.kt) through the generic
+[`UserProfileProvider`](../common/keycloak/core/UserProfileProvider.kt).
+
+- Placeholders are resolved once, when a config is loaded into `NotificationConfigCache`, not on every
+  change. The rule identifier is derived from the resolved conditions, so it is the same whether the
+  frontend or the backend resolved the placeholder.
+- The entity linked to an account can change without the config document changing, so the whole cache
+  is loaded again once a day (`notification.config-cache.ttl-millis`, default `86400000`).
+- A rule using a placeholder that has no value for its user (no linked entity, or Keycloak admin access
+  not configured) is skipped and logged as a warning, without affecting the user's other rules.
+- If Keycloak cannot be reached, rules using placeholders are skipped (with a warning) until the next
+  reload or change of the config; all other rules keep working. A (daily) reload that fails entirely
+  (e.g. CouchDB unreachable) keeps using the previous copy and is tried again after 5 minutes.
+- Disabled rules are not cached, so their placeholders are not looked up.
+
 ## Delivery guarantees
 
 Notification ids are derived from the document change that caused them

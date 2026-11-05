@@ -1,6 +1,8 @@
 package com.aamdigital.aambackendservice.notification.core.create.email
 
 import com.aamdigital.aambackendservice.common.domain.normalizeUrlWithHttpsDefault
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileLookupException
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import com.aamdigital.aambackendservice.common.mail.MailSenderRequest
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.common.templating.LocalizedTemplateLoader
@@ -22,7 +24,7 @@ import java.util.Properties
 
 class EmailCreateNotificationHandler(
     private val mailSenderService: MailSenderService,
-    private val userEmailProvider: UserEmailProvider,
+    private val userProfileProvider: UserProfileProvider,
     private val notificationEmailProperties: NotificationEmailProperties,
     templatesBaseDir: Path = DEFAULT_TEMPLATES_BASE_DIR
 ) : CreateNotificationHandler {
@@ -39,7 +41,7 @@ class EmailCreateNotificationHandler(
         NotificationChannelType.EMAIL == notificationChannelType
 
     override fun createMessage(createUserNotificationEvent: CreateUserNotificationEvent): CreateNotificationData {
-        val email = userEmailProvider.lookupEmail(createUserNotificationEvent.userIdentifier)
+        val email = lookupEmail(createUserNotificationEvent.userIdentifier)
         if (email == null) {
             logger.info(
                 "No email address for user {}, skipping email notification",
@@ -85,6 +87,14 @@ class EmailCreateNotificationHandler(
             messageReference = mailSenderResponse.messageReference
         )
     }
+
+    /** The user's email address, or `null` if the user has none (or does not exist). */
+    private fun lookupEmail(userIdentifier: String): String? =
+        try {
+            userProfileProvider.getUserProfile(userIdentifier)?.email?.takeIf { it.isNotBlank() }
+        } catch (ex: UserProfileLookupException) {
+            throw TransientNotificationException("Email address lookup failed: ${ex.localizedMessage}", ex)
+        }
 
     private fun isTransientMailFailure(ex: MailSendException): Boolean {
         val candidates =

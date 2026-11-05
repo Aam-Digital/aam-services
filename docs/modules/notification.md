@@ -52,6 +52,13 @@ comparisons, `$exists`, `$regex` and dotted paths into nested fields.
 Note that values are compared strictly by type: a number stored as a string in a condition
 (e.g. `{"age": {"$gte": "18"}}`) does not match a numeric field.
 
+A condition value can be the placeholder `"$current_user"` (e.g. `{"assignedTo": {"$elemMatch": "$current_user"}}`),
+which stands for the entity linked to the rule owner's user account (the Keycloak user attribute `exact_username`).
+This requires the Keycloak settings below (see [Setup](#setup)); without them, or for a user account without a
+linked entity, rules using the placeholder never trigger. Changes to the linked entity take effect within a day
+(`NOTIFICATION_CONFIGCACHE_TTLMILLIS`, default `86400000`), or immediately when the user's notification settings
+are saved.
+
 ---
 
 ## Setup
@@ -79,6 +86,7 @@ SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
 NOTIFICATION_EMAIL_LOCALE=en
 
 # Needed for email notifications (lookup recipient addresses in Keycloak)
+# and for the "$current_user" placeholder in notification rules (lookup of the user's linked entity)
 KEYCLOAK_SERVERURL=https://<your-keycloak-url>
 KEYCLOAK_REALM=<your-realm>
 KEYCLOAK_CLIENTID=<service-client-id>

@@ -1,9 +1,14 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
+import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfile
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileLookupException
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
+import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolver
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -19,6 +24,10 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
 
 @ExtendWith(MockitoExtension::class)
 class DefaultNotificationConfigCacheTest {
@@ -26,14 +35,41 @@ class DefaultNotificationConfigCacheTest {
     lateinit var couchDbClient: CouchDbClient
 
     private val objectMapper = jacksonObjectMapper()
+    private val userProfiles = FakeUserProfileProvider()
+    private val placeholderResolver = PlaceholderResolver(userProfiles)
     private lateinit var cache: DefaultNotificationConfigCache
+
+    /** User profiles as Keycloak would have them, recording which lookups were made. */
+    private class FakeUserProfileProvider : UserProfileProvider {
+        var linkedEntityId: String? = null
+        var failure: RuntimeException? = null
+        val lookups = mutableListOf<String>()
+
+        override fun getUserProfile(userIdentifier: String): UserProfile {
+            lookups.add(userIdentifier)
+            failure?.let { throw it }
+            return UserProfile(userIdentifier, email = null, linkedEntityId = linkedEntityId)
+        }
+    }
+
+    /** Clock the test advances by hand, so no test depends on wall-clock timing. */
+    private class MutableClock(
+        var now: Instant
+    ) : Clock() {
+        override fun instant(): Instant = now
+
+        override fun getZone(): ZoneId = ZoneId.of("UTC")
+
+        override fun withZone(zone: ZoneId): Clock = this
+    }
 
     @BeforeEach
     fun setUp() {
         cache =
             DefaultNotificationConfigCache(
                 couchDbClient = couchDbClient,
-                objectMapper = objectMapper
+                objectMapper = objectMapper,
+                placeholderResolver = placeholderResolver
             )
     }
 
@@ -361,6 +397,230 @@ class DefaultNotificationConfigCacheTest {
         assertThatThrownBy { cache.findAll() }.hasMessage("couchdb unreachable")
         assertThat(cache.findAll().map { it.userIdentifier }).containsExactly("user-1")
     }
+
+    @Test
+    fun `should resolve the current user placeholder when loading the config`() {
+        // given
+        userProfiles.linkedEntityId = "User:alice"
+        givenConfigDocs(configDocWithConditions("""{"assignedTo": {"${'$'}elemMatch": "${'$'}current_user"}}"""))
+
+        // when
+        val rule =
+            cache
+                .findAll()
+                .single()
+                .rules
+                .single()
+
+        // then
+        val engine = DocumentConditionEngine()
+        assertThat(engine.matches(rule.conditions, mapOf("assignedTo" to listOf("User:alice")))).isTrue
+        assertThat(engine.matches(rule.conditions, mapOf("assignedTo" to listOf("User:bob")))).isFalse
+        assertThat(userProfiles.lookups).containsExactly("user-1")
+    }
+
+    @Test
+    fun `should derive the same rule identifier whether the placeholder was resolved by the frontend or here`() {
+        // given
+        userProfiles.linkedEntityId = "User:alice"
+        givenConfigDocs(
+            configDocWithConditions("""{"assignedTo": "${'$'}current_user"}"""),
+            configDocWithConditions("""{"assignedTo": "User:alice"}""")
+        )
+        val otherCache =
+            DefaultNotificationConfigCache(
+                couchDbClient = couchDbClient,
+                objectMapper = objectMapper,
+                placeholderResolver = placeholderResolver
+            )
+
+        // when
+        val withPlaceholder = cache.singleRule().externalIdentifier
+        val resolvedByFrontend = otherCache.singleRule().externalIdentifier
+
+        // then
+        assertThat(withPlaceholder).isEqualTo(resolvedByFrontend)
+    }
+
+    @Test
+    fun `should skip only the rule whose placeholder has no value for the user`() {
+        // given no entity is linked to the user account
+        givenConfigDocs(
+            configDocWithRules(
+                rule("Rule about me", """{"assignedTo": "${'$'}current_user"}"""),
+                rule("Other rule", """{"name": "Bert"}""")
+            )
+        )
+
+        // when
+        val entries = cache.findAll()
+
+        // then
+        assertThat(entries.single().rules.map { it.label }).containsExactly("Other rule")
+    }
+
+    @Test
+    fun `should not look up placeholder values for a config without placeholders`() {
+        // given
+        givenConfigDocs(configDocWithConditions("""{"name": "Bert"}"""))
+
+        // when
+        cache.findAll()
+
+        // then
+        assertThat(userProfiles.lookups).isEmpty()
+    }
+
+    @Test
+    fun `should skip only the rules whose placeholder values cannot be looked up`() {
+        // given Keycloak is unreachable
+        userProfiles.failure = UserProfileLookupException("keycloak unreachable")
+        givenConfigDocs(
+            configDocWithRules(
+                rule("Rule about me", """{"assignedTo": "${'$'}current_user"}"""),
+                rule("Other rule", """{"name": "Bert"}""")
+            )
+        )
+
+        // when
+        val entries = cache.findAll()
+
+        // then the other rules keep working
+        assertThat(entries.single().rules.map { it.label }).containsExactly("Other rule")
+    }
+
+    @Test
+    fun `should load again after the ttl, resolving placeholders with their current values`() {
+        // given
+        val clock = MutableClock(Instant.parse("2026-01-01T00:00:00Z"))
+        val cacheWithTtl =
+            DefaultNotificationConfigCache(
+                couchDbClient = couchDbClient,
+                objectMapper = objectMapper,
+                placeholderResolver = placeholderResolver,
+                ttl = Duration.ofDays(1),
+                clock = clock
+            )
+        userProfiles.linkedEntityId = "User:alice"
+        givenConfigDocs(configDocWithConditions("""{"assignedTo": "${'$'}current_user"}"""))
+        val engine = DocumentConditionEngine()
+        val bobsDocument = mapOf("assignedTo" to "User:bob")
+
+        val before = cacheWithTtl.singleRule()
+        assertThat(engine.matches(before.conditions, bobsDocument)).isFalse
+
+        // when the account is linked to a different entity, and the ttl passes
+        userProfiles.linkedEntityId = "User:bob"
+        clock.now = clock.now.plus(Duration.ofHours(23))
+        val withinTtl = cacheWithTtl.singleRule()
+        clock.now = clock.now.plus(Duration.ofHours(1))
+        val afterTtl = cacheWithTtl.singleRule()
+
+        // then
+        assertThat(engine.matches(withinTtl.conditions, bobsDocument)).isFalse
+        assertThat(engine.matches(afterTtl.conditions, bobsDocument)).isTrue
+        verify(couchDbClient, times(2)).getDatabaseDocumentsByPrefix(any(), any(), eq(ObjectNode::class))
+    }
+
+    @Test
+    fun `should keep using the previous configs when a reload after the ttl fails`() {
+        // given
+        val clock = MutableClock(Instant.parse("2026-01-01T00:00:00Z"))
+        val cacheWithTtl =
+            DefaultNotificationConfigCache(
+                couchDbClient = couchDbClient,
+                objectMapper = objectMapper,
+                placeholderResolver = placeholderResolver,
+                ttl = Duration.ofDays(1),
+                clock = clock
+            )
+        whenever(
+            couchDbClient.getDatabaseDocumentsByPrefix(
+                database = eq("app"),
+                prefix = eq("NotificationConfig"),
+                kClass = eq(ObjectNode::class)
+            )
+        ).thenReturn(listOf(configDocWithConditions("""{"name": "Bert"}""")))
+            .thenThrow(RuntimeException("couchdb unreachable"))
+            .thenReturn(listOf(configDocWithConditions("""{"name": "Ernie"}""")))
+        val loaded = cacheWithTtl.findAll()
+
+        // when the cache expires while CouchDB is unreachable
+        clock.now = clock.now.plus(Duration.ofDays(1))
+
+        // then notifications keep working with the previous configs
+        assertThat(cacheWithTtl.findAll()).isEqualTo(loaded)
+
+        // and the reload is tried again later
+        clock.now = clock.now.plus(DefaultNotificationConfigCache.RELOAD_RETRY_INTERVAL)
+        val reloaded = cacheWithTtl.singleRule()
+        assertThat(DocumentConditionEngine().matches(reloaded.conditions, mapOf("name" to "Ernie"))).isTrue
+    }
+
+    @Test
+    fun `should leave out disabled rules without looking up their placeholders`() {
+        // given
+        givenConfigDocs(
+            configDocWithRules(
+                rule("Disabled rule about me", """{"assignedTo": "${'$'}current_user"}""", enabled = false),
+                rule("Enabled rule", """{"name": "Bert"}""")
+            )
+        )
+
+        // when
+        val entries = cache.findAll()
+
+        // then
+        assertThat(entries.single().rules.map { it.label }).containsExactly("Enabled rule")
+        assertThat(userProfiles.lookups).isEmpty()
+    }
+
+    private fun DefaultNotificationConfigCache.singleRule(): NotificationRuleCacheEntry =
+        findAll()
+            .single()
+            .rules
+            .single()
+
+    private fun givenConfigDocs(vararg docsPerLoad: ObjectNode) {
+        val loads = docsPerLoad.map { listOf(it) }
+        whenever(
+            couchDbClient.getDatabaseDocumentsByPrefix(
+                database = eq("app"),
+                prefix = eq("NotificationConfig"),
+                kClass = eq(ObjectNode::class)
+            )
+        ).thenReturn(loads.first(), *loads.drop(1).toTypedArray())
+    }
+
+    private fun rule(
+        label: String,
+        conditions: String,
+        enabled: Boolean = true
+    ): String =
+        """
+        {
+            "label": "$label",
+            "notificationType": "entity_change",
+            "entityType": "Todo",
+            "changeType": ["created"],
+            "conditions": $conditions,
+            "enabled": $enabled
+        }
+        """.trimIndent()
+
+    private fun configDocWithRules(vararg rules: String): ObjectNode =
+        objectMapper
+            .readTree(
+                """
+                {
+                    "_id": "NotificationConfig:user-1",
+                    "_rev": "1-abc",
+                    "notificationRules": [${rules.joinToString(",")}]
+                }
+                """.trimIndent()
+            ).deepCopy<ObjectNode>()
+
+    private fun configDocWithConditions(conditions: String): ObjectNode = configDocWithRules(rule("Rule", conditions))
 
     private fun configDoc(userIdentifier: String): ObjectNode =
         objectMapper
