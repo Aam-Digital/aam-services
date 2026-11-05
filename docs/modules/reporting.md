@@ -151,8 +151,8 @@ You should also account for that possibility.
 3. Create `ReportConfig:` entities to define specific reports
     - the API / backend reports only support the `"mode": "sql"`
     - the `title` is either a string or, if it is configured in several languages, a map of locale id to text
-      (e.g. `{"en-US": "Basic Report", "de": "Basis-Bericht"}`); the API returns its `en-US` text, else the first
-      English one, else the first text of any language
+      (e.g. `{"en-US": "Basic Report", "de": "Basis-Bericht"}`); the API returns its `en-US` text, else its `en` text,
+      else the first non-blank text of any language (empty if the title is missing)
     - for details on report definitions,
       see https://aam-digital.github.io/ndb-core/documentation/additional-documentation/how-to-guides/create-a-report.html
 4. Make sure the users who are supposed to access the reports in the frontend have permission to view `ReportConfig`

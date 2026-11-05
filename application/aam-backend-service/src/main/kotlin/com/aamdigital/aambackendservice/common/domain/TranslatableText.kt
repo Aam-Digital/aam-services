@@ -16,7 +16,7 @@ object TranslatableText {
 
     /**
      * Resolve a configured text to a single string.
-     * A translation object resolves to the English text, else to any non-empty translation.
+     * A translation object resolves to the English text, else to any non-blank translation.
      *
      * @return null if the value is missing or not a text
      */
@@ -33,7 +33,7 @@ object TranslatableText {
         val translations =
             node
                 .properties()
-                .filter { it.value.isTextual && it.value.textValue().isNotEmpty() }
+                .filter { it.value.isTextual && it.value.textValue().isNotBlank() }
                 .associate { it.key to it.value.textValue() }
         return PREFERRED_LOCALES.firstNotNullOfOrNull { translations[it] } ?: translations.values.firstOrNull()
     }
