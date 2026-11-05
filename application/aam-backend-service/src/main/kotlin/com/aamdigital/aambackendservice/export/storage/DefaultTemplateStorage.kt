@@ -2,12 +2,14 @@ package com.aamdigital.aambackendservice.export.storage
 
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.domain.DomainReference
+import com.aamdigital.aambackendservice.common.domain.TranslatableTextDeserializer
 import com.aamdigital.aambackendservice.common.error.AamErrorCode
 import com.aamdigital.aambackendservice.common.error.ExternalSystemException
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.export.core.TemplateExport
 import com.aamdigital.aambackendservice.export.core.TemplateStorage
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import org.springframework.util.LinkedMultiValueMap
 import java.io.InterruptedIOException
 
@@ -16,7 +18,9 @@ data class TemplateExportDto(
     val id: String,
     val templateId: String,
     val targetFileName: String,
+    @JsonDeserialize(using = TranslatableTextDeserializer::class)
     val title: String,
+    @JsonDeserialize(using = TranslatableTextDeserializer::class)
     val description: String? = null,
     val applicableForEntityTypes: List<String>
 )

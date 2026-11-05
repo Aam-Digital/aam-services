@@ -43,7 +43,6 @@ internal fun validateNewApiClient(
     scopes: Set<String>,
     offeredScopes: Set<String>
 ) {
-    val unknownScopes = scopes - offeredScopes
     val (code, message) =
         when {
             name.isBlank() || name.length > MAX_API_CLIENT_NAME_LENGTH -> {
@@ -57,6 +56,26 @@ internal fun validateNewApiClient(
                     "digits, '.', '_' or '-' (64 characters at most)"
             }
 
+            else -> {
+                return validateScopes(scopes, offeredScopes)
+            }
+        }
+    throw InvalidArgumentException(message = message, code = code)
+}
+
+/**
+ * Checks the client scopes to give an API client (when creating it or changing its access).
+ *
+ * @param offeredScopes the client scopes that API clients can be given
+ * @throws InvalidArgumentException with an [ApiClientAdministrationError] code if the scopes are invalid
+ */
+internal fun validateScopes(
+    scopes: Set<String>,
+    offeredScopes: Set<String>
+) {
+    val unknownScopes = scopes - offeredScopes
+    val (code, message) =
+        when {
             scopes.isEmpty() -> {
                 ApiClientAdministrationError.NO_SCOPE to "An API client needs at least one client scope"
             }

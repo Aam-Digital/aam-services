@@ -2,12 +2,13 @@ package com.aamdigital.aambackendservice.e2e
 
 import com.aamdigital.aambackendservice.common.changes.SyncRepository
 import com.aamdigital.aambackendservice.common.couchdb.core.BACKEND_STATE_DATABASE
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfile
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import com.aamdigital.aambackendservice.common.mail.MailSenderRequest
 import com.aamdigital.aambackendservice.common.mail.MailSenderResponse
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.container.TestContainers
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
-import com.aamdigital.aambackendservice.notification.core.create.email.UserEmailProvider
 import com.aamdigital.aambackendservice.reporting.reportcalculation.core.ReportCalculationTrigger
 import com.aamdigital.aambackendservice.reporting.webhook.core.TriggerWebhookUseCase
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.AuthenticationProvider
@@ -48,7 +49,7 @@ class CucumberIntegrationTest(
     lateinit var mailSenderService: MailSenderService
 
     @MockitoBean
-    lateinit var userEmailProvider: UserEmailProvider
+    lateinit var userProfileProvider: UserProfileProvider
 
     // mocked so the guardrail can verify the webhook is triggered without needing a real HTTP
     // receiver; the mock still sits downstream of the calculation and of the delivery executor
@@ -68,8 +69,10 @@ class CucumberIntegrationTest(
 
     @Before
     fun `log scenario start`() {
-        reset(mailSenderService, userEmailProvider, triggerWebhookUseCase, authenticationProvider)
-        whenever(userEmailProvider.lookupEmail(any())).thenReturn("integration-test-user@example.com")
+        reset(mailSenderService, userProfileProvider, triggerWebhookUseCase, authenticationProvider)
+        whenever(userProfileProvider.getUserProfile(any())).thenAnswer { invocation ->
+            UserProfile(invocation.getArgument(0), "integration-test-user@example.com", linkedEntityId = null)
+        }
         whenever(mailSenderService.sendMail(any<MailSenderRequest>())).thenReturn(MailSenderResponse(success = true))
         // a scenario that starts a session declares which account it means; this default only keeps
         // an unstubbed call from failing with a confusing NullPointerException
@@ -242,6 +245,29 @@ class CucumberIntegrationTest(
         suffix: String
     ) {
         exchange("$prefix$storedId$suffix", HttpMethod.POST)
+    }
+
+    @When("the client calls PUT {} with stored id and suffix {} and body {}")
+    @Throws(Throwable::class)
+    fun `the client issues PUT endpoint with stored id, suffix and body`(
+        prefix: String,
+        suffix: String,
+        body: String
+    ) {
+        exchange(
+            "$prefix$storedId$suffix",
+            HttpMethod.PUT,
+            File("src/test/resources/database/documents/$body.json").readText()
+        )
+    }
+
+    @When("the client calls PUT {} with body {}")
+    @Throws(Throwable::class)
+    fun `the client issues PUT endpoint with body`(
+        endpoint: String,
+        body: String
+    ) {
+        exchange(endpoint, HttpMethod.PUT, File("src/test/resources/database/documents/$body.json").readText())
     }
 
     @When("the client calls DELETE {} with stored id")

@@ -3,11 +3,12 @@ package com.aamdigital.aambackendservice.notification.di
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DatabaseRequest
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
-import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.common.outbox.Outbox
 import com.aamdigital.aambackendservice.common.outbox.OutboxRetryPolicy
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
+import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolver
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationApiEnabled
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationEmailConfigured
 import com.aamdigital.aambackendservice.notification.ConditionalOnNotificationFirebaseMode
@@ -20,8 +21,6 @@ import com.aamdigital.aambackendservice.notification.core.create.CreateNotificat
 import com.aamdigital.aambackendservice.notification.core.create.DefaultCreateNotificationUseCase
 import com.aamdigital.aambackendservice.notification.core.create.app.AppCreateNotificationHandler
 import com.aamdigital.aambackendservice.notification.core.create.email.EmailCreateNotificationHandler
-import com.aamdigital.aambackendservice.notification.core.create.email.KeycloakUserEmailProvider
-import com.aamdigital.aambackendservice.notification.core.create.email.UserEmailProvider
 import com.aamdigital.aambackendservice.notification.core.create.push.PushCreateNotificationHandler
 import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOutboxHandler
 import com.aamdigital.aambackendservice.notification.core.outbox.OutboxUserNotificationPublisher
@@ -34,7 +33,6 @@ import com.aamdigital.aambackendservice.notification.repository.CouchDbUserDevic
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.firebase.messaging.FirebaseMessaging
-import org.keycloak.admin.client.Keycloak
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
@@ -56,11 +54,16 @@ class NotificationConfiguration {
     @Bean
     fun notificationConfigCache(
         couchDbClient: CouchDbClient,
-        objectMapper: ObjectMapper
+        objectMapper: ObjectMapper,
+        placeholderResolver: PlaceholderResolver,
+        // reloading resolves placeholders again, e.g. after the entity linked to a user account changed
+        @Value("\${notification.config-cache.ttl-millis:86400000}") ttlMillis: Long
     ): NotificationConfigCache =
         DefaultNotificationConfigCache(
             couchDbClient = couchDbClient,
-            objectMapper = objectMapper
+            objectMapper = objectMapper,
+            placeholderResolver = placeholderResolver,
+            ttl = Duration.ofMillis(ttlMillis)
         )
 
     @Bean
@@ -162,32 +165,21 @@ class NotificationConfiguration {
     fun appCreateNotificationHandler(couchDbClient: CouchDbClient): CreateNotificationHandler =
         AppCreateNotificationHandler(couchDbClient = couchDbClient)
 
-    // The email beans are gated on properties, including `keycloak.server-url`, the same condition that
-    // gates the Keycloak bean in KeycloakAdminConfiguration, rather than on @ConditionalOnBean(Keycloak):
-    // the latter is order-sensitive on plain @Configuration classes and silently drops these beans when
-    // NotificationConfiguration happens to be processed before KeycloakAdminConfiguration, even when
-    // Keycloak is configured. NotificationEmailHandlerWiringTest covers both orders.
-    @Bean("keycloak-user-email-provider")
-    @ConditionalOnNotificationEmailConfigured
-    fun keycloakUserEmailProvider(
-        keycloak: Keycloak,
-        aamKeycloakConfig: AamKeycloakConfig
-    ): UserEmailProvider =
-        KeycloakUserEmailProvider(
-            keycloak = keycloak,
-            keycloakConfig = aamKeycloakConfig
-        )
-
+    // The email handler is gated on properties, including `keycloak.server-url`, the same condition that
+    // gates the UserProfileProvider bean in KeycloakAdminConfiguration, rather than on
+    // @ConditionalOnBean: the latter is order-sensitive on plain @Configuration classes and silently drops
+    // the handler when NotificationConfiguration happens to be processed before KeycloakAdminConfiguration,
+    // even when Keycloak is configured. NotificationEmailHandlerWiringTest covers both orders.
     @Bean("email-create-notification-handler")
     @ConditionalOnNotificationEmailConfigured
     fun emailCreateNotificationHandler(
         mailSenderService: MailSenderService,
-        userEmailProvider: UserEmailProvider,
+        userProfileProvider: UserProfileProvider,
         notificationEmailProperties: NotificationEmailProperties
     ): CreateNotificationHandler =
         EmailCreateNotificationHandler(
             mailSenderService = mailSenderService,
-            userEmailProvider = userEmailProvider,
+            userProfileProvider = userProfileProvider,
             notificationEmailProperties = notificationEmailProperties
         )
 }

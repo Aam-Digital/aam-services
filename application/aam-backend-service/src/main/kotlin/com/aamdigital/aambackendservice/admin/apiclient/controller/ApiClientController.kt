@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -63,6 +64,15 @@ data class CreateApiClientRequestDto(
     val name: String,
     val scopes: List<String>,
     val clientId: String? = null
+)
+
+/**
+ * Request body of `PUT /v1/admin/api-client/{clientId}/scope`.
+ *
+ * @property scopes client scopes (of [ApiClientScopeDto]) the API client has from now on; at least one
+ */
+data class UpdateApiClientScopesRequestDto(
+    val scopes: List<String>
 )
 
 /**
@@ -145,6 +155,24 @@ class ApiClientController(
                 clientId
             )
             ResponseEntity.ok(credentials.toDto())
+        }
+
+    @PutMapping("/{clientId}/scope")
+    fun updateScopes(
+        @PathVariable clientId: String,
+        @RequestBody request: UpdateApiClientScopesRequestDto,
+        authentication: JwtAuthenticationToken
+    ): ResponseEntity<Any> =
+        handleErrors("change the client scopes of", authentication) {
+            val apiClient = apiClientAdministration.updateScopes(clientId, request.scopes.toSet())
+            logger.info(
+                "[audit] User '{}' ({}) changed the client scopes of API client '{}' to {}",
+                authentication.userLabel(),
+                authentication.token.subject,
+                clientId,
+                request.scopes.sorted()
+            )
+            ResponseEntity.ok(apiClient.toDto())
         }
 
     @DeleteMapping("/{clientId}")

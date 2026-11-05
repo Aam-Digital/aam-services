@@ -132,6 +132,46 @@ paths:
         500:
           $ref: '#/components/responses/KeycloakError'
 
+  /api-client/{clientId}/scope:
+    put:
+      summary: Change the client scopes of an API client
+      description: |-
+        Replaces the client scopes of the API client, i.e. the access it has.
+        Access tokens issued before keep their client scopes until they expire.
+      tags:
+        - api-client
+      parameters:
+        - $ref: '#/components/parameters/clientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateApiClientScopesRequest'
+      responses:
+        200:
+          description: The API client with its new client scopes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiClient'
+        400:
+          description: |-
+            The request is invalid: `NO_SCOPE` or `UNKNOWN_SCOPE`
+            (a client scope that is not offered by `GET /api-client/scope`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        500:
+          $ref: '#/components/responses/KeycloakError'
+
   /api-client/{clientId}:
     delete:
       summary: Delete an API client
@@ -261,6 +301,18 @@ components:
             The client id the external system authenticates with. If not given, it is generated from the name
             with a random suffix (e.g. `api-toladata-x7k2pq`).
           example: api-toladata
+    UpdateApiClientScopesRequest:
+      type: object
+      required:
+        - scopes
+      properties:
+        scopes:
+          type: array
+          minItems: 1
+          description: The client scopes (of `GET /api-client/scope`) the API client has from now on
+          items:
+            type: string
+          example: [ reporting_read ]
     ApiClientCredentials:
       type: object
       required:

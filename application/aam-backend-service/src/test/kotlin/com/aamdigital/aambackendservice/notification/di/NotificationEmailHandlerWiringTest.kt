@@ -7,10 +7,12 @@ import com.aamdigital.aambackendservice.common.actuator.FeatureRegistrar
 import com.aamdigital.aambackendservice.common.actuator.FeaturesEndpoint
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.domain.ApplicationConfig
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
 import com.aamdigital.aambackendservice.common.keycloak.di.KeycloakAdminConfiguration
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.common.permission.core.PermissionCheckClient
+import com.aamdigital.aambackendservice.common.placeholder.di.PlaceholderConfiguration
 import com.aamdigital.aambackendservice.notification.NotificationEmailFeatureInfoEndpoint
 import com.aamdigital.aambackendservice.notification.NotificationEmailStartupDiagnostics
 import com.aamdigital.aambackendservice.notification.NotificationFeatureInfoEndpoint
@@ -19,7 +21,6 @@ import com.aamdigital.aambackendservice.notification.domain.NotificationChannelT
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.keycloak.admin.client.Keycloak
 import org.mockito.kotlin.mock
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationRunner
@@ -29,7 +30,6 @@ import org.springframework.boot.context.properties.source.ConfigurationPropertyS
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import org.springframework.boot.test.util.TestPropertyValues
-import org.springframework.cache.CacheManager
 import org.springframework.context.annotation.Configuration
 import org.springframework.mail.javamail.JavaMailSender
 import ch.qos.logback.classic.Logger as LogbackLogger
@@ -55,7 +55,7 @@ class NotificationEmailHandlerWiringTest {
             NotificationConfiguration::class.java,
             NotificationFeatureInfoEndpoint::class.java,
             NotificationEmailFeatureInfoEndpoint::class.java
-        ).withBean(Keycloak::class.java, { mock<Keycloak>() })
+        ).withBean(UserProfileProvider::class.java, { mock<UserProfileProvider>() })
 
     private val configured =
         arrayOf(
@@ -83,7 +83,7 @@ class NotificationEmailHandlerWiringTest {
             .withUserConfiguration(
                 PropertiesScanConfiguration::class.java,
                 MailConfiguration::class.java,
-                NotificationEmailCacheConfiguration::class.java,
+                PlaceholderConfiguration::class.java,
                 *configurations
             ).withBean(CouchDbClient::class.java, { mock<CouchDbClient>() })
             .withBean(ObjectMapper::class.java, { ObjectMapper() })
@@ -107,10 +107,8 @@ class NotificationEmailHandlerWiringTest {
     private fun AssertableApplicationContext.assertEmailChannelIsOn() {
         assertThat(this).hasNotFailed()
         assertThat(this).hasBean("email-create-notification-handler")
-        assertThat(this).hasBean("keycloak-user-email-provider")
         assertThat(this).hasSingleBean(MailSenderService::class.java)
         assertThat(this).hasSingleBean(NotificationEmailProperties::class.java)
-        assertThat(this).hasBean("notificationEmailCacheManager")
         assertThat(canHandleEmail()).isTrue()
         assertThat(features()).isEqualTo(
             mapOf("notification" to mapOf("enabled" to true, "email" to mapOf("enabled" to true)))
@@ -123,10 +121,8 @@ class NotificationEmailHandlerWiringTest {
         assertThat(this).hasBean("app-create-notification-handler")
         assertThat(this).hasBean("defaultApplyNotificationRulesUseCase")
         assertThat(this).doesNotHaveBean("email-create-notification-handler")
-        assertThat(this).doesNotHaveBean("keycloak-user-email-provider")
         assertThat(this).doesNotHaveBean(MailSenderService::class.java)
         assertThat(this).doesNotHaveBean(NotificationEmailProperties::class.java)
-        assertThat(this).doesNotHaveBean(CacheManager::class.java)
         assertThat(canHandleEmail()).isFalse()
         assertThat(features()).isEqualTo(mapOf("notification" to mapOf("enabled" to true)))
     }
@@ -202,7 +198,6 @@ class NotificationEmailHandlerWiringTest {
             assertThat(context).doesNotHaveBean(NotificationConfiguration::class.java)
             assertThat(context).doesNotHaveBean(MailSenderService::class.java)
             assertThat(context).doesNotHaveBean(NotificationEmailProperties::class.java)
-            assertThat(context).doesNotHaveBean(CacheManager::class.java)
             assertThat(context.features()).isEmpty()
         }
     }
@@ -248,7 +243,7 @@ class NotificationEmailHandlerWiringTest {
         }
     }
 
-    // The email beans are gated on properties rather than on @ConditionalOnBean(Keycloak), which would
+    // The email beans are gated on properties rather than on @ConditionalOnBean(UserProfileProvider), which would
     // drop them depending on which configuration class is processed first.
     @Test
     fun `should have the email channel whichever configuration is processed first`() {

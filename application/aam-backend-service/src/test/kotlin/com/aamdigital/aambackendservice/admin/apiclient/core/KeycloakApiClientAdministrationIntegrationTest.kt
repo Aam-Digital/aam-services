@@ -180,6 +180,43 @@ class KeycloakApiClientAdministrationIntegrationTest {
     }
 
     @Test
+    fun `should replace the client scopes of an API client, so that its new access tokens carry only those`() {
+        // Given
+        val created = create("test update scopes", setOf("reporting_read", "third_party_authentication"))
+        val keycloakScopesBefore = keycloakScopesOf(created.clientId)
+
+        // When
+        val updated = administration.updateScopes(created.clientId, setOf("reporting_read", "reporting_write"))
+
+        // Then
+        assertThat(updated.scopes)
+            .contains("reporting_read", "reporting_write")
+            .doesNotContain("third_party_authentication")
+        val token = authTestingService.fetchToken(created.clientId, created.clientSecret, REALM)
+        assertThat(claimsOf(token).get("scope").textValue().split(" "))
+            .contains("reporting_read", "reporting_write")
+            .doesNotContain("third_party_authentication")
+        // Keycloak's own default scopes (like "profile") stay as they were
+        assertThat(keycloakScopesOf(created.clientId)).isEqualTo(keycloakScopesBefore)
+    }
+
+    @Test
+    fun `should not change the client scopes of an API client to ones that are not offered`() {
+        // Given
+        val created = create("test update unknown scope", setOf("reporting_read"))
+
+        // Then
+        assertThatThrownBy { administration.updateScopes(created.clientId, setOf("offline_access")) }
+            .extracting("code")
+            .isEqualTo(ApiClientAdministrationError.UNKNOWN_SCOPE)
+        assertThatThrownBy { administration.updateScopes(created.clientId, emptySet()) }
+            .extracting("code")
+            .isEqualTo(ApiClientAdministrationError.NO_SCOPE)
+        assertThat(administration.findApiClients().single { it.clientId == created.clientId }.scopes)
+            .contains("reporting_read")
+    }
+
+    @Test
     fun `should delete an API client`() {
         // Given
         val created = create("test delete")
@@ -214,6 +251,8 @@ class KeycloakApiClientAdministrationIntegrationTest {
                 .extracting("code")
                 .isEqualTo(ApiClientAdministrationError.API_CLIENT_NOT_FOUND)
             assertThatThrownBy { administration.regenerateSecret(clientId) }
+                .isInstanceOf(NotFoundException::class.java)
+            assertThatThrownBy { administration.updateScopes(clientId, setOf("reporting_read")) }
                 .isInstanceOf(NotFoundException::class.java)
             assertThat(clients.findByClientId(clientId)).hasSize(1)
         }
@@ -293,6 +332,17 @@ class KeycloakApiClientAdministrationIntegrationTest {
                 .findAll()
                 .map { it.name }
         ).doesNotContain("test missing scope")
+    }
+
+    /** The Default client scopes of the client that are not offered to API clients, like Keycloak's "profile". */
+    private fun keycloakScopesOf(clientId: String): Set<String> {
+        val clients = admin().realm(REALM).clients()
+        return clients
+            .get(clients.findByClientId(clientId).single().id)
+            .defaultClientScopes
+            .map { it.name }
+            .filter { it !in setOf("reporting_read", "reporting_write", "third_party_authentication") }
+            .toSet()
     }
 
     private fun claimsOf(accessToken: String?): JsonNode {

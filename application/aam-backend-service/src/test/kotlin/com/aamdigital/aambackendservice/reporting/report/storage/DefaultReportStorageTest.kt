@@ -187,6 +187,28 @@ class DefaultReportStorageTest {
         verify(couchDbClient, never()).putDatabaseDocument(any(), any(), any())
     }
 
+    @Test
+    fun `should parse canonical doc with a multi-lingual title`() {
+        // given
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:test",
+              "_rev": "2-def",
+              "title": { "de": "Bericht", "en-US": "Report" },
+              "mode": "sql",
+              "reportDefinition": [ { "query": "SELECT * FROM foo" } ]
+            }
+            """.trimIndent()
+        )
+
+        // when
+        val report = storage.fetchReport(DomainReference("ReportConfig:test"))
+
+        // then
+        assertThat(report.title).isEqualTo("Report")
+    }
+
     // --- Write-back migration ---
 
     @Test
@@ -223,6 +245,40 @@ class DefaultReportStorageTest {
         // so the migrated body must not introduce any beyond the reserved "_id".
         assertThat(body.keys.filter { it.startsWith("_") && it != "_id" }).isEmpty()
         assertThat(body).containsKey("legacyOriginal")
+    }
+
+    @Test
+    fun `should keep all translations of a multi-lingual title when writing back legacy docs`() {
+        // given
+        stubFetchDoc(
+            """
+            {
+              "_id": "ReportConfig:legacy",
+              "_rev": "1-abc",
+              "title": { "en-US": "Legacy", "de": "Alt" },
+              "mode": "sql",
+              "aggregationDefinition": "SELECT * FROM foo"
+            }
+            """.trimIndent()
+        )
+        stubWriteBack()
+
+        // when
+        val report = storage.fetchReport(DomainReference("ReportConfig:legacy"))
+
+        // then
+        assertThat(report.title).isEqualTo("Legacy")
+        val bodyCaptor = argumentCaptor<Any>()
+        verify(couchDbClient).putDatabaseDocument(
+            database = eq("app"),
+            documentId = eq("ReportConfig:legacy"),
+            body = bodyCaptor.capture()
+        )
+
+        @Suppress("UNCHECKED_CAST")
+        val body = bodyCaptor.firstValue as Map<String, Any?>
+        assertThat(objectMapper.valueToTree<ObjectNode>(body).get("title"))
+            .isEqualTo(parseDoc("""{ "en-US": "Legacy", "de": "Alt" }"""))
     }
 
     @Test

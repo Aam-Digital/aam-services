@@ -6,6 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.aamdigital.aambackendservice.admin.apiclient.core.ApiClientAdministration
 import com.aamdigital.aambackendservice.admin.apiclient.core.ApiClientAdministrationError
+import com.aamdigital.aambackendservice.admin.apiclient.domain.ApiClient
 import com.aamdigital.aambackendservice.admin.apiclient.domain.ApiClientCredentials
 import com.aamdigital.aambackendservice.common.error.NotFoundException
 import org.assertj.core.api.Assertions.assertThat
@@ -95,6 +96,39 @@ class ApiClientControllerTest {
         assertThat(auditLog().formattedMessage)
             .contains("manager@example.org", "regenerated the secret", CLIENT_ID)
             .doesNotContain(SECRET)
+    }
+
+    @Test
+    fun `should log who changed the client scopes of an API client to which ones`() {
+        // Given
+        whenever(apiClientAdministration.updateScopes(CLIENT_ID, setOf("reporting_read", "reporting_write")))
+            .thenReturn(
+                ApiClient(
+                    clientId = CLIENT_ID,
+                    name = "CRM",
+                    scopes = setOf("reporting_read", "reporting_write"),
+                    createdBy = null,
+                    createdAt = null
+                )
+            )
+
+        // When
+        val response =
+            controller.updateScopes(
+                CLIENT_ID,
+                UpdateApiClientScopesRequestDto(scopes = listOf("reporting_write", "reporting_read")),
+                user
+            )
+
+        // Then
+        assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+        assertThat(auditLog().formattedMessage)
+            .contains(
+                "manager@example.org",
+                "changed the client scopes",
+                CLIENT_ID,
+                "[reporting_read, reporting_write]"
+            )
     }
 
     @Test

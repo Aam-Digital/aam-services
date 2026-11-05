@@ -84,6 +84,47 @@ class LazySnapshotTest {
     }
 
     @Test
+    fun `should serve the previous copy when a reload fails, and try again after the retry interval`() {
+        // given
+        val clock = MutableClock()
+        var fail = false
+        val snapshot =
+            LazySnapshot(
+                ttl = Duration.ofHours(1),
+                clock = clock,
+                retryAfterFailedReload = Duration.ofMinutes(5)
+            ) {
+                if (fail) throw IllegalStateException("keycloak unreachable")
+                countingLoad()
+            }
+        snapshot.get()
+
+        // when the copy expires while loading fails
+        fail = true
+        clock.now = clock.now.plus(Duration.ofHours(1))
+
+        // then
+        assertThat(snapshot.get()).isEqualTo(1)
+
+        fail = false
+        clock.now = clock.now.plus(Duration.ofMinutes(4))
+        assertThat(snapshot.get()).isEqualTo(1)
+
+        clock.now = clock.now.plus(Duration.ofMinutes(1))
+        assertThat(snapshot.get()).isEqualTo(2)
+    }
+
+    @Test
+    fun `should still fail a first load that fails, as there is no previous copy to serve`() {
+        val snapshot =
+            LazySnapshot(retryAfterFailedReload = Duration.ofMinutes(5)) {
+                throw IllegalStateException("couchdb unreachable")
+            }
+
+        assertThatThrownBy { snapshot.get() }.hasMessage("couchdb unreachable")
+    }
+
+    @Test
     fun `should apply an update to the loaded copy only`() {
         val snapshot = LazySnapshot { mapOf("a" to countingLoad()) }
 

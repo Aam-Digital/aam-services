@@ -3,16 +3,21 @@ package com.aamdigital.aambackendservice.notification.core.create.email
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfile
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileLookupException
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import com.aamdigital.aambackendservice.common.mail.MailSenderRequest
 import com.aamdigital.aambackendservice.common.mail.MailSenderResponse
 import com.aamdigital.aambackendservice.common.mail.MailSenderService
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
+import com.aamdigital.aambackendservice.notification.core.create.TransientNotificationException
 import com.aamdigital.aambackendservice.notification.di.NotificationEmailProperties
 import com.aamdigital.aambackendservice.notification.domain.EntityNotificationContext
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
 import com.aamdigital.aambackendservice.notification.domain.NotificationDetails
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -41,7 +46,7 @@ class EmailCreateNotificationHandlerTest {
     lateinit var mailSenderService: MailSenderService
 
     @Mock
-    lateinit var userEmailProvider: UserEmailProvider
+    lateinit var userProfileProvider: UserProfileProvider
 
     private val emailProperties =
         NotificationEmailProperties(
@@ -73,7 +78,7 @@ class EmailCreateNotificationHandlerTest {
         locale: String = "en"
     ) = EmailCreateNotificationHandler(
         mailSenderService = mailSenderService,
-        userEmailProvider = userEmailProvider,
+        userProfileProvider = userProfileProvider,
         notificationEmailProperties = emailProperties.copy(locale = locale),
         templatesBaseDir = templatesBaseDir
     )
@@ -121,6 +126,21 @@ class EmailCreateNotificationHandlerTest {
         return file
     }
 
+    private fun profileWithEmail(email: String?) =
+        UserProfile(userIdentifier = "user-123", email = email, linkedEntityId = null)
+
+    @Test
+    fun `should fail as a transient error when the email address cannot be looked up for now`() {
+        // Given
+        whenever(userProfileProvider.getUserProfile("user-123"))
+            .thenThrow(UserProfileLookupException("keycloak unreachable"))
+
+        // When / Then the outbox retries it, instead of the email being skipped
+        assertThatThrownBy { handler.createMessage(notificationEvent) }
+            .isInstanceOf(TransientNotificationException::class.java)
+        verifyNoInteractions(mailSenderService)
+    }
+
     @Test
     fun `canHandle returns true for EMAIL channel type`() {
         assertThat(handler.canHandle(NotificationChannelType.EMAIL)).isTrue()
@@ -135,7 +155,7 @@ class EmailCreateNotificationHandlerTest {
     @Test
     fun `should send email with correct subject prefix when user has email address`() {
         // Given
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -157,7 +177,7 @@ class EmailCreateNotificationHandlerTest {
     @Test
     fun `should reflect failure when mail sender reports unsuccessful response`() {
         // Given
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(
             MailSenderResponse(success = false, messageReference = "mail-123")
         )
@@ -180,7 +200,7 @@ class EmailCreateNotificationHandlerTest {
         val previousLevel = logger.level
         logger.level = Level.INFO
         logger.addAppender(logAppender)
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn(null)
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail(null))
 
         // When
         try {
@@ -206,7 +226,7 @@ class EmailCreateNotificationHandlerTest {
     @Test
     fun `should set List-Unsubscribe header in sent email`() {
         // Given
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -226,11 +246,11 @@ class EmailCreateNotificationHandlerTest {
         handler =
             EmailCreateNotificationHandler(
                 mailSenderService = mailSenderService,
-                userEmailProvider = userEmailProvider,
+                userProfileProvider = userProfileProvider,
                 notificationEmailProperties = emailProperties.copy(manageSettingsUrl = "app.test/user-account"),
                 templatesBaseDir = tempDir
             )
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -252,7 +272,7 @@ class EmailCreateNotificationHandlerTest {
             notificationEvent.copy(
                 details = notificationEvent.details.copy(title = "<script>alert(1)</script>")
             )
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -270,7 +290,7 @@ class EmailCreateNotificationHandlerTest {
     @Test
     fun `should include actionUrl as link in email body`() {
         // Given
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -288,7 +308,7 @@ class EmailCreateNotificationHandlerTest {
         // Given
         writeTemplateOverride(tempDir, locale = "en", content = "Template title: {{TITLE}}")
         handler = createHandler(templatesBaseDir = tempDir, locale = "en")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -307,7 +327,7 @@ class EmailCreateNotificationHandlerTest {
         writeTemplateOverride(tempDir, locale = "en", content = "English: {{TITLE}}")
         writeTemplateOverride(tempDir, locale = "de", content = "Deutsch: {{TITLE}}")
         handler = createHandler(templatesBaseDir = tempDir, locale = "de")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -324,7 +344,7 @@ class EmailCreateNotificationHandlerTest {
     fun `should fall back to classpath template when no override exists`() {
         // Given no override files under the base dir
         handler = createHandler(templatesBaseDir = tempDir, locale = "en")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -341,7 +361,7 @@ class EmailCreateNotificationHandlerTest {
     fun `should load bundled localized classpath template for a bundled locale without override`() {
         // Given no override files; configured locale has a bundled (German) classpath template
         handler = createHandler(templatesBaseDir = tempDir, locale = "de")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -358,7 +378,7 @@ class EmailCreateNotificationHandlerTest {
     fun `should fall back to English classpath template for an unsupported locale`() {
         // Given no override files; configured locale has no bundled template
         handler = createHandler(templatesBaseDir = tempDir, locale = "es")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -374,7 +394,7 @@ class EmailCreateNotificationHandlerTest {
     fun `should normalize region-qualified locale to its base language`() {
         // Given no override files; configured locale is region-qualified (de-DE -> de)
         handler = createHandler(templatesBaseDir = tempDir, locale = "de-DE")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -390,7 +410,7 @@ class EmailCreateNotificationHandlerTest {
     fun `should compose from header with the bundled branding display name`() {
         // Given the configured 'from' is a bare address and no branding override exists,
         // the bundled email-branding.properties supplies the display name "Aam Digital".
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -407,7 +427,7 @@ class EmailCreateNotificationHandlerTest {
         // Given a branding override that omits the display name
         writeBrandingOverride(tempDir, locale = "en", content = "subject-prefix=Custom")
         handler = createHandler(templatesBaseDir = tempDir, locale = "en")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -424,7 +444,7 @@ class EmailCreateNotificationHandlerTest {
         // Given a mounted branding override
         writeBrandingOverride(tempDir, locale = "en", content = "from-name=Custom Brand\nsubject-prefix=Custom")
         handler = createHandler(templatesBaseDir = tempDir, locale = "en")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -443,7 +463,7 @@ class EmailCreateNotificationHandlerTest {
         writeBrandingOverride(tempDir, locale = "en", content = "from-name=English Brand\nsubject-prefix=English")
         writeBrandingOverride(tempDir, locale = "de", content = "from-name=Deutsche Marke\nsubject-prefix=Deutsch")
         handler = createHandler(templatesBaseDir = tempDir, locale = "de")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -461,7 +481,7 @@ class EmailCreateNotificationHandlerTest {
         // Given only a legacy unsuffixed branding override exists and the locale folder is absent
         writeBrandingOverride(tempDir, locale = null, content = "from-name=Legacy Brand\nsubject-prefix=Legacy")
         handler = createHandler(templatesBaseDir = tempDir, locale = "de")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -478,7 +498,7 @@ class EmailCreateNotificationHandlerTest {
     fun `should fall back to English bundled branding for a locale without a branding file`() {
         // Given no overrides and a configured locale (es) that has no bundled branding file
         handler = createHandler(templatesBaseDir = tempDir, locale = "es")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When
@@ -496,7 +516,7 @@ class EmailCreateNotificationHandlerTest {
         // Given only a legacy unsuffixed override exists and the locale folder is absent
         writeTemplateOverride(tempDir, locale = null, content = "Legacy override: {{TITLE}}")
         handler = createHandler(templatesBaseDir = tempDir, locale = "de")
-        whenever(userEmailProvider.lookupEmail("user-123")).thenReturn("user@example.com")
+        whenever(userProfileProvider.getUserProfile("user-123")).thenReturn(profileWithEmail("user@example.com"))
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
         // When

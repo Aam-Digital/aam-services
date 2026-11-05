@@ -112,6 +112,29 @@ class KeycloakApiClientAdministration(
             ApiClientCredentials(clientId = clientId, clientSecret = secret.value)
         }
 
+    override fun updateScopes(
+        clientId: String,
+        scopes: Set<String>
+    ): ApiClient {
+        validateScopes(scopes, offeredScopes)
+        return call("change the client scopes of API client '$clientId'") {
+            val client = findApiClientRepresentation(clientId)
+            val scopeIds = findClientScopeIds(scopes)
+            val clientResource = realmResource.clients().get(client.id)
+
+            // only the offered client scopes are the access the API client is given here; Keycloak's own default
+            // scopes (like "profile") that it got when it was created stay as they are
+            clientResource
+                .defaultClientScopes
+                .filter { it.name in offeredScopes && it.name !in scopes }
+                .forEach { clientResource.removeDefaultClientScope(it.id) }
+            val currentScopeIds = clientResource.defaultClientScopes.map { it.id }.toSet()
+            assignDefaultClientScopes(clientResource, scopeIds.filter { it !in currentScopeIds })
+
+            client.toApiClient()
+        }
+    }
+
     override fun deleteApiClient(clientId: String) =
         call("delete API client '$clientId'") {
             val client = findApiClientRepresentation(clientId)

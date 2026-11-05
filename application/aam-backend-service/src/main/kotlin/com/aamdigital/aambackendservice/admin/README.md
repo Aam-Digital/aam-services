@@ -6,16 +6,17 @@ Parts that depend on other systems live in their own sub-package and report thei
 like `apiclient` (`admin.api-client`, only active with Keycloak admin access: `ConditionalOnKeycloakAdminAccess`).
 
 ## API clients (`apiclient`)
-Administrators of the app create, list, delete and regenerate the secret of Keycloak clients for external systems
-(`ApiClientController`). The backend does this with its own Keycloak admin access (`manage-clients`),
+Administrators of the app manage Keycloak clients for external systems (`ApiClientController`).
+The backend does this with its own Keycloak admin access (`manage-clients`),
 so the users of the app need no Keycloak admin role for it.
 
 - `KeycloakApiClientAdministration` talks to the Keycloak Admin REST API. It is the security boundary:
   any client without the `aam.api-client.managed` attribute and the `api-` client id prefix is treated as if it
   did not exist, because `manage-clients` would allow changing every client of the realm (including `app` and
   `aam-backend`).
-- Creating one validates the request (`NewApiClient.kt`): the client scopes offered are those of the enabled
-  feature modules (`ClientScopeRequest` beans).
+- Creating one or changing its client scopes validates the request (`NewApiClient.kt`): the client scopes offered
+  are those of the enabled feature modules (`ClientScopeRequest` beans). Changing the client scopes only adds and
+  removes offered ones; Keycloak's own Default scopes that the client got when it was created (like `profile`) stay.
 
 ## Access Control
 `RequiresAdminAccess`: the `FRONTEND_CLIENT` authority (token issued to the app's Keycloak client)
