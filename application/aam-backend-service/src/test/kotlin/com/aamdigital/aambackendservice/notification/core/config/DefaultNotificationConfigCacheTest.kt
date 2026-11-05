@@ -5,9 +5,11 @@ import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
 import com.aamdigital.aambackendservice.common.couchdb.core.DefaultCouchDbClient.DefaultCouchDbClientErrorCode
 import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.error.NotFoundException
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfile
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileLookupException
+import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueLookupException
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueProvider
-import com.aamdigital.aambackendservice.common.placeholder.core.Placeholders
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -34,22 +36,20 @@ class DefaultNotificationConfigCacheTest {
     lateinit var couchDbClient: CouchDbClient
 
     private val objectMapper = jacksonObjectMapper()
-    private val placeholderValueProvider = FakePlaceholderValueProvider()
+    private val userProfiles = FakeUserProfileProvider()
+    private val placeholderValueProvider = PlaceholderValueProvider(userProfiles)
     private lateinit var cache: DefaultNotificationConfigCache
 
-    /** Placeholder values as Keycloak would have them, recording which lookups were made. */
-    private class FakePlaceholderValueProvider : PlaceholderValueProvider {
-        var values: Map<String, Any> = emptyMap()
+    /** User profiles as Keycloak would have them, recording which lookups were made. */
+    private class FakeUserProfileProvider : UserProfileProvider {
+        var linkedEntityId: String? = null
         var failure: RuntimeException? = null
-        val lookups = mutableListOf<Pair<String, Set<String>>>()
+        val lookups = mutableListOf<String>()
 
-        override fun getValues(
-            userIdentifier: String,
-            placeholders: Set<String>
-        ): Map<String, Any> {
-            lookups.add(userIdentifier to placeholders)
+        override fun getUserProfile(userIdentifier: String): UserProfile {
+            lookups.add(userIdentifier)
             failure?.let { throw it }
-            return values.filterKeys { it in placeholders }
+            return UserProfile(userIdentifier, email = null, linkedEntityId = linkedEntityId)
         }
     }
 
@@ -402,7 +402,7 @@ class DefaultNotificationConfigCacheTest {
     @Test
     fun `should resolve the current user placeholder when loading the config`() {
         // given
-        placeholderValueProvider.values = mapOf(Placeholders.CURRENT_USER to "User:alice")
+        userProfiles.linkedEntityId = "User:alice"
         givenConfigDocs(configDocWithConditions("""{"assignedTo": {"${'$'}elemMatch": "${'$'}current_user"}}"""))
 
         // when
@@ -417,13 +417,13 @@ class DefaultNotificationConfigCacheTest {
         val engine = DocumentConditionEngine()
         assertThat(engine.matches(rule.conditions, mapOf("assignedTo" to listOf("User:alice")))).isTrue
         assertThat(engine.matches(rule.conditions, mapOf("assignedTo" to listOf("User:bob")))).isFalse
-        assertThat(placeholderValueProvider.lookups).containsExactly("user-1" to setOf(Placeholders.CURRENT_USER))
+        assertThat(userProfiles.lookups).containsExactly("user-1")
     }
 
     @Test
     fun `should derive the same rule identifier whether the placeholder was resolved by the frontend or here`() {
         // given
-        placeholderValueProvider.values = mapOf(Placeholders.CURRENT_USER to "User:alice")
+        userProfiles.linkedEntityId = "User:alice"
         givenConfigDocs(
             configDocWithConditions("""{"assignedTo": "${'$'}current_user"}"""),
             configDocWithConditions("""{"assignedTo": "User:alice"}""")
@@ -469,27 +469,27 @@ class DefaultNotificationConfigCacheTest {
         cache.findAll()
 
         // then
-        assertThat(placeholderValueProvider.lookups).isEmpty()
+        assertThat(userProfiles.lookups).isEmpty()
     }
 
     @Test
     fun `should fail the load when placeholder values cannot be looked up for now, and load again next time`() {
         // given dropping the config would silently disable the user's rules until the next reload
-        placeholderValueProvider.failure = PlaceholderValueLookupException("keycloak unreachable")
+        userProfiles.failure = UserProfileLookupException("keycloak unreachable")
         givenConfigDocs(configDocWithConditions("""{"assignedTo": "${'$'}current_user"}"""))
 
         // when / then
         assertThatThrownBy { cache.findAll() }.isInstanceOf(PlaceholderValueLookupException::class.java)
 
-        placeholderValueProvider.failure = null
-        placeholderValueProvider.values = mapOf(Placeholders.CURRENT_USER to "User:alice")
+        userProfiles.failure = null
+        userProfiles.linkedEntityId = "User:alice"
         assertThat(cache.findAll().single().rules).hasSize(1)
     }
 
     @Test
     fun `should keep the cached config when placeholder values cannot be looked up during refresh`() {
         // given
-        placeholderValueProvider.values = mapOf(Placeholders.CURRENT_USER to "User:alice")
+        userProfiles.linkedEntityId = "User:alice"
         givenConfigDocs(configDocWithConditions("""{"assignedTo": "${'$'}current_user"}"""))
         val cached = cache.findAll()
 
@@ -506,7 +506,7 @@ class DefaultNotificationConfigCacheTest {
                 NotificationConfigDto::class.java
             )
         )
-        placeholderValueProvider.failure = PlaceholderValueLookupException("keycloak unreachable")
+        userProfiles.failure = UserProfileLookupException("keycloak unreachable")
 
         // when
         cache.refreshConfig(database = "app", notificationConfigId = "NotificationConfig:user-1", deleted = false)
@@ -527,7 +527,7 @@ class DefaultNotificationConfigCacheTest {
                 ttl = Duration.ofDays(1),
                 clock = clock
             )
-        placeholderValueProvider.values = mapOf(Placeholders.CURRENT_USER to "User:alice")
+        userProfiles.linkedEntityId = "User:alice"
         givenConfigDocs(configDocWithConditions("""{"assignedTo": "${'$'}current_user"}"""))
         val engine = DocumentConditionEngine()
         val bobsDocument = mapOf("assignedTo" to "User:bob")
@@ -536,7 +536,7 @@ class DefaultNotificationConfigCacheTest {
         assertThat(engine.matches(before.conditions, bobsDocument)).isFalse
 
         // when the account is linked to a different entity, and the ttl passes
-        placeholderValueProvider.values = mapOf(Placeholders.CURRENT_USER to "User:bob")
+        userProfiles.linkedEntityId = "User:bob"
         clock.now = clock.now.plus(Duration.ofHours(23))
         val withinTtl = cacheWithTtl.singleRule()
         clock.now = clock.now.plus(Duration.ofHours(1))
@@ -560,20 +560,20 @@ class DefaultNotificationConfigCacheTest {
                 ttl = Duration.ofDays(1),
                 clock = clock
             )
-        placeholderValueProvider.values = mapOf(Placeholders.CURRENT_USER to "User:alice")
+        userProfiles.linkedEntityId = "User:alice"
         givenConfigDocs(configDocWithConditions("""{"assignedTo": "${'$'}current_user"}"""))
         val loaded = cacheWithTtl.findAll()
 
         // when the cache expires while Keycloak is unreachable
-        placeholderValueProvider.failure = PlaceholderValueLookupException("keycloak unreachable")
+        userProfiles.failure = UserProfileLookupException("keycloak unreachable")
         clock.now = clock.now.plus(Duration.ofDays(1))
 
         // then notifications keep working with the previous configs
         assertThat(cacheWithTtl.findAll()).isEqualTo(loaded)
 
         // and the reload is tried again later
-        placeholderValueProvider.failure = null
-        placeholderValueProvider.values = mapOf(Placeholders.CURRENT_USER to "User:bob")
+        userProfiles.failure = null
+        userProfiles.linkedEntityId = "User:bob"
         clock.now = clock.now.plus(DefaultNotificationConfigCache.RELOAD_RETRY_INTERVAL)
         val reloaded = cacheWithTtl.singleRule()
         assertThat(DocumentConditionEngine().matches(reloaded.conditions, mapOf("assignedTo" to "User:bob"))).isTrue
@@ -594,7 +594,7 @@ class DefaultNotificationConfigCacheTest {
 
         // then
         assertThat(entries.single().rules.map { it.label }).containsExactly("Enabled rule")
-        assertThat(placeholderValueProvider.lookups).isEmpty()
+        assertThat(userProfiles.lookups).isEmpty()
     }
 
     private fun DefaultNotificationConfigCache.singleRule(): NotificationRuleCacheEntry =

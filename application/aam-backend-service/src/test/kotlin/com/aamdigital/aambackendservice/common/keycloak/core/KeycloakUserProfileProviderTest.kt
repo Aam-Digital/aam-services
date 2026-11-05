@@ -16,6 +16,8 @@ import org.keycloak.representations.idm.UserRepresentation
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 @ExtendWith(MockitoExtension::class)
@@ -99,6 +101,32 @@ class KeycloakUserProfileProviderTest {
         // then
         assertThat(profile).isNotNull
         assertThat(profile?.linkedEntityId).isNull()
+    }
+
+    @Test
+    fun `should look up each user in Keycloak only once while cached`() {
+        // given
+        givenUser(userWithEntity("Child:alice"))
+
+        // when
+        provider.getUserProfile("user-1")
+        val second = provider.getUserProfile("user-1")
+
+        // then
+        assertThat(second?.linkedEntityId).isEqualTo("Child:alice")
+        verify(userResource, times(1)).toRepresentation()
+    }
+
+    @Test
+    fun `should not cache a failed lookup`() {
+        // given
+        whenever(userResource.toRepresentation())
+            .thenThrow(ProcessingException("connection refused"))
+            .thenReturn(userWithEntity("Child:alice"))
+
+        // when / then
+        assertThatThrownBy { provider.getUserProfile("user-1") }.isInstanceOf(UserProfileLookupException::class.java)
+        assertThat(provider.getUserProfile("user-1")?.linkedEntityId).isEqualTo("Child:alice")
     }
 
     @Test

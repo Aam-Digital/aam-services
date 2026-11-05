@@ -2,7 +2,6 @@ package com.aamdigital.aambackendservice.common.placeholder.di
 
 import com.aamdigital.aambackendservice.common.keycloak.core.UserProfileProvider
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderValueProvider
-import com.aamdigital.aambackendservice.common.placeholder.core.UserPlaceholderValueProvider
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -16,5 +15,5 @@ class PlaceholderConfiguration {
      */
     @Bean
     fun placeholderValueProvider(userProfileProvider: ObjectProvider<UserProfileProvider>): PlaceholderValueProvider =
-        UserPlaceholderValueProvider(userProfileProvider.getIfAvailable())
+        PlaceholderValueProvider(userProfileProvider.getIfAvailable())
 }

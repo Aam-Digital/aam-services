@@ -54,7 +54,7 @@ instead of implementing the operators itself.
 Conditions can use `"$current_user"` as a value (e.g. `{"assignedTo": {"$elemMatch": "$current_user"}}`),
 the same placeholder the frontend uses for dynamic default values. It stands for the entity linked to the
 rule owner's account, read from the Keycloak user attribute `exact_username` by
-[`common/placeholder`](../common/placeholder/core/UserPlaceholderValueProvider.kt) through the generic
+[`common/placeholder`](../common/placeholder/core/PlaceholderValueProvider.kt) through the generic
 [`UserProfileProvider`](../common/keycloak/core/UserProfileProvider.kt).
 
 - Placeholders are resolved once, when a config is loaded into `NotificationConfigCache`, not on every

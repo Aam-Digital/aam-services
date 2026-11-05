@@ -4,11 +4,11 @@ import com.aamdigital.aambackendservice.common.AuthTestingService
 import com.aamdigital.aambackendservice.common.keycloak.core.ClientScopeInitializer
 import com.aamdigital.aambackendservice.common.keycloak.core.ClientScopeRequest
 import com.aamdigital.aambackendservice.common.keycloak.core.KeycloakClientScopeAdministration
+import com.aamdigital.aambackendservice.common.keycloak.core.KeycloakUserProfileProvider
 import com.aamdigital.aambackendservice.common.keycloak.di.AamKeycloakConfig
 import com.aamdigital.aambackendservice.common.keycloak.di.KeycloakAdminConfiguration
 import com.aamdigital.aambackendservice.container.KeycloakClientDefinitions
 import com.aamdigital.aambackendservice.container.TestContainers
-import com.aamdigital.aambackendservice.notification.core.create.email.KeycloakUserEmailProvider
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.AamKeycloakAuthenticationProvider
 import com.aamdigital.aambackendservice.thirdpartyauthentication.core.ThirdPartyAuthenticatorActivation
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -130,7 +130,8 @@ class KeycloakClientDefinitionsIntegrationTest {
         try {
             // Then
             assertThat(authenticationProvider.findByEmail(email).orElseThrow().userId).isEqualTo(created.userId)
-            assertThat(KeycloakUserEmailProvider(backend, config).lookupEmail(created.userId)).isEqualTo(email)
+            val profile = KeycloakUserProfileProvider(backend, config).getUserProfile(created.userId)
+            assertThat(profile?.email).isEqualTo(email)
         } finally {
             val users = admin().realm(REALM).users()
             users.delete(created.userId).close()

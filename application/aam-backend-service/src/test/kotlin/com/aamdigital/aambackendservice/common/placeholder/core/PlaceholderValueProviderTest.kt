@@ -7,7 +7,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
-class UserPlaceholderValueProviderTest {
+class PlaceholderValueProviderTest {
     /** User profiles as Keycloak would have them, recording which lookups were made. */
     private class FakeUserProfileProvider(
         private val profile: UserProfile? = null,
@@ -30,7 +30,7 @@ class UserPlaceholderValueProviderTest {
         val profiles = FakeUserProfileProvider(UserProfile("user-1", null, linkedEntityId = "User:alice"))
 
         // when
-        val values = UserPlaceholderValueProvider(profiles).getValues("user-1", placeholders)
+        val values = PlaceholderValueProvider(profiles).getValues("user-1", placeholders)
 
         // then
         assertThat(values).isEqualTo(mapOf(Placeholders.CURRENT_USER to "User:alice"))
@@ -41,13 +41,13 @@ class UserPlaceholderValueProviderTest {
         val withoutEntity = FakeUserProfileProvider(UserProfile("user-1", null, linkedEntityId = null))
         val withoutAccount = FakeUserProfileProvider(profile = null)
 
-        assertThat(UserPlaceholderValueProvider(withoutEntity).getValues("user-1", placeholders)).isEmpty()
-        assertThat(UserPlaceholderValueProvider(withoutAccount).getValues("user-1", placeholders)).isEmpty()
+        assertThat(PlaceholderValueProvider(withoutEntity).getValues("user-1", placeholders)).isEmpty()
+        assertThat(PlaceholderValueProvider(withoutAccount).getValues("user-1", placeholders)).isEmpty()
     }
 
     @Test
     fun `should have no values without a user profile provider`() {
-        assertThat(UserPlaceholderValueProvider(null).getValues("user-1", placeholders)).isEmpty()
+        assertThat(PlaceholderValueProvider(null).getValues("user-1", placeholders)).isEmpty()
     }
 
     @Test
@@ -56,7 +56,7 @@ class UserPlaceholderValueProviderTest {
         val profiles = FakeUserProfileProvider(failure = UserProfileLookupException("keycloak unreachable"))
 
         // when / then
-        assertThatThrownBy { UserPlaceholderValueProvider(profiles).getValues("user-1", placeholders) }
+        assertThatThrownBy { PlaceholderValueProvider(profiles).getValues("user-1", placeholders) }
             .isInstanceOf(PlaceholderValueLookupException::class.java)
             .hasCauseInstanceOf(UserProfileLookupException::class.java)
     }
@@ -67,7 +67,7 @@ class UserPlaceholderValueProviderTest {
         val profiles = FakeUserProfileProvider(UserProfile("user-1", null, linkedEntityId = "User:alice"))
 
         // when
-        val values = UserPlaceholderValueProvider(profiles).getValues("user-1", emptySet())
+        val values = PlaceholderValueProvider(profiles).getValues("user-1", emptySet())
 
         // then
         assertThat(values).isEmpty()
