@@ -105,7 +105,7 @@ The Keycloak client for the lookup is the `aam-backend` client (`KEYCLOAK_CLIENT
 
 Notification links are derived centrally from `APPLICATION_BASEURL`:
 
-- Email "manage notification settings": `https://<base-url>/user-account?tabIndex=1`
+- Email "manage notification settings": `https://<base-url>/user-account?_tabIndex=1`
 - Push notification link target (FCM webpush `link` and `url` custom data)
 
 Database change-detection is activated automatically when notification (or reporting) is enabled;
