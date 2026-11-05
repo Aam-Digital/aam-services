@@ -30,8 +30,9 @@ class TranslatableTextTest {
     }
 
     @Test
-    fun `should fall back to any non-empty translation without English`() {
+    fun `should fall back to any non-blank translation without English`() {
         assertThat(resolve("""{ "en-US": "", "de": "Bericht" }""")).isEqualTo("Bericht")
+        assertThat(resolve("""{ "en-US": " ", "de": "Bericht" }""")).isEqualTo("Bericht")
     }
 
     @Test

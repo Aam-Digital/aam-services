@@ -108,7 +108,7 @@ class ReportConfigLegacyMigration(
         return mapOf(
             "_id" to report.id,
             // original value, to keep all translations of a multi-lingual title
-            "title" to (legacyDoc.get("title") ?: report.title),
+            "title" to (legacyDoc.get("title")?.takeUnless { it.isNull } ?: report.title),
             "mode" to (legacyDoc.get("mode")?.textValue() ?: "sql"),
             "transformations" to report.transformations,
             "reportDefinition" to report.items.map { reportItemToMap(it) },

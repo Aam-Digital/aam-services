@@ -10,7 +10,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
  *
  * @param id couchdb _id
  * @param rev couchdb _rev of this document
- * @param title human-readable title of the Report (one language, if configured as translations)
+ * @param title human-readable title of the Report (one language, if configured as translations);
+ *     null if missing, which the report treats as an empty title rather than an invalid config
  * @param mode report mode; only "sql" is supported
  * @param transformations optional arg transformations, e.g. startDate → [SQL_FROM_DATE]
  * @param reportDefinition list of queries and/or groups making up the report
@@ -22,7 +23,7 @@ data class ReportConfigEntity(
     @JsonProperty("_rev")
     val rev: String,
     @JsonDeserialize(using = TranslatableTextDeserializer::class)
-    val title: String,
+    val title: String? = null,
     val mode: String,
     val transformations: Map<String, List<String>>? = null,
     // nullable elements: without StrictNullChecks, Jackson 2 lets a JSON null into the list anyway
