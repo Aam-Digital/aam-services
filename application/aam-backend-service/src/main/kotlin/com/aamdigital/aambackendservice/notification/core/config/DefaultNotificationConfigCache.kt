@@ -62,6 +62,8 @@ class DefaultNotificationConfigCache(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    override val sourceEntityType: String = DOCUMENT_PREFIX
+
     /** Cache entries by user identifier. */
     private val configs = LazySnapshot(ttl, clock, RELOAD_RETRY_INTERVAL) { loadConfigs() }
 

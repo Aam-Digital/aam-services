@@ -16,6 +16,7 @@ import com.aamdigital.aambackendservice.notification.NotificationEmailStartupDia
 import com.aamdigital.aambackendservice.notification.core.CreateUserNotificationEvent
 import com.aamdigital.aambackendservice.notification.core.config.DefaultNotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.config.NotificationConfigCache
+import com.aamdigital.aambackendservice.notification.core.config.PublicFormNotificationConfigCache
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationHandler
 import com.aamdigital.aambackendservice.notification.core.create.CreateNotificationUseCase
 import com.aamdigital.aambackendservice.notification.core.create.DefaultCreateNotificationUseCase
@@ -37,6 +38,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Primary
 import org.springframework.core.env.Environment
 import java.time.Duration
 
@@ -51,7 +53,9 @@ class NotificationConfiguration {
     fun notificationStartupDiagnostics(environment: Environment): ApplicationRunner =
         NotificationEmailStartupDiagnostics(environment)
 
+    // for injection points asking for a single cache
     @Bean
+    @Primary
     fun notificationConfigCache(
         couchDbClient: CouchDbClient,
         objectMapper: ObjectMapper,
@@ -67,8 +71,20 @@ class NotificationConfiguration {
         )
 
     @Bean
+    fun publicFormNotificationConfigCache(
+        couchDbClient: CouchDbClient,
+        objectMapper: ObjectMapper,
+        @Value("\${notification.config-cache.ttl-millis:86400000}") ttlMillis: Long
+    ): NotificationConfigCache =
+        PublicFormNotificationConfigCache(
+            couchDbClient = couchDbClient,
+            objectMapper = objectMapper,
+            ttl = Duration.ofMillis(ttlMillis)
+        )
+
+    @Bean
     fun defaultApplyNotificationRulesUseCase(
-        notificationConfigCache: NotificationConfigCache,
+        notificationConfigCaches: List<NotificationConfigCache>,
         userNotificationPublisher: UserNotificationPublisher,
         permissionCheckClient: PermissionCheckClient,
         applicationConfig: ApplicationConfig,
@@ -82,7 +98,7 @@ class NotificationConfiguration {
             createNotificationHandlers.any { handler -> handler.canHandle(channel) }
 
         return DefaultApplyNotificationRulesUseCase(
-            notificationConfigCache = notificationConfigCache,
+            notificationConfigCaches = notificationConfigCaches,
             userNotificationPublisher = userNotificationPublisher,
             permissionCheckClient = permissionCheckClient,
             applicationConfig = applicationConfig,
@@ -93,11 +109,11 @@ class NotificationConfiguration {
 
     @Bean("notification-document-change-handler")
     fun notificationDocumentChangeHandler(
-        notificationConfigCache: NotificationConfigCache,
+        notificationConfigCaches: List<NotificationConfigCache>,
         applyNotificationRulesUseCase: ApplyNotificationRulesUseCase
     ): NotificationDocumentChangeHandler =
         NotificationDocumentChangeHandler(
-            notificationConfigCache = notificationConfigCache,
+            notificationConfigCaches = notificationConfigCaches,
             applyNotificationRulesUseCase = applyNotificationRulesUseCase
         )
 

@@ -20,7 +20,7 @@ import java.util.UUID
 
 /** Applies persisted notification rules to a document change event and publishes matching notifications. */
 class DefaultApplyNotificationRulesUseCase(
-    private val notificationConfigCache: NotificationConfigCache,
+    private val notificationConfigCaches: List<NotificationConfigCache>,
     private val userNotificationPublisher: UserNotificationPublisher,
     private val permissionCheckClient: PermissionCheckClient,
     private val applicationConfig: ApplicationConfig,
@@ -32,7 +32,7 @@ class DefaultApplyNotificationRulesUseCase(
         val changedEntity = request.documentChangeEvent.entityType
         val changeType = request.documentChangeEvent.changeType
 
-        val notificationConfigurations = notificationConfigCache.findAll()
+        val notificationConfigurations = notificationConfigCaches.flatMap { it.findAll() }
 
         logger.trace(
             "Processing change: entity={}, changeType={}, configCount={}",
@@ -64,12 +64,19 @@ class DefaultApplyNotificationRulesUseCase(
             changeType
         )
 
+        // the permission check only applies to users; an external recipient gets what the form's admin configured
+        val (externalRules, userRules) = matchedRules.partition { (config, _) -> config.isExternalRecipient }
+
         val permissionMap =
-            permissionCheckClient.checkPermissions(
-                userIds = matchedRules.map { it.first.userIdentifier }.distinct(),
-                entityId = request.documentChangeEvent.documentId,
-                action = "read"
-            )
+            if (userRules.isEmpty()) {
+                emptyMap()
+            } else {
+                permissionCheckClient.checkPermissions(
+                    userIds = userRules.map { it.first.userIdentifier }.distinct(),
+                    entityId = request.documentChangeEvent.documentId,
+                    action = "read"
+                )
+            }
 
         logger.trace(
             "Permission check results: {}",
@@ -77,7 +84,7 @@ class DefaultApplyNotificationRulesUseCase(
         )
 
         val triggeredEvents =
-            matchedRules.mapNotNull { (notificationConfig, rule) ->
+            userRules.mapNotNull { (notificationConfig, rule) ->
                 val hasPermission = permissionMap[notificationConfig.userIdentifier] == true
                 if (!hasPermission) {
                     logger.trace(
@@ -94,7 +101,14 @@ class DefaultApplyNotificationRulesUseCase(
                     rule,
                     request.documentChangeEvent
                 )
-            }
+            } +
+                externalRules.mapNotNull { (notificationConfig, rule) ->
+                    publishNotificationEventForExternalRecipient(
+                        notificationConfig,
+                        rule,
+                        request.documentChangeEvent
+                    )
+                }
 
         return UseCaseOutcome.Success(
             ApplyNotificationRulesData(
@@ -198,6 +212,75 @@ class DefaultApplyNotificationRulesUseCase(
 
         return notificationDetails
     }
+
+    /**
+     * Email only: there is no account for an in-app notification or a registered device.
+     * Sends nothing when the record has no address, so no undeliverable entry reaches the outbox.
+     */
+    private fun publishNotificationEventForExternalRecipient(
+        notificationConfig: NotificationConfigCacheEntry,
+        rule: NotificationRuleCacheEntry,
+        documentChangeEvent: DocumentChangeEvent
+    ): NotificationDetails? {
+        val emailField = notificationConfig.recipientEmailField ?: return null
+        val recipientEmail =
+            (fieldValue(documentChangeEvent.currentVersion, emailField) as? String)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+
+        if (recipientEmail == null) {
+            logger.info(
+                "No address in field '{}' of {}, so no submission confirmation is sent",
+                emailField,
+                documentChangeEvent.documentId
+            )
+            return null
+        }
+
+        if (!emailEnabled) {
+            logger.warn(
+                "Email is not configured, so the submission confirmation for {} cannot be sent",
+                documentChangeEvent.documentId
+            )
+            return null
+        }
+
+        val notificationDetails =
+            NotificationDetails(
+                id =
+                    notificationIdFor(
+                        documentChangeEvent = documentChangeEvent,
+                        userIdentifier = notificationConfig.userIdentifier,
+                        ruleIdentifier = rule.externalIdentifier
+                    ),
+                title = rule.label,
+                context =
+                    EntityNotificationContext(
+                        entityType = rule.entityType,
+                        entityId = documentChangeEvent.documentId
+                    ),
+                notificationType = rule.notificationType
+            )
+
+        userNotificationPublisher.publish(
+            CreateUserNotificationEvent(
+                // the form the rule came from; keeps the notification id stable while the entry is in the outbox
+                userIdentifier = notificationConfig.userIdentifier,
+                notificationChannelType = NotificationChannelType.EMAIL,
+                notificationRule = rule.externalIdentifier,
+                details = notificationDetails,
+                recipientEmail = recipientEmail
+            )
+        )
+
+        return notificationDetails
+    }
+
+    /** follows dotted paths into nested objects, like the condition engine */
+    private fun fieldValue(
+        document: Map<*, *>,
+        fieldPath: String
+    ): Any? = fieldPath.split(".").fold<String, Any?>(document) { current, key -> (current as? Map<*, *>)?.get(key) }
 
     /**
      * Stable notification id for one (document revision, user, rule) combination.
