@@ -32,6 +32,8 @@ class EmailCreateNotificationHandler(
     private val templateLoader = LocalizedTemplateLoader(templatesBaseDir)
     private val emailBodyTemplate: String =
         templateLoader.loadRequired(TEMPLATE_RELATIVE_PATH, notificationEmailProperties.locale)
+    private val publicFormBodyTemplate: String =
+        templateLoader.loadRequired(PUBLIC_FORM_TEMPLATE_RELATIVE_PATH, notificationEmailProperties.locale)
     private val branding: EmailBranding = loadEmailBranding(notificationEmailProperties.locale)
     private val normalizedManageSettingsUrl: String =
         normalizeUrlWithHttpsDefault(notificationEmailProperties.manageSettingsUrl)
@@ -41,7 +43,10 @@ class EmailCreateNotificationHandler(
         NotificationChannelType.EMAIL == notificationChannelType
 
     override fun createMessage(createUserNotificationEvent: CreateUserNotificationEvent): CreateNotificationData {
-        val email = lookupEmail(createUserNotificationEvent.userIdentifier)
+        // a recipient without a user account carries the address on the event
+        val email =
+            createUserNotificationEvent.recipientEmail?.takeIf { it.isNotBlank() }
+                ?: lookupEmail(createUserNotificationEvent.userIdentifier)
         if (email == null) {
             logger.info(
                 "No email address for user {}, skipping email notification",
@@ -52,12 +57,25 @@ class EmailCreateNotificationHandler(
 
         val details = createUserNotificationEvent.details
         val subject = "${branding.subjectPrefix}: ${details.title}"
+
+        // without an account there is nothing to open in the app and no settings to manage: no links, no unsubscribe
+        val isExternalRecipient = createUserNotificationEvent.recipientEmail != null
         val body =
-            buildEmailBody(
-                title = details.title,
-                actionUrl = details.actionUrl,
-                manageSettingsUrl = normalizedManageSettingsUrl
-            )
+            if (isExternalRecipient) {
+                buildPublicFormEmailBody(title = details.title)
+            } else {
+                buildEmailBody(
+                    title = details.title,
+                    actionUrl = details.actionUrl,
+                    manageSettingsUrl = normalizedManageSettingsUrl
+                )
+            }
+        val headers =
+            if (isExternalRecipient) {
+                emptyMap()
+            } else {
+                mapOf("List-Unsubscribe" to "<$normalizedManageSettingsUrl>")
+            }
 
         val mailSenderResponse =
             try {
@@ -68,10 +86,7 @@ class EmailCreateNotificationHandler(
                         body = body,
                         from = resolvedFrom,
                         isHtml = true,
-                        headers =
-                            mapOf(
-                                "List-Unsubscribe" to "<$normalizedManageSettingsUrl>"
-                            )
+                        headers = headers
                     )
                 )
             } catch (ex: MailSendException) {
@@ -117,6 +132,9 @@ class EmailCreateNotificationHandler(
             .replace("{{TITLE}}", HtmlUtils.htmlEscape(title))
             .replace("{{ACTION_URL}}", HtmlUtils.htmlEscape(actionUrl))
             .replace("{{MANAGE_SETTINGS_URL}}", HtmlUtils.htmlEscape(manageSettingsUrl))
+
+    private fun buildPublicFormEmailBody(title: String): String =
+        publicFormBodyTemplate.replace("{{TITLE}}", HtmlUtils.htmlEscape(title))
 
     /**
      * Composes the final sender header from the deployment-specific address
@@ -169,6 +187,8 @@ class EmailCreateNotificationHandler(
         private const val DEFAULT_SUBJECT_PREFIX = "Aam Digital"
         private const val TEMPLATE_RELATIVE_PATH =
             "notification/create-notification-email-template.html"
+        private const val PUBLIC_FORM_TEMPLATE_RELATIVE_PATH =
+            "notification/public-form-confirmation-email-template.html"
         private const val BRANDING_RELATIVE_PATH =
             "notification/email-branding.properties"
         private val DEFAULT_TEMPLATES_BASE_DIR: Path =

@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.JsonNode
 
@@ -34,4 +35,16 @@ data class NotificationRuleDto(
 data class NotificationChannelConfig(
     val push: Boolean?,
     val email: Boolean?
+)
+
+/** The parts of a `PublicFormConfig` document (ndb-core entity) that configure the confirmation email. */
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class PublicFormConfigDto(
+    @JsonProperty("_id") val id: String,
+    /** a plain string, or an object keyed by language code */
+    val title: JsonNode?,
+    /** the record type the form creates */
+    val entity: String?,
+    val sendConfirmationEmail: Boolean?,
+    val confirmationEmailField: String?
 )

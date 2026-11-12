@@ -527,4 +527,38 @@ class EmailCreateNotificationHandlerTest {
         verify(mailSenderService).sendMail(requestCaptor.capture())
         assertThat(requestCaptor.firstValue.body).contains("Legacy override: A new record was added")
     }
+
+    @Test
+    fun `should confirm to the address on the event without looking up an account`() {
+        // Given someone without an account submitted a public form
+        val submissionEvent =
+            notificationEvent.copy(
+                userIdentifier = "form-1",
+                recipientEmail = "participant@example.org",
+                details =
+                    notificationEvent.details.copy(
+                        title = "Submission received: Event registration",
+                        actionUrl = ""
+                    )
+            )
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        val result = handler.createMessage(submissionEvent)
+
+        // Then
+        assertThat(result.messageCreated).isTrue()
+        verifyNoInteractions(userProfileProvider)
+
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        val request = requestCaptor.firstValue
+        assertThat(request.to).isEqualTo("participant@example.org")
+        assertThat(request.subject).isEqualTo("Aam Digital: Submission received: Event registration")
+        // the plain confirmation: no "open in app" link and no settings to manage
+        assertThat(request.body).contains("Submission received: Event registration")
+        assertThat(request.body).doesNotContain("Open in Aam Digital")
+        assertThat(request.body).doesNotContain("notification settings")
+        assertThat(request.headers).doesNotContainKey("List-Unsubscribe")
+    }
 }

@@ -25,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.never
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -54,7 +55,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
 
         service =
             DefaultApplyNotificationRulesUseCase(
-                notificationConfigCache = notificationConfigCache,
+                notificationConfigCaches = listOf(notificationConfigCache),
                 userNotificationPublisher = userNotificationPublisher,
                 permissionCheckClient = permissionCheckClient,
                 applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
@@ -497,7 +498,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // Given a channel with no handler produces notifications that can never be delivered
         val serviceWithoutPush =
             DefaultApplyNotificationRulesUseCase(
-                notificationConfigCache = notificationConfigCache,
+                notificationConfigCaches = listOf(notificationConfigCache),
                 userNotificationPublisher = userNotificationPublisher,
                 permissionCheckClient = permissionCheckClient,
                 applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
@@ -752,7 +753,7 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // given
         val serviceWithEmailDisabled =
             DefaultApplyNotificationRulesUseCase(
-                notificationConfigCache = notificationConfigCache,
+                notificationConfigCaches = listOf(notificationConfigCache),
                 userNotificationPublisher = userNotificationPublisher,
                 permissionCheckClient = permissionCheckClient,
                 applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
@@ -852,5 +853,85 @@ class DefaultApplyNotificationRulesUseCaseTest {
         )
         val ids = eventCaptor.allValues.map { it.details.id }.distinct()
         assertThat(ids).hasSize(1)
+    }
+
+    /** A public form's confirmation rule: the recipient is whoever submitted the record. */
+    private fun publicFormConfig(emailField: String = "email") =
+        NotificationConfigCacheEntry(
+            userIdentifier = "form-1",
+            channelPush = false,
+            channelEmail = true,
+            recipientEmailField = emailField,
+            rules =
+                listOf(
+                    NotificationRuleCacheEntry(
+                        label = "Submission received",
+                        externalIdentifier = "form-1-rule",
+                        notificationType = NotificationType.ENTITY_CHANGE,
+                        entityType = "Child",
+                        changeType = "created",
+                        conditions = conditions("""{"created.by": "PublicForm:form-1"}"""),
+                        enabled = true
+                    )
+                )
+        )
+
+    private fun publicFormSubmission(vararg fields: Pair<String, Any>) =
+        DocumentChangeEvent(
+            database = "app",
+            documentId = "Child:1",
+            rev = "1-aa4598f080dc7db187cc3f59c92fd7fd",
+            currentVersion =
+                mapOf("_id" to "Child:1", "created" to mapOf("by" to "PublicForm:form-1")) + fields.toMap(),
+            previousVersion = emptyMap<String, Any>(),
+            deleted = false
+        )
+
+    @Test
+    fun `should email the address on the submitted record, without permission check or in-app notification`() {
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(listOf(publicFormConfig()))
+
+        // when
+        service.run(ApplyNotificationRulesRequest(publicFormSubmission("email" to "  participant@example.org ")))
+
+        // then nobody is asked whether the submitter may read their own record
+        verify(permissionCheckClient, never()).checkPermissions(any(), any(), any())
+
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher).publish(eventCaptor.capture())
+        val event = eventCaptor.firstValue
+        assertThat(event.notificationChannelType).isEqualTo(NotificationChannelType.EMAIL)
+        assertThat(event.recipientEmail).isEqualTo("participant@example.org")
+        assertThat(event.userIdentifier).isEqualTo("form-1")
+    }
+
+    @Test
+    fun `should send nothing when the submitted record has no address in the configured field`() {
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(listOf(publicFormConfig()))
+
+        // when
+        val outcome = service.run(ApplyNotificationRulesRequest(publicFormSubmission("name" to "No email given")))
+
+        // then no undeliverable entry reaches the outbox
+        verify(userNotificationPublisher, never()).publish(any())
+        assertThat((outcome as UseCaseOutcome.Success).data.notificationsSendCount).isZero()
+    }
+
+    @Test
+    fun `should read the address from a nested field the same way conditions do`() {
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(listOf(publicFormConfig(emailField = "contact.email")))
+
+        // when
+        service.run(
+            ApplyNotificationRulesRequest(publicFormSubmission("contact" to mapOf("email" to "nested@example.org")))
+        )
+
+        // then
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher).publish(eventCaptor.capture())
+        assertThat(eventCaptor.firstValue.recipientEmail).isEqualTo("nested@example.org")
     }
 }
