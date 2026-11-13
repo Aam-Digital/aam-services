@@ -20,7 +20,8 @@ data class NotificationConfigDto(
  * Raw notification rule structure from CouchDB before normalization into cache entries.
  */
 data class NotificationRuleDto(
-    val label: String,
+    /** Optional in the frontend model, so a rule saved without a name has no label at all. */
+    val label: String? = null,
     val notificationType: NotificationType,
     val entityType: String,
     val changeType: List<String>,

@@ -176,6 +176,96 @@ class DefaultNotificationConfigCacheTest {
     }
 
     @Test
+    fun `should load a rule without a label, as the frontend allows saving one`() {
+        // given
+        val configDoc =
+            objectMapper
+                .readTree(
+                    """
+                    {
+                        "_id": "NotificationConfig:user-1",
+                        "_rev": "1-abc",
+                        "notificationRules": [
+                            {
+                                "notificationType": "entity_change",
+                                "entityType": "Child",
+                                "changeType": ["created"],
+                                "conditions": {},
+                                "enabled": true
+                            },
+                            {
+                                "label": "Labelled rule",
+                                "notificationType": "entity_change",
+                                "entityType": "Child",
+                                "changeType": ["created"],
+                                "conditions": {},
+                                "enabled": true
+                            }
+                        ]
+                    }
+                    """.trimIndent()
+                ).deepCopy<ObjectNode>()
+
+        whenever(
+            couchDbClient.getDatabaseDocumentsByPrefix(
+                database = eq("app"),
+                prefix = eq("NotificationConfig"),
+                kClass = eq(ObjectNode::class)
+            )
+        ).thenReturn(listOf(configDoc))
+
+        // when
+        val entries = cache.findAll()
+
+        // then
+        assertThat(entries).hasSize(1)
+        assertThat(entries.first().rules.map { it.label }).containsExactly("", "Labelled rule")
+    }
+
+    @Test
+    fun `should refresh a config whose rule has no label`() {
+        // given
+        whenever(
+            couchDbClient.getDatabaseDocument(
+                database = eq("app"),
+                documentId = eq("NotificationConfig:user-1"),
+                queryParams = any(),
+                kClass = eq(NotificationConfigDto::class)
+            )
+        ).thenReturn(
+            objectMapper.readValue(
+                """
+                {
+                    "_id": "NotificationConfig:user-1",
+                    "_rev": "2-abc",
+                    "notificationRules": [
+                        {
+                            "notificationType": "entity_change",
+                            "entityType": "Child",
+                            "changeType": ["created"],
+                            "conditions": {},
+                            "enabled": true
+                        }
+                    ],
+                    "channels": null
+                }
+                """.trimIndent(),
+                NotificationConfigDto::class.java
+            )
+        )
+
+        // when
+        cache.refreshConfig(
+            database = "app",
+            notificationConfigId = "NotificationConfig:user-1",
+            deleted = false
+        )
+
+        // then
+        assertThat(cache.findAll().single().rules.map { it.label }).containsExactly("")
+    }
+
+    @Test
     fun `should derive the same rule identifier for the same conditions in a different key order`() {
         // given
         fun configWithConditions(conditions: String): ObjectNode =
