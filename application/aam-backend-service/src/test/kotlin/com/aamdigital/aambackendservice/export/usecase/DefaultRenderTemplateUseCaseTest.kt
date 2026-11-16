@@ -289,6 +289,8 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
         val renderRequest = mockWebServer.takeRequest()
         val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
         assertThat(sentBody["reportName"]).isEqualTo("target_file_name.pdf")
+        // without a format in the request, the engine would keep the template's own format
+        assertThat(sentBody["convertTo"]).isEqualTo("pdf")
     }
 
     @Test

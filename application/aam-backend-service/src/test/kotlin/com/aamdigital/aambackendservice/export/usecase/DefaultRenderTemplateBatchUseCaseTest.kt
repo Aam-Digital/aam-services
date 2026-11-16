@@ -213,7 +213,7 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
         val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
         assertThat(sentBody["batchSplitBy"]).isEqualTo("d")
         assertThat(sentBody["batchOutput"]).isEqualTo("zip")
-        assertThat(sentBody["reportName"]).isEqualTo("test_letter_{d.name}.pdf")
+        assertThat(sentBody["reportName"]).isEqualTo("test_letter_{d.name}.zip")
         assertThat(sentBody["batchReportName"]).isEqualTo("test_letter_{d.name}.pdf")
         assertThat(sentBody["data"]).isInstanceOf(List::class.java)
     }
@@ -343,7 +343,7 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
 
         val renderRequest = mockWebServer.takeRequest()
         val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
-        assertThat(sentBody["reportName"]).isEqualTo("monthly_report_{d.name}.pdf")
+        assertThat(sentBody["reportName"]).isEqualTo("monthly_report_{d.name}.zip")
         assertThat(sentBody["batchReportName"]).isEqualTo("monthly_report_{d.name}.pdf")
     }
 
@@ -439,6 +439,7 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
         val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
         assertThat(sentBody["convertTo"]).isEqualTo("docx")
         assertThat(sentBody["batchOutput"]).isEqualTo("zip")
+        assertThat(sentBody["reportName"]).isEqualTo("child-report_{d.name}.zip")
         assertThat(sentBody["batchReportName"]).isEqualTo("child-report_{d.name}.docx")
     }
 

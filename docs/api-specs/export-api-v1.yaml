@@ -258,16 +258,9 @@ components:
   schemas:
     RenderRequest:
       type: object
-      required:
-        - convertTo
       properties:
         convertTo:
-          type: string
-          description: >-
-            The file format to generate, named by its extension: "pdf", or e.g. the template's
-            own format ("docx", "xlsx", "pptx", ...) for an editable file. Passed on to the
-            template engine; the extension of the generated file's name follows it.
-          example: pdf
+          $ref: '#/components/schemas/ConvertTo'
         data:
           type: object
           additionalProperties: true
@@ -296,12 +289,11 @@ components:
             additionalProperties: true
           description: One record per document to render. Must contain at least one entry.
         convertTo:
-          type: string
+          allOf:
+            - $ref: '#/components/schemas/ConvertTo'
           description: >-
-            The per-document output format, named by its extension: "pdf", or e.g. the
-            template's own format ("docx", "xlsx", "pptx", ...) for editable files. Formats
-            other than "pdf" are only available with `mode=zip`.
-          example: pdf
+            The per-document output format (see `ConvertTo`). Formats other than "pdf" are
+            only available with `mode=zip`.
         complement:
           type: object
           additionalProperties: true
@@ -325,6 +317,28 @@ components:
           user:
             name: Grace Hopper
         reportName: "report-{d.lastname}.pdf"
+    ConvertTo:
+      description: >-
+        The file format to generate, named by its extension (case-insensitive): "pdf", or
+        e.g. the template's own format ("docx", "xlsx", "pptx", ...) for an editable file.
+        Either the extension itself or carbone's object form with `formatName` (and
+        optional `formatOptions`). Defaults to "pdf" if omitted. The format is passed on to
+        the template engine in lower case, and the extension of the generated file's name
+        follows it.
+      oneOf:
+        - type: string
+          example: pdf
+        - type: object
+          required:
+            - formatName
+          properties:
+            formatName:
+              type: string
+              example: pdf
+            formatOptions:
+              type: object
+              additionalProperties: true
+      example: pdf
     Error:
       type: object
       description: Standard error envelope returned for every non-2xx response in this API.

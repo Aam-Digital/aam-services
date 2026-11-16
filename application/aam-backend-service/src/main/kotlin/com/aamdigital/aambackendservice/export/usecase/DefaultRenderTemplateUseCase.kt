@@ -33,19 +33,18 @@ class DefaultRenderTemplateUseCase(
             RenderOutputFormat.fromRequestBody(request.bodyData)
                 ?: return UseCaseOutcome.Failure(
                     errorCode = RenderTemplateError.INVALID_OUTPUT_FORMAT_ERROR,
-                    errorMessage = RenderOutputFormat.invalidFormatMessage(),
+                    errorMessage = RenderOutputFormat.INVALID_FORMAT_MESSAGE,
                     cause = null
                 )
 
         val template = carboneClient.fetchTemplate(request.templateRef)
         val targetFileName = RenderOutputFormat.targetFileName(template.targetFileName, format)
 
-        (request.bodyData as ObjectNode).put(
-            "reportName",
-            targetFileName
-        )
+        val bodyData = request.bodyData as ObjectNode
+        RenderOutputFormat.applyTo(bodyData, format)
+        bodyData.put("reportName", targetFileName)
 
-        val raw = carboneClient.createRenderRequest(template.templateId, request.bodyData)
+        val raw = carboneClient.createRenderRequest(template.templateId, bodyData)
         val renderId = carboneClient.parseRenderId(raw)
         val result = carboneClient.fetchRenderResult(renderId)
 

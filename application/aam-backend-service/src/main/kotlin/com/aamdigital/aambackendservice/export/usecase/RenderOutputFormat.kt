@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.export.usecase
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.node.ObjectNode
 
 /**
  * The file format a render request asks the template engine for, read from Carbone's `convertTo`
@@ -12,6 +13,10 @@ import com.fasterxml.jackson.databind.JsonNode
  */
 internal object RenderOutputFormat {
     const val PDF = "pdf"
+    const val ZIP = "zip"
+
+    const val INVALID_FORMAT_MESSAGE =
+        "The 'convertTo' field must name a file format by its extension, e.g. \"pdf\" or \"docx\"."
 
     private val formatPattern = Regex("[a-z0-9]{1,10}")
     private val illegalFileNameCharacters = Regex("[\\\\/*?\"<>|]")
@@ -45,6 +50,24 @@ internal object RenderOutputFormat {
     }
 
     /**
+     * Sets the request's `convertTo` to [format], so the template engine produces exactly the
+     * format the file is named after: also when the request named none (the engine would then
+     * keep the template's own format) or wrote it in upper case. The object form keeps its
+     * `formatOptions`.
+     */
+    fun applyTo(
+        bodyData: ObjectNode,
+        format: String
+    ) {
+        val convertTo = bodyData.get("convertTo")
+        if (convertTo is ObjectNode) {
+            convertTo.put("formatName", format)
+        } else {
+            bodyData.put("convertTo", format)
+        }
+    }
+
+    /**
      * The template's file name pattern, safe for a file system and ending in the extension of the
      * generated [format], whichever document extension the pattern was configured with.
      */
@@ -62,7 +85,4 @@ internal object RenderOutputFormat {
             }
         return "$baseName.$format"
     }
-
-    fun invalidFormatMessage(): String =
-        "The 'convertTo' field must name a file format by its extension, e.g. \"pdf\" or \"docx\"."
 }

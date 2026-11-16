@@ -1,6 +1,7 @@
 package com.aamdigital.aambackendservice.export.usecase
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -40,6 +41,26 @@ class RenderOutputFormatTest {
     )
     fun `should reject a convertTo that is not a plain file extension`(body: String) {
         assertThat(RenderOutputFormat.fromRequestBody(objectMapper.readTree(body))).isNull()
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        delimiter = '|',
+        value = [
+            """{"data":{}} | {"data":{},"convertTo":"pdf"}""",
+            """{"convertTo":"DOCX"} | {"convertTo":"docx"}""",
+            """{"convertTo":{"formatName":"XLSX","formatOptions":{"a":1}}} | {"convertTo":{"formatName":"xlsx","formatOptions":{"a":1}}}"""
+        ]
+    )
+    fun `should send the template engine the exact format the file is named after`(
+        body: String,
+        expectedBody: String
+    ) {
+        val bodyData = objectMapper.readTree(body) as ObjectNode
+
+        RenderOutputFormat.applyTo(bodyData, RenderOutputFormat.fromRequestBody(bodyData)!!)
+
+        assertThat(bodyData).isEqualTo(objectMapper.readTree(expectedBody))
     }
 
     @ParameterizedTest

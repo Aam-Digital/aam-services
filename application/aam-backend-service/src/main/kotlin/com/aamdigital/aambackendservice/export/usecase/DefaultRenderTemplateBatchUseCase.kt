@@ -84,7 +84,7 @@ class DefaultRenderTemplateBatchUseCase(
             RenderOutputFormat.fromRequestBody(bodyData)
                 ?: return UseCaseOutcome.Failure(
                     errorCode = RenderTemplateBatchError.INVALID_OUTPUT_FORMAT_ERROR,
-                    errorMessage = RenderOutputFormat.invalidFormatMessage(),
+                    errorMessage = RenderOutputFormat.INVALID_FORMAT_MESSAGE,
                     cause = null
                 )
         if (request.mode == RenderTemplateBatchMode.COMBINED && format != RenderOutputFormat.PDF) {
@@ -100,12 +100,19 @@ class DefaultRenderTemplateBatchUseCase(
         val template = carboneClient.fetchTemplate(request.templateRef)
         val targetFileName = RenderOutputFormat.targetFileName(template.targetFileName, format)
 
+        RenderOutputFormat.applyTo(bodyData, format)
         bodyData.put("batchSplitBy", "d")
         bodyData.put("batchOutput", carboneBatchOutput(request.mode))
-        bodyData.put("reportName", targetFileName)
         if (request.mode == RenderTemplateBatchMode.ZIP) {
+            // the archive itself, while each entry inside is named after the requested format
+            bodyData.put(
+                "reportName",
+                RenderOutputFormat.targetFileName(template.targetFileName, RenderOutputFormat.ZIP)
+            )
             // Carbone v5+ substitutes {d.field} placeholders per record for each zip entry name
             bodyData.put("batchReportName", targetFileName)
+        } else {
+            bodyData.put("reportName", targetFileName)
         }
         provideCurrentDate(bodyData)
 
