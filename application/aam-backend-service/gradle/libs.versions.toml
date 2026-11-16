@@ -12,7 +12,7 @@
 kotlin = "2.4.21"
 springBoot = "4.1.2"
 springDependencyManagement = "1.1.7"
-sentryPlugin = "6.26.0"
+sentryPlugin = "6.27.0"
 ktlintPlugin = "14.2.0"
 # ktlint and jacoco are tool versions consumed by the ktlint {} and jacoco {} blocks.
 # Leaving them unset is not an option: Gradle 9.6.1 defaults to JaCoCo 0.8.14 and the
@@ -27,12 +27,12 @@ jacoco = "0.8.16"
 # newer exists: 26.1.0 onwards were never published for this artifact, so 26.0.x is the
 # whole line and matching the server version is not possible.
 keycloakAdminClient = "26.0.12"
-firebaseAdmin = "9.11.0"
+firebaseAdmin = "9.12.0"
 # Evaluates MongoDB-style query conditions (e.g. notification rules) in memory.
 mongoJavaServer = "1.47.0"
 
 # --- test ---
-cucumber = "8.0.4"
+cucumber = "8.1.0"
 mockitoKotlin = "6.4.0"
 junitJsonParams = "5.10.2-r0"
 parsson = "1.1.9"
