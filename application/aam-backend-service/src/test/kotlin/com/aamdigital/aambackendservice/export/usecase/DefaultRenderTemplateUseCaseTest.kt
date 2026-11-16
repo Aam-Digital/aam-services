@@ -292,6 +292,59 @@ class DefaultRenderTemplateUseCaseTest : WebClientTestBase() {
     }
 
     @Test
+    fun `should request the template's own format and name the file after it`() {
+        // given
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode = objectMapper.readValue("""{"convertTo":"docx","data":{"name":"Ada"}}""")
+        val templateExport =
+            TemplateExport(
+                id = "export-id",
+                templateId = "export-template-id",
+                targetFileName = "letter_{d.name}.pdf",
+                title = "export-title",
+                description = "export-description",
+                applicableForEntityTypes = emptyList()
+            )
+        val docxContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(templateExport)
+        mockWebServer.enqueue(MockResponse().setBody("""{"success":true,"data":{"renderId":"some-render-id"}}"""))
+        mockWebServer.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", docxContentType)
+                .setBody("rendered document")
+        )
+
+        // when
+        val response = service.run(RenderTemplateRequest(templateRef, bodyData))
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        val data = (response as UseCaseOutcome.Success).data
+        assertThat(data.responseHeaders.contentType?.toString()).isEqualTo(docxContentType)
+
+        val sentBody: Map<String, Any?> = objectMapper.readValue(mockWebServer.takeRequest().body.readUtf8())
+        assertThat(sentBody["convertTo"]).isEqualTo("docx")
+        assertThat(sentBody["reportName"]).isEqualTo("letter_{d.name}.docx")
+    }
+
+    @Test
+    fun `should return Failure without calling the template engine when convertTo is not a file format`() {
+        // given
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode = objectMapper.readValue("""{"convertTo":"../secret","data":{}}""")
+
+        // when
+        val response = service.run(RenderTemplateRequest(templateRef, bodyData))
+
+        // then
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        assertThat((response as UseCaseOutcome.Failure).errorCode)
+            .isEqualTo(RenderTemplateError.INVALID_OUTPUT_FORMAT_ERROR)
+        assertThat(mockWebServer.requestCount).isZero()
+    }
+
+    @Test
     fun `should forward additional request body fields like complement to carbone unchanged`() {
         // given
         val templateRef = DomainReference("some-id")

@@ -237,6 +237,32 @@ class TemplateExportControllerTest {
     }
 
     @Test
+    fun `answers a render request for an invalid output format with a client error`() {
+        // Given
+        whenever(renderTemplateUseCase.run(any()))
+            .thenReturn(
+                UseCaseOutcome.Failure(
+                    errorCode = RenderTemplateError.INVALID_OUTPUT_FORMAT_ERROR,
+                    errorMessage = "not a file format"
+                )
+            )
+
+        // When
+        val response =
+            mockMvc
+                .perform(
+                    post("/v1/export/render/$TEMPLATE_ID")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""{"convertTo":"../secret"}""")
+                ).andReturn()
+                .response
+
+        // Then
+        assertThat(response.status).isEqualTo(400)
+        assertThat(response.contentAsString).contains("INVALID_OUTPUT_FORMAT_ERROR")
+    }
+
+    @Test
     fun `rejects an unsupported batch mode with a json error body`() {
         // When
         val response =

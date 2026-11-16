@@ -29,8 +29,10 @@ import java.util.zip.ZipOutputStream
  * Carbone splits the `data` array, renders each record with the existing single-record template,
  * and aggregates the result into a single response:
  *
- *  - [RenderTemplateBatchMode.ZIP]      -> `batchOutput: "zip"`  -> ZIP of N PDFs
- *  - [RenderTemplateBatchMode.COMBINED] -> `batchOutput: "pdf"`  -> one merged multi-page PDF
+ *  - [RenderTemplateBatchMode.ZIP]      -> `batchOutput: "zip"`  -> ZIP of N files in the requested
+ *    `convertTo` format (PDF, or e.g. the template's own editable format)
+ *  - [RenderTemplateBatchMode.COMBINED] -> `batchOutput: "pdf"`  -> one merged multi-page PDF,
+ *    which is why this mode is only available for `convertTo: "pdf"`
  *
  * The Carbone instance must have `nbReportMaxPerBatch > 0` in its config to enable batch.
  * If the array exceeds the configured limit, Carbone returns an error message which is propagated
@@ -78,14 +80,25 @@ class DefaultRenderTemplateBatchUseCase(
             )
         }
 
+        val format =
+            RenderOutputFormat.fromRequestBody(bodyData)
+                ?: return UseCaseOutcome.Failure(
+                    errorCode = RenderTemplateBatchError.INVALID_OUTPUT_FORMAT_ERROR,
+                    errorMessage = RenderOutputFormat.invalidFormatMessage(),
+                    cause = null
+                )
+        if (request.mode == RenderTemplateBatchMode.COMBINED && format != RenderOutputFormat.PDF) {
+            return UseCaseOutcome.Failure(
+                errorCode = RenderTemplateBatchError.INVALID_OUTPUT_FORMAT_ERROR,
+                errorMessage =
+                    "Records can only be combined into a single PDF. " +
+                        "Use mode=zip to generate '$format' files.",
+                cause = null
+            )
+        }
+
         val template = carboneClient.fetchTemplate(request.templateRef)
-        val sanitizedTargetFileName = template.targetFileName.replace(Regex("[\\\\/*?\"<>|]"), "_")
-        val targetFileName =
-            if (sanitizedTargetFileName.endsWith(".pdf", ignoreCase = true)) {
-                sanitizedTargetFileName
-            } else {
-                "$sanitizedTargetFileName.pdf"
-            }
+        val targetFileName = RenderOutputFormat.targetFileName(template.targetFileName, format)
 
         bodyData.put("batchSplitBy", "d")
         bodyData.put("batchOutput", carboneBatchOutput(request.mode))

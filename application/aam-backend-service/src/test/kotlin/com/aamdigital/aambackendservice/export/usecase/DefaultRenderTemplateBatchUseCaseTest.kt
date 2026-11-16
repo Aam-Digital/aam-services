@@ -418,6 +418,52 @@ class DefaultRenderTemplateBatchUseCaseTest : WebClientTestBase() {
     }
 
     @Test
+    fun `ZIP mode should name the files after the requested output format`() {
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue("""{"convertTo":"docx","data":[{"name":"X"}]}""")
+        whenever(templateStorage.fetchTemplate(templateRef)).thenReturn(template("child-report_{d.name}.pdf"))
+        enqueueRenderAndFile(renderId = "render-zip-1", contentType = "application/zip")
+
+        val response =
+            service.run(
+                RenderTemplateBatchRequest(
+                    templateRef = templateRef,
+                    bodyData = bodyData,
+                    mode = RenderTemplateBatchMode.ZIP
+                )
+            )
+
+        assertThat(response).isInstanceOf(UseCaseOutcome.Success::class.java)
+        val renderRequest = mockWebServer.takeRequest()
+        val sentBody: Map<String, Any?> = objectMapper.readValue(renderRequest.body.readUtf8())
+        assertThat(sentBody["convertTo"]).isEqualTo("docx")
+        assertThat(sentBody["batchOutput"]).isEqualTo("zip")
+        assertThat(sentBody["batchReportName"]).isEqualTo("child-report_{d.name}.docx")
+    }
+
+    @Test
+    fun `COMBINED mode should reject an output format other than pdf without calling the template engine`() {
+        val templateRef = DomainReference("some-id")
+        val bodyData: JsonNode =
+            objectMapper.readValue("""{"convertTo":"docx","data":[{"name":"Alice"},{"name":"Bob"}]}""")
+
+        val response =
+            service.run(
+                RenderTemplateBatchRequest(
+                    templateRef = templateRef,
+                    bodyData = bodyData,
+                    mode = RenderTemplateBatchMode.COMBINED
+                )
+            )
+
+        assertThat(response).isInstanceOf(UseCaseOutcome.Failure::class.java)
+        assertThat((response as UseCaseOutcome.Failure).errorCode)
+            .isEqualTo(RenderTemplateBatchError.INVALID_OUTPUT_FORMAT_ERROR)
+        assertThat(mockWebServer.requestCount).isZero()
+    }
+
+    @Test
     fun `COMBINED mode should forward batchOutput pdf and omit batchReportName`() {
         val templateRef = DomainReference("some-id")
         val bodyData: JsonNode =

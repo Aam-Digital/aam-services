@@ -16,7 +16,7 @@ import java.io.InputStream
  * packaging differs.
  */
 enum class RenderTemplateBatchMode {
-    /** N independent files packaged in a single ZIP archive. */
+    /** N independent files, in the requested output format, packaged in a single ZIP archive. */
     ZIP,
 
     /** N rendered files merged into a single multi-page PDF. */
@@ -42,6 +42,12 @@ enum class RenderTemplateBatchError : AamErrorCode {
     PARSE_RESPONSE_ERROR,
     EMPTY_DATA_LIST_ERROR,
     INVALID_DATA_SHAPE_ERROR,
+
+    /**
+     * The requested `convertTo` is not usable as a file format, or cannot be produced in the
+     * requested mode (records can only be combined into a single PDF).
+     */
+    INVALID_OUTPUT_FORMAT_ERROR,
 
     /**
      * Template engine rejected the batch (e.g. array size exceeds `nbReportMaxPerBatch`,

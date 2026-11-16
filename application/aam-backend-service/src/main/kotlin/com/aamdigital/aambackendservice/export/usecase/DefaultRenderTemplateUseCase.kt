@@ -29,14 +29,16 @@ class DefaultRenderTemplateUseCase(
         )
 
     override fun apply(request: RenderTemplateRequest): UseCaseOutcome<RenderTemplateData> {
+        val format =
+            RenderOutputFormat.fromRequestBody(request.bodyData)
+                ?: return UseCaseOutcome.Failure(
+                    errorCode = RenderTemplateError.INVALID_OUTPUT_FORMAT_ERROR,
+                    errorMessage = RenderOutputFormat.invalidFormatMessage(),
+                    cause = null
+                )
+
         val template = carboneClient.fetchTemplate(request.templateRef)
-        val sanitizedTargetFileName = template.targetFileName.replace(Regex("[\\\\/*?\"<>|]"), "_")
-        val targetFileName =
-            if (sanitizedTargetFileName.endsWith(".pdf", ignoreCase = true)) {
-                sanitizedTargetFileName
-            } else {
-                "$sanitizedTargetFileName.pdf"
-            }
+        val targetFileName = RenderOutputFormat.targetFileName(template.targetFileName, format)
 
         (request.bodyData as ObjectNode).put(
             "reportName",
