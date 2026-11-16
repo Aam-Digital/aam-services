@@ -32,7 +32,7 @@ class RenderOutputFormatTest {
         delimiter = ';',
         value = [
             """{"convertTo":"../../etc/passwd"}""",
-            """{"convertTo":"pdf\"; filename=\"x"}""",
+            """{"convertTo":"pdf\" filename=\"x"}""",
             """{"convertTo":""}""",
             """{"convertTo":42}""",
             """{"convertTo":{"formatOptions":{}}}"""
