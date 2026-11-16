@@ -59,7 +59,9 @@ sealed interface TemplateExportControllerResponse {
  * REST controller responsible for handling export operations related to templates.
  * Provides endpoints for checking status, posting a new template, and rendering a template.
  *
- * In Aam, this API is especially used for generating PDFs for an entity.
+ * In Aam, this API is especially used for generating a PDF, or an editable file in the template's
+ * own format, for an entity. The render endpoints pass the request body's `convertTo` on to the
+ * template engine, which decides the format of the generated file.
  *
  * Every endpoint that answers with a file returns an [InputStreamResource] rather than a
  * `org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody`. A
@@ -294,6 +296,14 @@ class TemplateExportController(
                             )
                         }
 
+                        RenderTemplateError.INVALID_OUTPUT_FORMAT_ERROR -> {
+                            ResponseEntity(
+                                errorBody,
+                                headers,
+                                HttpStatus.BAD_REQUEST
+                            )
+                        }
+
                         else -> {
                             ResponseEntity(
                                 errorBody,
@@ -310,8 +320,8 @@ class TemplateExportController(
 
     /**
      * Render a template for an array of records and return either a ZIP of N independently
-     * rendered files (default, `mode=zip`) or a single document produced by Carbone with the
-     * array forwarded as-is (`mode=combined` — requires a template that uses array placeholders).
+     * rendered files (default, `mode=zip`) or all of them merged into a single PDF
+     * (`mode=combined`, only for `convertTo: "pdf"`).
      */
     @PostMapping("/render-batch/{templateId}")
     fun renderTemplateBatch(
@@ -381,7 +391,8 @@ class TemplateExportController(
                         RenderTemplateBatchError.NOT_FOUND_ERROR -> HttpStatus.NOT_FOUND
 
                         RenderTemplateBatchError.EMPTY_DATA_LIST_ERROR,
-                        RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR -> HttpStatus.BAD_REQUEST
+                        RenderTemplateBatchError.INVALID_DATA_SHAPE_ERROR,
+                        RenderTemplateBatchError.INVALID_OUTPUT_FORMAT_ERROR -> HttpStatus.BAD_REQUEST
 
                         RenderTemplateBatchError.BATCH_REJECTED_ERROR -> HttpStatus.UNPROCESSABLE_CONTENT
 
