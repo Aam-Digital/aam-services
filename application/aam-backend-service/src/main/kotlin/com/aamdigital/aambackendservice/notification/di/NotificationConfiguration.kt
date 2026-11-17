@@ -74,12 +74,14 @@ class NotificationConfiguration {
     fun publicFormNotificationConfigCache(
         couchDbClient: CouchDbClient,
         objectMapper: ObjectMapper,
-        @Value("\${notification.config-cache.ttl-millis:86400000}") ttlMillis: Long
+        @Value("\${notification.config-cache.ttl-millis:86400000}") ttlMillis: Long,
+        @Value("\${notification.email.locale:en}") locale: String
     ): NotificationConfigCache =
         PublicFormNotificationConfigCache(
             couchDbClient = couchDbClient,
             objectMapper = objectMapper,
-            ttl = Duration.ofMillis(ttlMillis)
+            ttl = Duration.ofMillis(ttlMillis),
+            locale = locale
         )
 
     @Bean

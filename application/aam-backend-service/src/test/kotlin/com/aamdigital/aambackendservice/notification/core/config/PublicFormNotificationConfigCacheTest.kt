@@ -81,7 +81,8 @@ class PublicFormNotificationConfigCacheTest {
         val rule = entry.rules.single()
         assertThat(rule.entityType).isEqualTo("Child")
         assertThat(rule.changeType).isEqualTo("created")
-        assertThat(rule.label).isEqualTo("Submission received: Event registration")
+        // only the form's own title: the wording around it is added when the email is written
+        assertThat(rule.label).isEqualTo("Event registration")
 
         // the condition is what keeps records staff create in the normal UI from being confirmed
         assertThat(documentConditionEngine.matches(rule.conditions, recordCreatedBy("PublicForm:form-1"))).isTrue()
@@ -90,8 +91,14 @@ class PublicFormNotificationConfigCacheTest {
     }
 
     @Test
-    fun `should take the default language of a multilingual title`() {
-        // given
+    fun `should take the title in the language the emails are written in`() {
+        // given the emails of this deployment are German
+        cache =
+            PublicFormNotificationConfigCache(
+                couchDbClient = couchDbClient,
+                objectMapper = objectMapper,
+                locale = "de"
+            )
         givenStoredForms(
             formDoc(
                 """
@@ -114,7 +121,7 @@ class PublicFormNotificationConfigCacheTest {
                 .rules
                 .single()
                 .label
-        ).isEqualTo("Submission received: Registration")
+        ).isEqualTo("Anmeldung")
     }
 
     @ParameterizedTest

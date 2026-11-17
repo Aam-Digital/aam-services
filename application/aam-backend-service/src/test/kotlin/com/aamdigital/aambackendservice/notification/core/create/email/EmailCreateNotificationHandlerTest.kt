@@ -535,11 +535,7 @@ class EmailCreateNotificationHandlerTest {
             notificationEvent.copy(
                 userIdentifier = "form-1",
                 recipientEmail = "participant@example.org",
-                details =
-                    notificationEvent.details.copy(
-                        title = "Submission received: Event registration",
-                        actionUrl = ""
-                    )
+                details = notificationEvent.details.copy(title = "Event registration", actionUrl = "")
             )
         whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
 
@@ -554,9 +550,10 @@ class EmailCreateNotificationHandlerTest {
         verify(mailSenderService).sendMail(requestCaptor.capture())
         val request = requestCaptor.firstValue
         assertThat(request.to).isEqualTo("participant@example.org")
+        // the wording around the form's title comes from the branding file, so it is translated too
         assertThat(request.subject).isEqualTo("Aam Digital: Submission received: Event registration")
         // the plain confirmation: no "open in app" link and no settings to manage
-        assertThat(request.body).contains("Submission received: Event registration")
+        assertThat(request.body).contains("Event registration")
         assertThat(request.body).doesNotContain("Open in Aam Digital")
         assertThat(request.body).doesNotContain("notification settings")
         assertThat(request.headers).doesNotContainKey("List-Unsubscribe")

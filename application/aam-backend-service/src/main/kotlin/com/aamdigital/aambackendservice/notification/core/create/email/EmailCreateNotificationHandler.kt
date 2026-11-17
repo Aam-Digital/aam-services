@@ -43,10 +43,10 @@ class EmailCreateNotificationHandler(
         NotificationChannelType.EMAIL == notificationChannelType
 
     override fun createMessage(createUserNotificationEvent: CreateUserNotificationEvent): CreateNotificationData {
-        // a recipient without a user account carries the address on the event
-        val email =
-            createUserNotificationEvent.recipientEmail?.takeIf { it.isNotBlank() }
-                ?: lookupEmail(createUserNotificationEvent.userIdentifier)
+        // a recipient without a user account carries the address on the event; both the address and
+        // which template to use come from this one value, so they cannot disagree
+        val externalEmail = createUserNotificationEvent.recipientEmail?.takeIf { it.isNotBlank() }
+        val email = externalEmail ?: lookupEmail(createUserNotificationEvent.userIdentifier)
         if (email == null) {
             logger.info(
                 "No email address for user {}, skipping email notification",
@@ -56,13 +56,24 @@ class EmailCreateNotificationHandler(
         }
 
         val details = createUserNotificationEvent.details
-        val subject = "${branding.subjectPrefix}: ${details.title}"
 
         // without an account there is nothing to open in the app and no settings to manage: no links, no unsubscribe
-        val isExternalRecipient = createUserNotificationEvent.recipientEmail != null
+        val isExternalRecipient = externalEmail != null
+        // a public form's notification carries only the form's title, so the wording around it comes
+        // from the branding file and is translated with the rest of the email
+        val subject =
+            if (isExternalRecipient) {
+                listOf(branding.subjectPrefix, branding.submissionConfirmationLabel, details.title)
+                    .filter { it.isNotBlank() }
+                    .joinToString(": ")
+            } else {
+                "${branding.subjectPrefix}: ${details.title}"
+            }
         val body =
             if (isExternalRecipient) {
-                buildPublicFormEmailBody(title = details.title)
+                buildPublicFormEmailBody(
+                    title = details.title.ifBlank { branding.submissionConfirmationLabel }
+                )
             } else {
                 buildEmailBody(
                     title = details.title,
@@ -170,7 +181,11 @@ class EmailCreateNotificationHandler(
         }
         return EmailBranding(
             fromName = properties.getProperty("from-name", "").trim(),
-            subjectPrefix = properties.getProperty("subject-prefix", DEFAULT_SUBJECT_PREFIX).trim()
+            subjectPrefix = properties.getProperty("subject-prefix", DEFAULT_SUBJECT_PREFIX).trim(),
+            submissionConfirmationLabel =
+                properties
+                    .getProperty("submission-confirmation-label", DEFAULT_SUBMISSION_CONFIRMATION_LABEL)
+                    .trim()
         )
     }
 
@@ -180,11 +195,13 @@ class EmailCreateNotificationHandler(
      */
     private data class EmailBranding(
         val fromName: String,
-        val subjectPrefix: String
+        val subjectPrefix: String,
+        val submissionConfirmationLabel: String
     )
 
     companion object {
         private const val DEFAULT_SUBJECT_PREFIX = "Aam Digital"
+        private const val DEFAULT_SUBMISSION_CONFIRMATION_LABEL = "Submission received"
         private const val TEMPLATE_RELATIVE_PATH =
             "notification/create-notification-email-template.html"
         private const val PUBLIC_FORM_TEMPLATE_RELATIVE_PATH =

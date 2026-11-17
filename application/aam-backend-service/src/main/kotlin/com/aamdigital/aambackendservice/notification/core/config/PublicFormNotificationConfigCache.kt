@@ -25,6 +25,8 @@ class PublicFormNotificationConfigCache(
     private val objectMapper: ObjectMapper,
     ttl: Duration? = null,
     clock: Clock = Clock.systemUTC(),
+    /** the language the notification emails are written in, so a multilingual form title matches them */
+    private val locale: String = "en",
     private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
 ) : NotificationConfigCache {
     companion object {
@@ -38,8 +40,7 @@ class PublicFormNotificationConfigCache(
         /** A confirmation is owed for the submission itself, not for later edits of the record. */
         private const val CHANGE_TYPE_CREATED = "created"
 
-        private const val LABEL = "Submission received"
-        private const val DEFAULT_LANGUAGE = "en"
+        private const val FALLBACK_LANGUAGE = "en"
 
         val RELOAD_RETRY_INTERVAL: Duration = Duration.ofMinutes(5)
     }
@@ -159,12 +160,10 @@ class PublicFormNotificationConfigCache(
         val conditionNode =
             objectMapper.createObjectNode().put(CREATED_BY_FIELD, CREATED_BY_PREFIX + formIdentifier)
 
-        // shown as the email subject and heading
-        val formTitle = resolveTitle(title)
-        val label = if (formTitle != null) "$LABEL: $formTitle" else LABEL
-
         return NotificationRuleCacheEntry(
-            label = label,
+            // the form's own title; the wording around it is added when the email is written, so
+            // that it is translated along with the rest of the email
+            label = resolveTitle(title).orEmpty(),
             externalIdentifier = buildExternalIdentifier(formIdentifier, recordType),
             notificationType = NotificationType.ENTITY_CHANGE,
             entityType = recordType,
@@ -174,7 +173,7 @@ class PublicFormNotificationConfigCache(
         )
     }
 
-    /** a plain string, or the default language of a multilingual title */
+    /** a plain string, or the configured language of a multilingual title */
     private fun resolveTitle(title: JsonNode?): String? {
         val text =
             when {
@@ -187,7 +186,8 @@ class PublicFormNotificationConfigCache(
                 }
 
                 title.isObject -> {
-                    title.get(DEFAULT_LANGUAGE)?.takeIf { it.isTextual }?.asText()
+                    title.get(locale)?.takeIf { it.isTextual }?.asText()
+                        ?: title.get(FALLBACK_LANGUAGE)?.takeIf { it.isTextual }?.asText()
                         ?: title
                             .elements()
                             .asSequence()
