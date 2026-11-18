@@ -38,7 +38,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Primary
 import org.springframework.core.env.Environment
 import java.time.Duration
 
@@ -53,9 +52,7 @@ class NotificationConfiguration {
     fun notificationStartupDiagnostics(environment: Environment): ApplicationRunner =
         NotificationEmailStartupDiagnostics(environment)
 
-    // for injection points asking for a single cache
     @Bean
-    @Primary
     fun notificationConfigCache(
         couchDbClient: CouchDbClient,
         objectMapper: ObjectMapper,

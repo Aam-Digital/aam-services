@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
@@ -90,21 +91,22 @@ class PublicFormNotificationConfigCacheTest {
         assertThat(documentConditionEngine.matches(rule.conditions, recordCreatedBy("some-user-id"))).isFalse()
     }
 
-    @Test
-    fun `should take the title in the language the emails are written in`() {
-        // given the emails of this deployment are German
+    private fun labelOf(
+        configuredLocale: String,
+        titleJson: String
+    ): String {
         cache =
             PublicFormNotificationConfigCache(
                 couchDbClient = couchDbClient,
                 objectMapper = objectMapper,
-                locale = "de"
+                locale = configuredLocale
             )
         givenStoredForms(
             formDoc(
                 """
                 {
                     "_id": "PublicFormConfig:form-1",
-                    "title": {"de": "Anmeldung", "en": "Registration"},
+                    "title": $titleJson,
                     "entity": "Child",
                     "sendConfirmationEmail": true,
                     "confirmationEmailField": "email"
@@ -112,16 +114,35 @@ class PublicFormNotificationConfigCacheTest {
                 """
             )
         )
+        return cache
+            .findAll()
+            .single()
+            .rules
+            .single()
+            .label
+    }
 
-        // when / then
-        assertThat(
-            cache
-                .findAll()
-                .single()
-                .rules
-                .single()
-                .label
-        ).isEqualTo("Anmeldung")
+    @ParameterizedTest(name = "locale {0} on {1} gives {2}")
+    @CsvSource(
+        delimiter = '|',
+        value = [
+            // the language the emails are written in wins, whichever side carries a region suffix
+            """de    | {"de": "Anmeldung", "en": "Registration"}     | Anmeldung""",
+            """de-DE | {"de": "Anmeldung", "en": "Registration"}     | Anmeldung""",
+            """en    | {"de": "Anmeldung", "en-US": "Registration"}  | Registration""",
+            // no translation for it: English is preferred over whatever happens to be stored first
+            """fr    | {"de": "Anmeldung", "en-US": "Registration"}  | Registration""",
+            """fr    | {"de": "Anmeldung"}                           | Anmeldung""",
+            // a blank translation is skipped rather than resolving to nothing
+            """en    | {"en": "  ", "de": "Anmeldung"}               | Anmeldung"""
+        ]
+    )
+    fun `should take the title in the language the emails are written in`(
+        configuredLocale: String,
+        titleJson: String,
+        expected: String
+    ) {
+        assertThat(labelOf(configuredLocale, titleJson)).isEqualTo(expected)
     }
 
     @ParameterizedTest

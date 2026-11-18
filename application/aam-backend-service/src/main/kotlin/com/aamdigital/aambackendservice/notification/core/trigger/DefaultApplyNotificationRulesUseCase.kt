@@ -32,7 +32,7 @@ class DefaultApplyNotificationRulesUseCase(
         val changedEntity = request.documentChangeEvent.entityType
         val changeType = request.documentChangeEvent.changeType
 
-        val notificationConfigurations = notificationConfigCaches.flatMap { it.findAll() }
+        val notificationConfigurations = readRules(request.documentChangeEvent.documentId)
 
         logger.trace(
             "Processing change: entity={}, changeType={}, configCount={}",
@@ -67,41 +67,8 @@ class DefaultApplyNotificationRulesUseCase(
         // the permission check only applies to users; an external recipient gets what the form's admin configured
         val (externalRules, userRules) = matchedRules.partition { (config, _) -> config.isExternalRecipient }
 
-        val permissionMap =
-            if (userRules.isEmpty()) {
-                emptyMap()
-            } else {
-                permissionCheckClient.checkPermissions(
-                    userIds = userRules.map { it.first.userIdentifier }.distinct(),
-                    entityId = request.documentChangeEvent.documentId,
-                    action = "read"
-                )
-            }
-
-        logger.trace(
-            "Permission check results: {}",
-            permissionMap
-        )
-
         val triggeredEvents =
-            userRules.mapNotNull { (notificationConfig, rule) ->
-                val hasPermission = permissionMap[notificationConfig.userIdentifier] == true
-                if (!hasPermission) {
-                    logger.trace(
-                        "Skipped notification event due to missing permissions: user={}, rule={}, entityId={}",
-                        notificationConfig.userIdentifier,
-                        rule.externalIdentifier,
-                        request.documentChangeEvent.documentId
-                    )
-                    return@mapNotNull null
-                }
-
-                publishNotificationEventForUser(
-                    notificationConfig,
-                    rule,
-                    request.documentChangeEvent
-                )
-            } +
+            publishForUsers(userRules, request.documentChangeEvent) +
                 externalRules.mapNotNull { (notificationConfig, rule) ->
                     publishNotificationEventForExternalRecipient(
                         notificationConfig,
@@ -115,6 +82,55 @@ class DefaultApplyNotificationRulesUseCase(
                 triggeredEvents.size
             )
         )
+    }
+
+    /** One rule source being unreadable must not drop the notifications owed by the others. */
+    private fun readRules(documentId: String): List<NotificationConfigCacheEntry> =
+        notificationConfigCaches.flatMap { cache ->
+            try {
+                cache.findAll()
+            } catch (ex: Exception) {
+                logger.error(
+                    "Could not read the notification rules of {}, so none of them were applied to {}",
+                    cache.sourceEntityType,
+                    documentId,
+                    ex
+                )
+                emptyList()
+            }
+        }
+
+    /** Notifies the users whose rules matched and who may read the record. */
+    private fun publishForUsers(
+        userRules: List<Pair<NotificationConfigCacheEntry, NotificationRuleCacheEntry>>,
+        documentChangeEvent: DocumentChangeEvent
+    ): List<NotificationDetails> {
+        if (userRules.isEmpty()) {
+            return emptyList()
+        }
+
+        val permissionMap =
+            permissionCheckClient.checkPermissions(
+                userIds = userRules.map { it.first.userIdentifier }.distinct(),
+                entityId = documentChangeEvent.documentId,
+                action = "read"
+            )
+
+        logger.trace("Permission check results: {}", permissionMap)
+
+        return userRules.mapNotNull { (notificationConfig, rule) ->
+            if (permissionMap[notificationConfig.userIdentifier] != true) {
+                logger.trace(
+                    "Skipped notification event due to missing permissions: user={}, rule={}, entityId={}",
+                    notificationConfig.userIdentifier,
+                    rule.externalIdentifier,
+                    documentChangeEvent.documentId
+                )
+                return@mapNotNull null
+            }
+
+            publishNotificationEventForUser(notificationConfig, rule, documentChangeEvent)
+        }
     }
 
     /**
@@ -160,25 +176,7 @@ class DefaultApplyNotificationRulesUseCase(
         rule: NotificationRuleCacheEntry,
         documentChangeEvent: DocumentChangeEvent
     ): NotificationDetails {
-        val baseDetails =
-            NotificationDetails(
-                // Derived from the change that caused it, so reprocessing the same document
-                // revision produces the same notification instead of a second copy. The in-app
-                // document is keyed on this id, and the outbox entry on this id plus the channel.
-                id =
-                    notificationIdFor(
-                        documentChangeEvent = documentChangeEvent,
-                        userIdentifier = notificationConfig.userIdentifier,
-                        ruleIdentifier = rule.externalIdentifier
-                    ),
-                title = rule.label,
-                context =
-                    EntityNotificationContext(
-                        entityType = rule.entityType,
-                        entityId = documentChangeEvent.documentId
-                    ),
-                notificationType = rule.notificationType
-            )
+        val baseDetails = baseDetailsFor(notificationConfig, rule, documentChangeEvent)
 
         val actionUrl = buildActionUrl(baseDetails)
         val notificationDetails = baseDetails.copy(actionUrl = actionUrl)
@@ -245,22 +243,8 @@ class DefaultApplyNotificationRulesUseCase(
             return null
         }
 
-        val notificationDetails =
-            NotificationDetails(
-                id =
-                    notificationIdFor(
-                        documentChangeEvent = documentChangeEvent,
-                        userIdentifier = notificationConfig.userIdentifier,
-                        ruleIdentifier = rule.externalIdentifier
-                    ),
-                title = rule.label,
-                context =
-                    EntityNotificationContext(
-                        entityType = rule.entityType,
-                        entityId = documentChangeEvent.documentId
-                    ),
-                notificationType = rule.notificationType
-            )
+        // no actionUrl: there is no account to open the record with
+        val notificationDetails = baseDetailsFor(notificationConfig, rule, documentChangeEvent)
 
         userNotificationPublisher.publish(
             CreateUserNotificationEvent(
@@ -275,6 +259,30 @@ class DefaultApplyNotificationRulesUseCase(
 
         return notificationDetails
     }
+
+    private fun baseDetailsFor(
+        notificationConfig: NotificationConfigCacheEntry,
+        rule: NotificationRuleCacheEntry,
+        documentChangeEvent: DocumentChangeEvent
+    ): NotificationDetails =
+        NotificationDetails(
+            // Derived from the change that caused it, so reprocessing the same document
+            // revision produces the same notification instead of a second copy. The in-app
+            // document is keyed on this id, and the outbox entry on this id plus the channel.
+            id =
+                notificationIdFor(
+                    documentChangeEvent = documentChangeEvent,
+                    userIdentifier = notificationConfig.userIdentifier,
+                    ruleIdentifier = rule.externalIdentifier
+                ),
+            title = rule.label,
+            context =
+                EntityNotificationContext(
+                    entityType = rule.entityType,
+                    entityId = documentChangeEvent.documentId
+                ),
+            notificationType = rule.notificationType
+        )
 
     /** follows dotted paths into nested objects, like the condition engine */
     private fun fieldValue(

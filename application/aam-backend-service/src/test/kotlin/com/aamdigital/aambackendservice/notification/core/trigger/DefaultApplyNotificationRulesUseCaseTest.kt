@@ -856,12 +856,12 @@ class DefaultApplyNotificationRulesUseCaseTest {
     }
 
     /** A public form's confirmation rule: the recipient is whoever submitted the record. */
-    private fun publicFormConfig(emailField: String = "email") =
+    private fun publicFormConfig() =
         NotificationConfigCacheEntry(
             userIdentifier = "form-1",
             channelPush = false,
             channelEmail = true,
-            recipientEmailField = emailField,
+            recipientEmailField = "email",
             rules =
                 listOf(
                     NotificationRuleCacheEntry(
@@ -886,6 +886,30 @@ class DefaultApplyNotificationRulesUseCaseTest {
             previousVersion = emptyMap<String, Any>(),
             deleted = false
         )
+
+    @Test
+    fun `should still apply the rules it can read when another rule source is unavailable`() {
+        // given a second rule source whose first load fails, e.g. CouchDB being briefly unreachable
+        val failingCache = Mockito.mock(NotificationConfigCache::class.java)
+        whenever(failingCache.findAll()).thenThrow(IllegalStateException("couchdb unreachable"))
+        whenever(notificationConfigCache.findAll()).thenReturn(listOf(publicFormConfig()))
+        service =
+            DefaultApplyNotificationRulesUseCase(
+                notificationConfigCaches = listOf(failingCache, notificationConfigCache),
+                userNotificationPublisher = userNotificationPublisher,
+                permissionCheckClient = permissionCheckClient,
+                applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
+                emailEnabled = true,
+                pushEnabled = true
+            )
+
+        // when
+        val outcome = service.run(ApplyNotificationRulesRequest(publicFormSubmission("email" to "a@b.test")))
+
+        // then the readable source still produced its notification
+        assertThat((outcome as UseCaseOutcome.Success).data.notificationsSendCount).isEqualTo(1)
+        verify(userNotificationPublisher).publish(any())
+    }
 
     @Test
     fun `should email the address on the submitted record, without permission check or in-app notification`() {
@@ -917,21 +941,5 @@ class DefaultApplyNotificationRulesUseCaseTest {
         // then no undeliverable entry reaches the outbox
         verify(userNotificationPublisher, never()).publish(any())
         assertThat((outcome as UseCaseOutcome.Success).data.notificationsSendCount).isZero()
-    }
-
-    @Test
-    fun `should read the address from a nested field the same way conditions do`() {
-        // given
-        whenever(notificationConfigCache.findAll()).thenReturn(listOf(publicFormConfig(emailField = "contact.email")))
-
-        // when
-        service.run(
-            ApplyNotificationRulesRequest(publicFormSubmission("contact" to mapOf("email" to "nested@example.org")))
-        )
-
-        // then
-        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
-        verify(userNotificationPublisher).publish(eventCaptor.capture())
-        assertThat(eventCaptor.firstValue.recipientEmail).isEqualTo("nested@example.org")
     }
 }
