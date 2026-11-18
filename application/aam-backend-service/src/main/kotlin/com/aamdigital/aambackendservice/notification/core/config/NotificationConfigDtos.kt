@@ -46,5 +46,8 @@ data class PublicFormConfigDto(
     /** the record type the form creates */
     val entity: String?,
     val sendConfirmationEmail: Boolean?,
-    val confirmationEmailField: String?
+    val confirmationEmailField: String?,
+    /** both a plain string, or an object keyed by language code */
+    val confirmationEmailSubject: JsonNode? = null,
+    val confirmationEmailBody: JsonNode? = null
 )

@@ -75,6 +75,8 @@ class PublicFormNotificationConfigCache(
             channelPush = false,
             channelEmail = true,
             recipientEmailField = emailField,
+            confirmationSubject = resolveText(document.confirmationEmailSubject),
+            confirmationBody = resolveText(document.confirmationEmailBody),
             rules = listOf(buildRule(formIdentifier, recordType, document.title))
         )
     }
@@ -90,7 +92,7 @@ class PublicFormNotificationConfigCache(
         return NotificationRuleCacheEntry(
             // the form's own title; the wording around it is added when the email is written, so
             // that it is translated along with the rest of the email
-            label = resolveTitle(title).orEmpty(),
+            label = resolveText(title).orEmpty(),
             externalIdentifier = buildExternalIdentifier(formIdentifier, recordType),
             notificationType = NotificationType.ENTITY_CHANGE,
             entityType = recordType,
@@ -101,9 +103,9 @@ class PublicFormNotificationConfigCache(
     }
 
     /** Language codes only, so `de-DE` matches a `de` key, like the template lookup does. */
-    private fun resolveTitle(title: JsonNode?): String? {
-        if (title?.isObject == true) {
-            title
+    private fun resolveText(text: JsonNode?): String? {
+        if (text?.isObject == true) {
+            text
                 .properties()
                 .firstOrNull {
                     languageOf(it.key) == languageOf(locale) &&
@@ -111,7 +113,7 @@ class PublicFormNotificationConfigCache(
                         it.value.textValue().isNotBlank()
                 }?.let { return it.value.textValue().trim() }
         }
-        return TranslatableText.resolve(title)?.trim()?.takeIf { it.isNotEmpty() }
+        return TranslatableText.resolve(text)?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     private fun languageOf(locale: String): String =

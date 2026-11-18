@@ -529,6 +529,32 @@ class EmailCreateNotificationHandlerTest {
     }
 
     @Test
+    fun `should use the subject and message the form's admin wrote`() {
+        // Given
+        val submissionEvent =
+            notificationEvent.copy(
+                userIdentifier = "form-1",
+                recipientEmail = "participant@example.org",
+                details = notificationEvent.details.copy(title = "Event registration", actionUrl = ""),
+                customSubject = "Thanks for registering",
+                customBody = "We will email you the venue a week before.\nQuestions: office@example.org"
+            )
+        whenever(mailSenderService.sendMail(any())).thenReturn(MailSenderResponse(success = true))
+
+        // When
+        handler.createMessage(submissionEvent)
+
+        // Then the admin's wording replaces the default, and their line break survives
+        val requestCaptor = argumentCaptor<MailSenderRequest>()
+        verify(mailSenderService).sendMail(requestCaptor.capture())
+        val request = requestCaptor.firstValue
+        assertThat(request.subject).isEqualTo("Aam Digital: Thanks for registering")
+        assertThat(request.body).contains("We will email you the venue a week before.<br>Questions:")
+        assertThat(request.body).doesNotContain("Submission received")
+        assertThat(request.body).doesNotContain("confirms that your details were submitted")
+    }
+
+    @Test
     fun `should confirm to the address on the event without looking up an account`() {
         // Given someone without an account submitted a public form
         val submissionEvent =

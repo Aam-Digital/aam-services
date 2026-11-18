@@ -59,20 +59,23 @@ class EmailCreateNotificationHandler(
 
         // without an account there is nothing to open in the app and no settings to manage: no links, no unsubscribe
         val isExternalRecipient = externalEmail != null
-        // a public form's notification carries only the form's title, so the wording around it comes
-        // from the branding file and is translated with the rest of the email
+        // the form's admin may have written subject and message; otherwise the default wording comes
+        // from the branding file, so that it is translated with the rest of the email
+        val customSubject = createUserNotificationEvent.customSubject?.takeIf { it.isNotBlank() }
         val subject =
             if (isExternalRecipient) {
-                listOf(branding.subjectPrefix, branding.submissionConfirmationLabel, details.title)
-                    .filter { it.isNotBlank() }
-                    .joinToString(": ")
+                val parts =
+                    customSubject?.let { listOf(branding.subjectPrefix, it) }
+                        ?: listOf(branding.subjectPrefix, branding.submissionConfirmationLabel, details.title)
+                parts.filter { it.isNotBlank() }.joinToString(": ")
             } else {
                 "${branding.subjectPrefix}: ${details.title}"
             }
         val body =
             if (isExternalRecipient) {
                 buildPublicFormEmailBody(
-                    title = details.title.ifBlank { branding.submissionConfirmationLabel }
+                    title = customSubject ?: details.title.ifBlank { branding.submissionConfirmationLabel },
+                    message = createUserNotificationEvent.customBody?.takeIf { it.isNotBlank() }
                 )
             } else {
                 buildEmailBody(
@@ -144,8 +147,19 @@ class EmailCreateNotificationHandler(
             .replace("{{ACTION_URL}}", HtmlUtils.htmlEscape(actionUrl))
             .replace("{{MANAGE_SETTINGS_URL}}", HtmlUtils.htmlEscape(manageSettingsUrl))
 
-    private fun buildPublicFormEmailBody(title: String): String =
-        publicFormBodyTemplate.replace("{{TITLE}}", HtmlUtils.htmlEscape(title))
+    /** [message] is plain text written by an admin, so it is escaped and its line breaks kept. */
+    private fun buildPublicFormEmailBody(
+        title: String,
+        message: String?
+    ): String =
+        publicFormBodyTemplate
+            .replace("{{TITLE}}", HtmlUtils.htmlEscape(title))
+            .replace(
+                "{{MESSAGE}}",
+                message
+                    ?.let { HtmlUtils.htmlEscape(it).replace("\n", "<br>") }
+                    ?: HtmlUtils.htmlEscape(branding.submissionConfirmationMessage)
+            )
 
     /**
      * Composes the final sender header from the deployment-specific address
@@ -185,6 +199,10 @@ class EmailCreateNotificationHandler(
             submissionConfirmationLabel =
                 properties
                     .getProperty("submission-confirmation-label", DEFAULT_SUBMISSION_CONFIRMATION_LABEL)
+                    .trim(),
+            submissionConfirmationMessage =
+                properties
+                    .getProperty("submission-confirmation-message", DEFAULT_SUBMISSION_CONFIRMATION_MESSAGE)
                     .trim()
         )
     }
@@ -196,12 +214,15 @@ class EmailCreateNotificationHandler(
     private data class EmailBranding(
         val fromName: String,
         val subjectPrefix: String,
-        val submissionConfirmationLabel: String
+        val submissionConfirmationLabel: String,
+        val submissionConfirmationMessage: String
     )
 
     companion object {
         private const val DEFAULT_SUBJECT_PREFIX = "Aam Digital"
         private const val DEFAULT_SUBMISSION_CONFIRMATION_LABEL = "Submission received"
+        private const val DEFAULT_SUBMISSION_CONFIRMATION_MESSAGE =
+            "This email confirms that your details were submitted successfully."
         private const val TEMPLATE_RELATIVE_PATH =
             "notification/create-notification-email-template.html"
         private const val PUBLIC_FORM_TEMPLATE_RELATIVE_PATH =

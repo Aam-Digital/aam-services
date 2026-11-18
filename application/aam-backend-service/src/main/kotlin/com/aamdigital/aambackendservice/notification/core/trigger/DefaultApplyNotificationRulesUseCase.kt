@@ -253,7 +253,9 @@ class DefaultApplyNotificationRulesUseCase(
                 notificationChannelType = NotificationChannelType.EMAIL,
                 notificationRule = rule.externalIdentifier,
                 details = notificationDetails,
-                recipientEmail = recipientEmail
+                recipientEmail = recipientEmail,
+                customSubject = notificationConfig.confirmationSubject,
+                customBody = notificationConfig.confirmationBody
             )
         )
 

@@ -14,7 +14,10 @@ data class NotificationConfigCacheEntry(
     val channelEmail: Boolean,
     val rules: List<NotificationRuleCacheEntry>,
     /** set for recipients without a user account: the field of the changed document holding their address */
-    val recipientEmailField: String? = null
+    val recipientEmailField: String? = null,
+    /** what the form's admin wrote for the confirmation email; `null` falls back to the default wording */
+    val confirmationSubject: String? = null,
+    val confirmationBody: String? = null
 ) {
     val isExternalRecipient: Boolean get() = recipientEmailField != null
 }
