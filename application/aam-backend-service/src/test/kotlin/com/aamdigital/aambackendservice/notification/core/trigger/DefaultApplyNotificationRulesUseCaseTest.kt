@@ -853,4 +853,68 @@ class DefaultApplyNotificationRulesUseCaseTest {
         val ids = eventCaptor.allValues.map { it.details.id }.distinct()
         assertThat(ids).hasSize(1)
     }
+
+    private fun unlabeledRuleConfig(label: String) =
+        singleRuleConfig().map { config ->
+            config.copy(rules = config.rules.map { it.copy(label = label) })
+        }
+
+    @Test
+    fun `should use the rule label as notification title`() {
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(singleRuleConfig())
+
+        // when
+        service.run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+
+        // then
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, Mockito.atLeastOnce()).publish(eventCaptor.capture())
+        assertThat(eventCaptor.allValues.map { it.details.title }.distinct()).containsExactly("Rule 1")
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = ["''", "' '"])
+    fun `should generate a title from entity type label and change type for a rule without label`(label: String) {
+        // given
+        val requestedEntityTypes = mutableListOf<String>()
+        val serviceWithLabels =
+            DefaultApplyNotificationRulesUseCase(
+                notificationConfigCache = notificationConfigCache,
+                userNotificationPublisher = userNotificationPublisher,
+                permissionCheckClient = permissionCheckClient,
+                applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
+                emailEnabled = false,
+                pushEnabled = true,
+                entityTypeLabelProvider = { entityType ->
+                    requestedEntityTypes.add(entityType)
+                    "Participant"
+                }
+            )
+        whenever(notificationConfigCache.findAll()).thenReturn(unlabeledRuleConfig(label))
+
+        // when
+        serviceWithLabels.run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+
+        // then
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, times(2)).publish(eventCaptor.capture())
+        assertThat(eventCaptor.allValues.map { it.details.title }.distinct()).containsExactly("Participant created")
+        // looked up once per change, not once per channel
+        assertThat(requestedEntityTypes).containsExactly("Child")
+    }
+
+    @Test
+    fun `should fall back to the entity type id in the title if the entity type has no label`() {
+        // given
+        whenever(notificationConfigCache.findAll()).thenReturn(unlabeledRuleConfig(""))
+
+        // when
+        service.run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+
+        // then
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher, Mockito.atLeastOnce()).publish(eventCaptor.capture())
+        assertThat(eventCaptor.allValues.map { it.details.title }.distinct()).containsExactly("Child created")
+    }
 }

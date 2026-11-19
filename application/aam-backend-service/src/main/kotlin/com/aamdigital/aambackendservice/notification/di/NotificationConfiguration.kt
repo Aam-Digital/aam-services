@@ -26,6 +26,7 @@ import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOut
 import com.aamdigital.aambackendservice.notification.core.outbox.OutboxUserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
+import com.aamdigital.aambackendservice.notification.core.trigger.CouchDbEntityTypeLabelProvider
 import com.aamdigital.aambackendservice.notification.core.trigger.DefaultApplyNotificationRulesUseCase
 import com.aamdigital.aambackendservice.notification.core.trigger.NotificationDocumentChangeHandler
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
@@ -72,7 +73,8 @@ class NotificationConfiguration {
         userNotificationPublisher: UserNotificationPublisher,
         permissionCheckClient: PermissionCheckClient,
         applicationConfig: ApplicationConfig,
-        createNotificationHandlers: List<CreateNotificationHandler>
+        createNotificationHandlers: List<CreateNotificationHandler>,
+        couchDbClient: CouchDbClient
     ): ApplyNotificationRulesUseCase {
         // Only emit a channel that a registered handler can deliver: an event without a handler turns
         // into an outbox entry that can never be delivered and is retried on every restart. Asking the
@@ -87,7 +89,8 @@ class NotificationConfiguration {
             permissionCheckClient = permissionCheckClient,
             applicationConfig = applicationConfig,
             emailEnabled = handlerExistsFor(NotificationChannelType.EMAIL),
-            pushEnabled = handlerExistsFor(NotificationChannelType.PUSH)
+            pushEnabled = handlerExistsFor(NotificationChannelType.PUSH),
+            entityTypeLabelProvider = CouchDbEntityTypeLabelProvider(couchDbClient)
         )
     }
 

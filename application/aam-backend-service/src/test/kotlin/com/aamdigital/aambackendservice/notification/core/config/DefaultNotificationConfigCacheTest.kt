@@ -224,7 +224,8 @@ class DefaultNotificationConfigCacheTest {
 
     @Test
     fun `should refresh a config whose rule has no label`() {
-        // given
+        // given the cache has already been loaded, with no configs yet
+        cache.findAll()
         whenever(
             couchDbClient.getDatabaseDocument(
                 database = eq("app"),
