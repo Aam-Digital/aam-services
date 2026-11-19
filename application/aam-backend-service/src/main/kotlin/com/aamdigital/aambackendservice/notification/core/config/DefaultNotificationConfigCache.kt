@@ -197,14 +197,14 @@ class DefaultNotificationConfigCache(
                         ExternalIdentifierInput(
                             notificationConfigId = notificationConfig.id,
                             ruleIndex = ruleIndex,
-                            label = rule.label,
+                            label = rule.label.orEmpty(),
                             entityType = rule.entityType,
                             changeType = changeType,
                             conditions = conditions
                         )
 
                     NotificationRuleCacheEntry(
-                        label = rule.label,
+                        label = rule.label.orEmpty(),
                         externalIdentifier = buildExternalIdentifier(externalIdentifierInput),
                         notificationType = rule.notificationType,
                         entityType = rule.entityType,
