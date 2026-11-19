@@ -26,10 +26,11 @@ import com.aamdigital.aambackendservice.notification.core.outbox.NotificationOut
 import com.aamdigital.aambackendservice.notification.core.outbox.OutboxUserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.core.outbox.UserNotificationPublisher
 import com.aamdigital.aambackendservice.notification.core.trigger.ApplyNotificationRulesUseCase
-import com.aamdigital.aambackendservice.notification.core.trigger.CouchDbEntityTypeLabelProvider
 import com.aamdigital.aambackendservice.notification.core.trigger.DefaultApplyNotificationRulesUseCase
+import com.aamdigital.aambackendservice.notification.core.trigger.EntityTypeLabelProvider
 import com.aamdigital.aambackendservice.notification.core.trigger.NotificationDocumentChangeHandler
 import com.aamdigital.aambackendservice.notification.domain.NotificationChannelType
+import com.aamdigital.aambackendservice.notification.repository.CouchDbEntityTypeLabelProvider
 import com.aamdigital.aambackendservice.notification.repository.CouchDbUserDeviceRepository
 import com.aamdigital.aambackendservice.notification.repository.UserDeviceRepository
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -68,13 +69,17 @@ class NotificationConfiguration {
         )
 
     @Bean
+    fun entityTypeLabelProvider(couchDbClient: CouchDbClient): EntityTypeLabelProvider =
+        CouchDbEntityTypeLabelProvider(couchDbClient)
+
+    @Bean
     fun defaultApplyNotificationRulesUseCase(
         notificationConfigCache: NotificationConfigCache,
         userNotificationPublisher: UserNotificationPublisher,
         permissionCheckClient: PermissionCheckClient,
         applicationConfig: ApplicationConfig,
         createNotificationHandlers: List<CreateNotificationHandler>,
-        couchDbClient: CouchDbClient
+        entityTypeLabelProvider: EntityTypeLabelProvider
     ): ApplyNotificationRulesUseCase {
         // Only emit a channel that a registered handler can deliver: an event without a handler turns
         // into an outbox entry that can never be delivered and is retried on every restart. Asking the
@@ -90,18 +95,20 @@ class NotificationConfiguration {
             applicationConfig = applicationConfig,
             emailEnabled = handlerExistsFor(NotificationChannelType.EMAIL),
             pushEnabled = handlerExistsFor(NotificationChannelType.PUSH),
-            entityTypeLabelProvider = CouchDbEntityTypeLabelProvider(couchDbClient)
+            entityTypeLabelProvider = entityTypeLabelProvider
         )
     }
 
     @Bean("notification-document-change-handler")
     fun notificationDocumentChangeHandler(
         notificationConfigCache: NotificationConfigCache,
-        applyNotificationRulesUseCase: ApplyNotificationRulesUseCase
+        applyNotificationRulesUseCase: ApplyNotificationRulesUseCase,
+        entityTypeLabelProvider: EntityTypeLabelProvider
     ): NotificationDocumentChangeHandler =
         NotificationDocumentChangeHandler(
             notificationConfigCache = notificationConfigCache,
-            applyNotificationRulesUseCase = applyNotificationRulesUseCase
+            applyNotificationRulesUseCase = applyNotificationRulesUseCase,
+            entityTypeLabelProvider = entityTypeLabelProvider
         )
 
     @Bean("notification-outbox-database-request")

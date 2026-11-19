@@ -873,35 +873,71 @@ class DefaultApplyNotificationRulesUseCaseTest {
         assertThat(eventCaptor.allValues.map { it.details.title }.distinct()).containsExactly("Rule 1")
     }
 
+    private fun serviceWithEntityTypeLabels(requestedEntityTypes: MutableList<String>) =
+        DefaultApplyNotificationRulesUseCase(
+            notificationConfigCache = notificationConfigCache,
+            userNotificationPublisher = userNotificationPublisher,
+            permissionCheckClient = permissionCheckClient,
+            applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
+            emailEnabled = false,
+            pushEnabled = false,
+            entityTypeLabelProvider = { entityType ->
+                requestedEntityTypes.add(entityType)
+                "Participant"
+            }
+        )
+
     @ParameterizedTest
     @CsvSource(value = ["''", "' '"])
     fun `should generate a title from entity type label and change type for a rule without label`(label: String) {
         // given
         val requestedEntityTypes = mutableListOf<String>()
-        val serviceWithLabels =
-            DefaultApplyNotificationRulesUseCase(
-                notificationConfigCache = notificationConfigCache,
-                userNotificationPublisher = userNotificationPublisher,
-                permissionCheckClient = permissionCheckClient,
-                applicationConfig = ApplicationConfig(baseUrl = "https://app.test"),
-                emailEnabled = false,
-                pushEnabled = true,
-                entityTypeLabelProvider = { entityType ->
-                    requestedEntityTypes.add(entityType)
-                    "Participant"
-                }
-            )
         whenever(notificationConfigCache.findAll()).thenReturn(unlabeledRuleConfig(label))
 
         // when
-        serviceWithLabels.run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+        serviceWithEntityTypeLabels(requestedEntityTypes)
+            .run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+
+        // then
+        val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
+        verify(userNotificationPublisher).publish(eventCaptor.capture())
+        assertThat(eventCaptor.firstValue.details.title).isEqualTo("Participant created")
+        assertThat(requestedEntityTypes).containsExactly("Child")
+    }
+
+    @Test
+    fun `should look up the entity type label once per change for several rules without label`() {
+        // given two users with a rule without label each
+        val requestedEntityTypes = mutableListOf<String>()
+        val config = unlabeledRuleConfig("").single()
+        whenever(notificationConfigCache.findAll()).thenReturn(listOf(config, config.copy(userIdentifier = "user-2")))
+        whenever(permissionCheckClient.checkPermissions(any(), any(), any()))
+            .thenReturn(mapOf("user-1" to true, "user-2" to true))
+
+        // when
+        serviceWithEntityTypeLabels(requestedEntityTypes)
+            .run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
 
         // then
         val eventCaptor = argumentCaptor<CreateUserNotificationEvent>()
         verify(userNotificationPublisher, times(2)).publish(eventCaptor.capture())
-        assertThat(eventCaptor.allValues.map { it.details.title }.distinct()).containsExactly("Participant created")
-        // looked up once per change, not once per channel
+        assertThat(eventCaptor.allValues.map { it.details.title }).containsOnly("Participant created")
         assertThat(requestedEntityTypes).containsExactly("Child")
+    }
+
+    @Test
+    fun `should not look up the entity type label if every matched rule has a label`() {
+        // given
+        val requestedEntityTypes = mutableListOf<String>()
+        whenever(notificationConfigCache.findAll()).thenReturn(singleRuleConfig())
+
+        // when
+        serviceWithEntityTypeLabels(requestedEntityTypes)
+            .run(ApplyNotificationRulesRequest(documentChangeEvent = documentCreateEvent))
+
+        // then
+        verify(userNotificationPublisher).publish(any())
+        assertThat(requestedEntityTypes).isEmpty()
     }
 
     @Test

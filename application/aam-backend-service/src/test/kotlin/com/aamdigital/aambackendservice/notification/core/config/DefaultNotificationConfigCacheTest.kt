@@ -263,7 +263,13 @@ class DefaultNotificationConfigCacheTest {
         )
 
         // then
-        assertThat(cache.findAll().single().rules.map { it.label }).containsExactly("")
+        assertThat(
+            cache
+                .findAll()
+                .single()
+                .rules
+                .map { it.label }
+        ).containsExactly("")
     }
 
     @Test
