@@ -9,8 +9,9 @@ import org.slf4j.LoggerFactory
 /**
  * Applies the users' notification rules to a document change.
  *
- * A change to a `NotificationConfig:*` document refreshes the rule cache instead of being matched
- * against the rules - it *is* the rules. A failed refresh leaves this instance working from the
+ * A change to a document that rules are derived from - a user's `NotificationConfig:*`, or a
+ * `PublicFormConfig:*` confirming its submissions - refreshes that rule cache instead of being
+ * matched against the rules: it *is* the rules. A failed refresh leaves this instance working from the
  * rules it already has until it is restarted, which is why the ERROR-and-continue disposition
  * that [com.aamdigital.aambackendservice.common.changes.CouchDbChangesProcessor] applies to an
  * exception is the right one here.
@@ -22,7 +23,7 @@ import org.slf4j.LoggerFactory
  * inline, and its client is bounded by a timeout for that reason.
  */
 class NotificationDocumentChangeHandler(
-    private val notificationConfigCache: NotificationConfigCache,
+    private val notificationConfigCaches: List<NotificationConfigCache>,
     private val applyNotificationRulesUseCase: ApplyNotificationRulesUseCase
 ) : DocumentChangeHandler {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -30,8 +31,9 @@ class NotificationDocumentChangeHandler(
     override val consumerName = "notification"
 
     override fun handle(event: DocumentChangeEvent) {
-        if (event.entityType == "NotificationConfig") {
-            notificationConfigCache.refreshConfig(
+        val changedRuleSource = notificationConfigCaches.find { it.sourceEntityType == event.entityType }
+        if (changedRuleSource != null) {
+            changedRuleSource.refreshConfig(
                 database = event.database,
                 notificationConfigId = event.documentId,
                 deleted = event.deleted

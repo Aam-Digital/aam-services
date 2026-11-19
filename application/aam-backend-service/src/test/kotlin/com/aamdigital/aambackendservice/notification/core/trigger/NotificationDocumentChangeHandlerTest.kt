@@ -32,7 +32,7 @@ class NotificationDocumentChangeHandlerTest {
 
     private val handler by lazy {
         NotificationDocumentChangeHandler(
-            notificationConfigCache = notificationConfigCache,
+            notificationConfigCaches = listOf(notificationConfigCache),
             applyNotificationRulesUseCase = applyNotificationRulesUseCase
         )
     }
@@ -50,6 +50,8 @@ class NotificationDocumentChangeHandlerTest {
     @Test
     fun `should refresh the config cache instead of matching rules for a NotificationConfig change`() {
         // Given a NotificationConfig document is the rules, not something to match against them
+        whenever(notificationConfigCache.sourceEntityType).thenReturn("NotificationConfig")
+
         handler.handle(event("NotificationConfig:user-1"))
 
         // Then
