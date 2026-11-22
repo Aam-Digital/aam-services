@@ -88,7 +88,7 @@ services:
     #   - ./container-data/keycloak/themes:/opt/keycloak/themes
 
   db-keycloak:
-    image: postgres:16
+    image: postgres:19
     networks:
       - aam-digital
     volumes:
