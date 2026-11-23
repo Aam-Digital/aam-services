@@ -142,6 +142,21 @@ Notes:
 - If a user has no email address in Keycloak, that notification is skipped for email delivery.
 - Ensure the server firewall allows outgoing traffic for the SMTP port.
 
+### Confirmation email for public form submissions
+
+Besides the notifications a user subscribes to, the service sends a confirmation to the person who
+submits a public form, when the form's admin switched that on in the frontend. Rules for these are
+derived from the `PublicFormConfig:*` documents rather than from `NotificationConfig:*`.
+
+The recipient has no user account, so the address is not looked up in Keycloak: it is read from the
+field of the submitted record that the form's admin selected. If that field holds no address, nothing
+is sent and the service logs it — there is no in-app or push notification for this recipient, only email.
+
+The admin can also configure the subject and the message. Both are optional; when either is left
+empty, the wording from `email-branding.properties` is used (`submission-confirmation-label` for the
+subject, `submission-confirmation-message` for the message). The body uses its own template,
+`{locale}/notification/public-form-confirmation-email-template.html`.
+
 ### Email delivery retries and failure handling
 
 If sending an email fails, the service automatically retries up to 3 times before giving up.
@@ -174,6 +189,11 @@ translator can copy a whole language folder (e.g. `en/` → `de/`) and translate
 bundled templates. A region suffix in the configured locale is ignored
 (`de-DE` → `de`).
 
+Each language folder holds one template per kind of email:
+
+- `create-notification-email-template.html` — the notifications a user subscribes to
+- `public-form-confirmation-email-template.html` — the confirmation to someone who submitted a public form
+
 For the configured locale, the backend resolves the template in this order and uses
 the first that exists:
 
@@ -198,6 +218,7 @@ volumes:
 ```text
 config/aam-backend-service/templates/
   de/notification/create-notification-email-template.html
+  de/notification/public-form-confirmation-email-template.html
   de/notification/email-branding.properties
   fr/notification/create-notification-email-template.html
 ```
@@ -219,12 +240,19 @@ template-related text is managed in one place:
 from-name=Aam Digital
 # Prefix prepended to every notification email subject, e.g. "Aam Digital: A new record was added".
 subject-prefix=Aam Digital
+# Used for a public form's submission confirmation when the form's admin wrote no subject,
+# before the form's title, e.g. "Aam Digital: Submission received: Event registration".
+submission-confirmation-label=Submission received
+# Message of a public form's submission confirmation, used when the form's admin wrote none.
+submission-confirmation-message=This email confirms that your details were submitted successfully. You can keep it for your records. No further action is needed.
 ```
 
 - `from-name` is combined with the configured address (`NOTIFICATION_EMAIL_FROM`, which holds the
   bare address only) to form the final sender header `from-name <NOTIFICATION_EMAIL_FROM>`. If
   `from-name` is empty, the bare address is used as-is.
 - `subject-prefix` is prepended to every email subject.
+- `submission-confirmation-label` and `submission-confirmation-message` are only used for a public
+  form's confirmation email, and only for the parts its admin left empty.
 
 The file is resolved per locale (`NOTIFICATION_EMAIL_LOCALE`) using the **same order as the HTML
 template**, using the first that exists:
@@ -234,9 +262,13 @@ template**, using the first that exists:
 3. Bundled classpath, localized: `src/main/resources/templates/{locale}/notification/email-branding.properties`
 4. Bundled classpath, English fallback: `src/main/resources/templates/en/notification/email-branding.properties`
 
-Only the English (`en`) branding file is bundled; other locales fall back to it unless you provide a
-localized copy (e.g. to translate the subject prefix). If the file — or an individual key — is
-missing, the subject prefix falls back to `Aam Digital` and no display name is added.
+Branding files are bundled for `en`, `de` and `fr`; any other locale falls back to the English one
+unless you provide a localized copy.
+
+A localized file **replaces** the English one rather than being merged with it, so a copy has to
+define every key it needs. If the file — or an individual key — is missing, the subject prefix falls
+back to `Aam Digital`, no display name is added, and the confirmation wording falls back to its
+English default.
 
 ### Permission-Aware Notifications (optional)
 
