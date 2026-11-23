@@ -32,6 +32,8 @@ class EmailCreateNotificationHandler(
     private val templateLoader = LocalizedTemplateLoader(templatesBaseDir)
     private val emailBodyTemplate: String =
         templateLoader.loadRequired(TEMPLATE_RELATIVE_PATH, notificationEmailProperties.locale)
+    private val publicFormBodyTemplate: String =
+        templateLoader.loadRequired(PUBLIC_FORM_TEMPLATE_RELATIVE_PATH, notificationEmailProperties.locale)
     private val branding: EmailBranding = loadEmailBranding(notificationEmailProperties.locale)
     private val normalizedManageSettingsUrl: String =
         normalizeUrlWithHttpsDefault(notificationEmailProperties.manageSettingsUrl)
@@ -41,7 +43,10 @@ class EmailCreateNotificationHandler(
         NotificationChannelType.EMAIL == notificationChannelType
 
     override fun createMessage(createUserNotificationEvent: CreateUserNotificationEvent): CreateNotificationData {
-        val email = lookupEmail(createUserNotificationEvent.userIdentifier)
+        // a recipient without a user account carries the address on the event; both the address and
+        // which template to use come from this one value, so they cannot disagree
+        val externalEmail = createUserNotificationEvent.recipientEmail?.takeIf { it.isNotBlank() }
+        val email = externalEmail ?: lookupEmail(createUserNotificationEvent.userIdentifier)
         if (email == null) {
             logger.info(
                 "No email address for user {}, skipping email notification",
@@ -51,13 +56,40 @@ class EmailCreateNotificationHandler(
         }
 
         val details = createUserNotificationEvent.details
-        val subject = "${branding.subjectPrefix}: ${details.title}"
+
+        // without an account there is nothing to open in the app and no settings to manage: no links, no unsubscribe
+        val isExternalRecipient = externalEmail != null
+        // the form's admin may have written subject and message; otherwise the default wording comes
+        // from the branding file, so that it is translated with the rest of the email
+        val customSubject = createUserNotificationEvent.customSubject?.takeIf { it.isNotBlank() }
+        val subject =
+            if (isExternalRecipient) {
+                val parts =
+                    customSubject?.let { listOf(branding.subjectPrefix, it) }
+                        ?: listOf(branding.subjectPrefix, branding.submissionConfirmationLabel, details.title)
+                parts.filter { it.isNotBlank() }.joinToString(": ")
+            } else {
+                "${branding.subjectPrefix}: ${details.title}"
+            }
         val body =
-            buildEmailBody(
-                title = details.title,
-                actionUrl = details.actionUrl,
-                manageSettingsUrl = normalizedManageSettingsUrl
-            )
+            if (isExternalRecipient) {
+                buildPublicFormEmailBody(
+                    title = customSubject ?: details.title.ifBlank { branding.submissionConfirmationLabel },
+                    message = createUserNotificationEvent.customBody?.takeIf { it.isNotBlank() }
+                )
+            } else {
+                buildEmailBody(
+                    title = details.title,
+                    actionUrl = details.actionUrl,
+                    manageSettingsUrl = normalizedManageSettingsUrl
+                )
+            }
+        val headers =
+            if (isExternalRecipient) {
+                emptyMap()
+            } else {
+                mapOf("List-Unsubscribe" to "<$normalizedManageSettingsUrl>")
+            }
 
         val mailSenderResponse =
             try {
@@ -68,10 +100,7 @@ class EmailCreateNotificationHandler(
                         body = body,
                         from = resolvedFrom,
                         isHtml = true,
-                        headers =
-                            mapOf(
-                                "List-Unsubscribe" to "<$normalizedManageSettingsUrl>"
-                            )
+                        headers = headers
                     )
                 )
             } catch (ex: MailSendException) {
@@ -118,6 +147,20 @@ class EmailCreateNotificationHandler(
             .replace("{{ACTION_URL}}", HtmlUtils.htmlEscape(actionUrl))
             .replace("{{MANAGE_SETTINGS_URL}}", HtmlUtils.htmlEscape(manageSettingsUrl))
 
+    /** [message] is plain text written by an admin, so it is escaped and its line breaks kept. */
+    private fun buildPublicFormEmailBody(
+        title: String,
+        message: String?
+    ): String =
+        publicFormBodyTemplate
+            .replace("{{TITLE}}", HtmlUtils.htmlEscape(title))
+            .replace(
+                "{{MESSAGE}}",
+                message
+                    ?.let { HtmlUtils.htmlEscape(it).replace("\n", "<br>") }
+                    ?: HtmlUtils.htmlEscape(branding.submissionConfirmationMessage)
+            )
+
     /**
      * Composes the final sender header from the deployment-specific address
      * ([NotificationEmailProperties.from]) and the [fromName] display text managed in the
@@ -152,7 +195,15 @@ class EmailCreateNotificationHandler(
         }
         return EmailBranding(
             fromName = properties.getProperty("from-name", "").trim(),
-            subjectPrefix = properties.getProperty("subject-prefix", DEFAULT_SUBJECT_PREFIX).trim()
+            subjectPrefix = properties.getProperty("subject-prefix", DEFAULT_SUBJECT_PREFIX).trim(),
+            submissionConfirmationLabel =
+                properties
+                    .getProperty("submission-confirmation-label", DEFAULT_SUBMISSION_CONFIRMATION_LABEL)
+                    .trim(),
+            submissionConfirmationMessage =
+                properties
+                    .getProperty("submission-confirmation-message", DEFAULT_SUBMISSION_CONFIRMATION_MESSAGE)
+                    .trim()
         )
     }
 
@@ -162,13 +213,20 @@ class EmailCreateNotificationHandler(
      */
     private data class EmailBranding(
         val fromName: String,
-        val subjectPrefix: String
+        val subjectPrefix: String,
+        val submissionConfirmationLabel: String,
+        val submissionConfirmationMessage: String
     )
 
     companion object {
         private const val DEFAULT_SUBJECT_PREFIX = "Aam Digital"
+        private const val DEFAULT_SUBMISSION_CONFIRMATION_LABEL = "Submission received"
+        private const val DEFAULT_SUBMISSION_CONFIRMATION_MESSAGE =
+            "This email confirms that your details were submitted successfully."
         private const val TEMPLATE_RELATIVE_PATH =
             "notification/create-notification-email-template.html"
+        private const val PUBLIC_FORM_TEMPLATE_RELATIVE_PATH =
+            "notification/public-form-confirmation-email-template.html"
         private const val BRANDING_RELATIVE_PATH =
             "notification/email-branding.properties"
         private val DEFAULT_TEMPLATES_BASE_DIR: Path =

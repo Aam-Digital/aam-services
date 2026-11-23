@@ -649,7 +649,7 @@ class DefaultNotificationConfigCacheTest {
         assertThat(cacheWithTtl.findAll()).isEqualTo(loaded)
 
         // and the reload is tried again later
-        clock.now = clock.now.plus(DefaultNotificationConfigCache.RELOAD_RETRY_INTERVAL)
+        clock.now = clock.now.plus(DocumentBackedNotificationConfigCache.RELOAD_RETRY_INTERVAL)
         val reloaded = cacheWithTtl.singleRule()
         assertThat(DocumentConditionEngine().matches(reloaded.conditions, mapOf("name" to "Ernie"))).isTrue
     }

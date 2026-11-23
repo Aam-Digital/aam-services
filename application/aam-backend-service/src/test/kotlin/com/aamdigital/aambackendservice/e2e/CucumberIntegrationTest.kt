@@ -31,6 +31,7 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.io.ClassPathResource
 import org.springframework.http.HttpMethod
 import org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -41,7 +42,8 @@ import java.util.Optional
 class CucumberIntegrationTest(
     val reportCalculationTrigger: ReportCalculationTrigger,
     val syncRepository: SyncRepository,
-    val notificationConfigCache: NotificationConfigCache
+    // the users' own configs; public forms have a cache of their own
+    @Qualifier("notificationConfigCache") val notificationConfigCache: NotificationConfigCache
 ) : SpringIntegrationTest() {
     private val logger = LoggerFactory.getLogger(javaClass)
 
