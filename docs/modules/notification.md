@@ -52,6 +52,11 @@ comparisons, `$exists`, `$regex` and dotted paths into nested fields.
 Note that values are compared strictly by type: a number stored as a string in a condition
 (e.g. `{"age": {"$gte": "18"}}`) does not match a numeric field.
 
+A rule's name is used as the title of its notifications. For a rule saved without a name, the title is the
+entity type's `label` from the entity config (`Config:CONFIG_ENTITY`; for a translated label, the English text)
+followed by the change, e.g. `Participant created`. Without a configured label, the entity type id is used
+instead, e.g. `Child updated`. The change (`created`, `updated`, `deleted`) is always in English.
+
 A condition value can be the placeholder `"$current_user"` (e.g. `{"assignedTo": {"$elemMatch": "$current_user"}}`),
 which stands for the entity linked to the rule owner's user account (the Keycloak user attribute `exact_username`).
 This requires the Keycloak settings below (see [Setup](#setup)); without them, or for a user account without a
@@ -105,7 +110,7 @@ The Keycloak client for the lookup is the `aam-backend` client (`KEYCLOAK_CLIENT
 
 Notification links are derived centrally from `APPLICATION_BASEURL`:
 
-- Email "manage notification settings": `https://<base-url>/user-account?tabIndex=1`
+- Email "manage notification settings": `https://<base-url>/user-account?_tabIndex=1`
 - Push notification link target (FCM webpush `link` and `url` custom data)
 
 Database change-detection is activated automatically when notification (or reporting) is enabled;

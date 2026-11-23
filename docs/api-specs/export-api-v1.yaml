@@ -163,7 +163,7 @@ paths:
           required: false
           description: >-
             `zip` (default) returns a ZIP of N rendered files; `combined` returns
-            a single merged document produced by Carbone.
+            a single merged PDF produced by Carbone (only for `convertTo: "pdf"`).
           schema:
             type: string
             enum:
@@ -207,7 +207,9 @@ paths:
                 type: string
                 format: binary
         '400':
-          description: Invalid `mode`, or a body whose `data` field is missing, not an array, or empty.
+          description: >-
+            Invalid `mode`, a body whose `data` field is missing, not an array, or empty, or a
+            `convertTo` that is not a file format or cannot be combined into a single file.
           content:
             application/json:
               schema:
@@ -256,13 +258,9 @@ components:
   schemas:
     RenderRequest:
       type: object
-      required:
-        - convertTo
       properties:
         convertTo:
-          type: string
-          description: The format to convert the template to, e.g. "pdf".
-          example: pdf
+          $ref: '#/components/schemas/ConvertTo'
         data:
           type: object
           additionalProperties: true
@@ -291,9 +289,11 @@ components:
             additionalProperties: true
           description: One record per document to render. Must contain at least one entry.
         convertTo:
-          type: string
-          description: The per-document output format, e.g. "pdf".
-          example: pdf
+          allOf:
+            - $ref: '#/components/schemas/ConvertTo'
+          description: >-
+            The per-document output format (see `ConvertTo`). Formats other than "pdf" are
+            only available with `mode=zip`.
         complement:
           type: object
           additionalProperties: true
@@ -317,6 +317,28 @@ components:
           user:
             name: Grace Hopper
         reportName: "report-{d.lastname}.pdf"
+    ConvertTo:
+      description: >-
+        The file format to generate, named by its extension (case-insensitive): "pdf", or
+        e.g. the template's own format ("docx", "xlsx", "pptx", ...) for an editable file.
+        Either the extension itself or carbone's object form with `formatName` (and
+        optional `formatOptions`). Defaults to "pdf" if omitted. The format is passed on to
+        the template engine in lower case, and the extension of the generated file's name
+        follows it.
+      oneOf:
+        - type: string
+          example: pdf
+        - type: object
+          required:
+            - formatName
+          properties:
+            formatName:
+              type: string
+              example: pdf
+            formatOptions:
+              type: object
+              additionalProperties: true
+      example: pdf
     Error:
       type: object
       description: Standard error envelope returned for every non-2xx response in this API.
@@ -332,6 +354,9 @@ components:
               (`400`, render-batch only).
             * `INVALID_DATA_SHAPE_ERROR` — the request body is not a JSON object, or its
               `data` field is missing or not an array (`400`, render-batch only).
+            * `INVALID_OUTPUT_FORMAT_ERROR` — `convertTo` does not name a file format by its
+              extension, or (render-batch only) a format other than `pdf` was requested with
+              `mode=combined` (`400`).
             * `EMPTY_DATA_LIST_ERROR` — the `data` array is present but empty (`400`,
               render-batch only).
             * `BATCH_REJECTED_ERROR` — the template engine refused the batch (e.g. the

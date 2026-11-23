@@ -25,6 +25,9 @@ enum class RenderTemplateError : AamErrorCode {
     CREATE_RENDER_REQUEST_FAILED_ERROR,
     FETCH_RENDER_ID_REQUEST_FAILED_ERROR,
     PARSE_RESPONSE_ERROR,
+
+    /** The requested `convertTo` is not usable as a file format. */
+    INVALID_OUTPUT_FORMAT_ERROR,
     NOT_FOUND_ERROR
 }
 

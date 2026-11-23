@@ -66,7 +66,7 @@ notification:
     # Sender address only; the display name and subject prefix are managed in the
     # templates/{locale}/notification/email-branding.properties template file.
     from: ""
-    manage-settings-url: "${application.base-url}/user-account?tabIndex=1"
+    manage-settings-url: "${application.base-url}/user-account?_tabIndex=1"
     # Deployment-wide language for the email boilerplate (e.g. en, de, fr).
     # Selects the bundled/overridden template under {locale}/notification/...
     # Keep this in sync with the site default language (SiteSettings.defaultLanguage).

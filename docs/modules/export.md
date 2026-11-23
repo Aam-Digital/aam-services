@@ -54,6 +54,26 @@ aam-render-api-client-configuration:
       scope: <needs-environment-configuration>
 ```
 
+### Output format (PDF or editable file)
+
+The render endpoints forward the `convertTo` field of the request body to Carbone, which decides
+the format of the generated file. `pdf` is the usual value; the Aam Digital app can also request
+the template's own format (e.g. `docx` for a `.docx` template) to hand users an editable file.
+
+No extra Carbone configuration is needed for this. Which conversions are possible depends on the
+template type and the Carbone instance (see Carbone's list of supported output formats); a format
+it cannot produce is answered with a render error.
+
+If a request names no format, the backend asks Carbone for a PDF (Carbone itself would keep the
+template's format otherwise).
+
+The file name is the template's file name pattern with the extension of the generated format, so a
+pattern of `report_{d.name}.pdf` yields `report_Ada.docx` for `convertTo: "docx"`. For a batch in
+`mode=zip`, the archive is named with `.zip` and each file in it with the generated format.
+
+Merging several records into one file (`mode=combined` of the batch endpoint) is only available
+for PDF. Other formats can be generated for several records as a ZIP (`mode=zip`).
+
 ### Batch rendering (ZIP or combined PDF)
 
 The bulk endpoint (`POST /v1/export/render-batch/{templateId}`) requires batch processing to be enabled in the configured Carbone instance.

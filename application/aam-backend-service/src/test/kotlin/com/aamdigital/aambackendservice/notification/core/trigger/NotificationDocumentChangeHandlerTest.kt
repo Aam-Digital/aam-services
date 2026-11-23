@@ -30,10 +30,14 @@ class NotificationDocumentChangeHandlerTest {
     @Mock
     lateinit var applyNotificationRulesUseCase: ApplyNotificationRulesUseCase
 
+    @Mock
+    lateinit var entityTypeLabelProvider: EntityTypeLabelProvider
+
     private val handler by lazy {
         NotificationDocumentChangeHandler(
             notificationConfigCaches = listOf(notificationConfigCache),
-            applyNotificationRulesUseCase = applyNotificationRulesUseCase
+            applyNotificationRulesUseCase = applyNotificationRulesUseCase,
+            entityTypeLabelProvider = entityTypeLabelProvider
         )
     }
 
@@ -56,6 +60,16 @@ class NotificationDocumentChangeHandlerTest {
 
         // Then
         verify(notificationConfigCache).refreshConfig(eq("app"), eq("NotificationConfig:user-1"), eq(false))
+        verify(applyNotificationRulesUseCase, never()).run(any())
+    }
+
+    @Test
+    fun `should drop the cached entity type labels instead of matching rules for an entity config change`() {
+        // When
+        handler.handle(event("Config:CONFIG_ENTITY"))
+
+        // Then
+        verify(entityTypeLabelProvider).invalidate()
         verify(applyNotificationRulesUseCase, never()).run(any())
     }
 

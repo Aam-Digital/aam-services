@@ -26,6 +26,7 @@ class DefaultApplyNotificationRulesUseCase(
     private val applicationConfig: ApplicationConfig,
     private val emailEnabled: Boolean,
     private val pushEnabled: Boolean,
+    private val entityTypeLabelProvider: EntityTypeLabelProvider = EntityTypeLabelProvider { null },
     private val documentConditionEngine: DocumentConditionEngine = DocumentConditionEngine()
 ) : ApplyNotificationRulesUseCase() {
     override fun apply(request: ApplyNotificationRulesRequest): UseCaseOutcome<ApplyNotificationRulesData> {
@@ -109,6 +110,9 @@ class DefaultApplyNotificationRulesUseCase(
             return emptyList()
         }
 
+        // looked up at most once per change, and only if a matched rule has no label of its own
+        val defaultTitle by lazy { defaultTitleFor(documentChangeEvent) }
+
         val permissionMap =
             permissionCheckClient.checkPermissions(
                 userIds = userRules.map { it.first.userIdentifier }.distinct(),
@@ -129,7 +133,12 @@ class DefaultApplyNotificationRulesUseCase(
                 return@mapNotNull null
             }
 
-            publishNotificationEventForUser(notificationConfig, rule, documentChangeEvent)
+            publishNotificationEventForUser(
+                notificationConfig,
+                rule,
+                documentChangeEvent,
+                title = rule.label.ifBlank { defaultTitle }
+            )
         }
     }
 
@@ -174,9 +183,10 @@ class DefaultApplyNotificationRulesUseCase(
     private fun publishNotificationEventForUser(
         notificationConfig: NotificationConfigCacheEntry,
         rule: NotificationRuleCacheEntry,
-        documentChangeEvent: DocumentChangeEvent
+        documentChangeEvent: DocumentChangeEvent,
+        title: String
     ): NotificationDetails {
-        val baseDetails = baseDetailsFor(notificationConfig, rule, documentChangeEvent)
+        val baseDetails = baseDetailsFor(notificationConfig, rule, documentChangeEvent, title)
 
         val actionUrl = buildActionUrl(baseDetails)
         val notificationDetails = baseDetails.copy(actionUrl = actionUrl)
@@ -244,7 +254,7 @@ class DefaultApplyNotificationRulesUseCase(
         }
 
         // no actionUrl: there is no account to open the record with
-        val notificationDetails = baseDetailsFor(notificationConfig, rule, documentChangeEvent)
+        val notificationDetails = baseDetailsFor(notificationConfig, rule, documentChangeEvent, rule.label)
 
         userNotificationPublisher.publish(
             CreateUserNotificationEvent(
@@ -265,7 +275,8 @@ class DefaultApplyNotificationRulesUseCase(
     private fun baseDetailsFor(
         notificationConfig: NotificationConfigCacheEntry,
         rule: NotificationRuleCacheEntry,
-        documentChangeEvent: DocumentChangeEvent
+        documentChangeEvent: DocumentChangeEvent,
+        title: String
     ): NotificationDetails =
         NotificationDetails(
             // Derived from the change that caused it, so reprocessing the same document
@@ -277,7 +288,7 @@ class DefaultApplyNotificationRulesUseCase(
                     userIdentifier = notificationConfig.userIdentifier,
                     ruleIdentifier = rule.externalIdentifier
                 ),
-            title = rule.label,
+            title = title,
             context =
                 EntityNotificationContext(
                     entityType = rule.entityType,
@@ -291,6 +302,16 @@ class DefaultApplyNotificationRulesUseCase(
         document: Map<*, *>,
         fieldPath: String
     ): Any? = fieldPath.split(".").fold<String, Any?>(document) { current, key -> (current as? Map<*, *>)?.get(key) }
+
+    /**
+     * Title for a rule saved without a label, e.g. `Participant created`: the entity type's
+     * configured label, else its id, followed by the change type.
+     */
+    private fun defaultTitleFor(documentChangeEvent: DocumentChangeEvent): String {
+        val entityType = documentChangeEvent.entityType
+        val entityLabel = entityTypeLabelProvider.labelFor(entityType) ?: entityType
+        return "$entityLabel ${documentChangeEvent.changeType}"
+    }
 
     /**
      * Stable notification id for one (document revision, user, rule) combination.

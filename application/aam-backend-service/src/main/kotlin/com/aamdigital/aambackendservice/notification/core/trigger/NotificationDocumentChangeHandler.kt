@@ -17,14 +17,16 @@ import org.slf4j.LoggerFactory
  * exception is the right one here.
  *
  * Runs on the notification module's own change-detection thread, so nothing here can hold up
- * reporting. Rule matching is answered from [NotificationConfigCache] in memory; the notifications
- * it produces are recorded by the publisher rather than delivered inline, so a slow mail or push
- * endpoint cannot stall change detection. The permission check is the one external call made
- * inline, and its client is bounded by a timeout for that reason.
+ * reporting. Rule matching is answered from [NotificationConfigCache] in memory, and the entity
+ * type labels for default titles from [EntityTypeLabelProvider], which a `Config:CONFIG_ENTITY`
+ * change invalidates. The notifications it produces are recorded by the publisher rather than
+ * delivered inline, so a slow mail or push endpoint cannot stall change detection. The permission
+ * check is the one external call made inline, and its client is bounded by a timeout for that reason.
  */
 class NotificationDocumentChangeHandler(
     private val notificationConfigCaches: List<NotificationConfigCache>,
-    private val applyNotificationRulesUseCase: ApplyNotificationRulesUseCase
+    private val applyNotificationRulesUseCase: ApplyNotificationRulesUseCase,
+    private val entityTypeLabelProvider: EntityTypeLabelProvider = EntityTypeLabelProvider { null }
 ) : DocumentChangeHandler {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -38,6 +40,12 @@ class NotificationDocumentChangeHandler(
                 notificationConfigId = event.documentId,
                 deleted = event.deleted
             )
+            return
+        }
+
+        if (event.documentId == CONFIG_ENTITY_DOCUMENT_ID) {
+            // the entity type labels used in the titles of notifications from rules without a label
+            entityTypeLabelProvider.invalidate()
             return
         }
 
@@ -73,5 +81,9 @@ class NotificationDocumentChangeHandler(
                 )
             }
         }
+    }
+
+    companion object {
+        private const val CONFIG_ENTITY_DOCUMENT_ID = "Config:CONFIG_ENTITY"
     }
 }

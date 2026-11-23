@@ -11,6 +11,8 @@ _for details about setup & usage of this module [see README in docs folder](../.
     1. `NotificationConfigCache` keeps notification trigger rules in memory.
        (Cache is loaded from CouchDB on first use and refreshed whenever a `NotificationConfig:*` document changes)
     2. `ApplyNotificationRulesUseCase` checks if a notification rule is triggered.
+    3. `EntityTypeLabelProvider` keeps the entity type labels from `Config:CONFIG_ENTITY` in memory, for the title of a notification whose rule has no label.
+       (Loaded on first use and dropped whenever `Config:CONFIG_ENTITY` changes)
 4. `ApplyNotificationRulesUseCase` runs on consumed `DocumentChangeEvent` and checks if any notification rule is triggered. In that case, it hands a `CreateUserNotificationEvent` per channel to the `UserNotificationPublisher`.
 5. `OutboxUserNotificationPublisher` writes the in-app notification immediately (it is a single idempotent CouchDB document, and it is what the user reads) and puts push and email — external calls with second-scale timeouts — into the `notification-outbox` database, a generic [`Outbox`](../common/outbox/README.md).
 6. `NotificationOutboxDrainJob` drains the outbox on a short interval; `NotificationOutboxHandler` passes each entry to `CreateNotificationUseCase`, which passes the event on to the applicable `CreateNotificationHandler`.
