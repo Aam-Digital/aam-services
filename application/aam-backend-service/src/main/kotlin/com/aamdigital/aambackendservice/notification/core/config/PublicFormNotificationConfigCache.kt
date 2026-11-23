@@ -1,16 +1,11 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
-import com.aamdigital.aambackendservice.common.cache.LazySnapshot
 import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
 import com.aamdigital.aambackendservice.common.domain.TranslatableText
-import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.notification.domain.NotificationType
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ObjectNode
-import org.slf4j.LoggerFactory
 import java.nio.charset.StandardCharsets
 import java.time.Clock
 import java.time.Duration

@@ -1,17 +1,12 @@
 package com.aamdigital.aambackendservice.notification.core.config
 
-import com.aamdigital.aambackendservice.common.cache.LazySnapshot
 import com.aamdigital.aambackendservice.common.condition.DocumentConditionEngine
 import com.aamdigital.aambackendservice.common.condition.DocumentConditions
 import com.aamdigital.aambackendservice.common.condition.InvalidDocumentConditionsException
 import com.aamdigital.aambackendservice.common.couchdb.core.CouchDbClient
-import com.aamdigital.aambackendservice.common.couchdb.core.getEmptyQueryParams
-import com.aamdigital.aambackendservice.common.error.NotFoundException
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolutionException
 import com.aamdigital.aambackendservice.common.placeholder.core.PlaceholderResolver
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ObjectNode
-import org.slf4j.LoggerFactory
 import java.nio.charset.StandardCharsets
 import java.time.Clock
 import java.time.Duration
